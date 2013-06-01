@@ -1,0 +1,14 @@
+** TSLoad agent 0.2 **
+
+- Cross-platform agent: porting agent to Windows and Solaris   
+- Memory pool (TSLoad own allocator)
+- Standalone loader tool "run-tsload" 
+- Time source with nanosecond resolution
+- Autoconf-like configurable build with SCons
+
+** TSLoad agent 0.1 **
+
+- JSON-TS protocol implementation, client and agent
+- Basic functionality for agents: logging, threads, hashmap's and queues
+- TSLoad loader agent "tsloadd"
+- Workload processing: modules, parameters, multiple workloads

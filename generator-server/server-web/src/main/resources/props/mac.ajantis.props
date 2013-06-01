@@ -1,3 +1,0 @@
-iozone_home=/opt/local/bin/
-mongodb.host=127.0.0.1
-mongodb.name=vperfgeneratordb
