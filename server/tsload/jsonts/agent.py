@@ -7,12 +7,14 @@ Created on 07.05.2013
 import sys
 
 from tsload.jsonts import JSONTS
-from tsload.jsonts.interface import RootAgent
+from tsload.jsonts.api.root import RootAgent
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.defer import Deferred
 from twisted.internet import reactor
+
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 import uuid
 import inspect
@@ -68,8 +70,9 @@ class TSAgent(Factory):
         return TSAgentClient(self, -1)
     
     def createRemoteAgent(self, agentId, agentKlass):
-        agent = agentKlass(self.client, agentId)
+        agent = agentKlass(self, agentId)
         self.agents[agentId] = agent
+        
         return agent
         
     def processMessage(self, srcClient, message):
@@ -97,16 +100,9 @@ class TSAgent(Factory):
             except AttributeError as ae:
                 raise JSONTS.Error(JSONTS.AE_COMMAND_NOT_FOUND, str(ae))
             
-            # Check if argument names matching
-            args = inspect.getargspec(method)
-            args = filter(lambda a: a not in ['self', 'context'], args.args)
-            if set(args) != set(cmdArgs.keys()):
-                raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
-                                   'Missing or extra arguments: needed %s, got %s' % (args, cmdArgs.keys()))
-            
             context = CallContext(srcClient, srcMsgId)
             
-            response = method(context = context, **cmdArgs)
+            response = method(context, cmdArgs)
             
             if isinstance(response, Deferred):
                 # Add closures callback/errbacks to deferred and return
@@ -127,45 +123,41 @@ class TSAgent(Factory):
             self.doTrace('Got response %s', response)
             
             srcClient.sendResponse(srcClient.getId(), srcMsgId, response)
-        elif 'response' in message:
-            response = message['response'] 
-            self.processResponse(srcMsgId, response)
-        elif 'error' in message:
-            error = message['error']
-            code = message['code']
-            self.processError(srcMsgId, code, error)
+        else:
+            # Notify MethodProxy deferred that response arrived
+            call = self.calls[srcMsgId]
+            if 'response' in message:
+                response = message['response'] 
+                call.callback(response)
+            elif 'error' in message:
+                error = message['error']
+                code = message['code']
+                call.errback((code, error))
+            del self.calls[srcMsgId]
     
-    def call(self, call, callback, errback):
-        '''Main routine for invokation of remote agents. Each call made via
-        remote-interface (imported from tsload.jsonts.interface) returns only 
-        message id. This function binds it to callback/errback
+    def sendCommand(self, d, *args, **kwargs):
+        '''Send command to remote agent. 
+        When agent will reply, processResponse or processError will be called,
+        so they trigger deferred callback/errback
         
-        FIXME: Use deferreds from twisted'''
-        self.calls[call.msgId] = call
-        call.setCallbacks(callback, errback)
-    
-    def processResponse(self, msgId, response):        
-        call = self.calls[msgId]
-        call.callback(response)
-        del self.calls[msgId]
+        Helper for MethodImpl.__call__'''
         
-    def processError(self, msgId, code, error):        
-        call = self.calls[msgId]
-        call.errback(code, error)
-        del self.calls[msgId]
+        msgId =  self.client.sendCommand(*args, **kwargs)
+        
+        self.calls[msgId] = d
     
+    @inlineCallbacks
     def gotClient(self, client):
         # Connection was successful
         self.client = client
         self.rootAgent = self.createRemoteAgent(0, RootAgent)
         
-        self.call(self.rootAgent.hello(agentType = self.agentType, agentUuid = self.uuid), 
-                  self.gotHello, self.gotError)
-    
-    def gotHello(self, response):        
-        self.agentId = response['agentId']
+        helloMsg = yield self.rootAgent.hello(agentType = self.agentType, 
+                                              agentUuid = self.uuid)
         
-        self.doTrace('Got hello response %s', response)
+        self.agentId = helloMsg.agentId
+        
+        self.doTrace('Got hello response %s', helloMsg)
         
         self.gotAgent()
     
@@ -178,6 +170,10 @@ class TSAgent(Factory):
         '''Generic implementation for JSONTS error - simply dumps error
         to stderr. May be overriden'''
         print >> sys.stderr, 'ERROR %d: %s' % (code, error)
+    
+    def gotAgent(self):
+        '''Method called then agent established connection'''
+        pass
     
     def disconnect(self):
         self.endpoint.disconnect()    

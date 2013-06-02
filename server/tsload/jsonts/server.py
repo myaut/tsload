@@ -36,6 +36,8 @@ class TSServerClient(JSONTS):
         
         self.auth = TSServerClient.AUTH_NONE
         
+        self.endpointStr = 'local'
+        
         JSONTS.__init__(self, factory)
         
     def addAccessRule(self, ar):
@@ -49,16 +51,13 @@ class TSServerClient(JSONTS):
     
     def authorize(self, authType):
         self.authType = authType
+        
+    def setEndpointStr(self, endpointStr):
+        self.endpointStr = endpointStr
     
     def setAgentInfo(self, agentType, agentUuid):
         self.agentType = agentType
         self.agentUuid = agentUuid
-        
-    def serializeAgentInfo(self):
-        '''Helper for listClients()'''
-        return {'uuid': self.agentUuid, 
-                'class': self.agentType,
-                'state': self.state}
     
     def checkACL(self, flow):
         '''Validates flow according to client ACLs. If client
@@ -173,6 +172,7 @@ class TSServer(Factory):
     def buildProtocol(self, addr):
         agentId = next(self.agentIdGenerator)
         client = TSServerClient(self, agentId)
+        client.setEndpointStr(addr.host + ':' + str(addr.port))
         
         self.clients[agentId] = client
         

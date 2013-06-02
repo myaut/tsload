@@ -8,6 +8,9 @@ from tsload.jsonts import Flow
 from tsload.jsonts.agent import TSAgent
 from tsload.jsonts.server import TSServerClient
 
+from tsload.jsonts.api import TSMethodImpl
+from tsload.jsonts.api.user import *
+
 from tsload.user import User, Role, UserAuthError
 from tsload.user.localauth import LocalAuth
 
@@ -15,7 +18,7 @@ from storm.locals import create_database
 from storm.store import Store
 from storm.exceptions import NotOneError
 
-from twisted.internet.defer import inlineCallbacks, returnValue, waitForDeferred
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 userAgentUUID = '{2701b3b1-cd8f-457e-9bdd-2323153f16e5}'
 userAgentType = 'user'
@@ -46,7 +49,8 @@ class TSUserAgent(TSAgent):
         self.server.listenerFlows.append(Flow(dstAgentId = userAgentId, 
                                               command = 'authUser'))
     
-    def authUser(self, context, userName, userPassword):
+    @TSMethodImpl(UserAgent.authUser)
+    def authUser(self, context, **kw):
         @inlineCallbacks
         def implementation(context, userName, userPassword):
             userSet = yield self.dbStore.find(User, User.name == str(userName))
@@ -63,9 +67,11 @@ class TSUserAgent(TSAgent):
                 
                 # need to set up roles
             
-            returnValue({'name': user.gecosName})
+            userDescr = TSUserDescriptor()
+            userDescr.name = user.gecosName
+            returnValue(userDescr)
         
-        return implementation(context, userName, userPassword)
+        return implementation(context, **kw)
     
     def onDisconnect(self):
         self.dbStore.close()

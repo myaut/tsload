@@ -65,6 +65,9 @@ class JSONTS(Protocol):
         def __init__(self, code, error):
             self.code = code
             self.error = error
+            
+        def __str__(self):
+            return 'ERROR %d: %s' % (self.code, self.error)
     
     def __init__(self, factory):
         self.factory = factory

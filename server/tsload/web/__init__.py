@@ -1,7 +1,9 @@
 from tsload.jsonts import JSONTS
 from tsload.jsonts.agent import TSAgent
 
-from tsload.jsonts.interface import UserAgent
+from tsload.jsonts.api.user import UserAgent
+
+from twisted.internet.defer import inlineCallbacks
 
 HOST = 'localhost'
 PORT = 9090
@@ -26,25 +28,24 @@ class TSWebAgent(TSAgent):
         self.userName = userName
         self.userPassword = userPassword
     
+    @inlineCallbacks
     def gotAgent(self):
         self.state = TSWebAgent.STATE_CONNECTED
         self.userAgent = self.createRemoteAgent(1, UserAgent)
         
-        self.call(self.userAgent.authUser(userName = self.userName, 
-                                          userPassword = self.userPassword),
-                  self.gotAuthentificated, self.gotAuthError)
-        
-    def gotAuthentificated(self, response):
-        self.state = TSWebAgent.STATE_AUTHENTIFICATED
-        self.gecosUserName = response['name']
-        
-        self.eventListener.callback(self)
-        
-    def gotAuthError(self, code, error):
-        self.state = TSWebAgent.STATE_AUTH_ERROR
-        self.authError = error
-        
-        self.eventListener.callback(self)
+        try:
+            user = yield self.userAgent.authUser(userName = self.userName, 
+                                                 userPassword = self.userPassword)
+            
+            self.state = TSWebAgent.STATE_AUTHENTIFICATED
+            self.gecosUserName = user.name
+            
+            self.eventListener.callback(self)
+        except JSONTS.Error as je:
+            self.state = TSWebAgent.STATE_AUTH_ERROR
+            self.authError = str(je)
+            
+            self.eventListener.callback(self)
     
     def gotConnectionError(self, error):
         self.state = TSWebAgent.STATE_CONN_ERROR

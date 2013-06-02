@@ -3,7 +3,7 @@
 import sys
 import getopt
 
-from tsload.cli.main import TSAdminCLIAgent
+from tsload.cli import TSAdminCLIAgent
 
 from twisted.internet import reactor
 
