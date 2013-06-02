@@ -65,13 +65,37 @@ class TSUserAgent(TSAgent):
                 agentId = context.client.getId()
                 self.agentUsers[agentId] = user.id
                 
-                # need to set up roles
+                roles = yield user.roles
+                role = self._setupRoles(context.client, roles)
             
             userDescr = TSUserDescriptor()
             userDescr.name = user.gecosName
+            userDescr.role = role
+            
             returnValue(userDescr)
         
         return implementation(context, **kw)
+    
+    def _setupRoles(self, client, roles):
+        # First pass - identify maximum role
+        maxRole = TSServerClient.AUTH_NONE
+        
+        for role in roles:
+            if role.role == 'admin':
+                maxRole = TSServerClient.AUTH_ADMIN
+            elif role.role == 'operator' and maxRole != TSServerClient.AUTH_ADMIN:
+                maxRole = TSServerClient.AUTH_OPERATOR
+            else:
+                maxRole = TSServerClient.AUTH_USER
+            
+        
+        client.authorize(maxRole)
+        
+        if maxRole != TSServerClient.AUTH_ADMIN:
+            # TODO: For user/operator need to set ACLs
+            pass
+        
+        return maxRole
     
     def onDisconnect(self):
         self.dbStore.close()

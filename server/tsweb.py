@@ -11,6 +11,7 @@ from nevow.static import File
 
 from tsload.web.main import MainPage, AboutPage
 from tsload.web.login import LoginPage, LogoutPage
+from tsload.web.agent import AgentPage
 
 main = MainPage()
 
@@ -24,6 +25,7 @@ main.putChild('images', File('webapp/images'))
 main.putChild('about', AboutPage())
 main.putChild('login', LoginPage())
 main.putChild('logout', LogoutPage())
+main.putChild('agent', AgentPage())
 
 site = NevowSite(main)
 

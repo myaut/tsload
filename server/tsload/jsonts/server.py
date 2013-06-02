@@ -23,7 +23,9 @@ class TSServerClient(JSONTS):
     
     AUTH_NONE = 0
     AUTH_MASTER = 1
-    AUTH_USER = 2
+    AUTH_ADMIN = 2
+    AUTH_OPERATOR = 3
+    AUTH_USER = 4
     
     agentUuid = None
     agentType = 'unknown'
@@ -67,8 +69,9 @@ class TSServerClient(JSONTS):
         @return True if validation successful
         
         FIXME: Implement indexes for ACLs'''
-        if self.auth == TSServerClient.AUTH_MASTER:
-            return True
+        if self.auth == TSServerClient.AUTH_MASTER or \
+           self.auth == TSServerClient.AUTH_ADMIN:
+                return True
         
         for ar in self.acl:
             if ar == flow:

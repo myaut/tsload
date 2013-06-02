@@ -11,31 +11,34 @@ from twisted.python import util
 from nevow import inevow
 from nevow import loaders
 from nevow import rend
+from nevow import url
 from nevow import tags as T
 
+from tsload.jsonts.api.user import TSUserDescriptor
+
 class Menu(rend.Fragment):
-    docFactory = loaders.htmlstr("""
-    <ul nevow:data="menuItems" nevow:render="sequence" class="nav">
-        <li nevow:pattern="item" nevow:render="mapping">
-            <a href="#">
-                <nevow:attr name="href" nevow:render="data" nevow:data="url">
-                    <nevow:slot name="url">#</nevow:slot>
-                </nevow:attr>
-                <span><nevow:slot name="title">Title</nevow:slot></span>
-            </a>
-        </li>
-    </ul>
-    """)
+    docFactory = loaders.xmlfile('webapp/menu.html')  
+    
+    navClass = 'nav'
     
     def __init__(self):
         self.data_menuItems = []
         
         rend.Fragment.__init__(self)
     
-    def addItem(self, title, url):
-        self.data_menuItems.append({'title': title, 
-                                    'url': url})
+    def render_navPanel(self, ctx, data):
+        # Intermediate renderer that changes navClass
+        # Doesn't know, how to make nevow:attr work here :(
+        ctx.tag(_class = self.navClass)
+        return self.render_sequence(ctx, data)
+    
+    def addItem(self, title, url, isActive = False):
+        liClass = 'active' if isActive else '' 
         
+        self.data_menuItems.append({'title': title, 
+                                    'url': url,
+                                    'liClass': liClass})
+    
 class TopMenu(rend.Fragment):
     docFactory = loaders.htmlstr("""
     <div class="pull-right">
@@ -49,8 +52,9 @@ class TopMenu(rend.Fragment):
     def __init__(self):
         self.menu = Menu()
                 
-        self.menu.addItem('About', '/about')
         self.userName = 'Guest'
+        
+        rend.Fragment.__init__(self)
         
     def setUserName(self, userName):
         self.userName = userName
@@ -61,18 +65,33 @@ class TopMenu(rend.Fragment):
     def render_userName(self, ctx, data):
         return self.userName
 
+class MainMenu(rend.Fragment):
+    docFactory = loaders.xmlfile('webapp/mainmenu.html')
+    
+    def __init__(self):
+        self.menu = Menu()
+        
+        rend.Fragment.__init__(self)
+        
+    def render_menu(self, ctx, data):
+        return self.menu
+
 class MainPage(rend.Page):
-    docFactory = loaders.xmlfile('webapp/index.html')
+    docFactory = loaders.xmlfile('webapp/index.html')    
     
     def render_topMenu(self, ctx, data):
         session = inevow.ISession(ctx)
         topMenu = TopMenu()
         
+        currentPath = url.URL.fromContext(ctx).pathList()[0]
+        
+        topMenu.menu.addItem('About', '/about', currentPath == 'about')
+        
         try:
             agent = session.agent
             userName = session.userName
         except AttributeError:
-            topMenu.menu.addItem('Log in', '/login')
+            topMenu.menu.addItem('Log in', '/login', currentPath == 'login')
         else:
             topMenu.menu.addItem('Log out', '/logout')
             topMenu.setUserName(userName)
@@ -80,7 +99,31 @@ class MainPage(rend.Page):
         return topMenu
     
     def render_mainMenu(self, ctx, data):
-        return ''
+        role = self.getRole(ctx)        
+        if role == 0:
+            return ''
+        
+        currentPath = url.URL.fromContext(ctx).pathList()[0]
+        
+        mainMenu = MainMenu()
+        mainMenuItems = [('Agents', '/agent'),
+                         ('Profiles', '/profiles'),
+                         ('Experiments', '/experiment'),
+                         ('Monitoring', '/monitoring')]
+        
+        if role == TSUserDescriptor.AUTH_ADMIN:
+            mainMenuItems.append(('Users', '/users'))
+        
+        for title, href in mainMenuItems: 
+            mainMenu.menu.addItem(title, href, currentPath == href[1:])
+            
+        return mainMenu
+    
+    def getRole(self, ctx):
+        session = inevow.ISession(ctx)
+        role = getattr(session, 'userRole', 0)
+        
+        return role
     
     def render_content(self, ctx, data):
         return loaders.xmlfile('webapp/main.html')

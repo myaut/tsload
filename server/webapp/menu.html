@@ -1,0 +1,15 @@
+<ul nevow:data="menuItems" nevow:render="navPanel" class="nav" xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+        <li>
+            <nevow:attr name="class" nevow:render="data" nevow:data="liClass">
+                <nevow:slot name="liClass">#</nevow:slot>
+            </nevow:attr>
+            <a href="#">
+                <nevow:attr name="href" nevow:render="data" nevow:data="url">
+                    <nevow:slot name="url">#</nevow:slot>
+                </nevow:attr>
+                <span><nevow:slot name="title">Title</nevow:slot></span>
+            </a>
+        </li>
+    </nevow:invisible>
+</ul>

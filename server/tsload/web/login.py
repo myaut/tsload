@@ -22,7 +22,6 @@ from zope.interface import implements
 
 from tsload.web.main import MainPage
 
-
 class ILoginForm(annotate.TypedInterface):
     def login(ctx = annotate.Context(),
         userName = annotate.String(required=True, requiredFailMessage='Please enter your name'),
@@ -75,6 +74,7 @@ class LoginPage(MainPage):
         else:
             # Authentification OK - return to main page
             session.userName = session.agent.gecosUserName
+            session.userRole = session.agent.userRole
             
             return url.here.up()
     
@@ -95,8 +95,12 @@ class LogoutPage(rend.Page):
     def renderHTTP(self, context):
         session = inevow.ISession(context)
         
-        delattr(session, 'agent')
-        delattr(session, 'userName')
+        try:
+            delattr(session, 'agent')
+            delattr(session, 'userName')
+            delattr(session, 'userRole')
+        except AttributeError:
+            pass
         
         return url.here.up()
 

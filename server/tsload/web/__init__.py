@@ -39,6 +39,7 @@ class TSWebAgent(TSAgent):
             
             self.state = TSWebAgent.STATE_AUTHENTIFICATED
             self.gecosUserName = user.name
+            self.userRole = user.role
             
             self.eventListener.callback(self)
         except JSONTS.Error as je:

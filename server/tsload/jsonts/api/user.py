@@ -10,6 +10,13 @@ from tsload.jsonts.api import TSAgentInterface, TSMethod
 
 class TSUserDescriptor(tso):
     name = tso.String()
+    
+    # See tsload.jsonts.server.TSServerClient - AUTH_* contstants
+    AUTH_ADMIN = 2
+    AUTH_OPERATOR = 3
+    AUTH_USER = 4
+    
+    role = tso.Int()
 
 class UserAgent(TSAgentInterface):
     authUser = TSMethod(tso.Object(TSUserDescriptor),
