@@ -20,9 +20,15 @@
 
 static agent_dispatch_t* agent_dispatch_table = NULL;
 
-int agent_id = -1;
+/* Destination agent id.
+ *
+ * Set to root agent id to send hello message.
+ *
+ * After that - sets to our agentId and listener flows are used by
+ * server and experiment services */
+int agent_id = 0;
 
-char agent_hostname[AGENTHOSTNAMELEN];
+char agent_uuid[AGENTUUIDLEN];
 char agent_type[AGENTTYPELEN];
 
 void agent_register_methods(agent_dispatch_t* table) {
@@ -31,13 +37,9 @@ void agent_register_methods(agent_dispatch_t* table) {
 
 JSONNODE* agent_hello_msg() {
 	JSONNODE* node = json_new(JSON_NODE);
-	JSONNODE* info_node = json_new(JSON_NODE);
 
-	json_push_back(info_node, json_new_a("hostName", agent_hostname));
-	json_push_back(info_node, json_new_a("agentType", agent_type));
-
-	json_set_name(info_node, "info");
-	json_push_back(node, info_node);
+	json_push_back(node, json_new_a("agentUuid", agent_uuid));
+	json_push_back(node, json_new_a("agentType", agent_type));
 
 	return node;
 }
@@ -136,7 +138,7 @@ int agent_hello() {
 		i_agentid = json_find(response, "agentId");
 
 		if(i_agentid == i_end || json_type(*i_agentid) != JSON_NUMBER) {
-			logmsg(LOG_WARN, "Failed to process hello response: unknown 'agentId'");
+			logmsg(LOG_CRIT, "Failed to process hello response: unknown 'agentId'");
 			ret = -1;
 			goto fail;
 		}
@@ -144,6 +146,10 @@ int agent_hello() {
 		agent_id = json_as_int(*i_agentid);
 
 		ret = 0;
+	}
+	else {
+		logmsg(LOG_CRIT, "Error or timeout after hello command");
+		ret = -1;
 	}
 
 fail:

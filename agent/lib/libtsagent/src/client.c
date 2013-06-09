@@ -220,7 +220,7 @@ int clnt_process_msg(JSONNODE* msg) {
 
 	msg_agent_id = json_as_int(*i_agentid);
 
-	if(msg_agent_id != agent_id) {
+	if(agent_id > 0 && msg_agent_id != agent_id) {
 		logmsg(LOG_WARN, "Failed to process incoming message: invalid 'agentId': ours is %d, got %d",
 				agent_id, msg_agent_id);
 		ret = -1;
@@ -519,7 +519,7 @@ thread_result_t clnt_connect_thread(thread_arg_t arg) {
 
 	while(!clnt_finished) {
 		if(!clnt_connected) {
-			agent_id = -1;
+			agent_id = 0;
 
 			if(clnt_connect() != CLNT_OK) {
 				tm_sleep_milli(CLNT_RETRY_TIMEOUT);
@@ -531,7 +531,10 @@ thread_result_t clnt_connect_thread(thread_arg_t arg) {
 			/*Restart receive thread*/
 			t_init(&t_client_receive, NULL, clnt_recv_thread, "clnt_recv_thread");
 
-			agent_hello();
+			if(agent_hello() == -1) {
+				/* Failed to register on server */
+				exit(1);
+			}
 		}
 
 		/*Wait until socket will be disconnected*/

@@ -1,0 +1,27 @@
+from pathutil import *
+
+tgtdir = 'bin'
+target = 'tsgenuuid'
+
+Import('env')
+
+cmd = env.Clone()
+
+if cmd.SupportedPlatform('linux'):
+    cmd.Append(LIBS = ['uuid'])
+
+if cmd.SupportedPlatform('solaris'):
+    cmd.Append(LIBS = ['uuid'])
+
+if cmd.SupportedPlatform('win'):
+    cmd.Append(LIBS = ['rpcrt4'])
+
+cmd.PreparePlatform()
+
+cmd.AddDeps(('lib', 'libtscommon'),
+            ('lib', 'libjson'))
+
+objects = cmd.CompileProgram()
+tsgenuuid = cmd.Program(target, objects)
+
+cmd.InstallTarget(cmd['INSTALL_BIN'], tsgenuuid)

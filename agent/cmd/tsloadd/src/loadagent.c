@@ -13,7 +13,6 @@
 #include <client.h>
 #include <agent.h>
 #include <workload.h>
-#include <uname.h>
 
 #define TSLOAD_IMPORT LIBIMPORT
 #include <tsload.h>
@@ -212,7 +211,6 @@ static agent_dispatch_t loadagent_table[] = {
 int agent_init(void) {
 	agent_register_methods(loadagent_table);
 
-	strncpy(agent_hostname, hi_get_nodename(), AGENTHOSTNAMELEN);
 	strncpy(agent_type, "load", AGENTTYPELEN);
 
 	tsload_error_msg = agent_error_msg;

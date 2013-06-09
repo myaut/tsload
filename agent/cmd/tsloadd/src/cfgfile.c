@@ -8,6 +8,7 @@
 #include <log.h>
 #include <modules.h>
 #include <client.h>
+#include <agent.h>
 
 #include <defs.h>
 
@@ -30,6 +31,7 @@
  * MODPATH - path to modules
  * LOGFILE - log file destination (may be - for stdout)
  * CLIENTHOST, CLIENTPORT - Path to TSLoad server
+ * AGENTUUID - agent uuid used to register on TSLoad server
  *
  * NOTE: because config file is read before logging is configured
  * it writes all error messages directly to stderr
@@ -39,6 +41,7 @@ LIBIMPORT char log_filename[LOGFNMAXLEN];
 LIBIMPORT char mod_search_path[MODPATHLEN];
 LIBIMPORT int clnt_port;
 LIBIMPORT char clnt_host[CLNTHOSTLEN];
+/* LIBIMPORT char agent_uuid[AGENTUUIDLEN]; */
 
 /**
  * Process single config file's option:
@@ -57,6 +60,9 @@ int cfg_option(char* name, char* value) {
 	}
 	else if(strcmp(name, "CLIENTPORT") == 0) {
 		clnt_port = atoi(value);
+	}
+	else if(strcmp(name, "AGENTUUID") == 0) {
+		strncpy(agent_uuid, value, AGENTUUIDLEN);
 	}
 	else {
 		return CFG_ERR_INVALID_OPTION;

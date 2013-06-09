@@ -145,7 +145,7 @@ AddOption('--mach',  dest='mach', action="store", default='',
           help='Machine architecture')
 
 # buildid file
-AddEnableOption('update-build',  dest='update_build', default=False,
+AddOption('--update-build',  dest='update_build', action="store_true",
           help='Update build file')
 
 AddEnableOption('mempool-alloc',  dest='mempool_alloc', default=False,
@@ -171,7 +171,7 @@ AddOption('--with-windows-sdk', dest='with_windows_sdk', action='store', default
 # test options
 AddOption('--runner-threads',  dest='runner_threads', action="store", default='1',
           metavar='COUNT', help='Number of threads in test suite runner')
-AddOption('--test_dir',  dest='test_directory', action="store", default='',
+AddOption('--test-dir',  dest='test_directory', action="store", default='',
           metavar='TESTDIR', help='Path to test directory')
 
 
@@ -324,7 +324,6 @@ AddBuildItem('hostinfo', 'tool',
              targets = ['cmd/tshostinfo'],
              deps = ['core-lib'])
 
-
 AddBuildItem('load', 'lib',
              targets = ['lib/libtsload'],
              deps = ['core-lib'])          
@@ -342,6 +341,11 @@ AddBuildItem('jsonts', 'bench',
              targets = ['tools/json-ts/bench'],
              deps = ['load-lib'],
              default = False)
+
+AddBuildItem('genuuid', 'tool',
+             targets = ['cmd/tsgenuuid'],
+             deps = ['load-agent'])
+
 
 # Iterate over modules directories and add modules to build items
 for mod_type in ('load', ):

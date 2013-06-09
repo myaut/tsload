@@ -11,7 +11,7 @@
 #include <defs.h>
 #include <stdlib.h>
 
-#define PATHMAXLEN      256
+#define PATHMAXLEN      1024
 #define PATHMAXPARTS   32
 
 /* Various tools to work with filesystem paths */
