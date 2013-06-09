@@ -12,6 +12,7 @@ from nevow import inevow
 from nevow import loaders
 from nevow import rend
 from nevow import url
+from nevow import livepage
 from nevow import tags as T
 
 from tsload.jsonts.api.user import TSUserDescriptor
@@ -76,8 +77,17 @@ class MainMenu(rend.Fragment):
     def render_menu(self, ctx, data):
         return self.menu
 
-class MainPage(rend.Page):
-    docFactory = loaders.xmlfile('webapp/index.html')    
+class MainPageMixin:
+    def getRole(self, ctx):
+        session = inevow.ISession(ctx)
+        role = getattr(session, 'userRole', 0)
+        
+        return role
+    
+    def renderAlert(self, alertMsg):
+        return T.div[
+                   T.div(_class='alert alert-error')[alertMsg],
+               ]
     
     def render_topMenu(self, ctx, data):
         session = inevow.ISession(ctx)
@@ -119,17 +129,23 @@ class MainPage(rend.Page):
             
         return mainMenu
     
-    def getRole(self, ctx):
-        session = inevow.ISession(ctx)
-        role = getattr(session, 'userRole', 0)
-        
-        return role
-    
     def render_content(self, ctx, data):
         return loaders.xmlfile('webapp/main.html')
     
     def render_CSS(self, ctx, data):
         return ''
+
+class MainPage(rend.Page, MainPageMixin):
+    docFactory = loaders.xmlfile('webapp/index.html')    
+    
+    def render___liveglue(self, ctx, data):
+        return ''
+    
+class LiveMainPage(livepage.LivePage, MainPageMixin):
+    docFactory = loaders.xmlfile('webapp/index.html')    
+    
+    def render___liveglue(self, ctx, data):
+        return T.directive('liveglue')
 
 class AboutPage(MainPage):
     def render_content(self, ctx, data):

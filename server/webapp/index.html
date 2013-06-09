@@ -22,6 +22,8 @@
     <style type="text/css">
     <span nevow:render="CSS" />
     </style>
+    
+    <span nevow:render="__liveglue" />
 </head>
 <body data-spy="scroll" data-offset="500">
 
@@ -44,20 +46,19 @@
 	</div>
 	
 	<span nevow:render="mainMenu">Main Menu</span>
-
-    <div class="container max-height no-overflow">
-        <div id="content" nevow:render="content">
-            <!-- The HTML content will go here -->
-        </div>
-
-        <div id="row"></div>
-
-        <div>
-        	<p> Copyright (c) NRU ITMO, 2011-2012 </p>
-        </div>
-    </div>
-
 </div>
+
+<div class="container max-height no-overflow">
+    <div id="content" nevow:render="content">
+        <!-- The HTML content will go here -->
+    </div>
+    
+    <div>
+		<p> Copyright (c) NRU ITMO, 2011-2012 </p>
+	</div>
+</div>
+
+
 
 <!-- javascript
 ================================================== -->

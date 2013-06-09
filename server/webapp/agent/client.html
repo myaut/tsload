@@ -1,0 +1,36 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<table class="table" id="mainTable">
+		<tr>
+            <th>ID</th>
+            <th>UUID</th>
+            <th>CLASS</th>
+            <th>STATE</th>
+            <th>ENDPOINT</th>
+        </tr>
+        <tbody nevow:data="clients" nevow:render="sequence">
+		    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+		        <tr>
+		            <td>
+		                <span><nevow:slot name="id">ID</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="uuid">UUID</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="class">CLASS</nevow:slot></span>
+		            </td>
+		            <td>
+		                <img src=''>
+		                <nevow:attr name="src" nevow:render="data" nevow:data="state">
+		                    <nevow:slot name="state">state.png</nevow:slot>
+		                </nevow:attr>
+                		</img>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="endpoint">ENDPOINT</nevow:slot></span>
+		            </td>
+		        </tr>
+		    </nevow:invisible>
+	    </tbody>
+	</table>
+</div>
