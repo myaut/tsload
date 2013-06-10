@@ -185,6 +185,11 @@ if env.SupportedPlatform('win'):
     if not conf.CheckDeclaration('WSAStartup', '#include <winsock2.h>'):
         raise StopError('WinSock are not implemented')
         
+# ----------------------------
+# UUID checks
+if env.SupportedPlatform('linux') or env.SupportedPlatform('solaris'):
+    if not conf.CheckDeclaration('uuid_generate_time', '#include <uuid/uuid.h>'):
+        raise StopError('uuid_generate_time() is missing. Maybe you need libuuid-devel or something?')
 
 #------------------------------
 # hostinfo checks?
