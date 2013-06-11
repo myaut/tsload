@@ -100,6 +100,11 @@ STATIC_INLINE list_head_t* hi_cpu_list(boolean_t reprobe) {
 	return hi_obj_list(HI_SUBSYS_CPU, reprobe);
 }
 
+LIBEXPORT int hi_cpu_num_cpus(void);
+LIBEXPORT int hi_cpu_num_cores(void);
+
+LIBEXPORT size_t hi_cpu_mem_total(void);
+
 #include <hitrace.h>
 
 #endif /* CPUINFO_H_ */

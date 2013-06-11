@@ -14,6 +14,7 @@
 #include <tsload.h>
 #include <getopt.h>
 #include <tsversion.h>
+#include <hiobject.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -26,9 +27,13 @@ LIBIMPORT int mod_type;
 
 char config_file_name[CONFPATHLEN];
 
-LIBEXPORT struct subsystem xsubsys[] = {
+#define XSUBSYS_COUNT 			  2
+
+LIBEXPORT struct subsystem xsubsys[XSUBSYS_COUNT] = {
+	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
 	SUBSYSTEM("agent", agent_init, agent_fini)
 };
+
 
 void usage() {
 	fprintf(stderr, "command line: \n"
@@ -91,7 +96,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	atexit(ts_finish);
-	tsload_init(xsubsys, 1);
+	tsload_init(xsubsys, XSUBSYS_COUNT);
 
 	tsload_start(argv[0]);
 

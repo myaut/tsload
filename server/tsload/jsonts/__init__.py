@@ -39,9 +39,6 @@ class Flow(AccessRule):
     def setMsgIds(self, srcMsgId, dstMsgId):
         self.srcMsgId = srcMsgId
         self.dstMsgId = dstMsgId 
-        
-    def isPermanent(self):
-        return self.msgId is None
 
 class JSONTS(Protocol):
     STATE_NEW          = 0
@@ -101,7 +98,8 @@ class JSONTS(Protocol):
     
     def sendMessage(self, msg):
         if self.state not in [JSONTS.STATE_CONNECTED, JSONTS.STATE_ESTABLISHED]:
-            return
+            raise JSONTS.Error(JSONTS.AE_CONNECTION_ERROR, 
+                               'Connection state is %d' % self.state)
         
         rawMsg = json.dumps(msg) + '\0'
         
@@ -145,4 +143,22 @@ class JSONTS(Protocol):
             print >> sys.stderr, '=================='
             
             self.sendError(self.agentId, origMsgId, str(e), JSONTS.AE_INTERNAL_ERROR)
-            
+
+class TSLocalClientProxy(JSONTS):
+    '''Class helper that proxies responses made by local clients to server's
+    main processing engine to reset agentId/msgId according to flow. 
+    Other operations are proxied directly to client with no changes'''
+    def __init__(self, server, client, localClient):
+        self.server = server
+        self.client = client
+        self.localClient = localClient
+    
+    def sendMessage(self, msg):
+        self.server.processMessage(self.localClient, msg)
+        
+    def __getattr__(self, name):
+        return getattr(self.client, name)
+    
+    def __repr__(self):
+        return '<TSLocalClientProxy #%d>' % (self.client.getId())
+    __str__ = __repr__

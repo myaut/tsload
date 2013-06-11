@@ -5,8 +5,7 @@ Created on May 13, 2013
 '''
 
 from tsload.jsonts import Flow
-from tsload.jsonts.agent import TSAgent
-from tsload.jsonts.server import TSServerClient
+from tsload.jsonts.server import TSLocalAgent, TSServerClient
 
 from tsload.jsonts.api import TSMethodImpl
 from tsload.jsonts.api.user import *
@@ -25,15 +24,14 @@ userAgentType = 'user'
 
 userAgentId = 1
 
-class TSUserAgent(TSAgent):
+class TSUserAgent(TSLocalAgent):
+    agentId = userAgentId
+    
     uuid = userAgentUUID
     agentType = userAgentType
     
     def __init__(self, server, connString):
-        self.server = server
-        
-        self.client = TSServerClient(self, userAgentId)
-        self.client.setAgentInfo(self.agentType, self.uuid)
+        TSLocalAgent.__init__(self, server)
         
         self.client.getId()
         

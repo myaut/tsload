@@ -14,12 +14,32 @@
 #include <agent.h>
 #include <workload.h>
 
+#include <uname.h>
+#include <cpuinfo.h>
+
 #define TSLOAD_IMPORT LIBIMPORT
 #include <tsload.h>
 
 #include <string.h>
 
 /* = Agent's handlers = */
+void agent_get_host_info(JSONNODE* argv[]) {
+	JSONNODE* response = json_new(JSON_NODE);
+
+	json_push_back(response, json_new_a("hostname", hi_get_nodename()));
+
+	json_push_back(response, json_new_a("domainname", hi_get_domainname()));
+	json_push_back(response, json_new_a("osname", hi_get_os_name()));
+	json_push_back(response, json_new_a("release", hi_get_os_release()));
+	json_push_back(response, json_new_a("machineArch", hi_get_mach()));
+
+	json_push_back(response, json_new_i("numCPUs", hi_cpu_num_cpus()));
+	json_push_back(response, json_new_i("numCores", hi_cpu_num_cores()));
+	json_push_back(response, json_new_i("memTotal", hi_cpu_mem_total()));
+
+	return agent_response_msg(response);
+}
+
 void agent_get_workload_types(JSONNODE* argv[]) {
 	JSONNODE* response = json_new(JSON_NODE);
 
@@ -166,6 +186,9 @@ void agent_requests_report(list_head_t* rq_list) {
 }
 
 static agent_dispatch_t loadagent_table[] = {
+	AGENT_METHOD("getHostInfo",
+		ADT_ARGS(),
+		agent_get_host_info),
 	AGENT_METHOD("get_workload_types",
 		ADT_ARGS(),
 		agent_get_workload_types),

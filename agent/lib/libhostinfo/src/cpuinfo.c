@@ -132,6 +132,38 @@ void hi_cpu_dtor(hi_object_t* object) {
 	mp_cache_free(&hi_cpu_obj_cache, cpu_object);
 }
 
+static
+int hi_cpu_num_objs(hi_cpu_objtype_t obj_type) {
+	int count = 0;
+
+	list_head_t* cpu_list = hi_cpu_list(B_FALSE);
+	hi_object_t*  object;
+	hi_cpu_object_t* node;
+
+	hi_for_each_object(object, cpu_list) {
+		node = HI_CPU_FROM_OBJ(object);
+
+		if(node->type == obj_type)
+			++count;
+	}
+
+	return count;
+}
+
+int hi_cpu_num_cpus(void) {
+	/* TODO: Should count CPU packages */
+	return 0;
+}
+
+int hi_cpu_num_cores(void) {
+	return hi_cpu_num_objs(HI_CPU_CORE);
+}
+
+size_t hi_cpu_mem_total(void) {
+	/* TODO: Should sum all NUMA node mem_total values */
+	return 0;
+}
+
 int hi_cpu_init(void) {
 	mp_cache_init(&hi_cpu_obj_cache, hi_cpu_object_t);
 

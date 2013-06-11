@@ -6,8 +6,7 @@ Created on May 13, 2013
 
 from tsload.jsonts import JSONTS, Flow
 
-from tsload.jsonts.agent import TSAgent
-from tsload.jsonts.server import TSServerClient
+from tsload.jsonts.server import TSLocalAgent
 
 from tsload.jsonts.api import TSMethodImpl
 from tsload.jsonts.api.root import RootAgent, TSHelloResponse, TSClientDescriptor
@@ -17,15 +16,14 @@ rootAgentType = 'root'
 
 rootAgentId = 0
 
-class TSRootAgent(TSAgent):
+class TSRootAgent(TSLocalAgent):
+    agentId = rootAgentId
+    
     uuid = rootAgentUUID
     agentType = rootAgentType
     
     def __init__(self, server):
-        self.server = server
-        
-        self.client = TSServerClient(server, rootAgentId)
-        self.client.setAgentInfo(self.agentType, self.uuid)
+        TSLocalAgent.__init__(self, server)
         
         for command in ['hello', 'authMasterKey', 'listClients']:
             self.server.listenerFlows.append(Flow(dstAgentId = rootAgentId, 
@@ -33,9 +31,12 @@ class TSRootAgent(TSAgent):
     
     @TSMethodImpl(RootAgent.hello)
     def hello(self, context, agentType, agentUuid):
-        agentId = context.client.getId()
+        client = context.client
+        agentId = client.getId()
         
-        context.client.setAgentInfo(agentType, agentUuid)
+        client.setAgentInfo(agentType, agentUuid)
+        
+        self.server.notifyAgentRegister(client)
         
         result = TSHelloResponse()
         result.agentId = agentId

@@ -6,7 +6,7 @@ Created on 07.05.2013
 
 import sys
 
-from tsload.jsonts import JSONTS
+from tsload.jsonts import JSONTS, TSLocalClientProxy
 from tsload.jsonts.api.root import RootAgent
 
 from twisted.internet.protocol import Factory
@@ -70,8 +70,14 @@ class TSAgent(Factory):
         return TSAgentClient(self, -1)
     
     def createRemoteAgent(self, agentId, agentKlass):
+        '''Create remote agent interface object
+        
+        @param agentId remote agent id
+        @param agentKlass remote agent interface from tsload.jsonts.api.*'''
         agent = agentKlass(self, agentId)
         self.agents[agentId] = agent
+        
+        agent.setClient(self.client)
         
         return agent
         
@@ -93,7 +99,8 @@ class TSAgent(Factory):
                                                                                               dstAgentId))
             
             if type(cmdArgs) != dict:
-                raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT, 'Message should be dictionary, not a %s' % type(cmdArgs))
+                raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT, 
+                                   'Message should be dictionary, not a %s' % type(cmdArgs))
             
             try:
                 method = getattr(self, command)
@@ -135,14 +142,18 @@ class TSAgent(Factory):
                 call.errback((code, error))
             del self.calls[srcMsgId]
     
-    def sendCommand(self, d, *args, **kwargs):
+    def sendCommand(self, d, client, *args, **kwargs):
         '''Send command to remote agent. 
         When agent will reply, processResponse or processError will be called,
         so they trigger deferred callback/errback
         
-        Helper for MethodImpl.__call__'''
+        @param d Deferred object which callbacks/errbacks will be triggered when response/error arrives
+        @param client Transport used to send message. See createRemoteAgent() code for details
+        @param args passed to client.sendCommand
+        @param kwargs passed to client.sendCommand
         
-        msgId =  self.client.sendCommand(*args, **kwargs)
+        Helper for MethodImpl.__call__'''
+        msgId = client.sendCommand(*args, **kwargs)
         
         self.calls[msgId] = d
     

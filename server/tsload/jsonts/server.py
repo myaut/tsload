@@ -7,7 +7,7 @@ Created on 07.05.2013
 import sys
 import traceback
 
-from tsload.jsonts import AccessRule, Flow, JSONTS
+from tsload.jsonts import AccessRule, Flow, JSONTS, TSLocalClientProxy
 from tsload.jsonts.agent import TSAgent, CallContext
 
 from twisted.internet.protocol import Factory
@@ -17,6 +17,23 @@ import uuid
 
 # First agent id used by remote agents
 remoteAgentId = 8
+
+class AgentListener:
+    def __init__(self, agentType, onRegister, onDisconnect):
+        self.agentType = agentType
+        self.onRegister = onRegister
+        self.onDisconnect = onDisconnect
+        
+    def notifyRegister(self, client):
+        if client.agentType == self.agentType:
+            self.onRegister(client)
+    
+    def notifyDisconnect(self, client):
+        if client.agentType == self.agentType:
+            self.onDisconnect(client)
+    
+    def __repr__(self):
+        return '<AgentListener %s>' % self.agentType
 
 class TSServerClient(JSONTS):
     uuid = None
@@ -41,7 +58,11 @@ class TSServerClient(JSONTS):
         self.endpointStr = 'local'
         
         JSONTS.__init__(self, factory)
-        
+    
+    def __repr__(self):
+        return '<TSServerClient #%d>' % (self.getId())
+    __str__ = __repr__
+    
     def addAccessRule(self, ar):
         self.acl.append(ar)
     
@@ -100,21 +121,6 @@ class TSServerClient(JSONTS):
         except KeyError:
             return None
 
-class TSLocalClientProxy(JSONTS):
-    '''Class helper that proxies responses made by local clients to server's
-    main processing engine to reset agentId/msgId according to flow. 
-    Other operations are proxied directly to client with no changes'''
-    def __init__(self, server, client, localClient):
-        self.server = server
-        self.client = client
-        self.localClient = localClient
-    
-    def sendMessage(self, msg):
-        self.server.processMessage(self.localClient, msg)
-        
-    def __getattr__(self, name):
-        return getattr(self.client, name)
-
 class TSServer(Factory):
     '''TSServer is a class that handles JSON-TS servers and local agents.
     
@@ -135,6 +141,7 @@ class TSServer(Factory):
         self.localAgents = {}
         
         self.listenerFlows = []
+        self.listenerAgents = []
         
         self.msgCounter = iter(xrange(1, sys.maxint))
         self.agentIdGenerator = iter(xrange(remoteAgentId, sys.maxint))
@@ -169,6 +176,9 @@ class TSServer(Factory):
         
         agent.client.authorize(TSServerClient.AUTH_MASTER)
         
+        agent.agents = {}
+        agent.calls = {}
+        
         self.localAgents[agentId] = agent
         self.clients[agentId] = agent.client
     
@@ -191,6 +201,9 @@ class TSServer(Factory):
         for agentId, client in self.clients.items():
             if client.state == JSONTS.STATE_DISCONNECTED:
                 deadAgentIds.append(agentId)
+                
+                for listener in self.listenerAgents:
+                    listener.notifyDisconnect(client)
                 
         for agentId in deadAgentIds:
             self.doTrace('Cleaned agent %d', agentId)
@@ -265,12 +278,35 @@ class TSServer(Factory):
         dstAgentId = message['agentId']
         
         self.doTrace('Deliver message -> %d', dstAgentId)
-        
+         
         if dstAgentId < remoteAgentId:
             srcClient = TSLocalClientProxy(self, srcClient, self.clients[dstAgentId])
             self.localAgents[dstAgentId].processMessage(srcClient, message)
         else:
             dstClient = self.clients[dstAgentId]
             dstClient.sendMessage(message)
+    
+    def notifyAgentRegister(self, client):
+        for listener in self.listenerAgents:
+            self.doTrace('Checking client %s over %s' % (client, listener))
             
+            listener.notifyRegister(client)
+            
+class TSLocalAgent(TSAgent):
+    def __init__(self, server):
+        self.server = server
+        
+        self.client = TSServerClient(server, self.agentId)
+        self.client.auth = TSServerClient.AUTH_MASTER
+        self.client.setAgentInfo(self.agentType, self.uuid)
+    
+    def createRemoteAgent(self, agentId, agentKlass):
+        agent = TSAgent.createRemoteAgent(self, agentId, agentKlass)
+        
+        # Override agent with server<->client transport
+        agent.setClient(TSLocalClientProxy(self.server,
+                                           self.server.clients[agentId],
+                                           self.client))
+        
+        return agent
             

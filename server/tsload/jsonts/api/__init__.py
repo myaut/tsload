@@ -77,7 +77,8 @@ class TSAgentInterface:
             
             kwargs = self.method.serializeArgs(kwargs)
             
-            self.agent.sendCommand(d, self.interface.agentId, 
+            self.agent.sendCommand(d, self.interface.client, 
+                                   self.interface.agentId,
                                    self.name, kwargs)
             
             # Asyncronously wait until response or error arrive
@@ -86,6 +87,9 @@ class TSAgentInterface:
             result = yield d
             
             returnValue(self.method.deserializeResult(result))
+    
+    def setClient(self, client):
+        self.client = client
     
     def __init__(self, agent, agentId):
         '''Creates new TSAgentInterface proxy; all method descriptors
