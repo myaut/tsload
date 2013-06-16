@@ -37,7 +37,17 @@ STATIC_INLINE int __msb32(uint32_t i) {
 
 STATIC_INLINE int __msb64(uint64_t i) {
 	unsigned long index;
+#if defined(_M_X64) || defined(_M_AMD64)
 	_BitScanReverse64(&index, i);
+#else
+	if((i >> 32) == 0) {
+		_BitScanReverse(&index, (uint32_t) (i & 0xFFFFFFFF));
+	}
+	else {
+		_BitScanReverse(&index, (uint32_t) (i >> 32));
+		index += 32;
+	}
+#endif
 	return index;
 }
 

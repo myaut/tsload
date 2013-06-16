@@ -59,6 +59,9 @@ STATIC_INLINE long atomic_and(atomic_t* atom, long value) {
 #include <intrin.h>
 #pragma intrinsic (_InterlockedAnd)
 #define InterlockedAnd _InterlockedAnd
+
+#pragma intrinsic (_InterlockedOr)
+#define InterlockedOr _InterlockedOr
 #endif
 
 typedef LONG volatile atomic_t;

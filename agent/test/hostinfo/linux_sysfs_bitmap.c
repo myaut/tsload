@@ -5,7 +5,6 @@
  *      Author: myaut
  */
 
-#ifdef PLAT_LINUX
 #include <hitrace.h>
 
 #include <assert.h>
@@ -30,8 +29,3 @@ int test_main() {
 
 	return 0;
 }
-#else
-int test_main() {
-	return 0;
-}
-#endif

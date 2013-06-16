@@ -15,7 +15,7 @@ class SourcePrinter:
         # Count line breaks
         cls.do_account(s)
         
-        print s
+        sys.stdout.write(s)
 
 debug = False
 

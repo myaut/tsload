@@ -274,7 +274,7 @@ int hi_obj_init(void) {
 			break;
 	}
 
-	max_subsys = sid;
+	max_subsys = sid - 1;
 
 	return ret;
 }

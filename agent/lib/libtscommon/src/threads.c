@@ -83,6 +83,7 @@ void t_init(thread_t* thread, void* arg,
 	logmsg(LOG_DEBUG, "Created thread %d '%s'", thread->t_id, thread->t_name);
 
 	plat_thread_init(&thread->t_impl, (void*) thread, start);
+	plat_tsched_init(thread);
 }
 
 /*
@@ -155,6 +156,7 @@ void t_destroy(thread_t* thread) {
 	t_join(thread);
 	hash_map_remove(&thread_hash_map, thread);
 	plat_thread_destroy(&thread->t_impl);
+	plat_tsched_destroy(thread);
 }
 
 /*

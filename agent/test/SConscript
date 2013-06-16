@@ -59,6 +59,9 @@ for test in suite:
     if not test.enabled:
         continue
     
+    if not env.SupportedPlatform(test.plat):
+        continue
+    
     # XXX: cloning entire environment for each test?
     tst = env.Clone()
     

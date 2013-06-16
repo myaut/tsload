@@ -18,6 +18,7 @@
 # 	 lib=lib		- library to be linked with (library under test)
 #					  core libraries are linked by default
 # 	 use=use		- external file used by test (searched over dirs)
+#    plat=generic   - compile/run test only for platform 
 #    maxtime=1		- time in seconds maximum to be allowed for test. 1 is default
 # 	 enabled=False	- disable test or group
 #	 expect=ok|timeout|abort 	-  expected result for test execution
@@ -44,6 +45,7 @@ tscommon/tstime		file=tstime.c	maxtime=2
 tscommon/atomic		file=atomic.c
 tscommon/dirent		dir=dirent		use=dirent/test
 tscommon/paths		file=paths.c
+tscommon/cpumask	file=cpumask.c
 
 # Tests for threads 
 ^threads			lib=libjson 	lib=libtscommon
@@ -51,7 +53,9 @@ threads/thread1		file=thread1.c
 threads/atomic		file=atomic.c
 threads/mutex		file=mutex.c
 threads/event		file=event.c
+threads/affinity	file=affinity.c	lib=libhostinfo
+threads/solaris_pset file=solaris_pset.c lib=libhostinfo plat=solaris
 
 # Tests for hostinfo
 ^hostinfo 			lib=libjson 	lib=libtscommon		lib=libhostinfo
-hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c 
+hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c  plat=linux

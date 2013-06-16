@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 
+#include <plat/schedutil.h>
 #include <plat/threads.h>
 
 #include <defs.h>
@@ -143,6 +144,7 @@ typedef thread_result_t (*thread_start_func)(thread_arg_t arg);
 
 typedef struct thread {
 	plat_thread_t	t_impl;
+	plat_sched_t	t_sched_impl;
 
 	union {
 		thread_state_t	t_state;

@@ -25,6 +25,8 @@ class Test:
         self.enabled = True
         self.expect = (Test.EXPECT_OK, 0)
         
+        self.plat = 'generic'
+        
         self.files = []
         self.dirs = []
         
@@ -46,6 +48,8 @@ class Test:
             self.libs.append(value)
         elif name == 'enabled':
             self.enabled = False if value == 'False' else True
+        elif name == 'plat':
+            self.plat = value
         elif name == 'maxtime':
             try:
                 self.maxtime = int(value)
