@@ -256,6 +256,11 @@ env.Append(CPPPATH = [env.BuildDir('include')])
 
 SConscript('SConscript.conf.py', 'env')
 
+#------------
+# DOC
+if 'doc' in BUILD_TARGETS:
+    SConscript('SConscript.doc.py', 'env')
+
 # ------------------------
 # INSTALLATION DIRECTORIES
 

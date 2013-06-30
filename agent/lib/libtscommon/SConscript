@@ -1,3 +1,5 @@
+from pathutil import *
+
 target = 'libtscommon'
 
 Import('env')
@@ -22,3 +24,14 @@ objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)
 
 lib.InstallTarget(lib['INSTALL_LIB'], library)
+
+if 'doc' in BUILD_TARGETS:
+    config = lib.DoxyConfigBuilder(File('config.doxy'), 
+                                   [Dir('src'), Dir('include')])
+    lib.AlwaysBuild(config)
+    
+    docdir = Dir(PathJoin('doc'))
+    tsdoc = lib.Command(docdir, config, 
+                        [Mkdir(docdir),
+                        'doxygen $SOURCE > $TARGET/doxygen.log'])
+    lib.Alias('doc', tsdoc)
