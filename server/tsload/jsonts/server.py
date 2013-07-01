@@ -47,7 +47,7 @@ class TSServerClient(JSONTS):
     agentUuid = None
     agentType = 'unknown'
     
-    def __init__(self, factory, agentId):
+    def __init__(self, server, agentId):
         self.agentId = agentId
         
         self.flows = {}
@@ -57,7 +57,7 @@ class TSServerClient(JSONTS):
         
         self.endpointStr = 'local'
         
-        JSONTS.__init__(self, factory)
+        JSONTS.__init__(self, server)
     
     def __repr__(self):
         return '<TSServerClient #%d>' % (self.getId())
@@ -73,7 +73,9 @@ class TSServerClient(JSONTS):
         self.agentId = agentId
     
     def authorize(self, authType):
-        self.authType = authType
+        self.factory.doTrace('Authorized client %s with auth %d' % (self, authType))
+        
+        self.auth = authType
         
     def setEndpointStr(self, endpointStr):
         self.endpointStr = endpointStr

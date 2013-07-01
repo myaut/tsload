@@ -1,5 +1,6 @@
 import sys
 import json
+import time
 
 import copy
 import traceback
@@ -162,3 +163,14 @@ class TSLocalClientProxy(JSONTS):
     def __repr__(self):
         return '<TSLocalClientProxy #%d>' % (self.client.getId())
     __str__ = __repr__
+    
+def datetimeToTSTime(dt):
+    """JSON-TS uses INT64 with nanosecond resolution from Unix Epoch to transfer timestamps
+    while Storm ORM uses Python module datetime. 
+    
+    This function converts it from datetime.datetime to JSON-TS time."""
+    t = int(time.mktime(dt.timetuple()) * 1000000000)
+    return t + (dt.time().microsecond * 1000)
+
+def tstimeToUnixTime(tst):
+    return tst / 1000000000.

@@ -18,6 +18,14 @@ from tsload.web.pagination import PaginatedView
 
 from tsload.jsonts.api.user import TSUserDescriptor
 
+osIcons = [('debian', 'debian.png'),
+           ('suse', 'suse.png'),
+           ('rhel', 'redhat.png'),
+           ('centos', 'redhat.png'),
+           ('ubuntu', 'ubuntu.png'),
+           ('solaris', 'solaris.png'),
+           ('windows', 'windows.png')]
+
 class AgentMenu(Menu):
     navClass = 'nav nav-tabs'
     
@@ -39,9 +47,23 @@ class ClientTable(PaginatedView):
     
     def doFilter(self, criteria, row):
         return row['class'] == criteria
+
+class LoadAgentTable(PaginatedView):
+    elementsPerPage = 20
+    searchPlaceholder = 'Enter hostname, osname, etc...'
+    paginatedDataField = 'data_loadAgents'
+    
+    def render_mainTable(self, ctx, data):
+        return loaders.xmlfile('webapp/agent/loadagent.html')
+    
+    def doFilter(self, criteria, row):
+        if criteria.lower() in row['osname'].lower():
+            return True
+        
+        return row['hostname'] == criteria
     
 class AgentPage(LiveMainPage):
-    defaultView = ['client']
+    defaultView = ['load']
     
     def render_content(self, ctx, data):
         role = self.getRole(ctx)
@@ -76,19 +98,55 @@ class AgentPage(LiveMainPage):
         
         returnValue(clTable)
     
+    @inlineCallbacks
+    def createLoadAgentList(self, ctx, data):
+        session = inevow.ISession(ctx) 
+        
+        laTable = LoadAgentTable(self, session.uid)
+        
+        agentList = yield session.agent.expsvcAgent.listAgents()
+        
+        for agentUuid, agentInfo in agentList.iteritems():
+            imgState = '/images/cl-status/'
+            imgState += 'established.png' if agentInfo.isOnline else 'dead.png'
+            
+            agentHref = '/agent/load/info/' + agentUuid
+             
+            lowerOsName = agentInfo.osname.lower()
+            
+            osIcon = 'unknown.png'
+            for needle, icon in osIcons:
+                if needle in lowerOsName:
+                    osIcon = icon
+                    break
+            osIcon = '/images/os-icons/' + osIcon
+            
+            laTable.add({'id': agentInfo.agentId,
+                         'state': imgState, 
+                         'hostname': agentInfo.hostname,
+                         'agentHref': agentHref,
+                         'osIcon': osIcon,
+                         'osname': agentInfo.osname,
+                         'release': agentInfo.release,
+                         'arch': agentInfo.machineArch,
+                         'cpus': agentInfo.numCPUs,
+                         'cores': agentInfo.numCores,
+                         'memtotal': agentInfo.memTotal})
+        
+        
+        laTable.setPage(0)
+        
+        returnValue(laTable)
+    
     def render_mainView(self, ctx, data):
         request = inevow.IRequest(ctx)
         
         what = request.args.get('what', self.defaultView)
         
         if 'client' in what:
-            @inlineCallbacks
-            def createClientList(ctx, data):
-                clTable = yield self.createClientList(ctx, data)
-                clTable.page = self
-                
-                returnValue(clTable)
-            return createClientList
+            return self.createClientList(ctx, data)
+        elif 'load' in what:
+            return self.createLoadAgentList(ctx, data)
         
         return ''
     

@@ -16,6 +16,7 @@ from tsload.cli.context import CLIContext, NextContext, SameContext
 from tsload.cli.agent import AgentRootContext
 
 from tsload.jsonts.api.user import UserAgent
+from tsload.jsonts.api.expsvc import ExpSvcAgent
 
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
@@ -45,6 +46,8 @@ class TSAdminCLIAgent(TSAgent):
     @inlineCallbacks
     def gotAgent(self):
         self._resetSigInt()
+        
+        self.expsvcAgent = self.createRemoteAgent(2, ExpSvcAgent)
         
         # Try to authentificate CLI agent    
         try:

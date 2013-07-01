@@ -10,9 +10,11 @@ from storm.store import Store
 from tsload.util.stormx import TableSchema
 
 class Agent(object):
+    __storm_table__ = 'agent'
+    
     id = Int(primary=True)
     
-    uuid = UUID(allow_none=False)
+    uuid = UUID(allow_none=True)
     uuid.unique = True
     
     agentType = Enum(map = {'load': 0,
@@ -32,4 +34,11 @@ class Agent(object):
     # Registration information
     lastOnline = DateTime()
     
+def createExpsvcDB(connString):
+    database = create_database(connString)
+    store = Store(database)
     
+    TableSchema(database, Agent).create(store)
+    
+    store.commit()
+    store.close()

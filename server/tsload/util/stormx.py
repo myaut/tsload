@@ -107,7 +107,7 @@ class TableSchema:
         
         self.tableName = self.cls_info.table.name
         
-        for col in self.cls_info.columns:
+        for var, col in cls._storm_columns.items():
             # Get column type from table
             
             # XXX: This hack relies on VariableFactory implementation that uses
@@ -125,7 +125,7 @@ class TableSchema:
             if default is not None:
                 colSpec.extend('DEFAULT %s' % (colType, repr(default)))
                 
-            uniq = getattr(col, 'uniq', False)
+            uniq = getattr(var, 'unique', False)
             if uniq:
                 self.unique.append(col)
                 
@@ -139,9 +139,9 @@ class TableSchema:
                    in self.cls_info.primary_key):
                 colSpec.append('PRIMARY KEY')
                 colSpec.append(_autoIncrement[self.dbClass])
-                
-            notNull = getattr(col, 'notNull', False)
-            if notNull:
+            
+            allowNone = var._variable_kwargs.get('allow_none', False)
+            if not allowNone:
                 colSpec.append('NOT NULL')
             
             self.columns.append(colSpec)
@@ -163,16 +163,16 @@ class TableSchema:
             
             columns.append(' '.join(colSpec))
             
-        if not singlePrimaryKey:
+        if not singlePrimaryKey and self.cls_info.primary_key:
             primaryKeys = ', '.join(col.name 
                                     for col 
                                     in self.cls_info.primary_key)
             constraints.append('PRIMARY KEY ( ' + primaryKeys + ' )')
             
-        if not singleUniqueCol:
+        if not singleUniqueCol and self.unique:
             uniqueCols = ', '.join(col.name 
                                    for col 
-                                   in self.cls_info.primary_key)
+                                   in self.unique)
             constraints.append(_uniqueConstraint[self.dbClass] + ' ( ' + uniqueCols + ' )')
         
         createOption = ' IF NOT EXISTS ' if ifNotExists else '' 

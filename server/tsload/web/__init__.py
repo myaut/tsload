@@ -2,6 +2,7 @@ from tsload.jsonts import JSONTS
 from tsload.jsonts.agent import TSAgent
 
 from tsload.jsonts.api.user import UserAgent
+from tsload.jsonts.api.expsvc import ExpSvcAgent
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -32,6 +33,7 @@ class TSWebAgent(TSAgent):
     def gotAgent(self):
         self.state = TSWebAgent.STATE_CONNECTED
         self.userAgent = self.createRemoteAgent(1, UserAgent)
+        self.expsvcAgent = self.createRemoteAgent(2, ExpSvcAgent)
         
         try:
             user = yield self.userAgent.authUser(userName = self.userName, 

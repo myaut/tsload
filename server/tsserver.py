@@ -11,6 +11,10 @@ from tsload.expsvc import TSExperimentSvcAgent
 
 from twisted.internet import reactor
 
+
+from storm.tracer import debug
+debug(True)
+
 server = TSServer.createServer(9090)
 server.createLocalAgent(TSRootAgent, 0)
 server.createLocalAgent(TSUserAgent, 1, 'sqlite:user.db')

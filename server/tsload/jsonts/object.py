@@ -52,6 +52,9 @@ class TSObject:
     
     class Float(SimpleType):
         objType = float
+        
+    class Bool(SimpleType):
+        objType = bool
     
     class String(SimpleType):
         def serialize(self, val):

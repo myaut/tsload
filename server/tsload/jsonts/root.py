@@ -6,7 +6,7 @@ Created on May 13, 2013
 
 from tsload.jsonts import JSONTS, Flow
 
-from tsload.jsonts.server import TSLocalAgent
+from tsload.jsonts.server import TSLocalAgent, TSServerClient
 
 from tsload.jsonts.api import TSMethodImpl
 from tsload.jsonts.api.root import RootAgent, TSHelloResponse, TSClientDescriptor
@@ -67,6 +67,7 @@ class TSRootAgent(TSLocalAgent):
             descr.uuid = client.agentUuid
             descr.state = client.state
             descr.endpoint = client.endpointStr
+            descr.authType = client.auth
             
             clients.append(descr)
             

@@ -1,0 +1,62 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<table class="table" id="mainTable">
+		<tr>
+            <th>ID</th>
+            <th>STATE</th>
+            <th>HOSTNAME</th>
+            <th>OSNAME</th>
+            <th>RELEASE</th>
+            <th>ARCH</th>
+            <th>CPUS</th>
+            <th>CORES</th>
+            <th>MEMORY</th>
+        </tr>
+        <tbody nevow:data="loadAgents" nevow:render="sequence">
+		    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+		        <tr>
+		            <td>
+		                <span><nevow:slot name="id">ID</nevow:slot></span>
+		            </td>
+		            <td>
+		                <img src=''>
+		                <nevow:attr name="src" nevow:render="data" nevow:data="state">
+		                    <nevow:slot name="state">state.png</nevow:slot>
+		                </nevow:attr>
+                		</img>
+		            </td>
+		            <td>
+		                <a href='#'>
+		                	<nevow:slot name="hostname">HOSTNAME</nevow:slot>
+		                	<nevow:attr name="href" nevow:render="data" nevow:data="agentHref">
+			                    <nevow:slot name="agentHref">#</nevow:slot>
+			                </nevow:attr>
+		                </a>
+		            </td>		            	            
+		            <td>
+		                <img src=''>
+		                <nevow:attr name="src" nevow:render="data" nevow:data="osIcon">
+		                    <nevow:slot name="osIcon">state.png</nevow:slot>
+		                </nevow:attr>
+                		</img>
+                		<span><nevow:slot name="osname">OSNAME</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="release">RELEASE</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="arch">ARCH</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="cpus">CPUS</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="cores">CORES</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="memtotal">MEMORY</nevow:slot></span>
+		            </td>
+		        </tr>
+		    </nevow:invisible>
+	    </tbody>
+	</table>
+</div>

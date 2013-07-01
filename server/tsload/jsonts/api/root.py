@@ -14,6 +14,7 @@ class TSClientDescriptor(tso):
     id = tso.Int()
     type = tso.String()
     uuid = tso.String()
+    authType = tso.Int()
     
     # See JSONTS.STATE_*
     state = tso.Int()
