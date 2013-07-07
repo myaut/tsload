@@ -13,7 +13,7 @@ from nevow import tags as T
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from tsload.web.main import LiveMainPage, Menu
+from tsload.web.main import MainPage, LiveMainPage, Menu
 from tsload.web.pagination import PaginatedView
 
 from tsload.jsonts.api.user import TSUserDescriptor
@@ -36,6 +36,9 @@ class AgentMenu(Menu):
         self.addItem(title, 
                      url.here.click('?what=' + what),
                      self.actWhat == what)
+
+class LoadAgentMenu(AgentMenu):
+    navClass = 'nav nav-pills nav-stacked'
 
 class ClientTable(PaginatedView):
     elementsPerPage = 20
@@ -61,7 +64,113 @@ class LoadAgentTable(PaginatedView):
             return True
         
         return row['hostname'] == criteria
+
+class LoadAgentInfoPage(MainPage):
+    defaultView = ['agent']
+    agentUuid = ''
     
+    def locateChild(self, ctx, segments):
+        if segments:
+            self.agentUuid = segments[0]
+        
+        return (self, [])
+    
+    @inlineCallbacks
+    def getBasicAgentInfo(self, ctx):
+        session = inevow.ISession(ctx) 
+        
+        clientList = yield session.agent.rootAgent.listClients()
+        agentList = yield session.agent.expsvcAgent.listAgents()
+        
+        try:
+            self.agentInfo = agentList[self.agentUuid]
+        except KeyError:
+            self.agentInfo = None
+            
+        # Find client info
+        
+        for client in clientList:
+            if client.type == 'load' and client.uuid == self.agentUuid:
+                self.clientInfo = client
+                break
+        else:
+            self.clientInfo = None
+    
+    @inlineCallbacks 
+    def render_content(self, ctx, data):
+        # FIXME: should check roles
+        
+        yield self.getBasicAgentInfo(ctx)
+        
+        if self.agentInfo is None:
+            returnValue(self.renderAlert("Couldn't retrieve information for agent %s" % self.agentUuid))
+        else:            
+            returnValue(loaders.xmlfile('webapp/agent/loadinfo.html'))
+    
+    def render_agentMenu(self, ctx, data):
+        menu = LoadAgentMenu()
+        
+        request = inevow.IRequest(ctx)
+        what = request.args.get('what', self.defaultView)[0]
+        menu.setActiveWhat(what)
+        
+        menu.addAgentItem('Information', 'agent')
+        menu.addAgentItem('Agent resources', 'resource')
+        menu.addAgentItem('Workload types', 'wltype')
+        menu.addAgentItem('Experiments', 'experiments')
+        
+        return menu
+    
+    def render_agentName(self, ctx, data):
+        return self.agentInfo.hostname
+        
+    def render_agentInfo(self, ctx, data):
+        if not self.agentUuid:
+            return url.here.up()
+        
+        request = inevow.IRequest(ctx)
+        
+        what = request.args.get('what', self.defaultView)
+        agentInfo = self.agentInfo
+        clientInfo = self.clientInfo
+        
+        if clientInfo is None:
+            clientStateImg = T.img(src = '/images/cl-status/dead.png')
+            clientState = 'disconnected'
+            
+            clientId = 'N/A'
+            clientUuid = 'N/A'
+            clientEndpoint = 'N/A'
+        else:
+            clientStateImg = T.img(src = '/images/cl-status/established.png')
+            clientState = 'established'
+            
+            clientId = clientInfo.id
+            clientUuid = clientInfo.uuid
+            clientEndpoint = clientInfo.endpoint
+        
+        if 'agent' in what:
+            for slot, data in [('hostname', agentInfo.hostname),
+                                ('domainname', agentInfo.domainname),
+                                ('osname', agentInfo.osname),
+                                ('release', agentInfo.release),
+                                ('arch', agentInfo.machineArch),
+                                ('numCPUs', agentInfo.numCPUs),
+                                ('numCores', agentInfo.numCores),
+                                ('memTotal', agentInfo.memTotal),
+                                ('agentId', agentInfo.agentId),
+                                ('lastOnline', agentInfo.lastOnline),
+                                ('clientStateImg', clientStateImg),
+                                ('clientState', clientState),
+                                ('clientId', clientId),
+                                ('clientUuid', clientUuid),
+                                ('clientEndpoint', clientEndpoint)]:
+                ctx.fillSlots(slot, data)
+            
+            return loaders.xmlfile('webapp/agent/loadinfoagent.html')
+        
+        return ''
+
 class AgentPage(LiveMainPage):
     defaultView = ['load']
     
@@ -110,7 +219,7 @@ class AgentPage(LiveMainPage):
             imgState = '/images/cl-status/'
             imgState += 'established.png' if agentInfo.isOnline else 'dead.png'
             
-            agentHref = '/agent/load/info/' + agentUuid
+            agentHref = '/agent/load/' + agentUuid
              
             lowerOsName = agentInfo.osname.lower()
             
@@ -165,3 +274,6 @@ class AgentPage(LiveMainPage):
             menu.addAgentItem('Clients', 'client')
         
         return menu
+    
+    def child_load(self, ctx):
+        return LoadAgentInfoPage()

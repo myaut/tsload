@@ -1,0 +1,26 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<h3>Agent information</h3>
+	<p> 
+		<b>Host name</b>: <nevow:slot name="hostname" /> <br />
+		<b>Domain name</b>: <nevow:slot name="domainname" /> <br />
+		<b>Operating system name</b>: <nevow:slot name="osname" /> <br />
+		<b>Operating system release</b>: <nevow:slot name="release" /> <br />
+		<b>Machine architecture</b>: <nevow:slot name="arch" /> <br />
+		
+		<br />
+		<b>Number of CPUs</b>: <nevow:slot name="numCPUs" /> <br />
+		<b>Number of cores</b>: <nevow:slot name="numCores" /> <br />
+		<b>Total amount of memory</b>: <nevow:slot name="memTotal" /> <br />
+		
+		<br />
+		<b>Agent ID</b>: <nevow:slot name="agentId" /> <br />
+		<b>Last online</b>: <nevow:slot name="lastOnline" /> <br />
+	</p>
+	<h3>Client information</h3>
+	<p>
+		<b>Client state</b>: <nevow:slot name="clientStateImg" /> <nevow:slot name="clientState" /> <br />
+		<b>Client ID</b>: <nevow:slot name="clientId" /> <br />
+		<b>Client UUID</b>: <nevow:slot name="clientUuid" /> <br />
+		<b>Client endpoint</b>: <nevow:slot name="clientEndpoint" /> <br />
+	</p>
+</div>

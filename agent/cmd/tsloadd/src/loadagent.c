@@ -41,12 +41,7 @@ void agent_get_host_info(JSONNODE* argv[]) {
 }
 
 void agent_get_workload_types(JSONNODE* argv[]) {
-	JSONNODE* response = json_new(JSON_NODE);
-
-	JSONNODE* wlt_info = tsload_get_workload_types();
-
-	json_set_name(wlt_info, "wltypes");
-	json_push_back(response, wlt_info);
+	JSONNODE* response = tsload_get_workload_types();
 
 	return agent_response_msg(response);
 }
@@ -189,7 +184,7 @@ static agent_dispatch_t loadagent_table[] = {
 	AGENT_METHOD("getHostInfo",
 		ADT_ARGS(),
 		agent_get_host_info),
-	AGENT_METHOD("get_workload_types",
+	AGENT_METHOD("getWorkloadTypes",
 		ADT_ARGS(),
 		agent_get_workload_types),
 	AGENT_METHOD("configure_workload",
