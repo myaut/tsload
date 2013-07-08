@@ -112,7 +112,9 @@ typedef struct {
 	char msg[256];
 } wl_notify_msg_t;
 
-LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...) ;
+LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...);
+
+LIBEXPORT void wl_destroy(workload_t* wl);
 
 LIBEXPORT workload_t* wl_search(const char* name);
 

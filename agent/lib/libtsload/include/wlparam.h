@@ -29,7 +29,6 @@
 typedef long	wlp_integer_t;
 typedef double	wlp_float_t;
 typedef char	wlp_string_t;
-typedef uint64_t	wlp_size_t;
 typedef int  	wlp_bool_t;
 typedef int  	wlp_strset_t;
 
@@ -41,8 +40,16 @@ typedef enum {
 	/*double*/		WLP_FLOAT,
 	/*char[]*/ 		WLP_RAW_STRING, /*Any string*/
 
-	/*size_t*/		WLP_SIZE,		/*size_t. May be 4k, 4M or 4G*/
-	/*char[]*/		WLP_STRING_SET  /*string - one of posible value*/
+	/*char[]*/		WLP_STRING_SET,  /*string - one of posible value*/
+
+	/* metatypes - using primitive types in serialization
+	 * but have different meanings */
+	/* INT */		WLP_SIZE,		/* size - in Kb, etc. */
+	/* INT */		WLP_TIME,
+
+	/* STR */		WLP_FILE_PATH,
+	/* STR */		WLP_CPU_OBJECT,
+	/* STR */		WLP_DISK,
 } wlp_type_t;
 
 typedef struct {
@@ -70,11 +77,6 @@ typedef struct {
 			wlp_float_t d_min;
 			wlp_float_t d_max;
 		};
-		/*WLP_SIZE*/
-		struct {
-			wlp_size_t sz_min;
-			wlp_size_t sz_max;
-		};
 		/*WLP_STRING_SET*/
 		struct {
 			int ss_num;
@@ -89,20 +91,18 @@ typedef struct {
 	wlp_bool_t b;
 	wlp_integer_t i;
 	wlp_float_t f;
-	wlp_size_t sz;
 	const char* s;
 	wlp_strset_t ssi;
 } wlp_default_t;
 
 #define WLP_NO_RANGE()				{ B_FALSE, { {0} } }
 
-#define WLP_STRING_LENGTH(length) 	{ B_TRUE, { {length}, {0, 0}, {0.0, 0.0}, {0, 0}, {0, NULL} } }
+#define WLP_STRING_LENGTH(length) 	{ B_TRUE, { {length}, {0, 0}, {0.0, 0.0}, {0, NULL} } }
 
 #define WLP_INT_RANGE(min, max)  	{ B_TRUE, { {0}, {min, max} } }
 #define WLP_FLOAT_RANGE(min, max) 	{ B_TRUE, { {0}, {0, 0}, {min, max} } }
-#define WLP_SIZE_RANGE(min, max) 	{ B_TRUE, { {0}, {0, 0}, {0.0, 0.0}, {min,  max} } }
 
-#define WLP_STRING_SET_RANGE(set) 	{ B_TRUE, { {0}, {0, 0}, {0.0, 0.0}, {0, 0}, 		\
+#define WLP_STRING_SET_RANGE(set) 	{ B_TRUE, { {0}, {0, 0}, {0.0, 0.0},  		\
 									    {sizeof((set)) / sizeof(char*), (set) } } }
 
 #define WLP_NO_DEFAULT()				{ B_FALSE, B_FALSE }
@@ -110,9 +110,8 @@ typedef struct {
 #define WLP_BOOLEAN_DEFAULT(b)			{ B_TRUE, b }
 #define WLP_INT_DEFAULT(i)				{ B_TRUE, B_FALSE, i }
 #define WLP_FLOAT_DEFAULT(f)			{ B_TRUE, B_FALSE, 0, f }
-#define WLP_SIZE_DEFAULT(sz)			{ B_TRUE, B_FALSE, 0, 0.0, sz }
-#define WLP_STRING_DEFAULT(s)			{ B_TRUE, B_FALSE, 0, 0.0, 0, s }
-#define WLP_STRING_SET_DEFAULT(ssi)		{ B_TRUE, B_FALSE, 0, 0.0, 0, NULL, ssi }
+#define WLP_STRING_DEFAULT(s)			{ B_TRUE, B_FALSE, 0, 0.0, s }
+#define WLP_STRING_SET_DEFAULT(ssi)		{ B_TRUE, B_FALSE, 0, 0.0, NULL, ssi }
 
 #define WLPF_NO_FLAGS				0x00
 #define WLPF_OPTIONAL				0x01

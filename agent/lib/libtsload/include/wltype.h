@@ -23,8 +23,27 @@ struct request;
 typedef int (* wlt_wl_config_func)(struct workload* wl);
 typedef int (* wlt_run_request_func)(struct request* wl);
 
+typedef enum wl_class {
+	WLC_CPU_INTEGER 		= 0x0001,
+	WLC_CPU_FLOAT			= 0x0002,
+	WLC_CPU_MEMORY			= 0x0004,
+	WLC_CPU_MISC			= 0x0008,
+
+	WLC_MEMORY_ALLOCATION 	= 0x0010,
+
+	WLC_FILESYSTEM_OP		= 0x0100,
+	WLC_FILESYSTEM_RW		= 0x0200,
+	WLC_DISK_RW				= 0x0400,
+
+	WLC_NETWORK				= 0x1000,
+
+	WLC_OS_BENCHMARK		= 0x10000
+} wl_class_t;
+
 typedef struct wl_type {
 	char		 wlt_name[WLTNAMELEN];
+
+	wl_class_t	wlt_class;
 
 	wlp_descr_t* wlt_params;
 	size_t 		 wlt_params_size;			/**< sizeof structure where parameter values are stored*/

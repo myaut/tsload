@@ -81,6 +81,7 @@ typedef struct thread_pool {
 } thread_pool_t;
 
 LIBEXPORT thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quantum, const char* disp_name);
+LIBEXPORT void tp_destroy(thread_pool_t* tp);
 
 LIBEXPORT thread_pool_t* tp_search(const char* name);
 

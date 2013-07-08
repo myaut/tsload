@@ -56,8 +56,8 @@ PLATAPI int io_file_write(io_file_t* iof,
 						  size_t count);
 
 struct simpleio_workload {
-	wlp_size_t file_size;
-	wlp_size_t block_size;
+	wlp_integer_t file_size;
+	wlp_integer_t block_size;
 
 	wlp_string_t path[512];
 

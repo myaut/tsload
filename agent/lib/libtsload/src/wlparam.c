@@ -19,6 +19,21 @@
 
 #define STRSETCHUNK		256
 
+const char* wlt_type_names[] = {
+	"null",
+	"bool",
+	"integer",
+	"float",
+	"string",
+	"strset",
+
+	"size",
+	"time",
+	"filepath",
+	"cpuobject",
+	"disk"
+};
+
 static JSONNODE* json_wlparam_strset_format(wlp_descr_t* wlp) {
 	JSONNODE* node = json_new(JSON_ARRAY);
 	JSONNODE* el;
@@ -44,14 +59,16 @@ JSONNODE* json_wlparam_format(wlp_descr_t* wlp) {
 
 	json_set_name(wlp_node, wlp->name);
 
+	json_push_back(wlp_node, json_new_a("type", wlt_type_names[wlp->type]));
+
 	switch(wlp->type) {
 	case WLP_BOOL:
-		json_push_back(wlp_node, json_new_a("type", "bool"));
 		if(wlp->defval.enabled)
 			json_push_back(wlp_node, json_new_b("default", wlp->defval.b));
 		break;
+	case WLP_SIZE:
+	case WLP_TIME:
 	case WLP_INTEGER:
-		json_push_back(wlp_node, json_new_a("type", "integer"));
 		if(wlp->range.range) {
 			json_push_back(wlp_node, json_new_i("min", wlp->range.i_min));
 			json_push_back(wlp_node, json_new_i("max", wlp->range.i_max));
@@ -60,7 +77,6 @@ JSONNODE* json_wlparam_format(wlp_descr_t* wlp) {
 			json_push_back(wlp_node, json_new_i("default", wlp->defval.i));
 		break;
 	case WLP_FLOAT:
-		json_push_back(wlp_node, json_new_a("type", "float"));
 		if(wlp->range.range) {
 			json_push_back(wlp_node, json_new_f("min", wlp->range.d_min));
 			json_push_back(wlp_node, json_new_f("max", wlp->range.d_max));
@@ -68,23 +84,15 @@ JSONNODE* json_wlparam_format(wlp_descr_t* wlp) {
 		if(wlp->defval.enabled)
 			json_push_back(wlp_node, json_new_f("default", wlp->defval.f));
 		break;
-	case WLP_SIZE:
-		json_push_back(wlp_node, json_new_a("type", "size"));
-		if(wlp->range.range) {
-			json_push_back(wlp_node, json_new_i("min", wlp->range.sz_min));
-			json_push_back(wlp_node, json_new_i("max", wlp->range.sz_max));
-		}
-		if(wlp->defval.enabled)
-			json_push_back(wlp_node, json_new_i("default", wlp->defval.sz));
-		break;
+	case WLP_FILE_PATH:
+	case WLP_CPU_OBJECT:
+	case WLP_DISK:
 	case WLP_RAW_STRING:
-		json_push_back(wlp_node, json_new_a("type", "string"));
 		json_push_back(wlp_node, json_new_i("len", wlp->range.str_length));
 		if(wlp->defval.enabled)
 			json_push_back(wlp_node, json_new_a("default", wlp->defval.s));
 		break;
 	case WLP_STRING_SET:
-		json_push_back(wlp_node, json_new_a("type", "strset"));
 		json_push_back(wlp_node, json_wlparam_strset_format(wlp));
 		if(wlp->defval.enabled)
 			json_push_back(wlp_node, json_new_i("default", wlp->defval.ssi));
@@ -183,6 +191,8 @@ int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 		WLPARAM_PROC_SIMPLE(wlp_bool_t, JSON_BOOL,
 				json_as_bool, WLPARAM_NO_RANGE_CHECK);
 		break;
+	case WLP_SIZE:
+	case WLP_TIME:
 	case WLP_INTEGER:
 		WLPARAM_PROC_SIMPLE(wlp_integer_t, JSON_NUMBER,
 				json_as_int, WLPARAM_RANGE_CHECK(i_min, i_max));
@@ -191,10 +201,9 @@ int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 		WLPARAM_PROC_SIMPLE(wlp_float_t, JSON_NUMBER,
 				json_as_float, WLPARAM_RANGE_CHECK(d_min, d_max));
 		break;
-	case WLP_SIZE:
-		WLPARAM_PROC_SIMPLE(wlp_size_t, JSON_NUMBER,
-				json_as_int, WLPARAM_RANGE_CHECK(sz_min, sz_max));
-		break;
+	case WLP_FILE_PATH:
+	case WLP_CPU_OBJECT:
+	case WLP_DISK:
 	case WLP_RAW_STRING:
 		return json_wlparam_string_proc(node, wlp, param);
 	case WLP_STRING_SET:
@@ -212,15 +221,17 @@ int wlparam_set_default(wlp_descr_t* wlp, void* param) {
 	case WLP_BOOL:
 		(*(wlp_bool_t*) param) = wlp->defval.b;
 		break;
+	case WLP_SIZE:
+	case WLP_TIME:
 	case WLP_INTEGER:
 		(*(wlp_integer_t*) param) = wlp->defval.i;
 		break;
 	case WLP_FLOAT:
 		(*(wlp_float_t*) param) = wlp->defval.f;
 		break;
-	case WLP_SIZE:
-		(*(wlp_size_t*) param) = wlp->defval.sz;
-		break;
+	case WLP_FILE_PATH:
+	case WLP_CPU_OBJECT:
+	case WLP_DISK:
 	case WLP_RAW_STRING:
 		/* Not checking length of default value here*/
 		strcpy((char*) param, wlp->defval.s);

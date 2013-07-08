@@ -31,18 +31,18 @@ static char* tests[] =  {"read", "write"};
 
 MODEXPORT wlp_descr_t simpleio_params[] = {
 	{ WLP_SIZE, WLPF_OPTIONAL,
-		WLP_SIZE_RANGE(1, 1 * SZ_TB),
-		WLP_SIZE_DEFAULT(0),
+		WLP_INT_RANGE(1, 1 * SZ_TB),
+		WLP_INT_DEFAULT(0),
 		"filesize",
 		"Size of file which would be benchmarked",
 		offsetof(struct simpleio_workload, file_size) },
 	{ WLP_SIZE, WLPF_NO_FLAGS,
-		WLP_SIZE_RANGE(1, 16 * SZ_MB),
+		WLP_INT_RANGE(1, 16 * SZ_MB),
 		WLP_NO_DEFAULT(),
 		"blocksize",
 		"Size of block which would be used",
 		offsetof(struct simpleio_workload, block_size)},
-	{ WLP_RAW_STRING, WLPF_NO_FLAGS,
+	{ WLP_FILE_PATH, WLPF_NO_FLAGS,
 		WLP_STRING_LENGTH(512),
 		WLP_NO_DEFAULT(),
 		"path",
@@ -223,6 +223,8 @@ MODEXPORT int simpleio_run_request_write(request_t* rq) {
 wl_type_t simpleio_wlt_read = {
 	"simpleio_read",					/* wlt_name */
 
+	WLC_FILESYSTEM_RW | WLC_DISK_RW,	/* wlt_class */
+
 	simpleio_params,					/* wlt_params */
 	sizeof(struct simpleio_workload),	/* wlt_params_size*/
 
@@ -234,6 +236,8 @@ wl_type_t simpleio_wlt_read = {
 
 wl_type_t simpleio_wlt_write = {
 	"simpleio_write",					/* wlt_name */
+
+	WLC_FILESYSTEM_RW | WLC_DISK_RW,	/* wlt_class */
 
 	simpleio_params,					/* wlt_params */
 	sizeof(struct simpleio_workload),	/* wlt_params_size*/
