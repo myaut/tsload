@@ -123,8 +123,22 @@ class TSAdminCLIAgent(TSAgent):
         self._execute(args)
     
     def _executeImpl(self, args):
+        '''Execute command implementation
+        
+        There are two path for asynchronous server-side commands:
+        
+        1. Using of synchronous context (caller) and async (callee):
+            -> Caller uses @NextContext(callee) and returns deferred (i.e. it 
+               is returned by TSMethodImpl from agent interfaces)
+            -> self.context set to callee, which has async flag set
+            -> _executeImpl sets last callback/errback to gotResponse/gotError callbacks
+               and returns control to reactor
+            -> Server/Agents execute command and returning results; gotResponse firing,
+               and ask() called from reactor, reading new command from terminal
+        2. Returning deferred directly from command call'''
         origContext = self.context
         
+        # Helpers for deferreds
         def gotResponse(response):
             self.context, _ = self.context.doResponse(response)
             reactor.callLater(0, self.ask)
@@ -137,14 +151,22 @@ class TSAdminCLIAgent(TSAgent):
         
         while not self.context.async and args:
             self.context, d = self.context.call(args)
+            
+            if isinstance(d, Deferred):
+                # Synchronous context entered asynchronous operation (such as inline 
+                # server call). Temporarily set async flag, which is reset on doResponse path
+                self.context.async = True
         
         if isinstance(d, Deferred):
+            # Last callbacks and errbacks is our gotResponse and gotError,
+            # which are calling ask() from reactors context
             d.addCallback(gotResponse)
             d.addErrback(gotError)
         else:
             reactor.callLater(0, self.ask)
     
     def _execute(self, args):
+        '''Exception-safe wrapper for _executeImpl'''
         try:                
             self._executeImpl(args)
         except SystemExit:

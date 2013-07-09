@@ -50,7 +50,8 @@ class PaginatedView(rend.Fragment):
         @param sessionUid: uid of session (needed to check if liveclient request are not fake)
         '''
         self.rawData = []
-        self.filteredData = self.rawData
+        self.prefilteredData = self.rawData
+        self.filteredData = self.prefilteredData
         self.paginatedData = []
         
         self.pageId = 0
@@ -99,21 +100,21 @@ class PaginatedView(rend.Fragment):
     
     def handle_search(self, ctx, query):
         if query == '':
-            self.filteredData = self.rawData
+            self.filteredData = self.prefilteredData
             yield self._searchNotify('')
         else:
             filterF = partial(self.doFilter, query)
-            self.filteredData = filter(filterF, self.rawData)
+            self.filteredData = filter(filterF, self.prefilteredData)
             
             if len(self.filteredData) == 0:
-                self.filteredData = self.rawData
+                self.filteredData = self.prefilteredData
                 yield self._searchNotify('No results found')
             else:
                 yield self._searchNotify('Found %s results' % len(self.filteredData))
         
         self.setPage(0)
         
-        yield self._update(ctx)
+        yield self.update(ctx)
     
     def _searchNotify(self, notification):
         visibility = 'visible' if notification else 'hidden'
@@ -161,9 +162,10 @@ class PaginatedView(rend.Fragment):
         pageId = int(pageId)
         self.setPage(pageId)
         
-        yield self._update(ctx)
+        yield self.update(ctx)
     
-    def _update(self, ctx):
+    def update(self, ctx):
+        '''Emit paginated view update'''
         session = inevow.ISession(ctx)
         
         # Verify if live request came from same session, our view was created
@@ -182,4 +184,8 @@ class PaginatedView(rend.Fragment):
     
     def render_mainTable(self, ctx, data):
         '''Generic method that renders main table'''
+        return ''
+    
+    def render_customControls(self, ctx, data):
+        '''Generic method that renders custom controls (i.e. various filters)'''
         return ''

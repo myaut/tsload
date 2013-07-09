@@ -9,8 +9,10 @@ import time
 
 from tsload.jsonts import JSONTS, tstimeToUnixTime
 from tsload.cli.context import CLIContext, NextContext, ReturnContext, SameContext
+from tsload.jsonts.api.load import *
+from tsload.wlparam import WLParamHelper
 
-from twisted.internet.defer import inlineCallbacks, returnValue, waitForDeferred
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 class AgentContext(CLIContext):
     def setAgentId(self, agentId):
@@ -43,6 +45,94 @@ class LoadAgentListContext(CLIContext):
             print '\tNumber of cores:', agent.numCores        
             print '\tTotal amount of memory:', agent.memTotal
 
+
+class LoadAgentContext(CLIContext):
+    operations = ['wltype']
+    
+    def setupAgent(self, clientId):
+        self.agent = self.cli.createRemoteAgent(clientId, LoadAgent)
+    
+    @SameContext()
+    @inlineCallbacks
+    def wltype(self, args):
+        wltypeList = yield self.agent.getWorkloadTypes()
+        
+        if args:
+            wltypeName = args.pop()
+            
+            try:
+                wltype = wltypeList[wltypeName]
+                
+                print 'Workload type:', wltypeName
+                print 'Workload classes:', ' '.join(wltype.wlclass)
+                print 'Module name:', wltype.module
+                print 'Module path:', wltype.wlclass
+                
+                print 'Params:'
+                
+                fmtstr = '%-12s %-12s %-12s %-8s %s'
+                
+                print fmtstr % ('NAME', 'TYPE', 'RANGE', 
+                                'DEFAULT', 'DESCRIPTION')
+                                
+                for paramName, param in wltype.params.iteritems():
+                    if not param.flags & TSWLParamCommon.WLPF_OPTIONAL:
+                        paramName += '*'
+                    
+                    wlpType = WLParamHelper.getTypeName(param)
+                    
+                    minVal, maxVal = WLParamHelper.getIntegerRange(param)
+                    lenVal = WLParamHelper.getStringLength(param)
+                    range = 'None'
+                    
+                    if minVal is not None and maxVal is not None:
+                        range = '[%s...%s]' % (minVal, maxVal)
+                    elif lenVal is not None:
+                        range = 'len: %s' % lenVal
+                    
+                    default = WLParamHelper.getDefaultValue(param)
+                    
+                    print fmtstr % (paramName, wlpType, range, default, param.description)                
+            except KeyError:
+                print 'ERROR: No such workload type "%s"' % wltypeName
+        else:
+            # Print list of all available workload types
+            fmtstr = '%-12s %-16s %s'
+             
+            print fmtstr % ('MODULE', 'WORKLOAD', 'CLASSES')
+            
+            for wltypeName, wltype in wltypeList.iteritems():
+                print fmtstr % (wltype.module,
+                                wltypeName,
+                                ' '.join(wltype.wlclass))
+        
+    wltype.args = ["[name]"]
+
+class LoadAgentSelectContext(CLIContext):
+    async = True
+    
+    def doResponse(self, args):
+        agentUuid, agentsList, clientList = args
+        
+        if agentUuid not in agentsList:
+            print >> sys.stderr, 'ERROR: No such agent' 
+            return self.parent, None
+        
+        agentHostName = agentsList[agentUuid].hostname
+        
+        for client in clientList:
+            if client.type == 'load' and client.uuid == agentUuid:
+                break
+        else:
+            print >> sys.stderr, 'ERROR: Agent is not connected' 
+            return self.parent, None
+        
+        agentContext = self.parent.nextContext(LoadAgentContext)
+        agentContext.name = '"%s"' % agentHostName
+        agentContext.setupAgent(client.id)
+                
+        return agentContext, None
+
 class LoadAgentRootContext(CLIContext):
     name = 'load'
     
@@ -53,33 +143,18 @@ class LoadAgentRootContext(CLIContext):
         '''Lists all loader agents registered on server'''
         return self.cli.expsvcAgent.listAgents()
     
+    @NextContext(LoadAgentSelectContext)
+    @inlineCallbacks
     def select(self, args):
         '''Selects single agent to do things'''
-        # agentId = int(args.pop(0))
+        agentUuid = args.pop(0)
         
-        # self.cli.listAgents()
+        agentList = yield self.cli.expsvcAgent.listAgents()
+        clientList = yield self.cli.rootAgent.listClients()
         
-        # selectContext = self.nextContext(AgentSelectContext)
-        # selectContext.setAgentId(agentId)
-        # return selectContext, []
-    select.args = ['<agentId>']
+        returnValue((agentUuid, agentList, clientList))
+    select.args = ['<agentUuid>']
     
-
-class AgentSelectContext(CLIContext):
-    async = True
-    
-    def setAgentId(self, agentId):
-        self.agentId = agentId
-    
-    def doResponse(self, agentsList):
-        if str(self.agentId) in agentsList:
-            agentContext = self.parent.nextContext(AgentContext)
-            agentContext.setAgentId(self.agentId)
-            return agentContext, []
-        
-        print >> sys.stderr, 'No such agent: %d', self.agentId
-        return self.parent, []
-
 class AgentListContext(CLIContext):
     name = 'list'
     async = True
@@ -111,24 +186,13 @@ class AgentListContext(CLIContext):
 class AgentRootContext(CLIContext):
     name = 'agent'
     
-    operations = ['list', 'select', 'load']
+    operations = ['list', 'load']
     
     @NextContext(AgentListContext)
     def list(self, args):
         '''Lists all clients registered on server'''
         return self.cli.rootAgent.listClients()
     
-    def select(self, args):
-        '''Selects single agent to do things'''
-        agentId = int(args.pop(0))
-        
-        self.cli.listAgents()
-        
-        selectContext = self.nextContext(AgentSelectContext)
-        selectContext.setAgentId(agentId)
-        return selectContext, []
-    select.args = ['<agentId>']
-    
     @NextContext(LoadAgentRootContext)
     def load(self, args):
-        return []
+        pass

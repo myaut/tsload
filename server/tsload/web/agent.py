@@ -9,6 +9,7 @@ from nevow import loaders
 from nevow import rend
 from nevow import inevow
 from nevow import url
+from nevow import flat
 from nevow import tags as T
 
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -17,6 +18,10 @@ from tsload.web.main import MainPage, LiveMainPage, Menu
 from tsload.web.pagination import PaginatedView
 
 from tsload.jsonts.api.user import TSUserDescriptor
+from tsload.jsonts.api.load import *
+
+from tsload.wlparam import WLParamHelper
+from tsload.util.format import tstimeToHuman, sizeToHuman
 
 osIcons = [('debian', 'debian.png'),
            ('suse', 'suse.png'),
@@ -26,16 +31,41 @@ osIcons = [('debian', 'debian.png'),
            ('solaris', 'solaris.png'),
            ('windows', 'windows.png')]
 
+wlclasses = {'cpu_integer': ('CPU', 'CPU integer operations'),
+             'cpu_float': ('CPU', 'Floating point operations'),
+             'cpu_memory': ('CPU', 'CPU memory/cache operations'),
+             'cpu_misc': ('CPU', 'CPU workload (misc.)'),
+             
+             'mem_allocation': ('MEM', 'Memory allocation'),
+             
+             'fs_op': ('FS', 'Filesystem operations'),
+             'fs_rw': ('FS', 'Filesystem read/write'),
+             
+             'disk_rw': ('DISK', 'Raw disk read/write'),
+             
+             'network': ('NET', 'Network benchmark'),
+             
+             'os': ('OS', 'Miscellanous os benchmark')}
+
+def _wlparamToStr(val, wlp):
+    if isinstance(wlp, TSWLParamTime):
+        return tstimeToHuman(val)
+    elif isinstance(wlp, TSWLParamSize):
+        return sizeToHuman(val)
+    
+    return str(val)
+
 class AgentMenu(Menu):
     navClass = 'nav nav-tabs'
     
     def setActiveWhat(self, what):
         self.actWhat = what
     
-    def addAgentItem(self, title, what):
+    def addAgentItem(self, title, what, isDisabled=False):
         self.addItem(title, 
-                     url.here.click('?what=' + what),
-                     self.actWhat == what)
+                     url.here.add('what', what),
+                     self.actWhat == what,
+                     isDisabled)
 
 class LoadAgentMenu(AgentMenu):
     navClass = 'nav nav-pills nav-stacked'
@@ -65,15 +95,43 @@ class LoadAgentTable(PaginatedView):
         
         return row['hostname'] == criteria
 
-class LoadAgentInfoPage(MainPage):
+class WorkloadTypeTable(PaginatedView):
+    elementsPerPage = 20
+    searchPlaceholder = 'Enter workload type or module'
+    paginatedDataField = 'data_workloadTypes'
+    
+    def render_mainTable(self, ctx, data):
+        return loaders.xmlfile('webapp/agent/wltypetable.html')
+    
+    def doFilter(self, criteria, row):
+        return row['workload'] == criteria or \
+               row['module'] == criteria
+    
+    def render_customControls(self, ctx, data):
+        handler = lambda wlc: livepage.server.handle('workloadClass', wlc)
+        button = lambda wlc: T.button(_class='btn active', id='wlc_' + wlc,
+                                      onclick = handler(wlc))[wlc]
+        
+        return T.div(_class='btn-group')[button('CPU'),
+                                         button('MEM'),
+                                         button('FS'),
+                                         button('DISK'),
+                                         button('NET'),
+                                         button('OS')
+                                         ]
+
+class LoadAgentInfoPage(LiveMainPage):
     defaultView = ['agent']
     agentUuid = ''
     
+    workloadTypes = None
+    
     def locateChild(self, ctx, segments):
-        if segments:
+        if len(segments) == 1:
             self.agentUuid = segments[0]
+            return (self, [])
         
-        return (self, [])
+        return LiveMainPage.locateChild(self, ctx, segments[1:])
     
     @inlineCallbacks
     def getBasicAgentInfo(self, ctx):
@@ -92,9 +150,11 @@ class LoadAgentInfoPage(MainPage):
         for client in clientList:
             if client.type == 'load' and client.uuid == self.agentUuid:
                 self.clientInfo = client
+                self.agent = session.agent.createRemoteAgent(client.id, LoadAgent)
                 break
         else:
             self.clientInfo = None
+            self.agent = None
     
     @inlineCallbacks 
     def render_content(self, ctx, data):
@@ -114,16 +174,18 @@ class LoadAgentInfoPage(MainPage):
         what = request.args.get('what', self.defaultView)[0]
         menu.setActiveWhat(what)
         
+        disabledInfo = self.agent is None
+        
         menu.addAgentItem('Information', 'agent')
-        menu.addAgentItem('Agent resources', 'resource')
-        menu.addAgentItem('Workload types', 'wltype')
-        menu.addAgentItem('Experiments', 'experiments')
+        menu.addAgentItem('Agent resources', 'resource', disabledInfo)
+        menu.addAgentItem('Workload types', 'wltype', disabledInfo)
+        menu.addAgentItem('Experiments', 'experiments', disabledInfo)
         
         return menu
     
     def render_agentName(self, ctx, data):
         return self.agentInfo.hostname
-        
+    
     def render_agentInfo(self, ctx, data):
         if not self.agentUuid:
             return url.here.up()
@@ -131,6 +193,24 @@ class LoadAgentInfoPage(MainPage):
         request = inevow.IRequest(ctx)
         
         what = request.args.get('what', self.defaultView)
+        
+        if 'agent' in what:
+            return self.agentCommonInfo(ctx)
+        else:
+            if self.agent is None:
+                return self.renderAlert('Agent is disconnected')
+            
+            if 'wltype' in what:
+                wlt = request.args.get('wlt', None)
+                
+                if wlt:
+                    return self.workloadType(ctx, wlt[0])
+                
+                return self.workloadTypeList(ctx)
+        
+        return ''
+    
+    def agentCommonInfo(self, ctx):
         agentInfo = self.agentInfo
         clientInfo = self.clientInfo
         
@@ -149,27 +229,127 @@ class LoadAgentInfoPage(MainPage):
             clientUuid = clientInfo.uuid
             clientEndpoint = clientInfo.endpoint
         
-        if 'agent' in what:
-            for slot, data in [('hostname', agentInfo.hostname),
-                                ('domainname', agentInfo.domainname),
-                                ('osname', agentInfo.osname),
-                                ('release', agentInfo.release),
-                                ('arch', agentInfo.machineArch),
-                                ('numCPUs', agentInfo.numCPUs),
-                                ('numCores', agentInfo.numCores),
-                                ('memTotal', agentInfo.memTotal),
-                                ('agentId', agentInfo.agentId),
-                                ('lastOnline', agentInfo.lastOnline),
-                                ('clientStateImg', clientStateImg),
-                                ('clientState', clientState),
-                                ('clientId', clientId),
-                                ('clientUuid', clientUuid),
-                                ('clientEndpoint', clientEndpoint)]:
+        for slot, data in [('hostname', agentInfo.hostname),
+                            ('domainname', agentInfo.domainname),
+                            ('osname', agentInfo.osname),
+                            ('release', agentInfo.release),
+                            ('arch', agentInfo.machineArch),
+                            ('numCPUs', agentInfo.numCPUs),
+                            ('numCores', agentInfo.numCores),
+                            ('memTotal', agentInfo.memTotal),
+                            ('agentId', agentInfo.agentId),
+                            ('lastOnline', agentInfo.lastOnline),
+                            ('clientStateImg', clientStateImg),
+                            ('clientState', clientState),
+                            ('clientId', clientId),
+                            ('clientUuid', clientUuid),
+                            ('clientEndpoint', clientEndpoint)]:
                 ctx.fillSlots(slot, data)
             
-            return loaders.xmlfile('webapp/agent/loadinfoagent.html')
+        return loaders.xmlfile('webapp/agent/loadinfoagent.html')
+    
+    @inlineCallbacks
+    def workloadTypeList(self, ctx):
+        session = inevow.ISession(ctx) 
+        wltTable = WorkloadTypeTable(self, session.uid)
         
-        return ''
+        if self.workloadTypes is None:
+            self.workloadTypes = yield self.agent.getWorkloadTypes()
+        
+        self.workloadClasses = ['CPU', 'MEM', 'DISK', 'FS', 'NET', 'OS']
+        
+        for wltypeName, wltype in self.workloadTypes.iteritems():
+            wlcTags = [T.span(_class='badge', 
+                              title = wlclasses[wlc][1])[
+                                                         wlclasses[wlc][0]]
+                       for wlc 
+                       in wltype.wlclass]
+            rawClasses = set(wlclasses[wlc][0] for wlc in wltype.wlclass)
+            
+            wltTable.add({'module': wltype.module,
+                          'workload': wltypeName,
+                          # url.gethere doesn't work here because when liveglue updates page
+                          # all links become broken. 
+                          'wltHref': url.URL.fromContext(ctx).add('wlt', wltypeName),
+                          'classes': wlcTags,
+                          'rawClasses': rawClasses})
+        
+        wltTable.setPage(0)
+        self.wltTable = wltTable
+        
+        returnValue(wltTable)
+    
+    def handle_workloadClass(self, ctx, wlc):
+        if wlc in self.workloadClasses:
+            self.workloadClasses.remove(wlc)
+            action = "remove"
+        else:
+            self.workloadClasses.append(wlc)
+            action = "add"
+            
+        rawClasses = set(self.workloadClasses)
+         
+        yield livepage.js('document.getElementById("wlc_%s").classList.%s("active")' % (wlc, action)), livepage.eol
+        
+        self.wltTable.prefilteredData = [wlc 
+                                         for wlc 
+                                         in self.wltTable.rawData
+                                         if wlc['rawClasses'] & rawClasses]
+        self.wltTable.filteredData = self.wltTable.prefilteredData
+        
+        self.wltTable.setPage(0)
+        yield self.wltTable.update(ctx)
+    
+    @inlineCallbacks
+    def workloadType(self, ctx, wltypeName):
+        if self.workloadTypes is None:
+            self.workloadTypes = yield self.agent.getWorkloadTypes()
+        
+        wltype = self.workloadTypes[wltypeName]
+        
+        wlcDescriptions = [T.li[wlclasses[wlc][1]]
+                           for wlc 
+                           in wltype.wlclass]
+        
+        ctx.fillSlots('name', wltypeName)
+        ctx.fillSlots('module', wltype.module)
+        ctx.fillSlots('path', wltype.path)
+        ctx.fillSlots('classes', T.ul()[wlcDescriptions])
+        
+        self.data_workloadParams = []
+        
+        for paramName, param in wltype.params.iteritems():
+                    if param.flags & TSWLParamCommon.WLPF_OPTIONAL:
+                        paramName = T.span[paramName,
+                                           T.sup['OPT']]
+                    
+                    wlpType = WLParamHelper.getTypeName(param)
+                    
+                    minVal, maxVal = WLParamHelper.getIntegerRange(param)
+                    lenVal = WLParamHelper.getStringLength(param)
+                    range = 'None'
+                    
+                    if minVal is not None and maxVal is not None:
+                        range = '[%s...%s]' % (_wlparamToStr(minVal, param), 
+                                               _wlparamToStr(maxVal, param))
+                    elif lenVal is not None:
+                        range = 'len: %s' % lenVal
+                    
+                    default = WLParamHelper.getDefaultValue(param)
+                    if default is not None:
+                        default = _wlparamToStr(default, param)
+                    else:
+                        default = 'None'
+                    
+                    self.data_workloadParams.append({'param': paramName, 
+                                                     'type': wlpType, 
+                                                     'range': range, 
+                                                     'default': default, 
+                                                     'description': param.description})
+        
+        wltparams = loaders.xmlfile('webapp/agent/wltypeparam.html')
+        
+        returnValue(wltparams)
 
 class AgentPage(LiveMainPage):
     defaultView = ['load']

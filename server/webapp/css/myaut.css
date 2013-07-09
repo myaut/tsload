@@ -16,3 +16,9 @@ select,
 .uneditable-input {
 	height: 28px
 }
+
+/* Should be removed when upgraded to BS2.3 */
+.pull-center {
+    display: table;
+    margin: 0 auto;
+}

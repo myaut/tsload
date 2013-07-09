@@ -11,14 +11,24 @@ class TSMyObject(TSObject):
     
     names = TSObject.Array(TSObject.String())      
     types = TSObject.Map(TSObject.Object(TSIntObject))
+    
+    opt = TSObject.Optional(TSObject.Int())
 '''
 
 import functools
 from tsload.jsonts import JSONTS
 
 class TSObject:
-    class Type:
+    @staticmethod
+    def Optional(tsoType):
+        tsoType.optional = True
+        return tsoType
+    
+    class Undef:
         pass
+    
+    class Type:
+        optional = False
     
     class Any:
         def deserialize(self, val):
@@ -100,6 +110,62 @@ class TSObject:
         def serialize(self, val):
             return val.serialize()
     
+    class MultiObject:
+        '''Depending on field value named field, it constructs one of the classes
+        listed in objClassMap. '''
+        def __init__(self, field, objClassMap):
+            self.field = field
+            self.objClassMap = objClassMap
+            self.revClassMap = dict((k, v) for k, v in objClassMap.items())
+        
+        def deserialize(self, val):
+            fieldValue = val.get(self.field, TSObject.Undef)
+            
+            if fieldValue is TSObject.Undef:
+                raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
+                                   'Missing field "%s" for multiobject' % (self.field))
+            
+            try:
+                objClass = self.objClassMap[fieldValue]
+            except KeyError:
+                raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
+                                   'Invalid field "%s" value "%s" for multiobject: Unknown class' % (self.field,
+                                                                                                     fieldValue))
+            
+            return objClass.deserialize(val)
+        
+        def serialize(self, val):
+            obj = val.serialize()
+            
+            try:
+                objType = self.revClassMap[obj.__class__]
+            except KeyError:
+                raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
+                                   'Invalid class "%s" for multiobject: Unknown type' % (obj.__class__.__name__))
+            
+            obj[self.field] = objType
+            
+            return obj
+    
+    def getopt(self, optName, default = Undef):
+        '''Return optional value or default.
+        Works like getattr, but do not search class (and then return tso.Type)
+        
+        raises AttributeError of invalid optName provided or it is not optional field
+        raises ValueError if default argument and value are not set'''
+        field = getattr(self.__class__, optName)
+        
+        if not field.optional:
+            # Internal error
+            raise AttributeError('Attribute "%s" is not optional' % optName)
+        
+        ret = self.__dict__.get(optName, default)
+        
+        if ret is TSObject.Undef:
+            raise ValueError('Default argument and value are not set')
+        
+        return ret
+    
     @classmethod
     def deserialize(cls, val):
         obj = cls()
@@ -108,8 +174,15 @@ class TSObject:
             field = getattr(cls, fieldName)
             
             if isinstance(field, TSObject.Type):
-                setattr(obj, fieldName, field.deserialize(val[fieldName]))
+                fieldValue = val.get(fieldName, TSObject.Undef)
                 
+                if fieldValue is not TSObject.Undef:
+                    fieldDeserVal = field.deserialize(fieldValue)
+                    setattr(obj, fieldName, fieldDeserVal)
+                elif not field.optional:
+                    raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
+                                       'Missing field "%s" for class "%s"' % (fieldName, cls.__name__))
+                         
         return obj
                 
     def serialize(self):
@@ -120,6 +193,15 @@ class TSObject:
             fieldClass = getattr(self.__class__, fieldName)
             
             if isinstance(fieldClass, TSObject.Type):
+                if isinstance(field, TSObject.Type):
+                    if field.optional:
+                        # Do not serialize optional values
+                        continue
+                    else:
+                        raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
+                                           'Field "%s" for class "%s" is not set' % (fieldName, 
+                                                                                     self.__class__.__name__))
+                    
                 val[fieldName] = fieldClass.serialize(field)
                 
         return val
@@ -135,6 +217,8 @@ if __name__ == '__main__':
         
         names = TSObject.Array(TSObject.String())      
         types = TSObject.Map(TSObject.Object(TSIntObject))
+        
+        opt = TSObject.Optional(TSObject.Int())
         
     i1 = TSIntObject()
     i1.id = 10

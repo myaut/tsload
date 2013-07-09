@@ -72,7 +72,7 @@ static JSONNODE* json_wl_type_format_impl(hm_item_t* object) {
 	JSONNODE* wlt_class = json_new(JSON_ARRAY);
 
 	json_set_name(wlt_node, wlt->wlt_name);
-	json_set_name(wlt_class, "class");
+	json_set_name(wlt_class, "wlclass");
 
 	json_push_back(wlt_node, json_new_a("module", wlt->wlt_module->mod_name));
 	json_push_back(wlt_node, json_new_a("path", wlt->wlt_module->mod_path));

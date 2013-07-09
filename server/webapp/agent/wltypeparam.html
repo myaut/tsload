@@ -1,0 +1,42 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<p>
+		<h3>Workload <span><nevow:slot name="name">NAME</nevow:slot></span></h3><br />
+		
+		<b>Module name</b>: <nevow:slot name="module" /> <br />
+		<b>Module path</b>: <nevow:slot name="path" /> <br />
+		<b>Workload classes</b>: <nevow:slot name="classes" /> <br />
+	</p>
+	<table class="table table-condensed" id="mainTable">
+		<tr>
+            <th>PARAM</th>
+            <th>TYPE</th>
+            <th>RANGE</th>
+            <th>DEFAULT</th>
+        </tr>
+        <tbody nevow:data="workloadParams" nevow:render="sequence">
+		    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+		        <tr>
+		            <td rowspan="2" style="vertical-align: middle">
+		                <span><nevow:slot name="param">PARAM</nevow:slot></span>
+		            </td>
+		            <td>
+		             	<span><nevow:slot name="type">TYPE</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="range">RANGE</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="default">DEFAULT</nevow:slot></span>
+		            </td>
+		        </tr>
+		        <tr>
+		        	<td colspan="3">
+		        		<span>
+		        			<nevow:slot name="description">DESCRIPTION</nevow:slot>
+		        		</span>
+		        	</td>
+		        </tr>
+		    </nevow:invisible>
+	    </tbody>
+	</table>
+</div>

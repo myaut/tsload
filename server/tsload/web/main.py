@@ -33,8 +33,8 @@ class Menu(rend.Fragment):
         ctx.tag(_class = self.navClass)
         return self.render_sequence(ctx, data)
     
-    def addItem(self, title, url, isActive = False):
-        liClass = 'active' if isActive else '' 
+    def addItem(self, title, url, isActive = False, isDisabled = False):
+        liClass = 'active' if isActive else 'disabled' if isDisabled else '' 
         
         self.data_menuItems.append({'title': title, 
                                     'url': url,

@@ -1,0 +1,29 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<table class="table" id="mainTable">
+		<tr>
+            <th>MODULE</th>
+            <th>WORKLOAD</th>
+            <th>CLASSES</th>
+        </tr>
+        <tbody nevow:data="workloadTypes" nevow:render="sequence">
+		    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+		        <tr>
+		            <td>
+		                <span><nevow:slot name="module">MODULE</nevow:slot></span>
+		            </td>
+		            <td>
+		             	<a href='#'>
+		                	<span><nevow:slot name="workload">WORKLOAD</nevow:slot></span>
+			                <nevow:attr name="href">
+			                    <nevow:slot name="wltHref">#</nevow:slot>
+			                </nevow:attr>
+		                </a>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="classes">CLASSES</nevow:slot></span>
+		            </td>
+		        </tr>
+		    </nevow:invisible>
+	    </tbody>
+	</table>
+</div>

@@ -95,5 +95,11 @@ class CLIContext:
         '''Returns to previous context'''
         pass
     
+    def doResponse(self, args):
+        '''doResponse must be implemented for asynchronous contexts.
+        For synchronous contexts who uses inlineCallbacks, returns itself'''
+        self.async = False
+        return self, args
+    
     def exit(self, args):
         raise SystemExit()

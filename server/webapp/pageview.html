@@ -1,10 +1,25 @@
 <div xmlns:nevow="http://nevow.com/ns/nevow/0.1" >
 	<div class='pagination pagination-small'>
-		<nevow:invisible nevow:render="pagination" />
+		<table width="100%">
+		<tr>
 		
-		<form class="pull-right">
-			<input type="text" class="search-query" id='searchForm' placeholder="Search" nevow:render="searchForm"/>
-		</form>
+		<td style="vertical-align: middle">
+			<nevow:invisible nevow:render="pagination" />
+		</td>
+		
+		<td style="vertical-align: middle">
+			<div class="pull-center">
+				<nevow:invisible nevow:render="customControls" />
+			</div>
+		</td> 
+		
+		<td style="vertical-align: middle">
+			<form class="pull-right">
+				<input type="text" class="search-query" id='searchForm' placeholder="Search" nevow:render="searchForm"/>
+			</form>
+		</td>
+		</tr>
+		</table>
 	</div>
 
 	<div nevow:render="mainTable" id="mainTable">
