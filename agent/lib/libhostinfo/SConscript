@@ -9,7 +9,7 @@ lib.PreparePlatform()
 if lib.SupportedPlatform('solaris'):
     lib.Append(LIBS = ['diskmgt', 'lgrp', 'nvpair', 'kstat', 'picl'])
 if lib.SupportedPlatform('win'):
-    lib.Append(LIBS = ['setupapi'])
+    lib.Append(LIBS = ['setupapi', 'user32'])
 
 lib.AddDeps(('lib', 'libjson'), ('lib', 'libtscommon'))
 
