@@ -13,19 +13,22 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * cpuinfo (Linux)
  *
  * Reads information about cpus (that are considered as NUMA-nodes)
  * from /sys/devices/system/node.
- *
- * TODO: Add cpu model/frequency from /proc/cpuinfo
  */
 
 /* FIXME: Should be taken from kernel config */
 #define HI_LINUX_MAXCPUS		256
 #define HI_LINUX_CPUMASK_LEN	4
+
+#define SYS_NODE_PATH 	"/sys/devices/system/node"
+#define SYS_CPU_PATH 	"/sys/devices/system/cpu"
+#define PROC_CPUINFO_PATH 	"/proc/cpuinfo"
 
 typedef uint32_t hi_linux_cpumask_t[HI_LINUX_CPUMASK_LEN];
 
@@ -81,8 +84,6 @@ void cpumask_create(hi_cpu_object_t* parent, hi_linux_cpumask_t core_mask) {
 	}
 }
 
-#define SYS_NODE_PATH 	"/sys/devices/system/node"
-
 hi_cpu_cache_type_t hi_linux_get_cache_type(const char* cache_name) {
 	char type_str[32] = "";
 
@@ -106,7 +107,8 @@ void hi_linux_proc_cache(const char* name, void* arg) {
 	hi_cpu_object_t* strand = (hi_cpu_object_t*) arg;
 
 	hi_cpu_object_t* core = HI_CPU_PARENT(strand);
-	hi_cpu_object_t* node = HI_CPU_PARENT(core);
+	hi_cpu_object_t* chip = HI_CPU_PARENT(core);
+	hi_cpu_object_t* node = HI_CPU_PARENT(chip);
 
 	hi_cpu_object_t* parent;
 	hi_cpu_object_t* cache;
@@ -137,7 +139,7 @@ void hi_linux_proc_cache(const char* name, void* arg) {
 	/* Check if cache is core-level or node-level.
 	 * Walk over core strands and check if their mask matches share_mask*/
 	cpumask_create(core, core_mask);
-	parent = (cpumask_eq(share_mask, core_mask))? core : node;
+	parent = (cpumask_eq(share_mask, core_mask))? core : chip;
 
 	/* Read cache information */
 	level = (int) hi_linux_sysfs_readuint(SYS_NODE_PATH, cache_name, "level", 8);
@@ -159,7 +161,7 @@ void hi_linux_proc_cache(const char* name, void* arg) {
 	hi_cpu_object_add(cache);
 }
 
-uint64_t hi_linux_read_meminfo(const char* meminfo, const char* tag) {
+static uint64_t meminfo_read_param(const char* meminfo, const char* tag) {
 	char* p;
 	uint64_t mem;
 
@@ -184,35 +186,137 @@ void hi_linux_get_meminfo(hi_cpu_object_t* node, const char* name) {
 
 	hi_linux_sysfs_readstr(SYS_NODE_PATH, name, "meminfo", meminfo, 4096);
 
-	node->node.cm_mem_total = hi_linux_read_meminfo(meminfo, "MemTotal:");
-	node->node.cm_mem_free = hi_linux_read_meminfo(meminfo, "MemFree:");
+	node->node.cm_mem_total = meminfo_read_param(meminfo, "MemTotal:");
+	node->node.cm_mem_free = meminfo_read_param(meminfo, "MemFree:");
 
 	mp_free(meminfo);
+}
+
+static boolean_t cpuinfo_read_var(const char* line, const char* param, char* value, size_t vallen) {
+	size_t paramlen = strlen(param);
+	size_t linelen = strlen(line);
+	const char* p = line + paramlen;
+	char* end;
+	int len = 0;
+
+	int mode = 0;
+
+	if(strncmp(line, param, paramlen) == 0) {
+		/* Ignore parameter name with whitespaces. Acts as FSM.  */
+		while((mode == 0 && (*p != ':')) ||
+			  (mode == 1 && isspace(*p) ) ) {
+			if(p > end)
+				return B_FALSE;
+			if(*p == ':')
+				mode = 1;
+
+			++p;
+		}
+
+		strncpy(value, p + 1, vallen);
+
+		/* Cut out last '\n' */
+		end = value + strlen(value);
+		*--end = '\0';
+
+		return B_TRUE;
+	}
+
+	return B_FALSE;
+}
+
+hi_cpu_object_t* hi_linux_proc_chip(hi_cpu_object_t* node, int strandid, int chipid) {
+	hi_cpu_object_t* chip;
+	FILE* cpuinfo = fopen(PROC_CPUINFO_PATH, "r");
+	uint32_t cpufreq = 0;
+	char cpu_name[32];
+
+	char line[256];
+	char value[64];
+
+	long ci_chipid;
+
+	boolean_t freq_read = B_FALSE, model_read = B_FALSE;
+
+	chip = hi_cpu_object_create(node, HI_CPU_CHIP, chipid);
+
+	/* Try to read maximum frequency from cpufreq driver
+	 * If failed, go back to /proc/cpuinfo information */
+	snprintf(cpu_name, 32, "cpu%d", strandid);
+	cpufreq = hi_linux_sysfs_readuint(SYS_CPU_PATH, cpu_name, "cpufreq/cpuinfo_max_freq", 0);
+
+	if(cpufreq != 0) {
+		cpufreq = cpufreq / 1000;
+		freq_read = B_TRUE;
+	}
+
+	/* Read modelname from /proc/cpuinfo */
+	if(cpuinfo) {
+		while(fgets(line, 256, cpuinfo) != NULL) {
+			if(cpuinfo_read_var(line, "processor", value, 64)) {
+				chipid = strtol(value, NULL, 10);
+				continue;
+			}
+
+			if(ci_chipid == chipid) {
+				if(!freq_read && cpuinfo_read_var(line, "cpu MHz", value, 64)) {
+					/* Frequency in MHz */
+					cpufreq = strtoul(value, NULL, 10);
+					freq_read = B_TRUE;
+				}
+				else if(cpuinfo_read_var(line, "model name", value, 64)) {
+					hi_cpu_set_chip_name(chip, value);
+					model_read = B_TRUE;
+				}
+			}
+
+			if(freq_read && model_read)
+				break;
+		}
+	}
+
+	chip->chip.cp_freq = cpufreq;
+
+	hi_cpu_object_add(chip);
+
+	return chip;
 }
 
 void hi_linux_proc_strand(int strandid, void* arg) {
 	hi_cpu_object_t* node = (hi_cpu_object_t*) arg;
 	hi_cpu_object_t* core;
+	hi_cpu_object_t* chip;
 	hi_cpu_object_t* strand;
 
 	char name[32];
-	int coreid;
+	int coreid, chipid;
 
 	char cache_path[256];
 
 	snprintf(name, 32, "node%d/cpu%d", node->id, strandid);
 
 	coreid = hi_linux_sysfs_readuint(SYS_NODE_PATH, name, "topology/core_id", HI_LINUX_MAXCPUS);
+	chipid = hi_linux_sysfs_readuint(SYS_NODE_PATH, name, "topology/physical_package_id", HI_LINUX_MAXCPUS);
 
-	if(coreid == HI_LINUX_MAXCPUS)
+	if(coreid == HI_LINUX_MAXCPUS || chipid == HI_LINUX_MAXCPUS)
 		return HI_LINUX_SYSFS_ERROR;
 
-	core = hi_cpu_find_byid(node, HI_CPU_CORE, coreid);
+	/* Find processor and core objects. If they do not exist, create new ones */
+	chip = hi_cpu_find_byid(node, HI_CPU_CHIP, chipid);
+	if(chip == NULL) {
+		chip = hi_linux_proc_chip(node, strandid, chipid);
+		core = NULL;
+	}
+	else {
+		core = hi_cpu_find_byid(chip, HI_CPU_CORE, coreid);
+	}
+
 	if(core == NULL) {
-		core = hi_cpu_object_create(node, HI_CPU_CORE, coreid);
+		core = hi_cpu_object_create(chip, HI_CPU_CORE, coreid);
 		hi_cpu_object_add(core);
 	}
 
+	/* Create strand object */
 	strand = hi_cpu_object_create(core, HI_CPU_STRAND, strandid);
 	hi_cpu_object_add(strand);
 

@@ -41,17 +41,22 @@ void print_cpu_element(hi_object_t* parent, int indent) {
 		case HI_CPU_NODE:
 			/* Inception */
 			break;
+		case HI_CPU_CHIP:
+			printf("%s+----%-s %lu MHz %s\n", indent_str, object->hdr.name,
+										(unsigned long) object->chip.cp_freq,
+										object->chip.cp_name);
+			break;
 		case HI_CPU_CORE:
 		case HI_CPU_STRAND:
-			printf("%s+---%-3d\n", indent_str, object->id);
+			printf("%s+----%-s\n", indent_str, object->hdr.name);
 			break;
 		case HI_CPU_CACHE:
-			printf("%s+---cache L%d%c %d %d:%d\n", indent_str, object->cache.c_level,
+			printf("%s+----%-s L%d%c %d %d:%d\n", indent_str, object->hdr.name, object->cache.c_level,
 					cache_type_char(object->cache.c_type), object->cache.c_size,
 					object->cache.c_line_size, object->cache.c_associativity);
 			break;
 		}
-		print_cpu_element(child->object, indent + 4);
+		print_cpu_element(child->object, indent + 5);
 	}
 }
 
@@ -63,22 +68,27 @@ int print_cpu_info(int flags) {
 	print_header(flags, "CPU TOPOLOGY");
 
 	if(flags & INFO_LEGEND) {
-		printf("%-3s %-3s %-3s %-12s %-12s %-8s %s\n", "CPU", "COR",
-				"STR", "MEM TOTAL", "MEM FREE", "FREQ", "NAME");
+		printf("%-4s %-4s %-4s %-4s %-12s %-12s\n", "NODE", "CHIP", "CORE",
+				"STR", "MEM TOTAL", "MEM FREE");
 	}
 
 	hi_for_each_object(object, cpu_list) {
 		node = HI_CPU_FROM_OBJ(object);
 
-		if(node->type != HI_CPU_NODE)
-			continue;
+		if(node->type == HI_CPU_NODE) {
+			printf("%-4d %-4s %-4s %-4s %-12lld %-12lld\n", node->id, "", "",
+							"", node->node.cm_mem_total, node->node.cm_mem_free);
 
-		printf("%-3d %-3s %-3s %-12lld %-12lld %-8ld %s\n", node->id, "",
-						"", node->node.cm_mem_total, node->node.cm_mem_free,
-						node->node.cm_freq, node->node.cm_name);
-		if(flags & INFO_XDATA) {
-			print_cpu_element(object, 0);
+			if(flags & INFO_XDATA) {
+				print_cpu_element(object, 0);
+			}
 		}
+		else if(!(flags & INFO_XDATA) &&
+				node->type == HI_CPU_CHIP) {
+					printf("\t%-3d %lld %s\n", node->id, node->chip.cp_freq,
+									node->chip.cp_name);
+		}
+
 	}
 
 	return INFO_OK;

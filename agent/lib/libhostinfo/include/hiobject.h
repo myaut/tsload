@@ -78,6 +78,7 @@ typedef hi_object_header_t	hi_object_t;
 void hi_obj_header_init(hi_obj_subsys_id_t sid, hi_object_header_t* hdr, const char* name);
 
 LIBEXPORT void hi_obj_attach(hi_object_t* hdr, hi_object_t* parent);
+LIBEXPORT void hi_obj_detach(hi_object_t* hdr, hi_object_t* parent);
 LIBEXPORT void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object);
 LIBEXPORT void hi_obj_destroy(hi_object_t* object);
 LIBEXPORT void hi_dsk_destroy_all(hi_obj_subsys_id_t sid);

@@ -11,6 +11,7 @@
 #include <diskinfo.h>
 
 #include <string.h>
+#include <assert.h>
 
 /**
  * HostInfo Object - abstract host object container implementation
@@ -147,6 +148,29 @@ void hi_obj_attach(hi_object_t* object, hi_object_t* parent) {
 	child->parent = parent;
 
 	list_add_tail(&child->node, &parent->children);
+}
+
+/**
+ * Detach object from parent
+ * @param object	object to detach
+ * @param parent 	parent object
+ * */
+void hi_obj_detach(hi_object_t* object, hi_object_t* parent) {
+	hi_object_child_t *child = NULL;
+
+	/* Free child handlers if the were allocated */
+	hi_for_each_child(child, parent) {
+		if(child->object == object)
+			break;
+	}
+
+	assert(child != NULL);
+
+	list_del(&child->node);
+	child->parent = NULL;
+
+	if(child->type == HI_OBJ_CHILD_ALLOCATED)
+		mp_free(child);
 }
 
 /**

@@ -28,6 +28,7 @@
  * hi_cpu_find_byid befor we add strand into list */
 struct hi_win_lproc_state {
 	int core_count;
+	int chip_count;
 
 	hi_cpu_object_t* strands[HI_WIN_MAXCPUS];
 };
@@ -54,7 +55,7 @@ uint64_t cpumask(hi_cpu_object_t* parent) {
 void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	hi_cpu_cache_type_t cache_type;
 	hi_cpu_object_t* cache;
-	hi_cpu_object_t* node;
+	hi_cpu_object_t* chip;
 	hi_cpu_object_t* core;
 	hi_cpu_object_t* parent;
 	hi_cpu_object_t* strand = NULL;
@@ -102,9 +103,9 @@ void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	cache->cache.c_line_size = lproc->Cache.LineSize;
 
 	core = HI_CPU_PARENT(strand);
-	node = HI_CPU_PARENT(core);
+	chip = HI_CPU_PARENT(core);
 
-	parent = (cpumask(core) == lproc->ProcessorMask)? core : node;
+	parent = (cpumask(core) == lproc->ProcessorMask)? core : chip;
 
 	hi_cpu_attach(cache, parent);
 
@@ -121,7 +122,7 @@ void hi_win_add_cores_strands(void) {
 	hi_object_t *object, *next;
 	hi_cpu_object_t* node;
 
-	hi_object_child_t *c_core, *c_strand;
+	hi_object_child_t *c_chip, *c_core, *c_strand;
 
 	hi_for_each_object_safe(object, next, cpu_list) {
 		node = HI_CPU_FROM_OBJ(object);
@@ -129,31 +130,85 @@ void hi_win_add_cores_strands(void) {
 		if(node->type != HI_CPU_NODE)
 			break;
 
-		hi_for_each_child(c_core, object) {
-			hi_cpu_object_add(HI_CPU_FROM_OBJ(c_core->object));
+		hi_for_each_child(c_chip, object) {
+			hi_cpu_object_add(HI_CPU_FROM_OBJ(c_chip->object));
 
-			hi_for_each_child(c_strand, c_core->object) {
-				hi_cpu_object_add(HI_CPU_FROM_OBJ(c_strand->object));
+			hi_for_each_child(c_core, c_chip->object) {
+				hi_cpu_object_add(HI_CPU_FROM_OBJ(c_core->object));
+
+				hi_for_each_child(c_strand, c_core->object) {
+					hi_cpu_object_add(HI_CPU_FROM_OBJ(c_strand->object));
+				}
 			}
 		}
 	}
 }
 
+void hi_win_proc_chip(hi_cpu_object_t* chip, int strandid) {
+	HKEY cpu_key;
+	char cpu_key_path[128];
+	char cpu_name[64];
+	DWORD cpufreq;
+	DWORD size;
+
+	LONG ret;
+
+	snprintf(cpu_key_path, 128, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\%d", strandid);
+
+	ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, cpu_key_path, 0, KEY_READ, &cpu_key);
+	if(ret != ERROR_SUCCESS)
+		return;
+
+	size = sizeof(DWORD);
+	ret = RegGetValue(cpu_key, NULL, "~MHz", RRF_RT_DWORD, NULL, &cpufreq, &size);
+	if(ret == ERROR_SUCCESS) {
+		chip->chip.cp_freq = cpufreq;
+	}
+
+	size = 64;
+	ret = RegGetValue(cpu_key, NULL, "ProcessorNameString", RRF_RT_REG_SZ, NULL, cpu_name, &size);
+	if(ret == ERROR_SUCCESS) {
+		hi_cpu_set_chip_name(chip, cpu_name);
+	}
+
+	RegCloseKey(cpu_key);
+}
+
 void hi_win_proc_lproc(struct hi_win_lproc_state* state, PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	hi_cpu_object_t* object;
 	hi_cpu_object_t* parent;
+	hi_cpu_object_t* child;
 	hi_cpu_object_t* strand;
+
+	hi_cpu_objtype_t parent_type;
+
+	ULONGLONG avail_mem;
 
 	int strandid;
 	int scount = sizeof(ULONG_PTR) * 8 - 1;
 
+	boolean_t proc_chip = B_FALSE;
+
 	switch(lproc->Relationship) {
 	case RelationNumaNode:
 		object = hi_cpu_object_create(NULL, HI_CPU_NODE, lproc->NumaNode.NodeNumber);
+
+		/* FIXME: Report total amount of memory per node (maybe not possible in windows) */
+		GetNumaAvailableMemoryNode(lproc->NumaNode.NodeNumber, &avail_mem);
+		object->node.cm_mem_total = object->node.cm_mem_free = avail_mem;
+
 		hi_cpu_dprintf("hi_win_proc_lproc: found numa node #%d mask: %llx\n",
 					   lproc->NumaNode.NodeNumber, (unsigned long long) lproc->ProcessorMask);
+		hi_cpu_object_add(object);
+		break;
+	case RelationProcessorPackage:
+		proc_chip = B_TRUE;
+		parent_type = HI_CPU_NODE;
+		object = hi_cpu_object_create(NULL, HI_CPU_CHIP, state->chip_count++);
+		hi_cpu_dprintf("hi_win_proc_lproc: found chip mask: %llx\n", (unsigned long long) lproc->ProcessorMask);
 		break;
 	case RelationProcessorCore:
+		parent_type = HI_CPU_CHIP;
 		object = hi_cpu_object_create(NULL, HI_CPU_CORE, state->core_count++);
 		hi_cpu_dprintf("hi_win_proc_lproc: found core mask: %llx\n", (unsigned long long) lproc->ProcessorMask);
 		break;
@@ -169,33 +224,41 @@ void hi_win_proc_lproc(struct hi_win_lproc_state* state, PSYSTEM_LOGICAL_PROCESS
 
 		strand = state->strands[strandid];
 		if(strand == NULL) {
-			strand = hi_cpu_object_create(NULL, HI_CPU_STRAND, strandid);
+			hi_cpu_dprintf("hi_win_proc_lproc: created strand #%d\n", strandid);
+
+			strand = hi_cpu_object_create(object, HI_CPU_STRAND, strandid);
 			state->strands[strandid] = strand;
+			continue;
 		}
 
-		parent = HI_CPU_PARENT(strand);
-
-		switch(lproc->Relationship) {
-		case RelationNumaNode:
-			if(parent) {
-				/* Logical processor already have core,
-				 * link core to this NUMA node */
-				hi_cpu_attach(parent, object);
-			}
-			else {
-				/* Temporarily link strand directly to NUMA node */
-				hi_cpu_attach(strand, object);
-			}
-			hi_cpu_object_add(object);
-			break;
-		case RelationProcessorCore:
-			if(parent != NULL && parent->type == HI_CPU_NODE) {
-				/* Link core to NUMA node */
-				hi_cpu_attach(object, parent);
-			}
-			hi_cpu_attach(strand, object);
-			break;
+		if(proc_chip) {
+			hi_win_proc_chip(object, strandid);
+			proc_chip = B_FALSE;
 		}
+
+		child = strand;
+
+		/* Order of relationships in Windows is unpredictable - so we create
+		 * temporary links and may sometimes insert CPU objects between already created objects */
+		while((parent = HI_CPU_PARENT(child)) != NULL &&
+			  (object->type == HI_CPU_NODE || parent->type > parent_type))
+					child = parent;
+
+		/* Already linked this one - ignore */
+		if(child == object)
+			continue;
+
+		/* Insert new object between parent and child */
+		if(parent) {
+			hi_cpu_detach(child, parent);
+			hi_cpu_attach(object, parent);
+		}
+		hi_cpu_attach(child, object);
+
+		hi_cpu_dprintf("hi_win_proc_lproc: linking object between %d(%d) and %d(%d)\n",
+							(parent)? parent->id : -1,
+							(parent)? parent->type : -1,
+							child->id, child->type);
 	}
 }
 
@@ -213,6 +276,7 @@ PLATAPI int hi_cpu_probe(void) {
 	int i, count;
 
 	state.core_count = 0;
+	state.chip_count = 0;
 	for(i = 0; i < HI_WIN_MAXCPUS; ++i)
 		state.strands[i] = NULL;
 

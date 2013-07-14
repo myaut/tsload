@@ -58,7 +58,7 @@ struct hi_cpu_sol_cache solaris_caches[] =
 };
 
 struct cache_walk_args {
-	hi_cpu_object_t* node;
+	hi_cpu_object_t* chip;
 	processorid_t cpu;
 	boolean_t shared_last_cache;
 	boolean_t first_cpu;
@@ -154,7 +154,7 @@ int hi_cpu_walk_cache(picl_nodehdl_t hdl, void *args) {
 	hi_cpu_dprintf("hi_cpu_walk_cache: processing processor #%d shrlc: %d 1stcpu: %d\n", (int) cpuid,
 					cache_args->shared_last_cache, cache_args->first_cpu);
 
-	strand = hi_cpu_find_byid(cache_args->node, HI_CPU_STRAND, cache_args->cpu);
+	strand = hi_cpu_find_byid(cache_args->chip, HI_CPU_STRAND, cache_args->cpu);
 	if(!strand)
 		return PICL_WALK_TERMINATE;
 
@@ -187,7 +187,7 @@ int hi_cpu_walk_cache(picl_nodehdl_t hdl, void *args) {
 
 	if(cache_args->shared_last_cache) {
 		if(cache_args->first_cpu)
-			hi_cpu_create_cache(cache_args->node, caches, last_cid);
+			hi_cpu_create_cache(cache_args->chip, caches, last_cid);
 		--last_cid;
 	}
 
@@ -202,14 +202,14 @@ int hi_cpu_walk_cache(picl_nodehdl_t hdl, void *args) {
 	return PICL_WALK_TERMINATE;
 }
 
-void hi_cpu_proc_cache(hi_cpu_object_t* node, processorid_t cpu, boolean_t shared_last_cache, boolean_t first_cpu) {
+void hi_cpu_proc_cache(hi_cpu_object_t* chip, processorid_t cpu, boolean_t shared_last_cache, boolean_t first_cpu) {
 	picl_nodehdl_t nodehdl;
 	struct cache_walk_args c_args;
 
 	if(picl_get_root(&nodehdl) != PICL_SUCCESS)
 		return;
 
-	c_args.node = node;
+	c_args.chip = chip;
 	c_args.cpu = cpu;
 	c_args.shared_last_cache = shared_last_cache;
 	c_args.first_cpu = first_cpu;
@@ -218,57 +218,61 @@ void hi_cpu_proc_cache(hi_cpu_object_t* node, processorid_t cpu, boolean_t share
 	picl_walk_tree_by_class(nodehdl, "cpu", &c_args, hi_cpu_walk_cache);
 }
 
-void hi_cpu_kstat_read_freq(hi_cpu_object_t* node, kstat_t *ksp) {
+static
+void cpu_kstat_read_freq(hi_cpu_object_t* chip, kstat_t *ksp) {
 	kstat_named_t	*knp;
 
-	if(node->node.cm_freq == 0) {
-		if ((knp = kstat_data_lookup(ksp, "clock_MHz")) == NULL) {
-			return;
-		}
-		node->node.cm_freq = knp->value.l * 1000 * 1000;
-	}
+	if ((knp = kstat_data_lookup(ksp, "clock_MHz")) == NULL)
+		return;
+
+	chip->chip.cp_freq = knp->value.l;
 }
 
-void hi_cpu_kstat_read_model(hi_cpu_object_t* node, kstat_t *ksp) {
+static
+void cpu_kstat_read_model(hi_cpu_object_t* chip, kstat_t *ksp) {
 	kstat_named_t	*knp;
 
-	if(node->node.cm_name[0] == '\0') {
-		if ((knp = kstat_data_lookup(ksp, "brand")) == NULL) {
-			return;
-		}
-		strncpy(node->node.cm_name, knp->value.str.addr.ptr,
-					min(HICPUNAMELEN, knp->value.str.len));
-	}
+	if ((knp = kstat_data_lookup(ksp, "brand")) == NULL)
+		return;
+
+	hi_cpu_set_chip_name(chip, knp->value.str.addr.ptr);
 }
 
-void hi_cpu_proc_cpu(hi_cpu_object_t* node, processorid_t cpu, long* cacheid) {
+hi_cpu_object_t* hi_cpu_proc_cpu(hi_cpu_object_t* node, processorid_t cpu, long* cacheid) {
 	kstat_ctl_t		*kc;
 	kstat_t			*ksp;
 	kstat_named_t	*knp;
 
-	long coreid;
+	long coreid, chipid;
 	char brand[HICPUNAMELEN];
 
+	hi_cpu_object_t* chip;
 	hi_cpu_object_t* core;
 	hi_cpu_object_t* strand;
 
 	if((kc = kstat_open()) == NULL)
-		return;
+		return NULL;
 
 	if((ksp = kstat_lookup(kc, "cpu_info", (int) cpu, NULL)) == NULL) {
 		kstat_close(kc);
-		return;
+		return NULL;
 	}
 
 	if(kstat_read(kc, ksp, NULL) == -1) {
 		kstat_close(kc);
-		return;
+		return NULL;
 	}
 
 	/* Read CPU information from kstat */
+	if ((knp = kstat_data_lookup(ksp, "chip_id")) == NULL) {
+		kstat_close(kc);
+		return NULL;
+	}
+	chipid = knp->value.l;
+
 	if ((knp = kstat_data_lookup(ksp, "core_id")) == NULL) {
 		kstat_close(kc);
-		return;
+		return NULL;
 	}
 	coreid = knp->value.l;
 
@@ -276,13 +280,24 @@ void hi_cpu_proc_cpu(hi_cpu_object_t* node, processorid_t cpu, long* cacheid) {
 		*cacheid = knp->value.l;
 	}
 
-	hi_cpu_kstat_read_freq(node, ksp);
-	hi_cpu_kstat_read_model(node, ksp);
+	/* Create processor/core objects if necessary */
+	chip = hi_cpu_find_byid(node, HI_CPU_CHIP, chipid);
+	if(chip == NULL) {
+		chip = hi_cpu_object_create(node, HI_CPU_CHIP, chipid);
 
-	/* Create core object if necessary */
-	core = hi_cpu_find_byid(node, HI_CPU_CORE, coreid);
+		cpu_kstat_read_freq(chip, ksp);
+		cpu_kstat_read_model(chip, ksp);
+
+		hi_cpu_object_add(chip);
+
+		core = NULL;
+	}
+	else {
+		core = hi_cpu_find_byid(node, HI_CPU_CORE, coreid);
+	}
+
 	if(core == NULL) {
-		core = hi_cpu_object_create(node, HI_CPU_CORE, coreid);
+		core = hi_cpu_object_create(chip, HI_CPU_CORE, coreid);
 		hi_cpu_object_add(core);
 	}
 
@@ -293,12 +308,15 @@ void hi_cpu_proc_cpu(hi_cpu_object_t* node, processorid_t cpu, long* cacheid) {
 						(long long) node->node.cm_freq, node->node.cm_name);
 
 	kstat_close(kc);
+
+	return chip;
 }
 
 void hi_cpu_proc_lgrp(lgrp_cookie_t cookie, lgrp_id_t lgrp) {
 	hi_cpu_object_t* node = NULL;
 	lgrp_id_t children[LGRP_MAX_CHILDREN];
 	processorid_t cpuids[LGRP_MAX_CPUS];
+	hi_cpu_object_t* chips[LGRP_MAX_CPUS] = { NULL };
 	long cacheids[LGRP_MAX_CPUS] = {-1};
 
 	int nchildren;
@@ -321,7 +339,7 @@ void hi_cpu_proc_lgrp(lgrp_cookie_t cookie, lgrp_id_t lgrp) {
 	 * NOTE: On SPARC cache_id kstat is not provided, so HI will assume
 	 * that all cache is private to core. */
 	for(i = 0; i < ncpus; ++i) {
-		hi_cpu_proc_cpu(node, cpuids[i], &cacheids[i]);
+		chips[i] = hi_cpu_proc_cpu(node, cpuids[i], &cacheids[i]);
 
 		if(i > 0 && cacheids[i] != -1 && (cacheids[i-1] == cacheids[i]))
 			shared_last_cache = B_TRUE;
@@ -333,7 +351,8 @@ void hi_cpu_proc_lgrp(lgrp_cookie_t cookie, lgrp_id_t lgrp) {
 	/* Second pass: walking caches. Process last level of cache only for
 	 * first CPU or then no shared_last_cache found */
 	for(i = 0; i < ncpus; ++i) {
-		hi_cpu_proc_cache(node, cpuids[i], shared_last_cache, i == 0);
+		if(chips[i] != NULL)
+			hi_cpu_proc_cache(chips[i], cpuids[i], shared_last_cache, i == 0);
 	}
 
 	nchildren = lgrp_children(cookie, lgrp, children, LGRP_MAX_CHILDREN);

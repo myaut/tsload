@@ -26,6 +26,7 @@ typedef enum {
 
 typedef enum {
 	HI_CPU_NODE,
+	HI_CPU_CHIP,
 	HI_CPU_CORE,
 	HI_CPU_STRAND,
 	HI_CPU_CACHE
@@ -38,15 +39,17 @@ typedef struct {
 	uint32_t mem_free;
 } hi_cpu_stat_t;
 
-#define HICPUNAMELEN	32
+#define HICPUNAMELEN	64
 
 typedef struct {
-	char cm_name[HICPUNAMELEN];
-
-	uint32_t cm_freq;
 	uint64_t cm_mem_total;
 	uint64_t cm_mem_free;
 } hi_cpu_node_t;
+
+typedef struct {
+	char cp_name[HICPUNAMELEN];
+	uint64_t cp_freq;
+} hi_cpu_chip_t;
 
 typedef struct {
 	int unused;
@@ -72,6 +75,7 @@ typedef struct hi_cpu_object {
 
 	union {
 		hi_cpu_node_t node;
+		hi_cpu_chip_t chip;
 		hi_cpu_core_t core;
 		hi_cpu_strand_t strand;
 		hi_cpu_cache_t cache;
@@ -91,10 +95,18 @@ hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t 
 void hi_cpu_object_add(hi_cpu_object_t* object);
 void* hi_cpu_find_byid(hi_cpu_object_t* parent, hi_cpu_objtype_t type, int id);
 
+void hi_cpu_set_chip_name(hi_cpu_object_t* chip, const char* name);
+
 STATIC_INLINE void hi_cpu_attach(hi_cpu_object_t* object, hi_cpu_object_t* parent) {
 	hi_obj_attach((hi_object_header_t*) &object->hdr,
 				  (hi_object_header_t*) &parent->hdr);
 }
+
+STATIC_INLINE void hi_cpu_detach(hi_cpu_object_t* object, hi_cpu_object_t* parent) {
+	hi_obj_detach((hi_object_header_t*) &object->hdr,
+				  (hi_object_header_t*) &parent->hdr);
+}
+
 
 STATIC_INLINE list_head_t* hi_cpu_list(boolean_t reprobe) {
 	return hi_obj_list(HI_SUBSYS_CPU, reprobe);

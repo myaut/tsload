@@ -9,10 +9,10 @@
 #include <mempool.h>
 #include <hiobject.h>
 
+#include <ctype.h>
+
 /**
  * cpuinfo.c - reads information about cpus
- *
- * TODO: CPU chips
  * */
 
 mp_cache_t hi_cpu_obj_cache;
@@ -28,10 +28,12 @@ hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t 
 	object->id = id;
 
 	if(type == HI_CPU_NODE) {
-		object->node.cm_name[0] = '\0';
 		object->node.cm_mem_total = 0;
 		object->node.cm_mem_free = 0;
-		object->node.cm_freq = 0;
+	}
+	else if(type == HI_CPU_CHIP) {
+		object->chip.cp_name[0] = '\0';
+		object->chip.cp_freq = 0;
 	}
 	else if(type == HI_CPU_CACHE) {
 		object->cache.c_level = 0;
@@ -42,10 +44,39 @@ hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t 
 	return object;
 }
 
+void hi_cpu_set_chip_name(hi_cpu_object_t* chip, const char* name) {
+	boolean_t wasspace = B_FALSE;
+	char* p = name;
+	int i = 0;
+
+	/* Model names may contain (R), (TM) or continously going spaces, ignore them */
+	while(*p && i < HICPUNAMELEN) {
+		if(wasspace && isspace(*p)) {
+			p++;
+			continue;
+		}
+		if(strncmp(p, "(R)", 3) == 0 ||
+		   strncmp(p, "(r)", 3) == 0)
+			p += 3;
+		if(strncmp(p, "(TM)", 4) == 0 ||
+		   strncmp(p, "(TM)", 4) == 0)
+			p += 4;
+
+		wasspace = TO_BOOLEAN(isspace(*p));
+
+		chip->chip.cp_name[i++] = *p++;
+	}
+
+	chip->chip.cp_name[i] = '\0';
+}
+
 void hi_cpu_object_add(hi_cpu_object_t* object) {
 	switch(object->type) {
 	case HI_CPU_NODE:
 		snprintf(object->hdr.name, HIOBJNAMELEN, "node:%d", object->id);
+		break;
+	case HI_CPU_CHIP:
+		snprintf(object->hdr.name, HIOBJNAMELEN, "chip:%d", object->id);
 		break;
 	case HI_CPU_CORE:
 		snprintf(object->hdr.name, HIOBJNAMELEN, "core:%d:%d",
@@ -53,7 +84,7 @@ void hi_cpu_object_add(hi_cpu_object_t* object) {
 		break;
 	case HI_CPU_STRAND:
 		snprintf(object->hdr.name, HIOBJNAMELEN, "strand:%d:%d:%d",
-				HI_CPU_PARENT(object)->id, HI_CPU_PARENT(HI_CPU_PARENT(object))->id, object->id);
+				HI_CPU_PARENT(HI_CPU_PARENT(object))->id, HI_CPU_PARENT(object)->id, object->id);
 		break;
 	case HI_CPU_CACHE:
 		snprintf(object->hdr.name, HIOBJNAMELEN, "cache:%s:%d",
@@ -63,33 +94,6 @@ void hi_cpu_object_add(hi_cpu_object_t* object) {
 
 	hi_obj_add(HI_SUBSYS_CPU, &object->hdr);
 }
-
-#if 0
-#define HI_CPU_MATCH		0
-#define HI_CPU_NEXT			1
-#define HI_CPU_WALKTHRU		2
-
-int hi_cpu_match(hi_cpu_object_t* obj, hi_cpu_objtype_t type, int id) {
-	/* Need to find it deeper */
-	if(type != HI_CPU_CACHE && type > obj->type)
-		return HI_CPU_WALKTHRU;
-	if(type == obj->type && id == obj->id)
-		return HI_CPU_MATCH;
-	return HI_CPU_NEXT;
-}
-
-switch(hi_cpu_match(object, type, id)) {
-	case HI_CPU_WALKTHRU:
-		result = hi_cpu_find(object, type, id);
-		break;
-	case HI_CPU_MATCH:
-		result = object;
-		break;
-	}
-
-	if(result)
-		return (void*) result;
-#endif
 
 /**
  * Find CPU object by it's type and id. More confortable than searching by object name.
@@ -120,7 +124,8 @@ void* hi_cpu_find_byid(hi_cpu_object_t* parent, hi_cpu_objtype_t type, int id) {
 				obj_cpu_parent = HI_CPU_PARENT(obj_cpu_parent);
 			} while(obj_cpu_parent != NULL);
 
-			return NULL;
+			/* Not of this parent - try next objects */
+			continue;
 		}
 	}
 
@@ -151,8 +156,7 @@ int hi_cpu_num_objs(hi_cpu_objtype_t obj_type) {
 }
 
 int hi_cpu_num_cpus(void) {
-	/* TODO: Should count CPU packages */
-	return 0;
+	return hi_cpu_num_objs(HI_CPU_CHIP);
 }
 
 int hi_cpu_num_cores(void) {
