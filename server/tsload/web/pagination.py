@@ -4,6 +4,8 @@ Created on Jun 10, 2013
 @author: myaut
 '''
 
+from tsload.web import webappPath
+
 from nevow import livepage
 from nevow import loaders
 from nevow import rend
@@ -41,7 +43,7 @@ class PaginatedView(rend.Fragment):
     paginatedDataField = 'data_default'
     searchPlaceholder = 'Search...'
     
-    docFactory = loaders.xmlfile('webapp/pageview.html')
+    docFactory = loaders.xmlfile(webappPath('pageview.html'))
     
     def __init__(self, parent, sessionUid):
         '''Initialize table view

@@ -4,6 +4,8 @@ Created on May 13, 2013
 @author: myaut
 '''
 
+from tsload import logging
+
 from tsload.jsonts import Flow
 from tsload.jsonts.server import TSLocalAgent, TSServerClient
 
@@ -35,6 +37,8 @@ class TSUserAgent(TSLocalAgent):
         
         self.client.getId()
         
+        self.logger = logging.getLogger('UserAgent')
+        
         self.rootAgent = server.localAgents[0]
         
         self.agentUsers = {}
@@ -54,7 +58,10 @@ class TSUserAgent(TSLocalAgent):
             userSet = yield self.dbStore.find(User, User.name == str(userName))
             user = yield userSet.one()
             
+            self.logger.info('Authorizing user %s', userName)
+            
             if user is None:
+                self.logger.warning('Error authorizing user: no such user: %s', userName)
                 raise UserAuthError('No such user: %s' % userName)
             
             authMethod = self.authServices[user.authService]

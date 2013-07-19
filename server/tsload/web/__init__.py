@@ -1,3 +1,6 @@
+import os
+from tsload import config
+
 from tsload.jsonts import JSONTS
 from tsload.jsonts.agent import TSAgent
 
@@ -8,6 +11,8 @@ from twisted.internet.defer import inlineCallbacks
 
 HOST = 'localhost'
 PORT = 9090
+
+_webappPath = config.getPath('tsweb', 'webapp')
 
 class TSWebAgent(TSAgent):
     '''Web-interface agent
@@ -56,4 +61,5 @@ class TSWebAgent(TSAgent):
         
         self.eventListener.callback(self)
         
-    
+def webappPath(path):
+    return os.path.join(_webappPath, path)

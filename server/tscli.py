@@ -3,6 +3,8 @@
 import sys
 import getopt
 
+from tsload import logging
+
 from tsload.cli import TSAdminCLIAgent
 
 from twisted.internet import reactor
@@ -16,6 +18,8 @@ def usage(error):
 
 HOST = 'localhost'
 PORT = 9090
+
+logging.initBasicLogging()
 
 authUser = None
 authPassword = None

@@ -37,7 +37,7 @@ boolean_t log_trace_callers = B_FALSE;
 thread_mutex_t	log_mutex;
 
 const char* log_severity[] =
-	{"CRIT", "WARN", "INFO", "_DBG", "_TRC" };
+	{"CRIT", "ERR", "WARN", "INFO", "_DBG", "_TRC" };
 
 #ifdef JSON_DEBUG
 static void json_error_callback(const char* msg) {
@@ -122,7 +122,7 @@ void log_gettime(char* buf, int sz) {
  * Log message to default logging location
  * No need to add \n to format string
  *
- * @param severity - level of logging (LOG_CRIT, LOG_WARN, LOG_INFO, LOG_DEBUG, LOG_TRACING)
+ * @param severity - level of logging (LOG_CRIT, LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG, LOG_TRACING)
  * @param source - origin of message
  * @param format - printf format
  *
@@ -147,7 +147,7 @@ int logmsg_src(int severity, const char* source, const char* format, ...)
 
 	mutex_lock(&log_mutex);
 
-	ret = fprintf(log_file, "%s [%s:%s] ", time, source, log_severity[severity]);
+	ret = fprintf(log_file, "%s [%s:%4s] ", time, source, log_severity[severity]);
 
 	va_start(args, format);
 	ret += vfprintf(log_file, format, args);

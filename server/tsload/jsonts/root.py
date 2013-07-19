@@ -4,6 +4,8 @@ Created on May 13, 2013
 @author: myaut
 '''
 
+from tsload import logging
+
 from tsload.jsonts import JSONTS, Flow
 
 from tsload.jsonts.server import TSLocalAgent, TSServerClient
@@ -25,6 +27,8 @@ class TSRootAgent(TSLocalAgent):
     def __init__(self, server):
         TSLocalAgent.__init__(self, server)
         
+        self.logger = logging.getLogger('RootAgent')
+        
         for command in ['hello', 'authMasterKey', 'listClients']:
             self.server.listenerFlows.append(Flow(dstAgentId = rootAgentId, 
                                                   command = command))
@@ -33,6 +37,9 @@ class TSRootAgent(TSLocalAgent):
     def hello(self, context, agentType, agentUuid):
         client = context.client
         agentId = client.getId()
+        
+        self.logger.info('Connected client %s from %s', client, client.endpointStr)
+        self.logger.info('\t\ttype: %s uuid: %s', agentType, agentUuid)
         
         client.setAgentInfo(agentType, agentUuid)
         
@@ -46,7 +53,7 @@ class TSRootAgent(TSLocalAgent):
     def authMasterKey(self, context, masterKey):
         client = context.client
         
-        self.server.doTrace('Authentificating client %s with key %s', client, masterKey)
+        self.logger.info('Authorizing client %s with master key', client)
         
         if str(self.server.masterKey) == masterKey:
             client.authorize(TSServerClient.AUTH_MASTER)

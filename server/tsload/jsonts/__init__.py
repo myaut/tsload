@@ -5,6 +5,8 @@ import time
 import copy
 import traceback
 
+from tsload import logging
+
 from twisted.internet.protocol import Protocol, Factory
 
 class AccessRule:
@@ -59,18 +61,29 @@ class JSONTS(Protocol):
     
     AE_INTERNAL_ERROR       = 300
     
+    instance = None
+    
     class Error(Exception):
         def __init__(self, code, error):
             self.code = code
             self.error = error
             
-        def __str__(self):
+            if JSONTS.instance is not None:
+                JSONTS.instance.logger.error('ERROR %d: %s', code, error)
+            
+        def __str__(self):            
             return 'ERROR %d: %s' % (self.code, self.error)
     
     def __init__(self, factory):
+        # For logging purposes use first JSONTS object
+        if JSONTS.instance is None:
+            JSONTS.instance = self
+        
         self.factory = factory
         self.state = JSONTS.STATE_NEW
         self.buffer = ''
+        
+        self.logger = logging.getLogger('JSONTS')
         
         self.commandIdGenerator = iter(xrange(sys.maxint))
     

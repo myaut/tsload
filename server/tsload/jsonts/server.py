@@ -7,6 +7,8 @@ Created on 07.05.2013
 import sys
 import traceback
 
+from tsload import logging
+
 from tsload.jsonts import AccessRule, Flow, JSONTS, TSLocalClientProxy
 from tsload.jsonts.agent import TSAgent, CallContext
 
@@ -73,7 +75,7 @@ class TSServerClient(JSONTS):
         self.agentId = agentId
     
     def authorize(self, authType):
-        self.factory.doTrace('Authorized client %s with auth %d' % (self, authType))
+        self.factory.logger.info('Authorized client %s with auth %d' % (self, authType))
         
         self.auth = authType
         
@@ -142,6 +144,8 @@ class TSServer(Factory):
         self.clients = {}
         self.localAgents = {}
         
+        self.logger = logging.getLogger('TSServer')
+        
         self.listenerFlows = []
         self.listenerAgents = []
         
@@ -155,15 +159,15 @@ class TSServer(Factory):
         
     def generateMasterKey(self):
         self.masterKey = uuid.uuid1()
-        self.doTrace('Master key is %s', self.masterKey)
+        self.logger.info('Master key is %s', self.masterKey)
         
         # FIXME: correct directory
         masterFile = file('master.key', 'w')
         masterFile.write(str(self.masterKey))
         masterFile.close()
     
-    def doTrace(self, fmt, *args):
-        print fmt % args 
+    def doTrace(self, msg, *args):
+        logging.trace('server', msg, *args)
     
     @classmethod
     def createServer(klass, port):
@@ -208,7 +212,7 @@ class TSServer(Factory):
                     listener.notifyDisconnect(client)
                 
         for agentId in deadAgentIds:
-            self.doTrace('Cleaned agent %d', agentId)
+            self.logger.info('Cleaned client #%d', agentId)
             del self.clients[agentId]
     
     def processMessage(self, srcClient, message):

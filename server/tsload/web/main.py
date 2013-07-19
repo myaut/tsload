@@ -4,7 +4,7 @@ Created on 10.05.2013
 @author: myaut
 '''
 
-from tsload.web import TSWebAgent
+from tsload.web import TSWebAgent, webappPath
 
 from twisted.python import util
 
@@ -18,7 +18,7 @@ from nevow import tags as T
 from tsload.jsonts.api.user import TSUserDescriptor
 
 class Menu(rend.Fragment):
-    docFactory = loaders.xmlfile('webapp/menu.html')  
+    docFactory = loaders.xmlfile(webappPath('menu.html'))  
     
     navClass = 'nav'
     
@@ -67,7 +67,7 @@ class TopMenu(rend.Fragment):
         return self.userName
 
 class MainMenu(rend.Fragment):
-    docFactory = loaders.xmlfile('webapp/mainmenu.html')
+    docFactory = loaders.xmlfile(webappPath('mainmenu.html'))
     
     def __init__(self):
         self.menu = Menu()
@@ -130,23 +130,23 @@ class MainPageMixin:
         return mainMenu
     
     def render_content(self, ctx, data):
-        return loaders.xmlfile('webapp/main.html')
+        return loaders.xmlfile(webappPath('main.html'))
     
     def render_CSS(self, ctx, data):
         return ''
 
 class MainPage(rend.Page, MainPageMixin):
-    docFactory = loaders.xmlfile('webapp/index.html')    
+    docFactory = loaders.xmlfile(webappPath('index.html'))    
     
     def render___liveglue(self, ctx, data):
         return ''
     
 class LiveMainPage(livepage.LivePage, MainPageMixin):
-    docFactory = loaders.xmlfile('webapp/index.html')    
+    docFactory = loaders.xmlfile(webappPath('index.html'))    
     
     def render___liveglue(self, ctx, data):
         return T.directive('liveglue')
 
 class AboutPage(MainPage):
     def render_content(self, ctx, data):
-        return loaders.xmlfile('webapp/about.html')
+        return loaders.xmlfile(webappPath('about.html'))

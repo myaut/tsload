@@ -14,6 +14,7 @@ from nevow import tags as T
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
+from tsload.web import webappPath
 from tsload.web.main import MainPage, LiveMainPage, Menu
 from tsload.web.pagination import PaginatedView
 
@@ -76,7 +77,7 @@ class ClientTable(PaginatedView):
     paginatedDataField = 'data_clients'
     
     def render_mainTable(self, ctx, data):
-        return loaders.xmlfile('webapp/agent/client.html')
+        return loaders.xmlfile(webappPath('agent/client.html'))
     
     def doFilter(self, criteria, row):
         return row['class'] == criteria
@@ -87,7 +88,7 @@ class LoadAgentTable(PaginatedView):
     paginatedDataField = 'data_loadAgents'
     
     def render_mainTable(self, ctx, data):
-        return loaders.xmlfile('webapp/agent/loadagent.html')
+        return loaders.xmlfile(webappPath('agent/loadagent.html'))
     
     def doFilter(self, criteria, row):
         if criteria.lower() in row['osname'].lower():
@@ -101,7 +102,7 @@ class WorkloadTypeTable(PaginatedView):
     paginatedDataField = 'data_workloadTypes'
     
     def render_mainTable(self, ctx, data):
-        return loaders.xmlfile('webapp/agent/wltypetable.html')
+        return loaders.xmlfile(webappPath('agent/wltypetable.html'))
     
     def doFilter(self, criteria, row):
         return row['workload'] == criteria or \
@@ -165,7 +166,7 @@ class LoadAgentInfoPage(LiveMainPage):
         if self.agentInfo is None:
             returnValue(self.renderAlert("Couldn't retrieve information for agent %s" % self.agentUuid))
         else:            
-            returnValue(loaders.xmlfile('webapp/agent/loadinfo.html'))
+            returnValue(loaders.xmlfile(webappPath('agent/loadinfo.html')))
     
     def render_agentMenu(self, ctx, data):
         menu = LoadAgentMenu()
@@ -246,7 +247,7 @@ class LoadAgentInfoPage(LiveMainPage):
                             ('clientEndpoint', clientEndpoint)]:
                 ctx.fillSlots(slot, data)
             
-        return loaders.xmlfile('webapp/agent/loadinfoagent.html')
+        return loaders.xmlfile(webappPath('agent/loadinfoagent.html'))
     
     @inlineCallbacks
     def workloadTypeList(self, ctx):
@@ -347,7 +348,7 @@ class LoadAgentInfoPage(LiveMainPage):
                                                      'default': default, 
                                                      'description': param.description})
         
-        wltparams = loaders.xmlfile('webapp/agent/wltypeparam.html')
+        wltparams = loaders.xmlfile(webappPath('agent/wltypeparam.html'))
         
         returnValue(wltparams)
 
@@ -360,7 +361,7 @@ class AgentPage(LiveMainPage):
         if role == 0:
             return self.renderAlert('You are not authorized')
         
-        return loaders.xmlfile('webapp/agent/index.html')
+        return loaders.xmlfile(webappPath('agent/index.html'))
     
     @inlineCallbacks
     def createClientList(self, ctx, data):      

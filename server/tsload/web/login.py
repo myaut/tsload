@@ -4,7 +4,9 @@ Created on 10.05.2013
 @author: myaut
 '''
 
-from tsload.web import TSWebAgent
+from tsload import config
+
+from tsload.web import TSWebAgent, webappPath
 
 from nevow import rend
 from nevow import loaders
@@ -39,7 +41,7 @@ class LoginPage(MainPage):
     implements(ILoginForm)
     
     def render_content(self, ctx, data):
-        return loaders.xmlfile('webapp/login.html')
+        return loaders.xmlfile(webappPath('login.html'))
         
     def render_loginFailure(self, ctx, data):
         session = inevow.ISession(ctx)
@@ -57,7 +59,7 @@ class LoginPage(MainPage):
         return webform.renderForms()
     
     def render_CSS(self, ctx, data):
-        return file('webapp/css/login.css').read()
+        return file(webappPath('css/login.css')).read()
     
     def loginResponse(self, agent, session):
         if agent.state != TSWebAgent.STATE_AUTHENTIFICATED:
@@ -81,7 +83,9 @@ class LoginPage(MainPage):
     def login(self, ctx, userName, password):
         session = inevow.ISession(ctx)
         
-        session.agent = TSWebAgent.createAgent('web', 'localhost', 9090)
+        session.agent = TSWebAgent.createAgent('web', 
+                                               config.get('tsserver', 'host'),
+                                               config.getInt('tsserver', 'port'))
         session.agent.setAuthData(userName, password)
         
         d = Deferred()

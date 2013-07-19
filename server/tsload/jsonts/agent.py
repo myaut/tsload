@@ -6,6 +6,8 @@ Created on 07.05.2013
 
 import sys
 
+from tsload import logging
+
 from tsload.jsonts import JSONTS, TSLocalClientProxy
 from tsload.jsonts.api.root import RootAgent
 
@@ -64,7 +66,7 @@ class TSAgent(Factory):
         return agent
     
     def doTrace(self, fmt, *args):
-        print fmt % args 
+        logging.trace('agent', fmt, *args)
     
     def buildProtocol(self, addr):
         return TSAgentClient(self, -1)

@@ -11,7 +11,10 @@ from storm.variables import (Variable, RawStrVariable, BoolVariable,
     DateTimeVariable, DateVariable, TimeVariable, TimeDeltaVariable,
     EnumVariable, PickleVariable, ListVariable, UUIDVariable, JSONVariable)
 from storm.properties import SimpleProperty
-from storm.info import get_cls_info 
+from storm.info import get_cls_info
+
+from storm import tracer 
+from tsload import logging
 
 #=======
 # SQLite
@@ -190,3 +193,28 @@ class TableSchema:
         
         
         pass
+    
+class StormDebugTracer(object):
+    def __init__(self):
+        pass
+
+    def connection_raw_execute(self, connection, raw_cursor, statement, params):
+        raw_params = []
+        for param in params:
+            if isinstance(param, Variable):
+                raw_params.append(param.get())
+            else:
+                raw_params.append(param)
+        raw_params = tuple(raw_params)
+        logging.trace('storm', "EXECUTE: %r, %r\n", statement, raw_params)
+
+    def connection_raw_execute_error(self, connection, raw_cursor,
+                                     statement, params, error):
+        logging.trace('storm', 'ERROR %d', error)
+
+    def connection_raw_execute_success(self, connection, raw_cursor,
+                                       statement, params):
+        logging.trace('storm', 'DONE')
+
+def initStormTracing():
+    tracer.install_tracer(StormDebugTracer())

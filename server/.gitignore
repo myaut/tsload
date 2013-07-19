@@ -4,6 +4,4 @@
 .settings
 *.pyc
 *.pyo
-master.key
-user.db
-expsvc.db
+var/
