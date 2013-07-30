@@ -15,6 +15,7 @@
 #include <getopt.h>
 #include <pathutil.h>
 #include <tsversion.h>
+#include <hiobject.h>
 
 #include <commands.h>
 
@@ -37,6 +38,7 @@ LIBIMPORT int mod_type;
 LIBIMPORT char mod_search_path[];
 
 LIBEXPORT struct subsystem xsubsys[] = {
+	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
 	SUBSYSTEM("load", load_init, load_fini)
 };
 

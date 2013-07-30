@@ -14,6 +14,7 @@
 #include <libjson.h>
 #include <tsdirent.h>
 #include <pathutil.h>
+#include <readlink.h>
 
 #include <assert.h>
 #include <stdarg.h>
@@ -37,6 +38,8 @@ int load_modules() {
 	plat_dir_t* dir = plat_opendir(mod_search_path);
 	plat_dir_entry_t* d = NULL;
 	char path[MODPATHLEN];
+	char link[MODPATHLEN];
+	char dst[MODPATHLEN];
 
 	if(!dir) {
 		logmsg(LOG_CRIT, "Failed to open directory %s", mod_search_path);
@@ -46,11 +49,22 @@ int load_modules() {
 	}
 
 	while((d = plat_readdir(dir)) != NULL) {
-		if( plat_dirent_hidden(d) ||
-			plat_dirent_type(d) != DET_REG)
+		if( plat_dirent_hidden(d))
 			continue;
 
-		path_join(path, MODPATHLEN, mod_search_path, d->d_name, NULL);
+		if(plat_dirent_type(d) == DET_REG) {
+			path_join(path, MODPATHLEN, mod_search_path, d->d_name, NULL);
+		}
+		else if(plat_dirent_type(d) == DET_SYMLINK) {
+			path_join(link, MODPATHLEN, mod_search_path, d->d_name, NULL);
+			plat_readlink(link, dst, MODPATHLEN);
+			path_join(path, MODPATHLEN, mod_search_path, dst, NULL);
+
+			/* FIXME: should normalize path here */
+		}
+		else {
+			continue;
+		}
 
 		mod_load(path);
 	}
@@ -203,7 +217,7 @@ module_t* mod_load(const char* path_name) {
 	return mod;
 
 fail:
-	if(err != 0)
+	if(err == 0)
 		plat_mod_close(&mod->mod_library);
 
 	logmsg(LOG_WARN, "Failed to load module %s!", path_name);

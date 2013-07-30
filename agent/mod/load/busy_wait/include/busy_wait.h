@@ -5,8 +5,8 @@
  *      Author: myaut
  */
 
-#ifndef DUMMY_H_
-#define DUMMY_H_
+#ifndef BUSY_WAIT_H_
+#define BUSY_WAIT_H_
 
 #include <wlparam.h>
 
@@ -14,4 +14,4 @@ struct busy_wait_workload {
 	wlp_integer_t num_cycles;
 };
 
-#endif /* DUMMY_H_ */
+#endif /* BUSY_WAIT_H_ */

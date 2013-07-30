@@ -111,8 +111,14 @@ thread_result_t control_thread(thread_arg_t arg) {
 			wl_notify(wl, WLS_RUNNING, 0, "Running workload %s step #%ld: %d requests",
 							wl->wl_name, wl->wl_current_step, step[wli].wls_rq_count);
 
-			/*FIXME: case if worker didn't started processing of requests for previous step yet */
-			tp_distribute_requests(step + wli, tp);
+			if(wl->wl_type->wlt_wl_step) {
+				wl->wl_type->wlt_wl_step(wl, step[wli].wls_rq_count);
+			}
+
+			if(wl->wl_type->wlt_run_request) {
+				/*FIXME: case if worker didn't started processing of requests for previous step yet */
+				tp_distribute_requests(step + wli, tp);
+			}
 
 			logmsg(LOG_TRACE, "Workload %s step #%ld",
 					wl->wl_name, wl->wl_current_step);

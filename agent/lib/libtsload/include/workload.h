@@ -75,7 +75,8 @@ typedef struct workload {
 	wl_type_t*		 wl_type;
 
 	thread_pool_t*	 wl_tp;
-	void*			 wl_params;
+	void*			 wl_params;			/**< Provides pointer to parameters structure */
+	void*			 wl_private;		/**< Internal data keeped by module */
 
 	thread_t		 wl_cfg_thread;		/**< Thread responsible for configuration*/
 

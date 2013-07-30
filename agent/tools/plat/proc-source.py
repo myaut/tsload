@@ -8,7 +8,9 @@ class SourcePrinter:
     
     @classmethod
     def do_account(cls, s):
-        cls.line += sum(1 for c in s if c == '\n')
+        l = sum(1 for c in s if c == '\n')
+        cls.line += l
+        return l
     
     @classmethod
     def do_print(cls, s):
@@ -16,6 +18,12 @@ class SourcePrinter:
         cls.do_account(s)
         
         sys.stdout.write(s)
+        
+    @classmethod
+    def do_remove(cls, s):
+        # Count line breaks
+        l = cls.do_account(s)
+        sys.stdout.write('\n' * l)
 
 debug = False
 
@@ -138,4 +146,4 @@ while True:
     if not remove:
         SourcePrinter.do_print(source[func_pos:pos])
     else:
-        SourcePrinter.do_account(source[func_pos:pos])
+        SourcePrinter.do_remove(source[func_pos:pos])

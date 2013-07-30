@@ -10,9 +10,10 @@
 #include <mempool.h>
 #include <string.h>
 
+#include <plat/dirent.h>
 #include <tsdirent.h>
 
-#include <dirent.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 PLATAPI plat_dir_t* plat_opendir(const char *name) {

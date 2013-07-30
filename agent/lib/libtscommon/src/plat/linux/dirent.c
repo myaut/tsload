@@ -37,3 +37,4 @@ PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 
 	return DET_UNKNOWN;
 }
+

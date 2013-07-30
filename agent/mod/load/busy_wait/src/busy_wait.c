@@ -66,6 +66,8 @@ wl_type_t busy_wait_wlt = {
 	busy_wait_wl_config,				/* wlt_wl_config */
 	busy_wait_wl_unconfig,				/* wlt_wl_unconfig */
 
+	NULL,								/* wlt_wl_step */
+
 	busy_wait_run_request				/* wlt_run_request */
 };
 

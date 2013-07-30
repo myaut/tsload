@@ -19,83 +19,6 @@ from tstest import TestSuite
 # ------------------------
 # ENVIRONMENT HELPERS
 
-def Macroses(self, *macroses):
-    prefix = '/D' if self['CC'] == 'cl' else '-D'
-        
-    for macro in macroses:
-        self.Append(CCFLAGS = [prefix + macro])
-    
-def SupportedPlatform(self, platform):
-    return platform in self['PLATCHAIN']
-
-def BuildDir(self, dir):
-    return PathJoin('#build', 'build', dir)
- 
-def AddDeps(self, *deps):
-    for dir, dep in deps:
-        inc_dir = PathJoin(dir, dep, 'include')
-        lib_dir = PathJoin(dir, dep)
-        
-        self['CPPPATH'] += [self.BuildDir(inc_dir)]
-        self['LIBPATH'] += [self.BuildDir(lib_dir)]
-        self['LIBS'] += [dep]
-
-def InstallTarget(self, tgtdir, target):
-    if 'install' in BUILD_TARGETS or 'zip' in BUILD_TARGETS:
-        tgtdir = Dir(PathJoin(env['PREFIX'], tgtdir))
-        install = self.Install(tgtdir, target)
-        self.Alias('install', install)
-        
-        return install[0]
-
-# Compile and build various targets
-def CompileSharedLibrary(self, extra_sources = [], 
-                         ctfconvert = True):
-    objects = self.SharedObject(Glob("src/*.c") + Glob("plat/*/*.c") + extra_sources)
-    
-    # In Solaris we need to convert types from DWARF into CTF
-    if ctfconvert and self.SupportedPlatform('solaris') and self['CTFCONVERT']:
-        # ctfobjs = filter(lambda o: str(o.srcnode).endswith('.cpp'), ctfobjs)
-        
-        self.AddPostAction(objects, CommandAction('$CTFCONVERT -l $TSVERSION $TARGET'))
-    
-    return objects
-    
-def CompileProgram(self, extra_sources = []):
-    objects = self.Object(Glob("src/*.c") + Glob("plat/*/*.c") + extra_sources)
-    return objects
-
-def LinkSharedLibrary(self, target, objects, 
-                      ctfmerge = True):
-    library = self.SharedLibrary(target, objects)
-    
-    if ctfmerge and self.SupportedPlatform('solaris') and self['CTFMERGE']:
-        self.AddPostAction(library, '$CTFMERGE -l $TSVERSION -o $TARGET $SOURCES')
-    
-    if env['LINK'] == 'link':
-        # For Microsoft linker library contains .dll, .lib and .exp file
-        # return only .dll file because only it needs to be installed
-        library = filter(lambda f: str(f).endswith(env['SHLIBSUFFIX']), library)
-    
-    # XXX: LinkSharedLibrary called with context of cloned environment
-    # We need to modify global env, so we call it. It's working :)
-    # Another option is adding this line to each library SConscript 
-    env['TESTLIBS'][target] = library
-    
-    return library
-
-def Module(self, mod_type, mod_name):   
-    mod = self.Clone()
-    mod.Macroses('NO_JSON')
-    
-    mod.AddDeps(('lib', 'libtscommon'), 
-                ('lib', 'libtsload'))
-    modobjs = mod.CompileSharedLibrary()
-    module = mod.LinkSharedLibrary(mod_name, modobjs)
-    
-    mod_install_dirs = { 'load': mod['INSTALL_MOD_LOAD'] }
-    mod.InstallTarget(mod_install_dirs[mod_type], module)
-
 def AddEnableOption(option, dest, default, help):
     (enable_help, disable_help) = (SUPPRESS_HELP, 'Disable ' + help + ' (enabled by default)')         \
                                     if default                                                         \
@@ -106,38 +29,12 @@ def AddEnableOption(option, dest, default, help):
     AddOption('--disable-'+option,  dest=dest, action="store_false", default=default, 
               help=disable_help)
 
-def FindMicrosoftSDK(self):
-    # Search for windows SDK. SCons doesn't support newest SDKs so implement our own
-    winsdk_path = GetOption('with_windows_sdk')
-    
-    if not winsdk_path:
-        sdk_locations = ["C:\\Program Files\\Microsoft SDKs\\Windows\\", 
-                         "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\"]
-        sdk_versions = [ "v7.1", "v7.0A", "v7.0", "v6.1", "v6.0a", "v6.0" ]
-        
-        for location, version in product(sdk_locations, sdk_versions):
-            winsdk_path = PathJoin(location, version)
-            
-            if PathExists(winsdk_path):
-                break
-        else:
-            raise StopError("FindMicrosoftSDK: couldn't find Microsoft SDK in one of predefined paths, use --with-windows-sdk")
-    
-    self.Append(CPPPATH = [PathJoin(winsdk_path, 'Include')])
-    if env['TARGET_ARCH'] == 'amd64':
-        self.Append(LIBPATH = [PathJoin(winsdk_path, 'Lib\\x64')])
-    else:
-        self.Append(LIBPATH = [PathJoin(winsdk_path, 'Lib')])
-    self.Append(LIBS = ['Kernel32.lib'])
 
 SConsEnvironment.Chmod = ActionFactory(os.chmod,
         lambda dest, mode: 'Chmod("%s", 0%o)' % (dest, mode))
 
 # ------------------------
 # BUILD OPTIONS
-
-AddOption('--prefix',  dest='prefix', action="store", default = '',
-          metavar='PREFIX', help='Installation prefix') 
 
 AddOption('--list',  dest='list', action="store_true", default=False,
           metavar='TARGETS', help='Prints list of targets which could be built')
@@ -183,51 +80,20 @@ AddOption('--test-dir',  dest='test_directory', action="store", default='',
 env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
                          TARGET_ARCH = GetOption('mach'))
 
-env.AddMethod(AddDeps)
-env.AddMethod(Macroses)
-env.AddMethod(BuildDir)
-env.AddMethod(Module)
-env.AddMethod(InstallTarget)
-env.AddMethod(SupportedPlatform)
-env.AddMethod(CompileSharedLibrary)
-env.AddMethod(CompileProgram)
-env.AddMethod(LinkSharedLibrary)
-env.AddMethod(FindMicrosoftSDK)
-
+env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload-agent'
 env['TSVERSION'] = '0.2'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
-env.Append(CPPPATH = ['#include', 'include'])
-env.Append(LIBPATH = [])
-env.Append(LIBS = [])
+env['DEBUG'] = GetOption('debug')
 
-# TESTLIBS maps library under test name to path to it
-env.Append(TESTLIBS = {})
-
-# Add verbosity of warnings
-if env['CC'] == 'gcc': 
-    env.Append(CCFLAGS = ['-Wall'])
-    env.Append(CCFLAGS = ['-Wno-unused-label', '-Wno-unused-variable', '-Wno-unused-function'])
-elif env['CC'] == 'cl':
-    env.Append(CCFLAGS = ['/W3'])
-
-# Determine build flags (debug/release)
-if GetOption('debug'):
-    if env['CC'] == 'gcc':
-        env.Append(CCFLAGS = ["-g"])
-    elif env['CC'] == 'cl':
-        env.Append(CCFLAGS = ["/Zi", '/Od'])
-        env.Append(LINKFLAGS =  ["/debug"])
-    env.Macroses('JSON_DEBUG')
-else:
-    if env['CC'] == 'gcc':
-        env.Append(CCFLAGS = ['-O2'])
-    elif env['CC'] == 'cl':
-        env.Append(CCFLAGS = ['/O2'])
+SConscript('SConscript.env.py', 'env')
 
 # Build options for libjson. Because libjson.h uses across all agent code,
 # define these settings globally
+if GetOption('debug'):
+    env.Macroses('JSON_DEBUG')
+
 env.Macroses('JSON_MEMORY_CALLBACKS', 'JSON_INT_TYPE=long long')
 
 # --------------------------
@@ -237,18 +103,7 @@ SConscript('SConscript.plat.py', 'env')
 if sys.platform == 'win32':
     env.Macroses('_WINSOCKAPI_')
     env.Macroses('_CRT_SECURE_NO_WARNINGS')
-    env.FindMicrosoftSDK()
     
-# Setup C RTL
-if env.SupportedPlatform('win'):
-    if GetOption('debug'):
-        env.Append(CCFLAGS = ['/MDd'])
-    else:
-        env.Append(CCFLAGS = ['/MD'])
-elif env.SupportedPlatform('posix'):
-    env.Append(LIBS = ['c'])
-    env.Macroses('_GNU_SOURCE')
-
 # ----------------------------
 # CONFIGURE
 
@@ -264,40 +119,7 @@ if 'doc' in BUILD_TARGETS:
 # ------------------------
 # INSTALLATION DIRECTORIES
 
-# Define installation prefixes
-env['PREFIX'] = GetOption('prefix')
-
-if not env['PREFIX']:
-    env['PREFIX'] = PathJoin('build', env['TSNAME'])
-
-if not PathIsAbs(env['PREFIX']):
-    env['PREFIX'] = PathAbsolute(env['PREFIX'])
-
-env['ZIPFILE'] = PathJoin('#build', env['TSNAME']) + '$ZIPSUFFIX'
-
-# In Windows we install all binaries into installation root and prettify directories names
-
-# env[key]    POSIX directory    WIN directory     param name    param help
-install_dirs = [('INSTALL_BIN',      'bin',          '',   
-                    'bindir',   'loader modules'),
-                ('INSTALL_LIB',      'lib',          '',    
-                    'libdir',   'shared libraries'),
-                ('INSTALL_ETC',      'etc',          'Configuration',   
-                    'etcdir',   'configuration files'),
-                ('INSTALL_VAR',      'var',          'Data',   
-                    'vardir',   'variable files'),
-                ('INSTALL_SHARE',    'share/tsload', 'Shared',   
-                    'sharedir',   'shared files'),
-                ('INSTALL_MOD_LOAD', 'mod/load',     'LoadModules',   
-                    'loadmoddir',   'loader modules')]
-
-
-for key, dir, win_dir, param, help in install_dirs:
-    default = win_dir if env.SupportedPlatform('win') else dir    
-    
-    AddOption('--' + param,  dest=param, action="store", default=default,
-              metavar='DIR', help=help + ' [EPREFIX/%default]')
-    env[key] = GetOption(param)
+SConscript('SConscript.install.py', 'env')
 
 env['LOAD_LOGFILE'] = GetOption('tsload_log_file')
 if not PathIsAbs(env['LOAD_LOGFILE']):

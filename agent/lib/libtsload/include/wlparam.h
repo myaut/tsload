@@ -40,7 +40,7 @@ typedef enum {
 	/*double*/		WLP_FLOAT,
 	/*char[]*/ 		WLP_RAW_STRING, /*Any string*/
 
-	/*char[]*/		WLP_STRING_SET,  /*string - one of posible value*/
+	/*char[]*/		WLP_STRING_SET,  /*string - one of possible values*/
 
 	/* metatypes - using primitive types in serialization
 	 * but have different meanings */

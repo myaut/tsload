@@ -107,6 +107,15 @@ STATIC_INLINE void hi_cpu_detach(hi_cpu_object_t* object, hi_cpu_object_t* paren
 				  (hi_object_header_t*) &parent->hdr);
 }
 
+/**
+ * Find cpu object by it's name
+ * @param name - name of disk
+ *
+ * @return disk descriptor or NULL if it wasn't found
+ * */
+STATIC_INLINE hi_cpu_object_t* hi_cpu_find(const char* name) {
+	return   (hi_cpu_object_t*)	hi_obj_find(HI_SUBSYS_CPU, name);
+}
 
 STATIC_INLINE list_head_t* hi_cpu_list(boolean_t reprobe) {
 	return hi_obj_list(HI_SUBSYS_CPU, reprobe);

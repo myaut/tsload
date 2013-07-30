@@ -21,6 +21,7 @@ struct workload;
 struct request;
 
 typedef int (* wlt_wl_config_func)(struct workload* wl);
+typedef int (* wlt_wl_step_func)(struct workload* wl, unsigned num_requests);
 typedef int (* wlt_run_request_func)(struct request* wl);
 
 typedef enum wl_class {
@@ -48,8 +49,10 @@ typedef struct wl_type {
 	wlp_descr_t* wlt_params;
 	size_t 		 wlt_params_size;			/**< sizeof structure where parameter values are stored*/
 
-	wlt_wl_config_func wlt_wl_config;
-	wlt_wl_config_func wlt_wl_unconfig;
+	wlt_wl_config_func   wlt_wl_config;
+	wlt_wl_config_func   wlt_wl_unconfig;
+
+	wlt_wl_step_func 	 wlt_wl_step;
 
 	wlt_run_request_func wlt_run_request;
 

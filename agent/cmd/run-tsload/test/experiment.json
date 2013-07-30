@@ -1,8 +1,12 @@
 {
 	"name": "test",
 	"steps": {
-		"test1": "test1.tss",
-		"test2": "test2.tss"
+		"test1": {
+			"file": "test1.tss"
+		},
+		"test2": {
+			"file": "test2.tss"
+		}
 	},
 	"threadpools": {
 		"test1": {

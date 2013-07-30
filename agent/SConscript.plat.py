@@ -92,4 +92,17 @@ PlatSrcBuilder = Builder(action = '%s tools/plat/proc-source.py $SOURCE > $TARGE
 env.Append(BUILDERS = {'PlatIncBuilder': PlatIncBuilder, 
                        'PlatSrcBuilder': PlatSrcBuilder})
 
+# Setup C RTL
+if env.SupportedPlatform('win'):
+    if GetOption('debug'):
+        env.Append(CCFLAGS = ['/MDd'])
+    else:
+        env.Append(CCFLAGS = ['/MD'])
+elif env.SupportedPlatform('posix'):
+    env.Append(LIBS = ['c'])
+    env.Macroses('_GNU_SOURCE')
+    
+if sys.platform == 'win32':
+    env.FindMicrosoftSDK()
+
 Export('env')

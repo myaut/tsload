@@ -231,6 +231,8 @@ wl_type_t simpleio_wlt_read = {
 	simpleio_wl_config_read,			/* wlt_wl_config */
 	simpleio_wl_unconfig,				/* wlt_wl_unconfig */
 
+	NULL,								/* wlt_wl_step */
+
 	simpleio_run_request_read			/* wlt_run_request */
 };
 
@@ -244,6 +246,8 @@ wl_type_t simpleio_wlt_write = {
 
 	simpleio_wl_config_write,			/* wlt_wl_config */
 	simpleio_wl_unconfig,				/* wlt_wl_unconfig */
+
+	NULL,								/* wlt_wl_step */
 
 	simpleio_run_request_write			/* wlt_run_request */
 };

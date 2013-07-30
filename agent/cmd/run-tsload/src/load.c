@@ -148,33 +148,74 @@ static void unconfigure_all_wls(void);
 
 /**
  * Reads steps file name from configuration for workload wl_name; opens
- * steps file. If open encounters an error, returns LOAD_ERR_CONFIGURE
- * otherwise returns LOAD_OK */
+ * steps file or creates const generator.
+ * If open encounters an error or invalid description provided,
+ * returns LOAD_ERR_CONFIGURE otherwise returns LOAD_OK */
 static int load_steps(const char* wl_name, JSONNODE* steps_node) {
 	int ret = LOAD_OK;
 
-	JSONNODE_ITERATOR	i_step, i_end;
+	JSONNODE_ITERATOR	i_step, i_end, i_file, i_const_rqs, i_const_steps;
 	char* step_fn;
 	char step_filename[PATHMAXLEN];
+
+	long num_steps;
+	unsigned num_requests;
 
 	i_end = json_end(steps_node);
 	i_step = json_find(steps_node, wl_name);
 
 	if( i_step == i_end ||
-		json_type(*i_step) != JSON_STRING) {
+		json_type(*i_step) != JSON_NODE) {
 			load_fprintf(stderr, "Missing steps for workload %s\n", wl_name);
 			return LOAD_ERR_CONFIGURE;
 	}
 
-	step_fn = json_as_string(*i_step);
-	path_join(step_filename, PATHMAXLEN, experiment_dir, step_fn, NULL);
+	i_end = json_end(*i_step);
+	i_file = json_find(*i_step, "file");
 
-	if(step_open(wl_name, step_filename) != STEP_OK) {
-		load_fprintf(stderr, "Couldn't open steps file for workload %s\n", step_filename, wl_name);
-		ret = LOAD_ERR_CONFIGURE;
+	if(i_file != i_end) {
+		if(json_type(*i_file) != JSON_STRING) {
+			load_fprintf(stderr, "Invalid steps description for workload %s: 'file' should be a string\n", wl_name);
+			return LOAD_ERR_CONFIGURE;
+		}
+
+		step_fn = json_as_string(*i_file);
+		path_join(step_filename, PATHMAXLEN, experiment_dir, step_fn, NULL);
+
+		if(step_create_file(wl_name, step_filename) != STEP_OK) {
+			load_fprintf(stderr, "Couldn't open steps file for workload %s\n", step_filename, wl_name);
+			ret = LOAD_ERR_CONFIGURE;
+		}
+
+		load_fprintf(stderr, "Loaded steps file %s for workload %s\n", step_filename, wl_name);
+
+		json_free(step_fn);
 	}
+	else {
+		i_const_rqs = json_find(*i_step, "num_requests");
+		i_const_steps = json_find(*i_step, "num_steps");
 
-	json_free(step_fn);
+		if(i_const_rqs != i_end && i_const_steps != i_end) {
+			if(json_type(*i_const_rqs) != JSON_NUMBER ||
+			   json_type(*i_const_steps) != JSON_NUMBER) {
+				load_fprintf(stderr, "Invalid steps description for workload %s:"
+									 "'num_requests' and 'num_steps' should be numbers\n", wl_name);
+							return LOAD_ERR_CONFIGURE;
+			}
+
+			num_steps = json_as_int(*i_const_steps);
+			num_requests = json_as_int(*i_const_rqs);
+
+			step_create_const(wl_name, num_steps, num_requests);
+
+			load_fprintf(stderr, "Created constant steps generator for workload %s with N=%d R=%d\n",
+					wl_name, num_steps, num_requests);
+		}
+		else {
+			load_fprintf(stderr, "Not found steps parameters for workload %s\n", wl_name);
+			return LOAD_ERR_CONFIGURE;
+		}
+	}
 
 	return ret;
 }
@@ -231,17 +272,26 @@ static int configure_all_wls(JSONNODE* steps_node, JSONNODE* wl_node) {
 
 	wl_name_array = mp_malloc(num * sizeof(char*));
 
+	if(json_type(steps_node) != JSON_NODE) {
+		load_fprintf(stderr, "Cannot process steps: not a JSON node\n");
+		return LOAD_ERR_CONFIGURE;
+	}
+
 	while(iter != end) {
 		wl_name = json_name(*iter);
+
+		steps_err = load_steps(wl_name, steps_node);
+		if(steps_err != LOAD_OK) {
+			/* Error encountered during configuration - do not configure other workloads */
+			return LOAD_ERR_CONFIGURE;
+		}
+
 		tsload_configure_workload(wl_name, *iter);
 
 		load_fprintf(stdout, "Initialized workload %s\n", wl_name);
 		wl_name_array[wl_count++] = wl_name;
 
-		steps_err = load_steps(wl_name, steps_node);
-
-		if(load_error || steps_err != LOAD_OK) {
-			/* Error encountered during configuration - do not configure other workloads */
+		if(load_error) {
 			return LOAD_ERR_CONFIGURE;
 		}
 

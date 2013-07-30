@@ -231,12 +231,14 @@ void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object) {
  * */
 hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name) {
 	hi_object_t* object;
-	hi_obj_subsys_t* subsys = get_subsys(sid);
+	list_head_t* list;
 
-	if(!subsys)
+	list = hi_obj_list(sid, B_FALSE);
+
+	if(!list)
 		return NULL;
 
-	hi_for_each_object(object, &subsys->list) {
+	hi_for_each_object(object, list) {
 		if(strcmp(object->name, name) == 0)
 			return object;
 	}

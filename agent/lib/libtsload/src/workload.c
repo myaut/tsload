@@ -72,6 +72,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	list_node_init(&wl->wl_tp_node);
 
 	wl->wl_params = mp_malloc(wlt->wlt_params_size);
+	wl->wl_private = NULL;
 
 	wl->wl_is_configured = B_FALSE;
 	wl->wl_is_started = B_FALSE;

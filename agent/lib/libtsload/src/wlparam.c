@@ -12,6 +12,9 @@
 #include <wlparam.h>
 #include <tsload.h>
 
+#include <cpuinfo.h>
+#include <diskinfo.h>
+
 #include <libjson.h>
 
 #include <stdlib.h>
@@ -84,8 +87,6 @@ JSONNODE* json_wlparam_format(wlp_descr_t* wlp) {
 		if(wlp->defval.enabled)
 			json_push_back(wlp_node, json_new_f("default", wlp->defval.f));
 		break;
-	case WLP_FILE_PATH:
-	case WLP_CPU_OBJECT:
 	case WLP_DISK:
 	case WLP_RAW_STRING:
 		json_push_back(wlp_node, json_new_i("len", wlp->range.str_length));
@@ -125,19 +126,21 @@ int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 	wlp_string_t* str = (wlp_string_t*) param;
 	char* js = NULL;
 
+	int ret = WLPARAM_JSON_OUTSIDE_RANGE;
+
 	if(json_type(node) != JSON_STRING)
 		return WLPARAM_JSON_WRONG_TYPE;
 
 	js = json_as_string(node);
 
-	if(strlen(js) > wlp->range.str_length)
-		return WLPARAM_JSON_OUTSIDE_RANGE;
-
-	strcpy(param, js);
+	if(strlen(js) < wlp->range.str_length) {
+		strcpy(param, js);
+		ret = WLPARAM_JSON_OK;
+	}
 
 	json_free(js);
 
-	return WLPARAM_JSON_OK;
+	return ret;
 }
 
 
@@ -166,6 +169,34 @@ int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 
 	*ss = -1;
 	return WLPARAM_JSON_OUTSIDE_RANGE;
+}
+
+int json_wlparam_hiobj_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
+	hi_object_t** pobj = (hi_object_t**) param;
+	int ret = WLPARAM_JSON_OUTSIDE_RANGE;
+	char* js = NULL;
+
+	if(json_type(node) != JSON_STRING)
+		return WLPARAM_JSON_WRONG_TYPE;
+
+	js = json_as_string(node);
+
+	switch(wlp->type) {
+	case WLP_CPU_OBJECT:
+		*pobj = hi_cpu_find(js);
+		break;
+	case WLP_DISK:
+		*pobj = hi_dsk_find(js);
+		break;
+	}
+
+	if(*pobj != NULL) {
+		ret = WLPARAM_JSON_OK;
+	}
+
+	json_free(js);
+
+	return ret;
 }
 
 #define WLPARAM_RANGE_CHECK(min, max)						\
@@ -202,12 +233,13 @@ int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 				json_as_float, WLPARAM_RANGE_CHECK(d_min, d_max));
 		break;
 	case WLP_FILE_PATH:
-	case WLP_CPU_OBJECT:
-	case WLP_DISK:
 	case WLP_RAW_STRING:
 		return json_wlparam_string_proc(node, wlp, param);
 	case WLP_STRING_SET:
 		return json_wlparam_strset_proc(node, wlp, param);
+	case WLP_CPU_OBJECT:
+	case WLP_DISK:
+		return json_wlparam_hiobj_proc(node, wlp, param);
 	}
 
 	return WLPARAM_JSON_OK;
@@ -230,8 +262,6 @@ int wlparam_set_default(wlp_descr_t* wlp, void* param) {
 		(*(wlp_float_t*) param) = wlp->defval.f;
 		break;
 	case WLP_FILE_PATH:
-	case WLP_CPU_OBJECT:
-	case WLP_DISK:
 	case WLP_RAW_STRING:
 		/* Not checking length of default value here*/
 		strcpy((char*) param, wlp->defval.s);
