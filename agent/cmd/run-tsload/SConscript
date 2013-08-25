@@ -42,6 +42,11 @@ def CreateScript(target, source, env):
     
     script_file.close()
 
+def InstallExperiment(experiment_name):
+    for file in Dir(experiment_name).glob('*'):
+        cmd.Depends(run_tsload,  file)
+        cmd.InstallTarget(PathJoin(cmd['INSTALL_VAR'], experiment_name), file)
+
 cmd = env.Clone()
 
 cmd.AddDeps(('lib', 'libtsagent'), 
@@ -55,9 +60,8 @@ run_tsload = cmd.Program(_target, objects)
 i_run_tsload = cmd.InstallTarget(cmd['INSTALL_BIN'], run_tsload)
 
 # Install test experiment files
-for file in Dir('test').glob('*'):
-    cmd.Depends(run_tsload,  file)
-    cmd.InstallTarget(PathJoin(cmd['INSTALL_VAR'], 'test'), file)
+InstallExperiment('simpleio')
+InstallExperiment('busy_wait')
 
 # Generate run-tsload script
 if env.SupportedPlatform('posix'):

@@ -8,7 +8,6 @@ from SCons.Errors import StopError
 from SCons.Script.SConscript import SConsEnvironment
 
 from optparse import SUPPRESS_HELP 
-from itertools import product
 
 sys.path.append(os.path.join('tools', 'build'))
 
@@ -56,6 +55,12 @@ AddEnableOption('debug', dest='debug', default=True,
 AddEnableOption('trace', dest='trace', default=False, 
                 help='various tracing facilities')
 
+# Dynamic event tracing framework support
+AddEnableOption('usdt', dest='usdt', default=True, 
+                help='User Defined Tracing (SystemTap, DTrace)')
+AddEnableOption('etw', dest='etw', default=True, 
+                help='Event Tracing for Windows')
+
 # tsloadd config options
 AddOption('--tsload-log-file', dest='tsload_log_file', action='store', default='tsload.log',
           metavar='LOGFILE', help='Log file for tsload daemon (specified in tsloadd configuration)')
@@ -70,7 +75,6 @@ AddOption('--runner-threads',  dest='runner_threads', action="store", default='1
           metavar='COUNT', help='Number of threads in test suite runner')
 AddOption('--test-dir',  dest='test_directory', action="store", default='',
           metavar='TESTDIR', help='Path to test directory')
-
 
 # Installation directories options are specified below
 
@@ -103,6 +107,11 @@ SConscript('SConscript.plat.py', 'env')
 if sys.platform == 'win32':
     env.Macroses('_WINSOCKAPI_')
     env.Macroses('_CRT_SECURE_NO_WARNINGS')
+
+# --------------------------
+# ETRACE PREPROCESSOR
+env['ETRACEENABLED'] = False
+SConscript('SConscript.etrace.py', 'env')
     
 # ----------------------------
 # CONFIGURE

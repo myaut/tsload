@@ -19,6 +19,7 @@
 #include <wltype.h>
 #include <tsload.h>
 #include <tstime.h>
+#include <etrace.h>
 
 #include <libjson.h>
 
@@ -36,6 +37,50 @@ thread_t	t_wl_notify;
 
 mp_cache_t	wl_cache;
 mp_cache_t	wl_rq_cache;
+
+/**
+ * TSLoad supports statically-defined userspace dynamic tracing (USDT) using etrace subsystem.
+ * Build with --enable-usdt (Linux + SystemTap or Solaris + DTrace) or --enable-etw
+ * (Event Tracing for Windows).
+ *
+ * Windows:
+ *		Register provider with wevtutil:
+ *			C:\> wevtutil im Shared\workload.man
+ *		Start tracing with logman:
+ *		 	C:\> logman start -ets TSloadWL -p "Tslaod-Workload" 0 0 -o tracelog.etl
+ *		Run run-tsload:
+ *			C:\> run-tsload.bat -e Data\busy_wait\
+ *		Stop tracing:
+ *			C:\> logman stop -ets TSloadWL
+ *		Generate reports:
+ *			C:\> tracerpt -y tracelog.etl
+ *
+ *		If you need to uninstall provider, call wevtutil with um command:
+ *			C:\> wevtutil um Shared\workload.man
+ *
+ * Linux:
+ * 		root@centos# stap -e '
+ * 			probe process("../lib/libtsload.so").provider("tsload__workload").mark("request__start") {
+ * 				println(user_string(@cast($arg1, "workload_t")->wl_name));
+ * 			} ' \
+ * 				-c 'run-tsload -e ../var/busy_wait/'
+ *
+ * Solaris:
+ * 		root@sol11# dtrace -n '
+ * 			request-start {
+ * 				this->wl_name = (char*) copyin(arg0, 64);
+ * 				trace(stringof(this->wl_name));
+ * 			}'	\
+ * 				 -c 'run-tsload -e ../var/busy_wait/'
+ * */
+
+#define ETRC_GUID_TSLOAD_WORKLOAD	{0x9028d325, 0xfcfd, 0x49fd, {0xae, 0x39, 0x64, 0xbe, 0x46, 0xd2, 0x78, 0x42}}
+
+ETRC_DEFINE_PROVIDER(tsload__workload, ETRC_GUID_TSLOAD_WORKLOAD);
+
+ETRC_DEFINE_EVENT(tsload__workload, request__start, 1);
+ETRC_DEFINE_EVENT(tsload__workload, request__finish, 2);
+ETRC_DEFINE_EVENT(tsload__workload, workload__step, 3);
 
 DECLARE_HASH_MAP(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_hm_next,
 	{
@@ -331,6 +376,8 @@ int wl_advance_step(workload_step_t* step) {
 		goto done;
 	}
 
+	ETRC_PROBE1(tsload__workload, workload__step, workload_t*, wl);
+
 	step_off = wl->wl_current_step  & WLSTEPQMASK;
 	step->wls_rq_count = wl->wl_rqs_per_step[step_off];
 
@@ -380,6 +427,8 @@ void wl_run_request(request_t* rq) {
 
 	rq->rq_flags |= RQF_STARTED;
 
+	ETRC_PROBE2(tsload__workload, request__start, workload_t*, wl, request_t*, rq);
+
 	rq->rq_start_time = tm_get_clock();
 	ret = wl->wl_type->wlt_run_request(rq);
 	rq->rq_end_time = tm_get_clock();
@@ -392,6 +441,8 @@ void wl_run_request(request_t* rq) {
 		rq->rq_flags |= RQF_SUCCESS;
 
 	rq->rq_flags |= RQF_FINISHED;
+
+	ETRC_PROBE2(tsload__workload, request__finish, workload_t*, wl, request_t*, rq);
 }
 
 void wl_rq_chain_push(list_head_t* rq_chain) {
@@ -565,10 +616,14 @@ int wl_init(void) {
 	mp_cache_init(&wl_rq_cache, request_t);
 	mp_cache_init(&wl_cache, workload_t);
 
+	etrc_provider_init(&tsload__workload);
+
 	return 0;
 }
 
 void wl_fini(void) {
+	etrc_provider_destroy(&tsload__workload);
+
 	squeue_destroy(&wl_requests, wl_rq_chain_destroy);
 	t_destroy(&t_wl_requests);
 

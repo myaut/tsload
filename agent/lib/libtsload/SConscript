@@ -1,14 +1,25 @@
+import os
+
+PathJoin = os.path.join
+
 target = 'libtsload'
 
 Import('env')
 
 lib = env.Clone()
 
+if lib.SupportedPlatform('win'):
+    lib.Append(LIBS = ['advapi32']) 
+
 lib.AddDeps(('lib', 'libjson'), 
             ('lib', 'libtscommon'), 
             ('lib', 'libhostinfo'))
 
 objects = lib.CompileSharedLibrary(Glob("src/disp/*.c"))
-library = lib.LinkSharedLibrary(target, objects)
+
+etrace_files = env.PreprocessETrace(['src/workload.c'] + objects, 
+                                    target + lib['SHLIBSUFFIX'])
+
+library = lib.LinkSharedLibrary(target, objects + etrace_files)
 
 lib.InstallTarget(lib['INSTALL_LIB'], library)

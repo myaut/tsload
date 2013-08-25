@@ -52,6 +52,6 @@ int step_create_const(const char* wl_name, long num_steps, unsigned num_requests
 int step_get_step(const char* wl_name, long* step_id, unsigned* p_num_rqs);
 
 int steps_init(void);
-void step_fini(void);
+void steps_fini(void);
 
 #endif /* STEPS_H_ */

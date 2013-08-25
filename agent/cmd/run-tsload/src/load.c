@@ -19,7 +19,6 @@
 #include <pathutil.h>
 #include <plat/posixdecl.h>
 
-#define TSLOAD_IMPORT LIBIMPORT
 #include <tsload.h>
 
 #include <commands.h>
@@ -442,19 +441,24 @@ static int prepare_experiment(void) {
 	CONFIGURE_EXPERIMENT_PARAM(i_name, "name");
 	CONFIGURE_EXPERIMENT_PARAM(i_steps, "steps");
 	CONFIGURE_EXPERIMENT_PARAM(i_workloads, "workloads");
-	CONFIGURE_EXPERIMENT_PARAM(i_threadpools, "threadpools");
+
+	i_threadpools = json_find(experiment, "threadpools");
 
 	name = json_as_string(*i_name);
 	strncpy(experiment_name, name, EXPNAMELEN);
 	json_free(name);
 
 	load_fprintf(stdout, "=== CONFIGURING EXPERIMENT '%s' === \n", experiment_name);
-	load_fprintf(stdout, "Found %d threadpools\n", json_size(*i_threadpools));
+	load_fprintf(stdout, "Found %d threadpools\n", (i_threadpools != i_end)
+				? json_size(*i_threadpools)
+				: 0);
 	load_fprintf(stdout, "Found %d workloads\n", json_size(*i_workloads));
 	load_fprintf(stdout, "Log path: %s\n", log_filename);
 	load_fprintf(stdout, "Requests report path: %s\n", rqreport_filename);
 
-	err = configure_threadpools(*i_threadpools);
+	if(i_threadpools != i_end)
+		err = configure_threadpools(*i_threadpools);
+
 	if(err == LOAD_OK)
 		err = configure_all_wls(*i_steps, *i_workloads);
 

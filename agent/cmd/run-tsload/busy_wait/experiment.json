@@ -1,0 +1,16 @@
+{
+	"name": "test",
+	"steps": {
+		"test1": {
+			"num_steps":	20,
+ 			"num_requests": 200
+		}
+	},
+	"workloads" :	{
+		"test1" : {
+			"wltype": "busy_wait",
+			"threadpool": "[DEFAULT]",
+			"params": { "num_cycles": 400000 }
+		}
+	}
+}

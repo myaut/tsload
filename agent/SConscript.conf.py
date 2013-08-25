@@ -171,6 +171,17 @@ if GetOption('mempool_valgrind'):
     
 if GetOption('trace'):
     conf.Define('MEMPOOL_TRACE', comment='--trace was enabled')
+
+# ----------------------------
+# etrace checks
+if env.SupportedPlatform('win'):
+    if GetOption('etw') and conf.CheckDeclaration('EventRegister', '''#include <windows.h>
+                                                                      #include <evntprov.h>'''):
+        conf.Define('ETRC_USE_ETW', comment='--enable-etw was enabled and supports manifest-based events')
+
+if env.SupportedPlatform('solaris') or env.SupportedPlatform('linux'):
+    if GetOption('usdt') and conf.CheckHeader('sys/sdt.h'):
+        conf.Define('ETRC_USE_USDT', comment='--enable-usdt was enabled')
     
 # ----------------------------
 # client checks

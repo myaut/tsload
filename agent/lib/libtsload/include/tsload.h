@@ -17,11 +17,6 @@
 
 #include <libjson.h>
 
-/* TSLoad callbacks*/
-#ifndef TSLOAD_IMPORT
-#define TSLOAD_IMPORT
-#endif
-
 #define TSLOAD_ERROR	1
 #define TSLOAD_OK		0
 
@@ -32,9 +27,9 @@ typedef void (*tsload_workload_status_func)(const char* wl_name,
 										    const char* config_msg);
 typedef void (*tsload_requests_report_func)(list_head_t* rq_list);
 
-TSLOAD_IMPORT tsload_error_msg_func tsload_error_msg;
-TSLOAD_IMPORT tsload_workload_status_func tsload_workload_status;
-TSLOAD_IMPORT tsload_requests_report_func tsload_requests_report;
+LIBIMPORT tsload_error_msg_func tsload_error_msg;
+LIBIMPORT tsload_workload_status_func tsload_workload_status;
+LIBIMPORT tsload_requests_report_func tsload_requests_report;
 
 /* TSLoad calls */
 LIBEXPORT JSONNODE* tsload_get_workload_types(void);

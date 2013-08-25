@@ -1,6 +1,10 @@
 import sys
 import os
 
+from itertools import product
+
+from SCons.Action import CommandAction, ActionFactory
+
 PathJoin = os.path.join
 PathBaseName = os.path.basename
 PathExists = os.path.exists
@@ -128,6 +132,7 @@ env.Append(CPPPATH = [PathJoin(env['TSLOADPATH'], 'include'),   # TSLoad include
                       'include'])                               # Own subproject includes  
 env.Append(LIBPATH = [])
 env.Append(LIBS = [])
+env.Append(WINRESOURCES = [])
 
 # TESTLIBS maps library under test name to path to it
 env.Append(TESTLIBS = {})

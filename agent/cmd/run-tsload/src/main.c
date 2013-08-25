@@ -17,6 +17,7 @@
 #include <tsversion.h>
 #include <hiobject.h>
 
+#include <steps.h>
 #include <commands.h>
 
 #include <stdio.h>
@@ -39,7 +40,8 @@ LIBIMPORT char mod_search_path[];
 
 LIBEXPORT struct subsystem xsubsys[] = {
 	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
-	SUBSYSTEM("load", load_init, load_fini)
+	SUBSYSTEM("load", load_init, load_fini),
+	SUBSYSTEM("steps", steps_init, steps_fini)
 };
 
 enum {
@@ -157,7 +159,7 @@ int main(int argc, char* argv[]) {
 	mod_type = MOD_TSLOAD;
 
 	atexit(ts_finish);
-	tsload_init(xsubsys, 1);
+	tsload_init(xsubsys, 3);
 
 	logmsg(LOG_INFO, "Started run-tsload");
 	logmsg(LOG_DEBUG, "run-tsload command: %d", command);

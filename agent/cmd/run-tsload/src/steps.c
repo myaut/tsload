@@ -178,7 +178,7 @@ int steps_init(void) {
 	return 0;
 }
 
-void step_fini(void) {
+void steps_fini(void) {
 	step_destroy_all();
 	hash_map_destroy(&steps_hash_map);
 }
