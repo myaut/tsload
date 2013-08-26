@@ -76,16 +76,23 @@ def LinkSharedLibrary(self, target, objects,
     
     return library
 
-def Module(self, mod_type, mod_name):   
+def Module(self, mod_type, mod_name, etrace_sources = []):   
     mod = self
     mod.Macroses('NO_JSON')
     mod['SHLIBPREFIX'] = ''
+    
+    etrace_files = []
     
     mod.AddDeps(('lib', 'libtscommon'),
                 ('lib', 'libhostinfo'), 
                 ('lib', 'libtsload'))
     modobjs = mod.CompileSharedLibrary()
-    module = mod.LinkSharedLibrary(mod_name, modobjs)
+    
+    for src in etrace_sources:
+        etrace_files.extend(mod.PreprocessETrace([src] + modobjs, 
+                                                 mod_name + mod['SHLIBSUFFIX']))
+    
+    module = mod.LinkSharedLibrary(mod_name, modobjs + etrace_files)
     
     mod_install_dirs = { 'load': mod['INSTALL_MOD_LOAD'] }
     mod.InstallTarget(mod_install_dirs[mod_type], module)

@@ -11,7 +11,7 @@ Import('env')
 env.Append(ENV = {'ETRACEDEBUG': True})
 
 if env.SupportedPlatform('win') and GetOption('etw'):
-    EtraceBuilder = Builder(action = '%s tools/genetrace.py -m ETW $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
+    EtraceBuilder = Builder(action = '%s $TSLOADPATH/tools/genetrace.py -m ETW $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
                             suffix = '.man')
     EtraceRCBuilder = Builder(action = 'mc -r $ETRACEDIR -h $ETRACEDIR $SOURCE', suffix = '.rc', src_suffix = '.man')
     EtraceRESBuilder = Builder(action = 'rc /fo $TARGET $SOURCE', suffix = '.res', src_suffix = '.rc')
@@ -21,7 +21,7 @@ if env.SupportedPlatform('win') and GetOption('etw'):
     env['ETRACESUFFIX'] = '.man'
     env['ETRACEENABLED'] = True
 elif env.SupportedPlatform('linux') or env.SupportedPlatform('solaris') and GetOption('usdt'):
-    EtraceBuilder = Builder(action = '%s tools/genetrace.py -m USDT $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
+    EtraceBuilder = Builder(action = '%s $TSLOADPATH/tools/genetrace.py -m USDT $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
                             suffix = '.d')
     env.Append(BUILDERS = {'EtraceBuilder': EtraceBuilder})
     

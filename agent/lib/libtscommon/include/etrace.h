@@ -27,7 +27,7 @@
 #define etrc_provider_init(provider) 		do { } while(0)
 #define etrc_provider_destroy(provider) 	do { } while(0)
 
-#define ETRC_PROBE (provider, name)			DTRACE_PROBE(provider, name)
+#define ETRC_PROBE0(provider, name)			DTRACE_PROBE(provider, name)
 #define ETRC_PROBE1(provider, name, type1, arg1)							\
 		DTRACE_PROBE1(provider, name, arg1)
 
@@ -96,7 +96,7 @@ static ULONG etrc_probe_n(etrc_provider_t* provider, const EVENT_DESCRIPTOR* eve
 	return EventWrite(provider->etp_reghandle, event, numargs, EventData);
 }
 
-#define ETRC_PROBE (provider, name)		etrc_probe_n(&provider, &provider ## _ ## name, 0,	\
+#define ETRC_PROBE0(provider, name)		etrc_probe_n(&provider, &provider ## _ ## name, 0,	\
 		NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0)
 
 #define ETRC_PROBE1(provider, name, type1, arg1)							\
@@ -138,7 +138,7 @@ static ULONG etrc_probe_n(etrc_provider_t* provider, const EVENT_DESCRIPTOR* eve
 #define etrc_provider_init(provider) 		do { } while(0)
 #define etrc_provider_destroy(provider) 	do { } while(0)
 
-#define ETRC_PROBE (provider, name)			do { } while(0)
+#define ETRC_PROBE0(provider, name)			do { } while(0)
 
 #define ETRC_PROBE1(provider, name, type1, arg1)							\
 		do { } while(0)
