@@ -7,9 +7,11 @@
 
 #include <defs.h>
 
+#include <tstime.h>
+#include <plat/posix/threads.h>
+
 #include <errno.h>
 #include <pthread.h>
-#include <plat/posix/threads.h>
 
 #include <assert.h>
 
@@ -46,37 +48,34 @@ PLATAPI void plat_mutex_destroy(plat_thread_mutex_t* mutex) {
 
 /* Events */
 
-PLATAPI void plat_event_init(plat_thread_event_t* event) {
-	pthread_mutex_init(&event->te_mutex, NULL);
-	pthread_cond_init (&event->te_cv, NULL);
+PLATAPI void plat_cv_init(plat_thread_cv_t* cv) {
+	pthread_cond_init (&cv->tcv_cv, NULL);
 }
 
-PLATAPI void plat_event_wait_unlock(plat_thread_event_t* event, plat_thread_mutex_t* mutex) {
-	pthread_mutex_lock(&event->te_mutex);
-
-	if(mutex) {
-		plat_mutex_unlock(mutex);
+PLATAPI void plat_cv_wait_timed(plat_thread_cv_t* cv, plat_thread_mutex_t* mutex, ts_time_t timeout) {
+	if(timeout == TS_TIME_MAX) {
+		pthread_cond_wait(&cv->tcv_cv, &mutex->tm_mutex);
 	}
+	else {
+		struct timespec ts;
 
-	pthread_cond_wait(&event->te_cv, &event->te_mutex);
-	pthread_mutex_unlock(&event->te_mutex);
+		ts.tv_sec = TS_TIME_SEC(timeout);
+		ts.tv_nsec = timeout - (ts.tv_sec * T_SEC);
+
+		pthread_cond_timedwait(&cv->tcv_cv, &mutex->tm_mutex, &ts);
+	}
 }
 
-PLATAPI void plat_event_notify_one(plat_thread_event_t* event) {
-	pthread_mutex_lock(&event->te_mutex);
-    pthread_cond_signal(&event->te_cv);
-    pthread_mutex_unlock(&event->te_mutex);
+PLATAPI void plat_cv_notify_one(plat_thread_cv_t* cv) {
+    pthread_cond_signal(&cv->tcv_cv);
 }
 
-PLATAPI void plat_event_notify_all(plat_thread_event_t* event) {
-	pthread_mutex_lock(&event->te_mutex);
-    pthread_cond_broadcast(&event->te_cv);
-    pthread_mutex_unlock(&event->te_mutex);
+PLATAPI void plat_cv_notify_all(plat_thread_cv_t* cv) {
+    pthread_cond_broadcast(&cv->tcv_cv);
 }
 
-PLATAPI void plat_event_destroy(plat_thread_event_t* event) {
-	pthread_mutex_destroy(&event->te_mutex);
-	pthread_cond_destroy(&event->te_cv);
+PLATAPI void plat_cv_destroy(plat_thread_cv_t* cv) {
+	pthread_cond_destroy(&cv->tcv_cv);
 }
 
 /* Keys */

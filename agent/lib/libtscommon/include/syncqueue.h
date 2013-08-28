@@ -20,7 +20,7 @@ typedef struct squeue_el {
 
 typedef struct squeue {
 	thread_mutex_t sq_mutex;
-	thread_event_t sq_event;
+	thread_cv_t    sq_cv;
 
 	squeue_el_t* sq_head;
 	squeue_el_t* sq_tail;

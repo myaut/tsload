@@ -7,6 +7,7 @@
 
 #include <defs.h>
 
+#include <tstime.h>
 #include <plat/win/threads.h>
 
 #include <assert.h>
@@ -38,37 +39,32 @@ PLATAPI void plat_mutex_destroy(plat_thread_mutex_t* mutex) {
 
 /* Events */
 
-PLATAPI void plat_event_init(plat_thread_event_t* event) {
-	InitializeCriticalSection(&event->te_crit_section);
-	InitializeConditionVariable(&event->te_cond_var);
+PLATAPI void plat_cv_init(plat_thread_cv_t* cv) {
+	InitializeConditionVariable(&cv->tcv_cond_var);
 }
 
-PLATAPI void plat_event_wait_unlock(plat_thread_event_t* event, plat_thread_mutex_t* mutex) {
-	EnterCriticalSection(&event->te_crit_section);
+PLATAPI void plat_cv_wait_timed(plat_thread_cv_t* cv, plat_thread_mutex_t* mutex, ts_time_t timeout) {
+	DWORD millis;
 
-	if(mutex) {
-		plat_mutex_unlock(mutex);
-	}
+	millis = (timeout == TS_TIME_MAX)
+					? INFINITE
+					: timeout / T_MS;
 
-	SleepConditionVariableCS(&event->te_cond_var, &event->te_crit_section, INFINITE);
-
-	LeaveCriticalSection(&event->te_crit_section);
+	SleepConditionVariableCS(&cv->tcv_cond_var,
+							 &mutex->tm_crit_section,
+							 millis);
 }
 
-PLATAPI void plat_event_notify_one(plat_thread_event_t* event) {
-	EnterCriticalSection(&event->te_crit_section);
-	WakeConditionVariable(&event->te_cond_var);
-	LeaveCriticalSection(&event->te_crit_section);
+PLATAPI void plat_cv_notify_one(plat_thread_cv_t* cv) {
+	WakeConditionVariable(&cv->tcv_cond_var);
 }
 
-PLATAPI void plat_event_notify_all(plat_thread_event_t* event) {
-	EnterCriticalSection(&event->te_crit_section);
-	WakeAllConditionVariable(&event->te_cond_var);
-	LeaveCriticalSection(&event->te_crit_section);
+PLATAPI void plat_cv_notify_all(plat_thread_cv_t* cv) {
+	WakeAllConditionVariable(&cv->tcv_cond_var);
 }
 
-PLATAPI void plat_event_destroy(plat_thread_event_t* event) {
-	DeleteCriticalSection(&event->te_crit_section);
+PLATAPI void plat_cv_destroy(plat_thread_cv_t* cv) {
+	/* Do nothing */
 }
 
 /* Keys */

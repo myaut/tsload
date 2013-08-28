@@ -11,9 +11,8 @@
 #include <windows.h>
 
 typedef struct {
-	CRITICAL_SECTION te_crit_section;
-	CONDITION_VARIABLE te_cond_var;
-} plat_thread_event_t;
+	CONDITION_VARIABLE tcv_cond_var;
+} plat_thread_cv_t;
 
 typedef struct {
 	CRITICAL_SECTION tm_crit_section;

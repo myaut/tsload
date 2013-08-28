@@ -11,9 +11,8 @@
 #include <pthread.h>
 
 typedef struct {
-	pthread_mutex_t	te_mutex;
-	pthread_cond_t  te_cv;
-} plat_thread_event_t;
+	pthread_cond_t  tcv_cv;
+} plat_thread_cv_t;
 
 typedef struct {
 	pthread_mutex_t	tm_mutex;

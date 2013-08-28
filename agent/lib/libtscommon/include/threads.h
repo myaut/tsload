@@ -25,9 +25,16 @@
 #define	mutex_lock			ts_mutex_lock
 #define	mutex_try_lock		ts_mutex_try_lock
 #define	mutex_unlock		ts_mutex_unlock
+
+#define cv_init				ts_cv_init
+#define cv_wait				ts_cv_wait
+#define cv_notify_one		ts_cv_notify_one
+#define cv_notify_all		ts_cv_notify_all
+#define cv_destroy			ts_cv_destroy
 #endif
 
 #define TEVENTNAMELEN	32
+#define TCVNAMELEN		32
 #define TMUTEXNAMELEN	32
 #define TKEYNAMELEN 	32
 #define TRWLOCKNAMELEN	32
@@ -99,10 +106,10 @@ typedef enum {
 } thread_state_t;
 
 typedef struct {
-	plat_thread_event_t te_impl;
+	plat_thread_cv_t tcv_impl;
 
-	char			te_name[TEVENTNAMELEN];
-} thread_event_t;
+	char			tcv_name[TEVENTNAMELEN];
+} thread_cv_t;
 
 typedef struct {
 	plat_thread_mutex_t tm_impl;
@@ -122,6 +129,13 @@ typedef struct {
 
 	char			tk_name[TKEYNAMELEN];
 } thread_key_t;
+
+typedef struct {
+	thread_mutex_t	te_mutex;
+	thread_cv_t 	te_cv;
+
+	char			te_name[TEVENTNAMELEN];
+} thread_event_t;
 
 #define THREAD_EVENT_INITIALIZER 							\
 	{ SM_INIT(.te_impl, PLAT_THREAD_EVENT_INITIALIZER),		\
@@ -167,7 +181,7 @@ typedef struct thread {
 
 #ifdef TS_LOCK_DEBUG
 	ts_time_t		t_block_time;
-	thread_event_t*	t_block_event;
+	thread_cv_t*	t_block_cv;
 	thread_mutex_t* t_block_mutex;
 	thread_mutex_t* t_block_rwlock;
 #endif
@@ -189,9 +203,16 @@ LIBEXPORT void rwlock_lock_write(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_unlock(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_destroy(thread_rwlock_t* rwlock);
 
+LIBEXPORT void cv_init(thread_cv_t* cv, const char* namefmt, ...);
+LIBEXPORT void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex);
+LIBEXPORT void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout);
+LIBEXPORT void cv_notify_one(thread_cv_t* cv);
+LIBEXPORT void cv_notify_all(thread_cv_t* cv);
+LIBEXPORT void cv_destroy(thread_cv_t* cv);
+
 LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...);
-LIBEXPORT void event_wait_unlock(thread_event_t* event, thread_mutex_t* mutex);
 LIBEXPORT void event_wait(thread_event_t* event);
+LIBEXPORT void event_wait_timed(thread_event_t* event, ts_time_t timeout);
 LIBEXPORT void event_notify_one(thread_event_t* event);
 LIBEXPORT void event_notify_all(thread_event_t* event);
 LIBEXPORT void event_destroy(thread_event_t* event);
@@ -238,11 +259,11 @@ PLATAPI void plat_rwlock_lock_write(plat_thread_rwlock_t* rwlock);
 PLATAPI void plat_rwlock_unlock(plat_thread_rwlock_t* rwlock);
 PLATAPI void plat_rwlock_destroy(plat_thread_rwlock_t* rwlock);
 
-PLATAPI void plat_event_init(plat_thread_event_t* event);
-PLATAPI void plat_event_wait_unlock(plat_thread_event_t* event, plat_thread_mutex_t* mutex);
-PLATAPI void plat_event_notify_one(plat_thread_event_t* event);
-PLATAPI void plat_event_notify_all(plat_thread_event_t* event);
-PLATAPI void plat_event_destroy(plat_thread_event_t* event);
+PLATAPI void plat_cv_init(plat_thread_cv_t* cv);
+PLATAPI void plat_cv_wait_timed(plat_thread_cv_t* cv, plat_thread_mutex_t* mutex, ts_time_t timeout);
+PLATAPI void plat_cv_notify_one(plat_thread_cv_t* cv);
+PLATAPI void plat_cv_notify_all(plat_thread_cv_t* cv);
+PLATAPI void plat_cv_destroy(plat_thread_cv_t* cv);
 
 PLATAPI void plat_tkey_init(plat_thread_key_t* key);
 PLATAPI void plat_tkey_destroy(plat_thread_key_t* key);

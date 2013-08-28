@@ -33,41 +33,42 @@
 #define THREAD_LEAVE_LOCK(objname)
 #endif
 
-/* Events
+/* Condition variables
  * ------ */
 
-void event_init(thread_event_t* event, const char* namefmt, ...) {
+void cv_init(thread_cv_t* cv, const char* namefmt, ...) {
 	va_list va;
 
-	plat_event_init(&event->te_impl);
+	plat_cv_init(&cv->tcv_impl);
 
 	va_start(va, namefmt);
-	vsnprintf(event->te_name, TEVENTNAMELEN, namefmt, va);
+	vsnprintf(cv->tcv_name, TCVNAMELEN, namefmt, va);
 	va_end(va);
 }
 
-void event_wait_unlock(thread_event_t* event, thread_mutex_t* mutex) {
-	THREAD_ENTER_LOCK(TS_WAITING, event, event);
-
-	plat_event_wait_unlock(&event->te_impl, &mutex->tm_impl);
-
-	THREAD_LEAVE_LOCK(event);
+void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex) {
+	cv_wait_timed(&cv->tcv_impl, mutex, TS_TIME_MAX);
 }
 
-void event_wait(thread_event_t* event) {
-	event_wait_unlock(event, NULL);
+void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout) {
+	THREAD_ENTER_LOCK(TS_WAITING, cv, cv);
+
+	plat_cv_wait_timed(&cv->tcv_impl, mutex, timeout);
+
+	THREAD_LEAVE_LOCK(cv);
 }
 
-void event_notify_one(thread_event_t* event) {
-	plat_event_notify_one(&event->te_impl);
+
+void cv_notify_one(thread_cv_t* cv) {
+	plat_cv_notify_one(&cv->tcv_impl);
 }
 
-void event_notify_all(thread_event_t* event) {
-	plat_event_notify_all(&event->te_impl);
+void cv_notify_all(thread_cv_t* cv) {
+	plat_cv_notify_all(&cv->tcv_impl);
 }
 
-void event_destroy(thread_event_t* event) {
-	plat_event_destroy(&event->te_impl);
+void cv_destroy(thread_cv_t* cv) {
+	plat_cv_destroy(&cv->tcv_impl);
 }
 
 /* Mutexes
@@ -179,4 +180,47 @@ void rwlock_unlock(thread_rwlock_t* rwlock) {
 
 void rwlock_destroy(thread_rwlock_t* rwlock) {
 	plat_rwlock_destroy(&rwlock->tl_impl);
+}
+
+/* Events
+ * ------ */
+
+void event_init(thread_event_t* event, const char* namefmt, ...) {
+	va_list va;
+
+	va_start(va, namefmt);
+	vsnprintf(event->te_name, TEVENTNAMELEN, namefmt, va);
+	va_end(va);
+
+	mutex_init(&event->te_mutex, "mtx-%s", event->te_name);
+	cv_init(&event->te_cv, "cv-%s", event->te_name);
+}
+
+void event_wait(thread_event_t* event) {
+	mutex_lock(&event->te_mutex);
+	cv_wait(&event->te_cv, &event->te_mutex);
+	mutex_unlock(&event->te_mutex);
+}
+
+void event_wait_timed(thread_event_t* event, ts_time_t timeout) {
+	mutex_lock(&event->te_mutex);
+	cv_wait_timed(&event->te_cv, &event->te_mutex, timeout);
+	mutex_unlock(&event->te_mutex);
+}
+
+void event_notify_one(thread_event_t* event) {
+	mutex_lock(&event->te_mutex);
+	cv_notify_one(&event->te_cv);
+	mutex_unlock(&event->te_mutex);
+}
+
+void event_notify_all(thread_event_t* event) {
+	mutex_lock(&event->te_mutex);
+	cv_notify_all(&event->te_cv);
+	mutex_unlock(&event->te_mutex);
+}
+
+void event_destroy(thread_event_t* event) {
+	cv_destroy(&event->te_cv);
+	mutex_destroy(&event->te_mutex);
 }

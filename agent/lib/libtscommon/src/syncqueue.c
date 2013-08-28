@@ -30,7 +30,7 @@ void squeue_init(squeue_t* sq, const char* namefmt, ...) {
 	va_end(va);
 
 	mutex_init(&sq->sq_mutex, "sq-%s", sq->sq_name);
-	event_init(&sq->sq_event, "sq-%s", sq->sq_name);
+	cv_init(&sq->sq_cv, "sq-%s", sq->sq_name);
 
 	sq->sq_head = NULL;
 	sq->sq_tail = NULL;
@@ -53,14 +53,14 @@ void* squeue_pop(squeue_t* sq) {
 	squeue_el_t* el = NULL;
 	void *object = NULL;
 
-retry:
 	mutex_lock(&sq->sq_mutex);
 
+retry:
 	/* Try to extract element from head*/
 	el = sq->sq_head;
 
 	if(el == NULL) {
-		event_wait_unlock(&sq->sq_event, &sq->sq_mutex);
+		cv_wait(&sq->sq_cv, &sq->sq_mutex);
 
 		if(!sq->sq_is_destroyed)
 			goto retry;
@@ -93,6 +93,8 @@ retry:
 void squeue_push(squeue_t* sq, void* object) {
 	squeue_el_t* el = mp_malloc(sizeof(squeue_el_t));
 
+	boolean_t notify = B_FALSE;
+
 	el->s_next = NULL;
 	el->s_data = object;
 
@@ -105,7 +107,7 @@ void squeue_push(squeue_t* sq, void* object) {
 		/* Empty queue, notify pop*/
 		sq->sq_head = el;
 
-		event_notify_one(&sq->sq_event);
+		notify = B_TRUE;
 	}
 	else if(sq->sq_tail == NULL) {
 		/* Only sq_head present, insert el as tail and link head with tail */
@@ -119,6 +121,9 @@ void squeue_push(squeue_t* sq, void* object) {
 	}
 
 	mutex_unlock(&sq->sq_mutex);
+
+	if(notify)
+		cv_notify_one(&sq->sq_cv);
 }
 
 /*
@@ -146,9 +151,10 @@ void squeue_destroy(squeue_t* sq, void (*el_free)(void* obj)) {
 	}
 
 	sq->sq_is_destroyed = B_TRUE;
-	event_notify_all(&sq->sq_event);
+	cv_notify_all(&sq->sq_cv);
 
 	mutex_unlock(&sq->sq_mutex);
 
 	mutex_destroy(&sq->sq_mutex);
+	cv_destroy(&sq->sq_cv);
 }
