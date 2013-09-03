@@ -17,6 +17,7 @@
 #include <threadpool.h>
 #include <tstime.h>
 #include <uname.h>
+#include <hiobject.h>
 
 #include <tsinit.h>
 #include <tsload.h>
@@ -43,6 +44,10 @@ struct subsystem subsys[] = {
 
 JSONNODE* tsload_get_workload_types(void) {
 	return json_wl_type_format_all();
+}
+
+JSONNODE* tsload_get_resources(void) {
+	return json_hi_format_all(B_TRUE);
 }
 
 int tsload_configure_workload(const char* wl_name, JSONNODE* wl_params) {

@@ -11,6 +11,10 @@
 #include <defs.h>
 #include <list.h>
 
+#ifndef NO_JSON
+#include <libjson.h>
+#endif
+
 struct hi_object_header;
 
 #define HIOBJNAMELEN			48
@@ -32,11 +36,21 @@ typedef void (*hi_obj_dtor_op)(struct hi_object_header* obj);
 typedef int   (*hi_obj_init_op)(void);
 typedef void  (*hi_obj_fini_op)(void);
 
+#ifndef NO_JSON
+typedef const char* (*hi_obj_json_format_type_op)(struct hi_object_header* obj);
+typedef JSONNODE* (*hi_obj_json_format_op)(struct hi_object_header* obj);
+#endif
+
 typedef struct {
 	hi_obj_probe_op		op_probe;
 	hi_obj_dtor_op		op_dtor;
 	hi_obj_init_op		op_init;
 	hi_obj_fini_op		op_fini;
+
+#	ifndef NO_JSON
+	hi_obj_json_format_type_op 		op_json_format_type;
+	hi_obj_json_format_op 			op_json_format;
+#	endif
 } hi_obj_subsys_ops_t;
 
 typedef struct {
@@ -70,6 +84,8 @@ typedef struct hi_object_header {
 	list_node_t					list_node;
 	list_head_t 				children;
 
+	unsigned short				ref_count;
+
 	char						name[HIOBJNAMELEN];
 } hi_object_header_t;
 
@@ -80,7 +96,7 @@ void hi_obj_header_init(hi_obj_subsys_id_t sid, hi_object_header_t* hdr, const c
 LIBEXPORT void hi_obj_attach(hi_object_t* hdr, hi_object_t* parent);
 LIBEXPORT void hi_obj_detach(hi_object_t* hdr, hi_object_t* parent);
 LIBEXPORT void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object);
-LIBEXPORT void hi_obj_destroy(hi_object_t* object);
+LIBEXPORT int hi_obj_destroy(hi_object_t* object);
 LIBEXPORT void hi_dsk_destroy_all(hi_obj_subsys_id_t sid);
 
 LIBEXPORT hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name);
@@ -89,6 +105,10 @@ LIBEXPORT list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe);
 
 LIBEXPORT int hi_obj_init(void);
 LIBEXPORT void hi_obj_fini(void);
+
+#ifndef NO_JSON
+LIBEXPORT JSONNODE* json_hi_format_all(boolean_t reprobe);
+#endif
 
 #define hi_for_each_object(object, list)	\
 		list_for_each_entry(hi_object_t, object, list, list_node)

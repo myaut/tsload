@@ -9,6 +9,7 @@
 #include <mempool.h>
 #include <cpuinfo.h>
 #include <diskinfo.h>
+#include <hitrace.h>
 
 #include <string.h>
 #include <assert.h>
@@ -72,14 +73,18 @@ hi_obj_subsys_ops_t cpu_ops = {
 	hi_cpu_probe,
 	hi_cpu_dtor,
 	hi_cpu_init,
-	hi_cpu_fini
+	hi_cpu_fini,
+	json_hi_cpu_format_type,
+	json_hi_cpu_format
 };
 
 hi_obj_subsys_ops_t disk_ops = {
 	hi_dsk_probe,
 	hi_dsk_dtor,
 	hi_dsk_init,
-	hi_dsk_fini
+	hi_dsk_fini,
+	json_hi_dsk_format_type,
+	json_hi_dsk_format
 };
 
 hi_obj_subsys_t hi_obj_subsys[HI_SUBSYS_MAX] =
@@ -123,6 +128,8 @@ void hi_obj_header_init(hi_obj_subsys_id_t sid, hi_object_header_t* hdr, const c
 
 	hi_obj_child_init(&hdr->node, hdr);
 	list_node_init(&hdr->list_node);
+
+	hdr->ref_count = 0;
 }
 
 /**
@@ -147,7 +154,12 @@ void hi_obj_attach(hi_object_t* object, hi_object_t* parent) {
 	child->object = object;
 	child->parent = parent;
 
+	hi_obj_dprintf("hi_obj_attach: %p %d %s->%s\n", child, child->type,
+					parent->name, object->name);
+
 	list_add_tail(&child->node, &parent->children);
+
+	++object->ref_count;
 }
 
 /**
@@ -158,7 +170,9 @@ void hi_obj_attach(hi_object_t* object, hi_object_t* parent) {
 void hi_obj_detach(hi_object_t* object, hi_object_t* parent) {
 	hi_object_child_t *child = NULL;
 
-	/* Free child handlers if the were allocated */
+	assert(object->ref_count > 0);
+
+	/* Ensure that object is really child of that parent */
 	hi_for_each_child(child, parent) {
 		if(child->object == object)
 			break;
@@ -169,27 +183,50 @@ void hi_obj_detach(hi_object_t* object, hi_object_t* parent) {
 	list_del(&child->node);
 	child->parent = NULL;
 
+	/* Free child handler if the were allocated */
 	if(child->type == HI_OBJ_CHILD_ALLOCATED)
 		mp_free(child);
+
+	--object->ref_count;
 }
 
 /**
- * Destroy object
+ * Destroy object and its children recursively (if no more parents
+ * for this child left). If object is not root (has parents), doesn't
+ * destroy anything and returns 1, otherwise returns 0.
+ *
  * Frees child handlers then calls subsystem-specific destructor
  */
-void hi_obj_destroy(hi_object_t* object) {
+int hi_obj_destroy(hi_object_t* object) {
 	hi_object_child_t *child, *next;
 	hi_obj_subsys_t* subsys;
 
-	/* Free child handlers if the were allocated */
+	boolean_t allocated_child = B_FALSE;
+
+	if(object->ref_count > 0)
+		return 1;
+
+	list_del(&object->list_node);
+
 	hi_for_each_child_safe(child, next, object) {
-		if(child->type == HI_OBJ_CHILD_ALLOCATED)
+		hi_obj_dprintf("hi_obj_destroy: child %p %p %d %s\n", child, next,
+							child->type, child->object->name);
+
+		allocated_child = TO_BOOLEAN(child->type == HI_OBJ_CHILD_ALLOCATED);
+
+		if(--child->object->ref_count == 0) {
+			/* We were last parent of that child */
+			hi_obj_destroy(child->object);
+		}
+
+		if(allocated_child)
 			mp_free(child);
 	}
 
 	subsys = get_subsys(object->sid);
-
 	subsys->ops->op_dtor(object);
+
+	return 0;
 }
 
 /**
@@ -197,17 +234,23 @@ void hi_obj_destroy(hi_object_t* object) {
  * @param sid		subsystem identifier
  */
 void hi_obj_destroy_all(hi_obj_subsys_id_t sid) {
-	hi_object_t *object, *next;
+	hi_object_t* object;
 	hi_obj_subsys_t* subsys = get_subsys(sid);
 
-	if(!subsys)
+	if(!subsys || subsys->state == HI_PROBE_NOT_PROBED)
 		return;
 
-	hi_for_each_object_safe(object, next, &subsys->list) {
-		hi_obj_destroy(object);
+	while(!list_empty(&subsys->list)) {
+		hi_for_each_object(object, &subsys->list) {
+			/* If we successfully destroyed objects - next pointer
+			 * could be also corrupted (if it was child) - so reset
+			 * for-each cycle */
+			if(hi_obj_destroy(object) == 0)
+				break;
+		}
 	}
 
-	list_head_init(&subsys->list, "hi_obj_list");
+	list_head_init(&subsys->list, "hi_%s_list", subsys->name);
 
 	subsys->state = HI_PROBE_NOT_PROBED;
 }
@@ -286,7 +329,7 @@ int hi_obj_init(void) {
 	int sid = 0;
 	int ret = 0;
 
-	hi_obj_subsys_t* subsys = get_subsys(sid);
+	hi_obj_subsys_t* subsys = NULL;
 
 	for(sid = 0; sid < HI_SUBSYS_MAX; ++sid) {
 		subsys = get_subsys(sid);
@@ -313,4 +356,48 @@ void hi_obj_fini(void) {
 
 		get_subsys(sid)->ops->op_fini();
 	}
+}
+
+JSONNODE* json_hi_format_all(boolean_t reprobe) {
+	JSONNODE* hiobj = json_new(JSON_NODE);
+	JSONNODE *root, *obj, *children, *objdata;
+
+	int sid = 0;
+	hi_obj_subsys_t* subsys = NULL;
+
+
+	list_head_t* list;
+	hi_object_t* object;
+	hi_object_child_t *child = NULL;
+
+	for(sid = 0; sid < HI_SUBSYS_MAX; ++sid) {
+		subsys = get_subsys(sid);
+		list = hi_obj_list(sid, reprobe);
+
+		root = json_new(JSON_NODE);
+		json_set_name(root, subsys->name);
+		json_push_back(hiobj, root);
+
+		hi_for_each_object(object, list) {
+			obj = json_new(JSON_NODE);
+			json_set_name(obj, object->name);
+			json_push_back(root, obj);
+
+			json_push_back(obj, json_new_a("type", subsys->ops->op_json_format_type(object)));
+
+			children = json_new(JSON_ARRAY);
+			json_set_name(children, "children");
+			json_push_back(obj, children);
+
+			hi_for_each_child(child, object) {
+				json_push_back(children, json_new_a("0", child->object->name));
+			}
+
+			objdata = subsys->ops->op_json_format(object);
+			json_set_name(objdata, "data");
+			json_push_back(obj, objdata);
+		}
+	}
+
+	return hiobj;
 }

@@ -10,6 +10,7 @@ import time
 from tsload.jsonts import JSONTS, tstimeToUnixTime
 from tsload.cli.context import CLIContext, NextContext, ReturnContext, SameContext
 from tsload.jsonts.api.load import *
+from tsload.jsonts.api.expsvc import ResourceState
 from tsload.wlparam import WLParamHelper
 
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -47,9 +48,10 @@ class LoadAgentListContext(CLIContext):
 
 
 class LoadAgentContext(CLIContext):
-    operations = ['wltype']
+    operations = ['wltype', 'resources']
     
-    def setupAgent(self, clientId):
+    def setupAgent(self, clientId, loadAgentId):
+        self.loadAgentId = loadAgentId
         self.agent = self.cli.createRemoteAgent(clientId, LoadAgent)
     
     @SameContext()
@@ -107,6 +109,59 @@ class LoadAgentContext(CLIContext):
                                 ' '.join(wltype.wlclass))
         
     wltype.args = ["[name]"]
+    
+    @SameContext()
+    @inlineCallbacks
+    def resources(self, args):
+        resInfo = yield self.cli.expsvcAgent.getAgentResources(agentId = self.loadAgentId)
+        
+        resList = resInfo.resources
+        
+        if args:
+            resName = args.pop()
+            
+            if resName[0] == '.':
+                resClass = resName[1:]
+                
+                if '.' in resClass:
+                    resClass, resType = resClass.split('.', 1)
+                    resList = filter(lambda res: res[1].resClass == resClass and res[1].resType == resType, 
+                                     resList.items())
+                else:
+                    resList = filter(lambda res: res[1].resClass == resClass, resList.items())
+            else:
+                resList = filter(lambda res: res[0] == resName, resList.items())
+                
+            resList = dict(resList)
+        
+        fmtstr = '%-4s %-8s %-12s %-8s %-8s'
+        
+        resStateStr = {ResourceState.R_ONLINE: 'ONLINE',
+                       ResourceState.R_OFFLINE: 'OFFLINE',
+                       ResourceState.R_BUSY: 'BUSY',
+                       ResourceState.R_DETACHED: 'DETACHED'}
+        
+        print fmtstr % ('ID', 'STATE', 'NAME', 'CLASS', 'TYPE')
+        
+        for resName, res in resList.iteritems():
+            children = map(lambda child: child.childName,
+                           filter(lambda child: child.parentName == resName, 
+                                  resInfo.childLinks))
+            
+            print fmtstr % (res.resId,
+                            resStateStr[res.state],
+                            resName,
+                            res.resClass,
+                            res.resType)
+            
+            print '\tChildren: ' + ' '.join(children)
+            
+            for dataKey, dataValue in res.data.items():
+                print '\t%s: %s' % (dataKey, dataValue)
+            
+            
+        
+    resources.args = ["[name|.class[.type]]"]
 
 class LoadAgentSelectContext(CLIContext):
     async = True
@@ -118,6 +173,7 @@ class LoadAgentSelectContext(CLIContext):
             print >> sys.stderr, 'ERROR: No such agent' 
             return self.parent, None
         
+        loadAgentId = agentsList[agentUuid].agentId
         agentHostName = agentsList[agentUuid].hostname
         
         for client in clientList:
@@ -129,7 +185,7 @@ class LoadAgentSelectContext(CLIContext):
         
         agentContext = self.parent.nextContext(LoadAgentContext)
         agentContext.name = '"%s"' % agentHostName
-        agentContext.setupAgent(client.id)
+        agentContext.setupAgent(client.id, loadAgentId)
                 
         return agentContext, None
 

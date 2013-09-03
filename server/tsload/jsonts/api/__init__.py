@@ -99,7 +99,7 @@ class TSAgentInterface:
         Usage:
         
         class MyAgentInterface(TSAgentInterface):
-            myMethod = TSMethod(TSObject.Object(MyReturn()),
+            myMethod = TSMethod(TSObject.Object(MyReturn),
                                 myArg = TSObject.Int())
                                 
         In TSAgentCode (requires inlineCallbacks):

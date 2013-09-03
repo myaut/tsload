@@ -11,6 +11,7 @@ from storm.store import Store
 
 from tsload.expsvc.model import *
 from tsload.expsvc.agent import LoadAgentInfo
+from tsload.expsvc.resmgr import ResourceManager
 
 from tsload.jsonts import Flow, JSONTS, datetimeToTSTime
 from tsload.jsonts.api import TSMethodImpl
@@ -19,6 +20,7 @@ from tsload.jsonts.api.load import *
 
 from tsload.jsonts.server import TSLocalAgent, AgentListener
 
+from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 expsvcAgentUUID = '{8390b21d-3abb-4de6-a3df-0ccd164908ee}'
@@ -44,6 +46,8 @@ class TSExperimentSvcAgent(TSLocalAgent):
                                                         self.onAgentRegister,
                                                         self.onAgentDisconnect))
         self.loadAgents = {}
+        
+        self.resourceManager = ResourceManager(self.dbStore) 
     
     @inlineCallbacks
     def registerNewAgent(self, client, agent):
@@ -100,9 +104,13 @@ class TSExperimentSvcAgent(TSLocalAgent):
             
             print "Registered agent %s with uuid '%s'" % (agentObj.hostname, 
                                                           client.agentUuid)
+            
+            reactor.callLater(0.1, self.resourceManager.registerLoadAgent, agent, agentObj)
                   
     def onAgentDisconnect(self, client):
         if client.agentType == 'load':
+            yield self.resourceManager.unregisterLoadAgent(agentInfo.agentObj)
+            
             agentInfo = self.loadAgents[client.agentUuid]
             print 'Disconnected agent %s' % agentInfo.agentObj.hostname
             
@@ -134,5 +142,10 @@ class TSExperimentSvcAgent(TSLocalAgent):
             
         returnValue(agentsList)
             
+    @TSMethodImpl(ExpSvcAgent.getAgentResources)
+    @inlineCallbacks
+    def getAgentResources(self, context, agentId):
+        resourceInfo = yield self.resourceManager.getAgentResources(agentId)
         
+        returnValue(resourceInfo)
     

@@ -15,6 +15,7 @@
 #define INFO_ALL		0x1
 #define INFO_XDATA		0x2
 #define INFO_LEGEND		0x4
+#define INFO_JSON		0x8
 
 #define INFO_OK		0
 #define INFO_ERROR	1

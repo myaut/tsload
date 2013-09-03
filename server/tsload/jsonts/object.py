@@ -30,13 +30,13 @@ class TSObject:
     class Type:
         optional = False
     
-    class Any:
+    class Any(Type):
         def deserialize(self, val):
             return val
         
         serialize = deserialize
     
-    class Null:
+    class Null(Type):
         def deserialize(self, val):
             if val is not None:
                 raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT, 

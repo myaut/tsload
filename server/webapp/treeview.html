@@ -1,0 +1,28 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1" >
+	<div class='pagination pagination-small'>
+		<table width="100%">
+		<tr>
+		
+		<td style="vertical-align: middle">
+			<a href="#" class="btn btn-success btn-large"><i class="icon-white icon-plus-sign"></i> Expand all</a>
+			<a href="#" class="btn btn-success btn-large"><i class="icon-white icon-minus-sign"></i> Collapse all</a>
+		</td>
+		
+		<td style="vertical-align: middle">
+			<div class="pull-center">
+				<nevow:invisible nevow:render="customControls" />
+			</div>
+		</td> 
+		
+		<td style="vertical-align: middle">
+			<form class="pull-right">
+				<input type="text" class="search-query" id='searchForm' placeholder="Search" nevow:render="searchForm"/>
+			</form>
+		</td>
+		</tr>
+		</table>
+	</div>
+
+	<div nevow:render="treeView" id="treeView">
+	</div>
+</div>

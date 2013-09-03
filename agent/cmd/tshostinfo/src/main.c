@@ -10,6 +10,8 @@
 #include <getopt.h>
 #include <tsversion.h>
 
+#include <libjson.h>
+
 #include <hiprint.h>
 
 #include <hiobject.h>
@@ -30,6 +32,7 @@ void usage() {
 					"\ttshostinfo [-x] [-l] [{host|cpu|disk|fs|net|all}] [...]\n"
 					"\t\t-x - print additional data\n"
 					"\t\t-l - print legend\n"
+					"\ttshostinfo -j - print host resources in JSON format\n"
 					"\ttshostinfo -v - tsload version\n"
 					"\ttshostinfo -h - this help\n");
 
@@ -41,7 +44,7 @@ void parse_options(int argc, char* argv[]) {
 
 	int c;
 
-	while((c = plat_getopt(argc, argv, "vhlx")) != -1) {
+	while((c = plat_getopt(argc, argv, "vhlxj")) != -1) {
 		switch(c) {
 		case 'v':
 			print_ts_version("Host information");
@@ -52,6 +55,9 @@ void parse_options(int argc, char* argv[]) {
 			break;
 		case 'l':
 			print_flags |= INFO_LEGEND;
+			break;
+		case 'j':
+			print_flags |= INFO_JSON;
 			break;
 		case 'h':
 			usage();
@@ -92,6 +98,17 @@ int print_info(const char* topic) {
 	return 1;
 }
 
+int print_json(void) {
+	char* jstr;
+	JSONNODE* hiobj = json_hi_format_all(B_FALSE);
+
+	jstr = json_write_formatted(hiobj);
+	fputs(jstr, stdout);
+	json_free(jstr);
+
+	return 0;
+}
+
 int init(void) {
 	int count = sizeof(subsys) / sizeof(struct subsystem);
 	int i = 0;
@@ -112,6 +129,10 @@ int main(int argc, char* argv[]) {
 
 	parse_options(argc, argv);
 	init();
+
+	if(print_flags & INFO_JSON) {
+		return print_json();
+	}
 
 	if((argc - optind) == 0) {
 		print_flags |= INFO_ALL;

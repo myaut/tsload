@@ -80,6 +80,28 @@ _autoIncrement = {'SQLite': 'AUTOINCREMENT',
 _uniqueConstraint = {'SQLite': 'UNIQUE',
                      'MySQL': 'UNIQUE KEY'}
 
+class UniqueConstraint:
+    def __init__(self, *columns):
+        self.columns = columns
+
+class UniqueConstraintImpl:
+    def __init__(self, name, columns):
+        self.name = name
+        self.columns = columns
+    
+    def format(self, dbClass):
+        colListStr = ', '.join(col.name 
+                               for col 
+                               in self.columns)
+        
+        if dbClass == 'SQLite':
+            return '%s(%s) ON CONFLICT REPLACE' % (_uniqueConstraint[dbClass], 
+                                              colListStr)
+        
+        return '%s %s (%s)' % (_uniqueConstraint[dbClass], 
+                               self.name, 
+                               colListStr)
+
 class TableSchema:
     '''Generates table schema for Storm db object class.
     Supports property attributes:
@@ -106,6 +128,7 @@ class TableSchema:
         self.cls_info = get_cls_info(cls)
         
         self.columns = []
+        self.constraints = []
         self.unique = []
         
         self.tableName = self.cls_info.table.name
@@ -134,6 +157,10 @@ class TableSchema:
                 
                 if self.dbClass == 'SQLite':
                     colSpec.append('UNIQUE')
+                else:
+                    constraint = ConstraintImpl(_uniqueConstraint[self.dbClass],
+                                                col.name, [col])
+                    self.constraints.append(constraint)
             
             # col == pk generates SQL expression Eq, so bool(Eq) == True in any case
             # In this case, 'in' operator will return True in any case too 
@@ -148,18 +175,24 @@ class TableSchema:
                 colSpec.append('NOT NULL')
             
             self.columns.append(colSpec)
+        
+        for conName, con in cls.__dict__.iteritems():
+            if isinstance(con, UniqueConstraint):
+                constraint = UniqueConstraintImpl(conName,
+                                                  [prop._get_column(cls) 
+                                                   for prop 
+                                                   in con.columns])
+                self.constraints.append(constraint)
     
     def create(self, store, ifNotExists = False):
         '''Creates new table from scratch and saves it into store'''
         singlePrimaryKey = len(self.cls_info.primary_key) == 1
-        singleUniqueCol = len(self.unique) == 1
         
         columns = []
         constraints = []
         
         def _contraintFilter(spec):
-            return  singlePrimaryKey or not spec == 'PRIMARY KEY' and \
-                    singleUniqueCol or not spec == 'UNIQUE'
+            return  singlePrimaryKey or not spec == 'PRIMARY KEY'
         
         for colSpec in self.columns:
             colSpec = filter(_contraintFilter, colSpec)
@@ -172,11 +205,8 @@ class TableSchema:
                                     in self.cls_info.primary_key)
             constraints.append('PRIMARY KEY ( ' + primaryKeys + ' )')
             
-        if not singleUniqueCol and self.unique:
-            uniqueCols = ', '.join(col.name 
-                                   for col 
-                                   in self.unique)
-            constraints.append(_uniqueConstraint[self.dbClass] + ' ( ' + uniqueCols + ' )')
+        for constraint in self.constraints:
+            constraints.append(constraint.format(self.dbClass))
         
         createOption = ' IF NOT EXISTS ' if ifNotExists else '' 
         
@@ -210,7 +240,7 @@ class StormDebugTracer(object):
 
     def connection_raw_execute_error(self, connection, raw_cursor,
                                      statement, params, error):
-        logging.trace('storm', 'ERROR %d', error)
+        logging.trace('storm', 'ERROR %s', error)
 
     def connection_raw_execute_success(self, connection, raw_cursor,
                                        statement, params):

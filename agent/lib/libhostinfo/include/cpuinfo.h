@@ -11,6 +11,8 @@
 #include <defs.h>
 #include <list.h>
 
+#include <libjson.h>
+
 #include <hiobject.h>
 
 #define 	HI_CPU_ANY			-1
@@ -125,6 +127,13 @@ LIBEXPORT int hi_cpu_num_cpus(void);
 LIBEXPORT int hi_cpu_num_cores(void);
 
 LIBEXPORT size_t hi_cpu_mem_total(void);
+
+#ifndef NO_JSON
+#include <libjson.h>
+
+const char* json_hi_cpu_format_type(struct hi_object_header* obj);
+JSONNODE* json_hi_cpu_format(struct hi_object_header* obj);
+#endif
 
 #include <hitrace.h>
 

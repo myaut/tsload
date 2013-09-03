@@ -77,8 +77,14 @@ class TSWorkloadType(tso):
     
     params = tso.Map(tso.MultiObject('type', tsWLParamClassMap))
 
+class TSResource(tso):
+    children = tso.Array(tso.String())
+    type = tso.String()
+    data = tso.Any()
+
 class LoadAgent(TSAgentInterface):
     getHostInfo = TSMethod(tso.Object(TSAgentDescriptor))
     
     getWorkloadTypes = TSMethod(tso.Map(TSWorkloadType))
+    getResources = TSMethod(tso.Map(tso.Map(TSResource)))
     

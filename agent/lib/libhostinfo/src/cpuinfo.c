@@ -177,3 +177,62 @@ int hi_cpu_init(void) {
 void hi_cpu_fini(void) {
 	mp_cache_destroy(&hi_cpu_obj_cache);
 }
+
+const char* json_hi_cpu_format_type(struct hi_object_header* obj) {
+	hi_cpu_object_t* cpuobj = HI_CPU_FROM_OBJ(obj);
+
+	switch(cpuobj->type) {
+	case HI_CPU_NODE:
+		return "node";
+	case HI_CPU_CHIP:
+		return "chip";
+	case HI_CPU_CORE:
+		return "core";
+	case HI_CPU_STRAND:
+		return "strand";
+	case HI_CPU_CACHE:
+		return "cache";
+	}
+
+	return "unknown";
+}
+
+static const char* json_hi_cpu_format_cache_type(hi_cpu_cache_type_t type) {
+	switch(type) {
+	case HI_CPU_CACHE_UNIFIED:
+		return "unified";
+	case HI_CPU_CACHE_DATA:
+		return "data";
+	case HI_CPU_CACHE_INSTRUCTION:
+		return "instruction";
+	}
+
+	return "unknown";
+}
+
+JSONNODE* json_hi_cpu_format(struct hi_object_header* obj) {
+	JSONNODE* jcpu = json_new(JSON_NODE);
+	hi_cpu_object_t* cpuobj = HI_CPU_FROM_OBJ(obj);
+
+	json_push_back(jcpu, json_new_i("id", cpuobj->id));
+
+	switch(cpuobj->type) {
+	case HI_CPU_NODE:
+		json_push_back(jcpu, json_new_i("mem_total", cpuobj->node.cm_mem_total));
+		json_push_back(jcpu, json_new_i("mem_free", cpuobj->node.cm_mem_free));
+		break;
+	case HI_CPU_CHIP:
+		json_push_back(jcpu, json_new_a("name", cpuobj->chip.cp_name));
+		json_push_back(jcpu, json_new_i("frequency", cpuobj->chip.cp_freq));
+		break;
+	case HI_CPU_CACHE:
+		json_push_back(jcpu, json_new_i("level", cpuobj->cache.c_level));
+		json_push_back(jcpu, json_new_i("size", cpuobj->cache.c_size));
+		json_push_back(jcpu, json_new_a("cache_type", json_hi_cpu_format_cache_type(cpuobj->cache.c_type)));
+		json_push_back(jcpu, json_new_i("line_size", cpuobj->cache.c_line_size));
+		json_push_back(jcpu, json_new_i("associativity", cpuobj->cache.c_associativity));
+		break;
+	}
+
+	return jcpu;
+}

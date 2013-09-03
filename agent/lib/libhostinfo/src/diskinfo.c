@@ -31,6 +31,8 @@ hi_dsk_info_t* hi_dsk_create(void) {
 	di->d_model[0] = '\0';
 	di->d_fs[0] = '\0';
 
+	di->d_bus_type[0] = '\0';
+
 	hi_obj_header_init(HI_SUBSYS_DISK, &di->d_hdr, "disk");
 
 	return di;
@@ -53,4 +55,39 @@ int hi_dsk_init(void) {
 
 void hi_dsk_fini(void) {
 	mp_cache_destroy(&hi_dsk_cache);
+}
+
+const char* json_hi_dsk_format_type(struct hi_object_header* obj) {
+	hi_dsk_info_t* di = HI_DSK_FROM_OBJ(obj);
+
+	switch(di->d_type) {
+	case HI_DSKT_DISK:
+		return "disk";
+	case HI_DSKT_PARTITION:
+		return "partition";
+	case HI_DSKT_POOL:
+		return "pool";
+	case HI_DSKT_VOLUME:
+		return "volume";
+	}
+
+	return "unknown";
+}
+
+JSONNODE* json_hi_dsk_format(struct hi_object_header* obj) {
+	JSONNODE* jdsk = json_new(JSON_NODE);
+	hi_dsk_info_t* di = HI_DSK_FROM_OBJ(obj);
+
+	json_push_back(jdsk, json_new_a("path", di->d_path));
+
+	json_push_back(jdsk, json_new_i("size", di->d_size));
+	json_push_back(jdsk, json_new_i("mode", di->d_mode));
+
+	json_push_back(jdsk, json_new_a("bus_type", di->d_bus_type));
+	json_push_back(jdsk, json_new_a("model", di->d_model));
+	json_push_back(jdsk, json_new_a("port", di->d_port));
+
+	json_push_back(jdsk, json_new_a("fs", di->d_fs));
+
+	return jdsk;
 }

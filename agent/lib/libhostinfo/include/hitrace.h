@@ -13,6 +13,7 @@
 #define HI_TRACE_UNAME		0x1
 #define HI_TRACE_DSK		0x2
 #define HI_TRACE_CPU		0x4
+#define HI_TRACE_OBJ		0x8
 
 #ifdef PLAT_LINUX
 #define HI_TRACE_SYSFS		0x100
@@ -32,6 +33,7 @@ extern int hi_trace_flags;
 #define hi_uname_dprintf( ... ) 	hi_trace_dprintf(HI_TRACE_UNAME, __VA_ARGS__ )
 #define hi_dsk_dprintf( ... )		hi_trace_dprintf(HI_TRACE_DSK, __VA_ARGS__ )
 #define hi_cpu_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_CPU, __VA_ARGS__ )
+#define hi_obj_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_OBJ, __VA_ARGS__ )
 
 #ifdef PLAT_LINUX
 #define hi_sysfs_dprintf( ... ) hi_trace_dprintf(HI_TRACE_SYSFS, __VA_ARGS__ )

@@ -16,6 +16,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from tsload.web import webappPath
 from tsload.web.main import MainPage, LiveMainPage, Menu
+from tsload.web.treeview import TreeViewElement, TreeView
 from tsload.web.pagination import PaginatedView
 
 from tsload.jsonts.api.user import TSUserDescriptor
@@ -47,6 +48,9 @@ wlclasses = {'cpu_integer': ('CPU', 'CPU integer operations'),
              'network': ('NET', 'Network benchmark'),
              
              'os': ('OS', 'Miscellanous os benchmark')}
+
+resNexusNames = {'cpu': 'NUMA hierarchy',
+                 'disk': 'Disks and volumes'}
 
 def _wlparamToStr(val, wlp):
     if isinstance(wlp, TSWLParamTime):
@@ -120,6 +124,19 @@ class WorkloadTypeTable(PaginatedView):
                                          button('NET'),
                                          button('OS')
                                          ]
+
+class LoadAgentResource(TreeViewElement):
+    # TODO: Icons and resource extra information
+    
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+        
+        TreeViewElement.__init__(self)
+    
+    def render(self):
+        return '%s [%s]' % (self.name, self.type)
+        
 
 class LoadAgentInfoPage(LiveMainPage):
     defaultView = ['agent']
@@ -197,6 +214,8 @@ class LoadAgentInfoPage(LiveMainPage):
         
         if 'agent' in what:
             return self.agentCommonInfo(ctx)
+        elif 'resource' in what:
+            return self.agentResourcesInfo(ctx)
         else:
             if self.agent is None:
                 return self.renderAlert('Agent is disconnected')
@@ -351,6 +370,41 @@ class LoadAgentInfoPage(LiveMainPage):
         wltparams = loaders.xmlfile(webappPath('agent/wltypeparam.html'))
         
         returnValue(wltparams)
+    
+    @inlineCallbacks
+    def agentResourcesInfo(self, ctx):
+        session = inevow.ISession(ctx) 
+        
+        tv = TreeView(self, session.uid)
+        
+        resNexuses = {}
+        
+        for resNexusClass, resNexusName in resNexusNames.items():
+            nexus = LoadAgentResource(resNexusName, 'NEXUS')        
+            tv.addElement(nexus)
+            resNexuses[resNexusClass] = nexus
+        
+        resObjects = {}
+        
+        agentId = self.agentInfo.agentId        
+        resourceInfo = yield session.agent.expsvcAgent.getAgentResources(agentId = agentId)
+        
+        for resName, res in resourceInfo.resources.iteritems():
+            resObj = LoadAgentResource(resName, res.resType.upper())
+            resObj.resClass = res.resClass
+            resObjects[resName] = resObj
+            
+        for childLink in resourceInfo.childLinks:
+            parent = resObjects[childLink.parentName]
+            child = resObjects[childLink.childName]
+            
+            parent.addChild(child)
+        
+        for resObj in resObjects.values():
+            if resObj.parent is None:
+                resNexuses[resObj.resClass].addChild(resObj)
+            
+        returnValue(tv)
 
 class AgentPage(LiveMainPage):
     defaultView = ['load']

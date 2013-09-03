@@ -17,7 +17,6 @@
 #include <uname.h>
 #include <cpuinfo.h>
 
-#define TSLOAD_IMPORT LIBIMPORT
 #include <tsload.h>
 
 #include <string.h>
@@ -45,6 +44,13 @@ void agent_get_workload_types(JSONNODE* argv[]) {
 
 	return agent_response_msg(response);
 }
+
+void agent_get_resources(JSONNODE* argv[]) {
+	JSONNODE* response = tsload_get_resources();
+
+	return agent_response_msg(response);
+}
+
 
 void agent_configure_workload(JSONNODE* argv[]) {
 	char* wl_name = json_as_string(argv[0]);
@@ -187,6 +193,9 @@ static agent_dispatch_t loadagent_table[] = {
 	AGENT_METHOD("getWorkloadTypes",
 		ADT_ARGS(),
 		agent_get_workload_types),
+	AGENT_METHOD("getResources",
+			ADT_ARGS(),
+			agent_get_resources),
 	AGENT_METHOD("configure_workload",
 		ADT_ARGS(
 			ADT_ARGUMENT("workload_name", JSON_STRING),
