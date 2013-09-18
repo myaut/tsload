@@ -50,14 +50,14 @@ class LoadAgentListContext(CLIContext):
 class LoadAgentContext(CLIContext):
     operations = ['wltype', 'resources']
     
-    def setupAgent(self, clientId, loadAgentId):
+    def setupAgent(self, loadAgentId, isOnline):
         self.loadAgentId = loadAgentId
-        self.agent = self.cli.createRemoteAgent(clientId, LoadAgent)
+        self.isOnline = isOnline
     
     @SameContext()
     @inlineCallbacks
     def wltype(self, args):
-        wltypeList = yield self.agent.getWorkloadTypes()
+        wltypeList = yield self.cli.expsvcAgent.getWorkloadTypes(agentId = self.loadAgentId)
         
         if args:
             wltypeName = args.pop()
@@ -176,16 +176,15 @@ class LoadAgentSelectContext(CLIContext):
         loadAgentId = agentsList[agentUuid].agentId
         agentHostName = agentsList[agentUuid].hostname
         
+        isOnline = False
         for client in clientList:
             if client.type == 'load' and client.uuid == agentUuid:
+                isOnline = True
                 break
-        else:
-            print >> sys.stderr, 'ERROR: Agent is not connected' 
-            return self.parent, None
         
         agentContext = self.parent.nextContext(LoadAgentContext)
         agentContext.name = '"%s"' % agentHostName
-        agentContext.setupAgent(client.id, loadAgentId)
+        agentContext.setupAgent(loadAgentId, isOnline)
                 
         return agentContext, None
 

@@ -69,13 +69,15 @@ tsWLParamClassMap = {
     "disk": TSWLParamDisk
 }
 
+TSWorkloadParameter = tso.MultiObject('type', tsWLParamClassMap)
+
 class TSWorkloadType(tso):
     module = tso.String()
     path = tso.String()
     
     wlclass = tso.Array(tso.String())
     
-    params = tso.Map(tso.MultiObject('type', tsWLParamClassMap))
+    params = tso.Map(TSWorkloadParameter)
 
 class TSResource(tso):
     children = tso.Array(tso.String())

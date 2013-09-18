@@ -132,14 +132,6 @@ class ResourceManager:
             info.childLinks.append(childLink)
         
         returnValue(info)
-        
-                
-# Select all children for current resource and intersect them with   
-'''childrenSet = \
-    yield self.dbStore.find(AgentResource,
-                            Join(AgentResourceChild,
-                                 And(AgentResourceChild.pid == resObj.id,
-                                     AgentResource.id == AgentResourceChild.cid)))'''
                 
                     
                 

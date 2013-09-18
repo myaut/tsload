@@ -105,6 +105,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
             print "Registered agent %s with uuid '%s'" % (agentObj.hostname, 
                                                           client.agentUuid)
             
+            reactor.callLater(0.0, self.fetchWorkloadTypes, agent, agentObj)
             reactor.callLater(0.1, self.resourceManager.registerLoadAgent, agent, agentObj)
                   
     def onAgentDisconnect(self, client):
@@ -115,6 +116,56 @@ class TSExperimentSvcAgent(TSLocalAgent):
             print 'Disconnected agent %s' % agentInfo.agentObj.hostname
             
             del self.loadAgents[client.agentUuid]
+    
+    @inlineCallbacks
+    def fetchWorkloadTypes(self, agent, agentObj):
+        wltypeList = yield agent.getWorkloadTypes()
+        
+        wltSet = yield self.dbStore.find(WorkloadType,
+                                         WorkloadType.agent == agentObj)
+        
+        for wltypeName, wltype in wltypeList.iteritems():
+            wltObj = wltSet.find(WorkloadType.name == wltypeName)
+            wltObj = wltObj.any()
+            
+            if wltObj is None:
+                wltObj = WorkloadType()
+                
+                wltObj.agent = agentObj
+                
+                wltObj.name = wltypeName
+                wltObj.module = wltype.module
+                wltObj.modulePath = wltype.path
+                
+                wltObj.classList = ','.join(wltype.wlclass)
+                
+                yield self.dbStore.add(wltObj) 
+            
+            paramSet = yield self.dbStore.find(WorkloadParam,
+                                               WorkloadParam.workloadType == wltObj)
+            
+            # Update parameter list
+            for paramObj in paramSet:
+                if paramObj.name not in wltype.params:
+                    paramObj.remove()
+                    continue
+                
+                paramObj.data = wltype.params.serialize()
+                # Remove serialized object from params array
+                del wltype.params[paramObj.name]
+                
+                yield self.dbStore.add(paramObj)
+            
+            for paramName, param in wltype.params.iteritems():
+                paramObj = WorkloadParam()
+                
+                paramObj.name = paramName
+                paramObj.workloadType = wltObj
+                paramObj.paramData = TSWorkloadParameter.serialize(param)
+                
+                yield self.dbStore.add(paramObj)
+                
+        yield self.dbStore.commit()
     
     @TSMethodImpl(ExpSvcAgent.listAgents)
     @inlineCallbacks
@@ -141,7 +192,42 @@ class TSExperimentSvcAgent(TSLocalAgent):
             agentsList[agentUuid] = descriptor
             
         returnValue(agentsList)
+    
+    @TSMethodImpl(ExpSvcAgent.getWorkloadTypes)
+    @inlineCallbacks
+    def getWorkloadTypes(self, context, agentId):
+        wltSet = yield self.dbStore.find(WorkloadType,
+                                         WorkloadType.aid == agentId)
+        
+        paramsQuery = (WorkloadParam,
+                       Join(WorkloadType,
+                            And(WorkloadType.aid == agentId,
+                                WorkloadParam.wltid == WorkloadType.id)))
+        paramsGlobalSet = yield self.dbStore.using(*paramsQuery).find(WorkloadParam)
+        
+        wltypeList = {}
+        
+        for wltObj in wltSet:
+            paramsSet = yield paramsGlobalSet.find(WorkloadParam.workloadType == wltObj)
             
+            wltype = TSWorkloadType()
+            
+            wltype.module = wltObj.module
+            wltype.path = wltObj.modulePath
+            
+            wltype.wlclass = wltObj.classList.split(',')
+            
+            wltype.params = {}
+            
+            for paramObj in paramsSet:
+                param = TSWorkloadParameter.deserialize(paramObj.paramData)
+                
+                wltype.params[paramObj.name] = param
+            
+            wltypeList[wltObj.name] = wltype
+        
+        returnValue(wltypeList)
+    
     @TSMethodImpl(ExpSvcAgent.getAgentResources)
     @inlineCallbacks
     def getAgentResources(self, context, agentId):

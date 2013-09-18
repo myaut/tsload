@@ -68,6 +68,37 @@ class AgentResourceChild(object):
     
     uniqParentChild = UniqueConstraint(pid, cid)
 
+class WorkloadType(object):
+    __storm_table__ = 'agent_workload_type'
+    
+    id = Int(primary = True)
+    
+    aid = Int()
+    aid.index = True
+    
+    agent = Reference(aid, Agent.id)
+    
+    name = Unicode()
+    
+    module = RawStr()
+    modulePath = RawStr()
+    
+    classList = RawStr()
+    
+class WorkloadParam(object):
+    __storm_table__ = 'agent_workload_param'
+    
+    id = Int(primary = True)
+    
+    wltid = Int()
+    wltid.index = True
+    
+    workloadType = Reference(wltid, WorkloadType.id)
+    
+    name = Unicode()
+    
+    paramData = JSON()
+
 def createExpsvcDB(connString):
     database = create_database(connString)
     store = Store(database)
@@ -75,6 +106,8 @@ def createExpsvcDB(connString):
     TableSchema(database, Agent).create(store)
     TableSchema(database, AgentResource).create(store)
     TableSchema(database, AgentResourceChild).create(store)
+    TableSchema(database, WorkloadType).create(store)
+    TableSchema(database, WorkloadParam).create(store)
     
     store.commit()
     store.close()

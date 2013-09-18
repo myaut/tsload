@@ -116,7 +116,7 @@ class TSObject:
         def __init__(self, field, objClassMap):
             self.field = field
             self.objClassMap = objClassMap
-            self.revClassMap = dict((k, v) for k, v in objClassMap.items())
+            self.revClassMap = dict((v, k) for k, v in objClassMap.items())
         
         def deserialize(self, val):
             fieldValue = val.get(self.field, TSObject.Undef)
@@ -135,14 +135,13 @@ class TSObject:
             return objClass.deserialize(val)
         
         def serialize(self, val):
-            obj = val.serialize()
-            
             try:
-                objType = self.revClassMap[obj.__class__]
+                objType = self.revClassMap[val.__class__]
             except KeyError:
                 raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
-                                   'Invalid class "%s" for multiobject: Unknown type' % (obj.__class__.__name__))
+                                   'Invalid class "%s" for multiobject: Unknown type' % (val.__class__.__name__))
             
+            obj = val.serialize()
             obj[self.field] = objType
             
             return obj

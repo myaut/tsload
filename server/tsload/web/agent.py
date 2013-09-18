@@ -160,19 +160,21 @@ class LoadAgentInfoPage(LiveMainPage):
         
         try:
             self.agentInfo = agentList[self.agentUuid]
+            self.agentId = self.agentInfo.agentId
         except KeyError:
             self.agentInfo = None
+            self.agentId = -1
             
         # Find client info
         
         for client in clientList:
             if client.type == 'load' and client.uuid == self.agentUuid:
                 self.clientInfo = client
-                self.agent = session.agent.createRemoteAgent(client.id, LoadAgent)
+                self.isOnline = True
                 break
         else:
             self.clientInfo = None
-            self.agent = None
+            self.isOnline = False
     
     @inlineCallbacks 
     def render_content(self, ctx, data):
@@ -192,11 +194,11 @@ class LoadAgentInfoPage(LiveMainPage):
         what = request.args.get('what', self.defaultView)[0]
         menu.setActiveWhat(what)
         
-        disabledInfo = self.agent is None
+        disabledInfo = self.agentInfo is None
         
         menu.addAgentItem('Information', 'agent')
-        menu.addAgentItem('Agent resources', 'resource', disabledInfo)
-        menu.addAgentItem('Workload types', 'wltype', disabledInfo)
+        menu.addAgentItem('Agent resources', 'resource')
+        menu.addAgentItem('Workload types', 'wltype')
         menu.addAgentItem('Experiments', 'experiments', disabledInfo)
         
         return menu
@@ -216,17 +218,13 @@ class LoadAgentInfoPage(LiveMainPage):
             return self.agentCommonInfo(ctx)
         elif 'resource' in what:
             return self.agentResourcesInfo(ctx)
-        else:
-            if self.agent is None:
-                return self.renderAlert('Agent is disconnected')
+        elif 'wltype' in what:
+            wlt = request.args.get('wlt', None)
             
-            if 'wltype' in what:
-                wlt = request.args.get('wlt', None)
-                
-                if wlt:
-                    return self.workloadType(ctx, wlt[0])
-                
-                return self.workloadTypeList(ctx)
+            if wlt:
+                return self.workloadType(ctx, wlt[0])
+            
+            return self.workloadTypeList(ctx)
         
         return ''
     
@@ -274,7 +272,7 @@ class LoadAgentInfoPage(LiveMainPage):
         wltTable = WorkloadTypeTable(self, session.uid)
         
         if self.workloadTypes is None:
-            self.workloadTypes = yield self.agent.getWorkloadTypes()
+            self.workloadTypes = yield session.agent.expsvcAgent.getWorkloadTypes(agentId = self.agentId)
         
         self.workloadClasses = ['CPU', 'MEM', 'DISK', 'FS', 'NET', 'OS']
         
@@ -322,8 +320,9 @@ class LoadAgentInfoPage(LiveMainPage):
     
     @inlineCallbacks
     def workloadType(self, ctx, wltypeName):
+        session = inevow.ISession(ctx) 
         if self.workloadTypes is None:
-            self.workloadTypes = yield self.agent.getWorkloadTypes()
+            self.workloadTypes = yield session.agent.expsvcAgent.getWorkloadTypes(agentId = self.agentId)
         
         wltype = self.workloadTypes[wltypeName]
         

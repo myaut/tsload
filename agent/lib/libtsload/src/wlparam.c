@@ -87,6 +87,8 @@ JSONNODE* json_wlparam_format(wlp_descr_t* wlp) {
 		if(wlp->defval.enabled)
 			json_push_back(wlp_node, json_new_f("default", wlp->defval.f));
 		break;
+	case WLP_FILE_PATH:
+	case WLP_CPU_OBJECT:
 	case WLP_DISK:
 	case WLP_RAW_STRING:
 		json_push_back(wlp_node, json_new_i("len", wlp->range.str_length));

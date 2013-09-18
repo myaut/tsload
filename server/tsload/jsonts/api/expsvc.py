@@ -7,7 +7,7 @@ Created on Jun 11, 2013
 from tsload.jsonts.object import TSObject as tso
 from tsload.jsonts.api import TSAgentInterface, TSMethod
 
-from tsload.jsonts.api.load import TSAgentDescriptor
+from tsload.jsonts.api.load import TSAgentDescriptor, TSWorkloadType
 
 class TSExpSvcAgentDescriptor(TSAgentDescriptor):
     agentId = tso.Int()
@@ -42,5 +42,7 @@ class ResourceState:
 class ExpSvcAgent(TSAgentInterface):
     listAgents = TSMethod(tso.Map(tso.Object(TSExpSvcAgentDescriptor)))
     
+    getWorkloadTypes = TSMethod(tso.Map(TSWorkloadType),
+                                agentId = tso.Int())
     getAgentResources = TSMethod(tso.Object(TSAgentResourceInfo),
                                  agentId = tso.Int())
