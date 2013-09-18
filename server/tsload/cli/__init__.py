@@ -4,8 +4,10 @@ Created on 09.05.2013
 @author: myaut
 '''
 
+import os
 import sys
 import shlex
+
 import socket
 import traceback
 
@@ -21,6 +23,16 @@ from tsload.jsonts.api.expsvc import ExpSvcAgent
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
 
+import signal
+
+try:
+    import readline
+    import atexit
+    
+    useReadline = True
+except ImportError:
+    useReadline = False
+
 class RootContext(CLIContext):
     name = ''
     operations = ['agent']
@@ -34,9 +46,25 @@ class RootContext(CLIContext):
     def doResponse(self, response):
         pass
 
+class SigIntHandler:
+    def __enter__(self):
+        # Twisted reactor installs it's own SIGINT handler, which breaks _readArgs logic
+        # It can be overriden by installSignalHandlers=False, but we loose SIGTERM etc.
+        # Manually reset to SIGINT which cause sys.stdin.readline() throw KeyboardInterrupt()
+        # NOTE: should be called after reactor is initialized, from it's context
+        self._sigintHandler = signal.signal(signal.SIGINT, signal.default_int_handler)
+    
+    def __exit__(self, *args):
+        signal.signal(signal.SIGINT, self._sigintHandler)
+
 class TSAdminCLIAgent(TSAgent):
+    _readLineHistoryFile = '~/.tscli_history'
+    
     def __init__(self):
-        self.context = RootContext(None, self)
+        if useReadline:
+            self._initReadLine()
+        
+        self._setContext(RootContext(None, self))
     
     def setAuthType(self, authUser, authMasterKey, authPassword=None):
         self.authUser = authUser
@@ -45,8 +73,6 @@ class TSAdminCLIAgent(TSAgent):
     
     @inlineCallbacks
     def gotAgent(self):
-        self._resetSigInt()
-        
         self.expsvcAgent = self.createRemoteAgent(2, ExpSvcAgent)
         
         # Try to authentificate CLI agent    
@@ -69,13 +95,40 @@ class TSAdminCLIAgent(TSAgent):
             print >> sys.stderr, 'ERROR %d: %s' % (je.code, je.error)
             reactor.stop()
     
-    def _resetSigInt(self):
-        # Twisted reactor installs it's own SIGINT handler, which breaks _readArgs logic
-        # It can be overriden by installSignalHandlers=False, but we loose SIGTERM etc.
-        # Manually reset to SIGINT which cause sys.stdin.readline() throw KeyboardInterrupt()
-        # NOTE: should be called after reactor is initialized, from it's context
-        import signal
-        signal.signal(signal.SIGINT, signal.default_int_handler)
+    def _setContext(self, ctx):
+        self.context = ctx
+        
+        if useReadline:
+            readline.set_completer(self._completerProxy) 
+    
+    def _readLine(self, prompt):
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
+        
+        return sys.stdin.readline()
+    
+    def _readLineModule(self, prompt):
+        return raw_input(prompt)
+    
+    def _completerProxy(self, text, state):
+        text = readline.get_line_buffer()
+        return self.context.completer(text, state)
+    
+    def _initReadLine(self):
+        readline.parse_and_bind("tab: complete")
+        
+        self._readLineHistoryFile = os.path.expanduser(self._readLineHistoryFile)
+        
+        if hasattr(readline, "read_history_file"):
+            try:
+                readline.read_history_file(self._readLineHistoryFile)
+            except IOError:
+                pass
+            atexit.register(self._saveReadLine, None)
+        self._readLine = self._readLineModule
+    
+    def _saveReadLine(self, *args):
+        readline.write_history_file(self._readLineHistoryFile)
     
     def _readArgs(self):
         prompt = 'TS %s> ' % self.context.path()
@@ -88,9 +141,8 @@ class TSAdminCLIAgent(TSAgent):
         
         while not done:
             try:
-                sys.stdout.write(prompt)
-                sys.stdout.flush()
-                input = sys.stdin.readline()
+                with SigIntHandler():
+                    input = self._readLine(prompt)
                 
                 command += input.strip()
             
@@ -140,11 +192,13 @@ class TSAdminCLIAgent(TSAgent):
         
         # Helpers for deferreds
         def gotResponse(response):
-            self.context, _ = self.context.doResponse(response)
+            ctx, _ = self.context.doResponse(response)
+            self._setContext(ctx)
+            
             reactor.callLater(0, self.ask)
             
         def gotError(failure):
-            self.context = origContext 
+            self._setContext(origContext) 
             
             print >> sys.stderr, 'ERROR %s' % failure
             reactor.callLater(0, self.ask)

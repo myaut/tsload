@@ -4,7 +4,13 @@ from twisted.internet.defer import inlineCallbacks, Deferred
 class ContextError(Exception):
     pass
 
-class NextContext:
+class ContextDecorator:
+    def wrap(self, wrapper, func):
+        wrapper.__doc__ = func.__doc__
+        wrapper.decorator = self
+        return wrapper
+    
+class NextContext(ContextDecorator):
     def __init__(self, klass):
         self.klass = klass
         
@@ -12,10 +18,9 @@ class NextContext:
         def wrapper(context, *args, **kwargs):
             d = func(context, *args, **kwargs)
             return context.nextContext(self.klass), d
-        wrapper.__doc__ = func.__doc__
-        return wrapper
+        return self.wrap(wrapper, func)
     
-class ReturnContext:
+class ReturnContext(ContextDecorator):
     def __init__(self):
         pass
     
@@ -23,10 +28,9 @@ class ReturnContext:
         def wrapper(context, *args, **kwargs):
             d = func(context, *args, **kwargs)
             return context.parent, d
-        wrapper.__doc__ = func.__doc__
-        return wrapper
+        return self.wrap(wrapper, func)
     
-class SameContext:
+class SameContext(ContextDecorator):
     def __init__(self):
         pass
     
@@ -34,8 +38,7 @@ class SameContext:
         def wrapper(context, *args, **kwargs):
             d = func(context, *args, **kwargs)
             return context, d
-        wrapper.__doc__ = func.__doc__
-        return wrapper
+        return self.wrap(wrapper, func)
 
 class CLIContext:
     async = False
@@ -69,6 +72,56 @@ class CLIContext:
                                (self.__class__.__name__, op))
         
         return method(args)
+
+    def completer(self, text, state):
+        # Search for context
+        ctxClass = self.__class__
+        ctxClassStack = [ctxClass]
+        args = text.split()
+        
+        # str.split() cuts last arg, add empty op, so completer
+        # will show every possible operation
+        if text.endswith(' '):
+            args.append('')
+        
+        for op in args[:-1]:
+            # Invalid operation - ignore
+            if op not in ctxClass.operations:
+                return None
+            
+            try:
+                method = getattr(ctxClass, op)
+            except AttributeError:
+                return None
+            
+            if isinstance(method.decorator, NextContext):
+                ctxClass = method.decorator.klass                
+                ctxClassStack.append(ctxClass)
+            elif isinstance(method.decorator, ReturnContext):
+                ctxClass = ctxClassStack.pop()
+            elif isinstance(method.decorator, SameContext):
+                pass
+            else:
+                # Unknown decorator
+                return None
+            
+            # async contexts has no subcommands - ignore them
+            if ctxClass.async:
+                return None
+        
+        # Operation "agent load exit" is strange, so add CLIContext
+        # operations only if it is first argument
+        if len(args) == 1:
+            operations = ctxClass.operations + CLIContext.operations
+        else:
+            operations = ctxClass.operations 
+        
+        # We have context class - run completer
+        operations = filter(lambda op: op.startswith(args[-1]),
+                            operations)
+        
+        if state < len(operations):
+            return operations[state]
 
     def nextContext(self, klass):
         return klass(self, self.cli)
