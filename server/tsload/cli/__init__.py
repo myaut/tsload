@@ -16,6 +16,7 @@ from tsload.jsonts.agent import TSAgent
 
 from tsload.cli.context import CLIContext, NextContext, SameContext
 from tsload.cli.agent import AgentRootContext
+from tsload.cli.profile import ProfileRootContext
 
 from tsload.jsonts.api.user import UserAgent
 from tsload.jsonts.api.expsvc import ExpSvcAgent
@@ -33,13 +34,20 @@ try:
 except ImportError:
     useReadline = False
 
+# TODO: server disconnection handling
+
 class RootContext(CLIContext):
     name = ''
-    operations = ['agent']
+    operations = ['agent', 'profile']
     
     @NextContext(AgentRootContext)
     def agent(self, args):
         '''Agent administration'''
+        return args
+    
+    @NextContext(ProfileRootContext)
+    def profile(self, args):
+        '''Experiment profiles'''
         return args
     
     @SameContext()

@@ -18,7 +18,7 @@ from tsload.jsonts.api import TSMethodImpl
 from tsload.jsonts.api.expsvc import *
 from tsload.jsonts.api.load import *
 
-from tsload.jsonts.server import TSLocalAgent, AgentListener
+from tsload.jsonts.server import TSLocalAgent, AgentListener, TSServerClient
 
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -27,6 +27,19 @@ expsvcAgentUUID = '{8390b21d-3abb-4de6-a3df-0ccd164908ee}'
 expsvcAgentType = 'expsvc'
 
 expsvcAgentId = 2
+
+def _profileObjToTSO(profileObj):
+    profile = TSExperimentProfileInfo()
+            
+    profile.profileId = profileObj.id
+    profile.userId = profileObj.userId
+    
+    profile.description = profileObj.description
+    
+    profile.creationDate = datetimeToTSTime(profileObj.creationDate)
+    
+    return profile
+
 
 class TSExperimentSvcAgent(TSLocalAgent):
     agentId = expsvcAgentId
@@ -38,6 +51,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
         TSLocalAgent.__init__(self, server)
         
         self.rootAgent = server.localAgents[0]
+        self.userAgent = server.localAgents[1]
         
         self.database = create_database(connString)
         self.dbStore = Store(self.database)
@@ -235,3 +249,72 @@ class TSExperimentSvcAgent(TSLocalAgent):
         
         returnValue(resourceInfo)
     
+    @inlineCallbacks
+    def _getProfileObj(self, context, profileName, profile):
+        client = context.client
+        
+        if client.auth == TSServerClient.AUTH_MASTER or \
+           client.auth == TSServerClient.AUTH_ADMIN:
+                userId = profile.userId if profile.userId is not None else 0
+        else:
+            agentId = client.getId()
+            userId = self.userAgent.agentUsers[agentId]
+            
+        profileSet = yield self.dbStore.find(ExperimentProfile, 
+                                             And(ExperimentProfile.name == unicode(profileName),
+                                                 ExperimentProfile.userId == userId))
+        
+        returnValue((profileSet.one(), userId))
+    
+    @TSMethodImpl(ExpSvcAgent.listProfiles)
+    @inlineCallbacks
+    def listProfiles(self, context):
+        '''If context is of administrative rights (master.key or admin), 
+        list all experiments, or select only owned experiment'''
+        
+        client = context.client
+        
+        # TODO: Support for experiment sharing
+        
+        profiles = {}
+        
+        if client.auth == TSServerClient.AUTH_MASTER or \
+           client.auth == TSServerClient.AUTH_ADMIN:
+                profileSet = yield self.dbStore.find(ExperimentProfile)
+        else:
+            agentId = client.getId()
+            userId = self.userAgent.agentUsers[agentId]
+            
+            profileSet = yield self.dbStore.find(ExperimentProfile, 
+                                                 ExperimentProfile.userId == userId)
+        
+        for profileObj in profileSet:
+            profiles[profileObj.name] = _profileObjToTSO(profileObj)
+            
+        returnValue(profiles)
+    
+    @TSMethodImpl(ExpSvcAgent.getProfile)
+    @inlineCallbacks
+    def getProfile(self, context, profileName, profile): 
+        profileObj, _ = yield self._getProfileObj(context, profileName, profile)
+    
+    @TSMethodImpl(ExpSvcAgent.configureProfile)
+    @inlineCallbacks
+    def configureProfile(self, context, profileName, profile):        
+        profileObj, userId = yield  self._getProfileObj(context, profileName, profile)
+        
+        if profileObj is None:
+            profileObj = ExperimentProfile()
+            
+            profileObj.name = unicode(profileName)
+            
+            profileObj.userId = userId
+            profileObj.creationDate = datetime.now()
+            
+        profileObj.description = unicode(profile.description)
+        
+        yield self.dbStore.add(profileObj)
+        
+        # TODO: Workloads & threadpools
+        
+        yield self.dbStore.commit()

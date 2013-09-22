@@ -40,8 +40,6 @@ class AgentResource(object):
     id = Int(primary=True)
     
     aid = Int()
-    aid.index = True
-    
     agent = Reference(aid, Agent.id)
     
     resourceClass = Enum(map = {'cpu': 0,
@@ -50,6 +48,7 @@ class AgentResource(object):
                                 'net': 3})
     
     name = Unicode()
+    
     resourceType = RawStr()
     data = JSON()
     
@@ -74,7 +73,6 @@ class WorkloadType(object):
     id = Int(primary = True)
     
     aid = Int()
-    aid.index = True
     
     agent = Reference(aid, Agent.id)
     
@@ -91,13 +89,71 @@ class WorkloadParam(object):
     id = Int(primary = True)
     
     wltid = Int()
-    wltid.index = True
+    workloadType = Reference(wltid, WorkloadType.id)
     
+    name = Unicode()    
+    paramData = JSON()
+
+class ExperimentProfile(object):
+    __storm_table__ = 'experiment_profile'
+    
+    id = Int(primary = True)
+    
+    # This field references user id inside user database
+    userId = Int()
+    
+    name = Unicode()
+    description = Unicode()
+    
+    creationDate = Date()
+
+class ExperimentThreadPool(object):
+    __storm_table__ = 'experiment_threadpool'
+    
+    id = Int(primary = True)
+    
+    aid = Int()
+    agent = Reference(aid, Agent.id)
+    
+    eid = Int()
+    experimentProfile = Reference(eid, ExperimentProfile.id)
+    
+    name = Unicode()    
+    numWorkers = Int()
+    
+    # TODO: Threadpool binding API
+
+class ExperimentWorkload(object):
+    __storm_table__ = 'experiment_workload'
+    
+    id = Int(primary = True)
+    
+    eid = Int()
+    experimentProfile = Reference(eid, ExperimentProfile.id)
+    
+    tpid = Int()
+    threadpool = Reference(tpid, ExperimentThreadPool)
+    
+    wltid = Int()
     workloadType = Reference(wltid, WorkloadType.id)
     
     name = Unicode()
+    params = JSON()
     
-    paramData = JSON()
+    stepsId = RawStr()  # References to TSDB 
+
+class ExperimentWorkloadResource(object):
+    __storm_table__ = 'experiment_workload_resource'
+    
+    id = Int(primary = True)
+    
+    wid = Int()
+    workload = Reference(wid, ExperimentWorkload.id)
+    
+    rid = Int()
+    resource = Reference(rid, AgentResource.id)
+    
+    rmode = Int()
 
 def createExpsvcDB(connString):
     database = create_database(connString)
@@ -107,7 +163,10 @@ def createExpsvcDB(connString):
     TableSchema(database, AgentResource).create(store)
     TableSchema(database, AgentResourceChild).create(store)
     TableSchema(database, WorkloadType).create(store)
-    TableSchema(database, WorkloadParam).create(store)
+    TableSchema(database, ExperimentProfile).create(store)
+    TableSchema(database, ExperimentThreadPool).create(store)
+    TableSchema(database, ExperimentWorkload).create(store)
+    TableSchema(database, ExperimentWorkloadResource).create(store)
     
     store.commit()
     store.close()
