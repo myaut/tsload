@@ -165,6 +165,22 @@ class TSObject:
         
         return ret
     
+    class Nullable(Type):
+        def __init__(self, tso):
+            self.tso = tso
+        
+        def serialize(self, val):
+            if val is None:
+                return None
+            
+            return self.tso.serialize(val)
+        
+        def deserialize(self, val):
+            if val is None:
+                return None
+            
+            return self.tso.deserialize(val)
+    
     @classmethod
     def deserialize(cls, val):
         obj = cls()
@@ -200,8 +216,13 @@ class TSObject:
                         raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
                                            'Field "%s" for class "%s" is not set' % (fieldName, 
                                                                                      self.__class__.__name__))
-                    
-                val[fieldName] = fieldClass.serialize(field)
+                try:
+                    val[fieldName] = fieldClass.serialize(field)
+                except Exception, e:
+                    raise JSONTS.Error(JSONTS.AE_MESSAGE_FORMAT,
+                                       'Field "%s" for class "%s" serialization failed: "%s"' % (fieldName, 
+                                                                                                 self.__class__.__name__,
+                                                                                                 str(e)))
                 
         return val
     

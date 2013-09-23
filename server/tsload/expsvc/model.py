@@ -105,18 +105,18 @@ class ExperimentProfile(object):
     name = Unicode()
     description = Unicode()
     
-    creationDate = Date()
+    creationDate = DateTime()
 
 class ExperimentThreadPool(object):
     __storm_table__ = 'experiment_threadpool'
     
     id = Int(primary = True)
     
-    aid = Int()
+    aid = Int(allow_none=True)
     agent = Reference(aid, Agent.id)
     
     eid = Int()
-    experimentProfile = Reference(eid, ExperimentProfile.id)
+    profile = Reference(eid, ExperimentProfile.id)
     
     name = Unicode()    
     numWorkers = Int()
@@ -129,18 +129,18 @@ class ExperimentWorkload(object):
     id = Int(primary = True)
     
     eid = Int()
-    experimentProfile = Reference(eid, ExperimentProfile.id)
+    profile = Reference(eid, ExperimentProfile.id)
     
-    tpid = Int()
-    threadpool = Reference(tpid, ExperimentThreadPool)
+    tpid = Int(allow_none=True)
+    threadpool = Reference(tpid, ExperimentThreadPool.id)
     
-    wltid = Int()
+    wltid = Int(allow_none=True)
     workloadType = Reference(wltid, WorkloadType.id)
     
     name = Unicode()
     params = JSON()
     
-    stepsId = RawStr()  # References to TSDB 
+    stepsId = RawStr(allow_none=True)  # References to TSDB 
 
 class ExperimentWorkloadResource(object):
     __storm_table__ = 'experiment_workload_resource'

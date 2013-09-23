@@ -48,6 +48,8 @@ class CLIContext:
         self.parent = parent
         self.cli = cli
         
+        self.oldAsync = self.async
+        
     def path(self):
         path = []
         context = self
@@ -123,8 +125,8 @@ class CLIContext:
         if state < len(operations):
             return operations[state]
 
-    def nextContext(self, klass):
-        return klass(self, self.cli)
+    def nextContext(self, klass, *args):
+        return klass(self, self.cli, *args)
     
     @SameContext()
     def help(self, args):

@@ -206,6 +206,8 @@ class TSAdminCLIAgent(TSAgent):
             reactor.callLater(0, self.ask)
             
         def gotError(failure):
+            self.context.async = self.context.oldAsync
+            
             self._setContext(origContext) 
             
             print >> sys.stderr, 'ERROR %s' % failure
@@ -217,6 +219,7 @@ class TSAdminCLIAgent(TSAgent):
             if isinstance(d, Deferred):
                 # Synchronous context entered asynchronous operation (such as inline 
                 # server call). Temporarily set async flag, which is reset on doResponse path
+                self.context.oldAsync = self.context.async
                 self.context.async = True
         
         if isinstance(d, Deferred):

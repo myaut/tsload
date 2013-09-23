@@ -45,14 +45,35 @@ class ResourceAllocationMode:
     R_SHARED_ANYONE     = 2
 
 class TSExperimentThreadPool(tso):
-    agent = tso.String()
+    agentId = tso.Nullable(tso.Int())
     numWorkers = tso.Int()
+    
+    @staticmethod
+    def createEmptyThreadPool():
+        threadpool = TSExperimentThreadPool()
+        
+        threadpool.agentId = None
+        threadpool.numWorkers = 0
+        
+        return threadpool
 
 class TSExperimentWorkload(tso):
-    agent = tso.String()
+    agentId = tso.Nullable(tso.Int())
+    workloadType = tso.Nullable(tso.String())
     
-    threadpool = tso.String()
+    threadpool = tso.Nullable(tso.String())
     params = tso.Any()
+    
+    @staticmethod
+    def createEmptyWorkload():
+        workload = TSExperimentWorkload()
+        
+        workload.agentId = None
+        workload.workloadType = None
+        workload.threadpool = None
+        workload.params = {}
+        
+        return workload
 
 class TSExperimentProfileInfo(tso):
     profileId = tso.Int()

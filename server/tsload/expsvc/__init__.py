@@ -28,8 +28,8 @@ expsvcAgentType = 'expsvc'
 
 expsvcAgentId = 2
 
-def _profileObjToTSO(profileObj):
-    profile = TSExperimentProfileInfo()
+def _profileObjToTSO(profileObj, tsoClass):
+    profile = tsoClass()
             
     profile.profileId = profileObj.id
     profile.userId = profileObj.userId
@@ -289,7 +289,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
                                                  ExperimentProfile.userId == userId)
         
         for profileObj in profileSet:
-            profiles[profileObj.name] = _profileObjToTSO(profileObj)
+            profiles[profileObj.name] = _profileObjToTSO(profileObj, TSExperimentProfileInfo)
             
         returnValue(profiles)
     
@@ -297,11 +297,46 @@ class TSExperimentSvcAgent(TSLocalAgent):
     @inlineCallbacks
     def getProfile(self, context, profileName, profile): 
         profileObj, _ = yield self._getProfileObj(context, profileName, profile)
+        
+        fullProfile = _profileObjToTSO(profileObj, TSExperimentProfile)
+        
+        fullProfile.threadpools = {}
+        fullProfile.workloads = {}
+        
+        threadpoolSet = yield self.dbStore.find(ExperimentThreadPool,
+                                                ExperimentThreadPool.profile == profileObj)
+        
+        for threadpoolObj in threadpoolSet:
+            threadpool = TSExperimentThreadPool()
+            
+            threadpool.agentId = threadpoolObj.aid
+            threadpool.numWorkers = threadpoolObj.numWorkers
+            
+            fullProfile.threadpools[threadpoolObj.name] = threadpool
+        
+        workloadSet = yield self.dbStore.find(ExperimentWorkload,
+                                              ExperimentWorkload.profile == profileObj)
+        
+        for workloadObj in workloadSet:
+            workload = TSExperimentWorkload()
+            
+            workload.agentId = workloadObj.threadpool.aid if workloadObj.threadpool is not None else -1
+            workload.workloadType = workloadObj.workloadType.name if workloadObj.workloadType is not None else ''
+            workload.threadpool = workloadObj.threadpool.name if workloadObj.threadpool is not None else ''
+            
+            workload.params = workloadObj.params
+            
+            fullProfile.workloads[workloadObj.name] = workload
+        
+        returnValue(fullProfile)
     
     @TSMethodImpl(ExpSvcAgent.configureProfile)
     @inlineCallbacks
     def configureProfile(self, context, profileName, profile):        
         profileObj, userId = yield  self._getProfileObj(context, profileName, profile)
+        
+        newProfile = False
+        threadpools = {}
         
         if profileObj is None:
             profileObj = ExperimentProfile()
@@ -311,10 +346,95 @@ class TSExperimentSvcAgent(TSLocalAgent):
             profileObj.userId = userId
             profileObj.creationDate = datetime.now()
             
+            newProfile = True
+            
         profileObj.description = unicode(profile.description)
         
         yield self.dbStore.add(profileObj)
         
-        # TODO: Workloads & threadpools
+        if not newProfile:
+            threadpoolSet = yield self.dbStore.find(ExperimentThreadPool,
+                                                    ExperimentThreadPool.profile == profileObj)
+            
+            # Update or remove existing threadpools
+            for threadpoolObj in threadpoolSet:
+                if threadpoolObj.name in profile.threadpools:
+                    threadpool = profile.threadpools[threadpoolObj.name]
+                    
+                    threadpoolObj.aid = threadpool.agentId
+                    threadpoolObj.numWorkers = threadpool.numWorkers
+                    
+                    del profile.threadpools[threadpoolObj.name]
+                    
+                    threadpools[threadpool.name] = threadpoolObj
+                    
+                    yield self.dbStore.add(threadpoolObj)
+                else:
+                    yield threadpoolObj.remove()
+        
+        # Add new threadpools
+        for threadpoolName, threadpool in profile.threadpools.iteritems():
+            threadpoolObj = ExperimentThreadPool()
+            
+            threadpoolObj.name = unicode(threadpoolName)
+            threadpoolObj.aid = threadpool.agentId
+            threadpoolObj.profile = profileObj
+            threadpoolObj.numWorkers = threadpool.numWorkers
+            
+            threadpools[threadpoolName] = threadpoolObj
+            
+            yield self.dbStore.add(threadpoolObj)
+        
+        def _setWorkloadType(workload, workloadObj):
+            if workload.workloadType is not None and workload.agentId is not None:
+                workloadTypeSet = yield self.dbStore.find(WorkloadType,
+                                                          And(WorkloadType.aid == workload.agentId,
+                                                              WorkloadType.name == workload.workloadType))
+                workloadTypeObj = workloadTypeSet.one()
+                
+                workloadObj.wltid = workloadTypeObj.id
+            else:
+                workloadObj.wltid = None
+        
+        def _setThreadpool(workload, workloadObj):
+            workloadObj.tpid = threadpools[workload.name].id            \
+                                if workload.threadpool is not None      \
+                                else None
+        
+        if not newProfile:
+            workloadSet = yield self.dbStore.find(ExperimentWorkload,
+                                                  ExperimentWorkload.profile == profileObj)
+            
+            for workloadObj in workloadSet:
+                if workloadObj.name in profile.workloads:
+                    workload = profile.workloads[workloadObj.name]
+                    
+                    _setThreadpool(workload, workloadObj)
+                    _setWorkloadType(workload, workloadObj)
+                                            
+                    workloadObj.params = workload.params
+                    
+                    del profile.workloads[workloadObj.name]
+                    
+                    yield self.dbStore.add(workloadObj)
+                else:
+                    yield workloadObj.remove()
+            
+        
+        for workloadName, workload in profile.workloads.iteritems():
+            workloadObj = ExperimentWorkload()
+            
+            workloadObj.name = unicode(workloadName)
+            workloadObj.profile = profileObj
+            
+            _setThreadpool(workload, workloadObj)
+            _setWorkloadType(workload, workloadObj)
+            
+            workloadObj.params = workload.params
+            
+            # TODO: implement workload steps
+            workloadObj.stepsId = None
+            
+            yield self.dbStore.add(workloadObj)
         
         yield self.dbStore.commit()
