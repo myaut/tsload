@@ -163,6 +163,7 @@ def createExpsvcDB(connString):
     TableSchema(database, AgentResource).create(store)
     TableSchema(database, AgentResourceChild).create(store)
     TableSchema(database, WorkloadType).create(store)
+    TableSchema(database, WorkloadParam).create(store)
     TableSchema(database, ExperimentProfile).create(store)
     TableSchema(database, ExperimentThreadPool).create(store)
     TableSchema(database, ExperimentWorkload).create(store)

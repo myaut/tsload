@@ -1,0 +1,37 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<table class="table" id="mainTable">
+		<tr>
+            <th>ID</th>
+            <th>USERID</th>
+            <th>NAME</th>
+            <th>CREATED</th>
+            <th>DESCRIPTION</th>
+        </tr>
+        <tbody nevow:data="profiles" nevow:render="sequence">
+		    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+		        <tr>
+		            <td>
+		                <span><nevow:slot name="profileId">ID</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="userId">USERID</nevow:slot></span>
+		            </td>
+		            <td>
+		                <a href='#' onclick=''>
+		                	<nevow:slot name="name">NAME</nevow:slot>
+		                	<nevow:attr name="href" nevow:render="data" nevow:data="profileHref">
+			                    <nevow:slot name="profileHref">#</nevow:slot>
+			                </nevow:attr>
+		                </a>
+		            </td>
+		            <td>
+		               <span><nevow:slot name="creationDate">CREATED</nevow:slot></span>
+		            </td>
+		            <td>
+		                <span><nevow:slot name="description">DESCRIPTION</nevow:slot></span>
+		            </td>
+		        </tr>
+		    </nevow:invisible>
+	    </tbody>
+	</table>
+</div>

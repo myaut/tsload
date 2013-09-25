@@ -15,6 +15,20 @@ from tsload.wlparam import WLParamHelper
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
+_agentFilters = {'hostname': lambda agentUuid, agent, value: agent.hostname == value,
+                 'uuid': lambda agentUuid, agent, value: agentUuid == value,
+                 'id': lambda agentUuid, agent, value: agent.agentId == int(value)}
+
+def agentSelector(agentList, criteria):
+    key, value = criteria.split('=', 1)
+    agentFilter = _agentFilters[key]
+    
+    for agentUuid, agent in agentList.iteritems():
+        if agentFilter(agentUuid, agent, value):
+            return agentUuid, agent
+    
+    return None, None
+
 class AgentContext(CLIContext):
     def setAgentId(self, agentId):
         self.agentId = agentId
@@ -251,3 +265,4 @@ class AgentRootContext(CLIContext):
     @NextContext(LoadAgentRootContext)
     def load(self, args):
         pass
+        

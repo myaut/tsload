@@ -8,8 +8,12 @@ import time
 
 from tsload.jsonts import JSONTS, tstimeToUnixTime
 from tsload.jsonts.api.expsvc import *
+from tsload.jsonts.object import TSObject as tso
 
+from tsload.cli.agent import agentSelector
 from tsload.cli.context import CLIContext, NextContext, ReturnContext, SameContext
+
+from tsload.wlparam import WLParamHelper
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -21,22 +25,106 @@ class ThreadpoolConfigurationContext(CLIContext):
     
     @SameContext()
     def info(self, args):
-        pass
+        print 'Threadpool', self.name
+        print '\tAgent id:', self.threadpool.agentId
+        print '\tNumber of workers:', self.threadpool.numWorkers
     
     @SameContext()
+    @inlineCallbacks
     def set(self, args):
-        pass
+        paramName  = args.pop(0)
+        paramValue = args.pop(0) 
+        
+        if paramName == 'agent':
+            agentList = yield self.cli.expsvcAgent.listAgents()
+            _, agent = agentSelector(agentList, paramValue)
+            
+            if agent is None:
+                raise ProfileError('No such agent found!')
+            
+            self.threadpool.agentId = agent.agentId
+        elif paramName == 'workers':
+            numWorkers = int(paramValue)
+            
+            if numWorkers < 0:
+                raise ProfileError('Number of threadpool workers must not be negative!')
+            
+            self.threadpool.numWorkers = numWorkers
+        else:
+            raise ProfileError("Invalid parameter '%s'" % paramName)
+        
+        # We didn't raise ProfileError if we are here - set profile modified flag
+        self.parent.setCommitState(False)
+        
+    set.args = ['{agent|workers} <value>']
+        
 
 class WorkloadConfigurationContext(CLIContext):
     operations = ['info', 'set']
     
-    @SameContext()
-    def info(self, args):
-        pass
+    workloadType = None
+    workloadTypeName = ''
     
     @SameContext()
+    def info(self, args):
+        print 'Workload', self.name
+        print '\tAgent id:', self.workload.agentId
+        print '\tWorkload type:', self.workload.workloadType 
+        print '\tThreadpool:', self.workload.threadpool
+        print '\tParams:'
+        
+        for paramName, paramValue in self.workload.params.iteritems():
+            print '\t\twl:%s = %s' % (paramName, paramValue) 
+    
+    @SameContext()
+    @inlineCallbacks
     def set(self, args):
-        pass
+        paramName  = args.pop(0)
+        paramValue = args.pop(0) 
+        
+        if paramName == 'agent':
+            agentList = yield self.cli.expsvcAgent.listAgents()
+            _, agent = agentSelector(agentList, paramValue)
+            
+            if agent is None:
+                raise ProfileError('No such agent found!')
+            
+            self.workload.agentId = agent.agentId
+        elif paramName == 'wltype' or paramName == 'wlt':
+            if self.workload.agentId is None:
+                raise ProfileError("You didn't select agent, could not set workload type.")
+            
+            wltList = yield self.cli.expsvcAgent.getWorkloadTypes(agentId = self.workload.agentId)
+            
+            if paramValue not in wltList:
+                raise ProfileError("Unknown workload type.")
+            
+            self.workload.workloadType = paramValue
+            self.workloadType = wltList[paramValue]
+            
+            self.workload.params = {}
+            for paramName, param in self.workloadType.params.iteritems():
+                defaultValue = WLParamHelper.getDefaultValue(param)
+                self.workload.params[paramName] = defaultValue 
+        elif paramName == 'threadpool' or paramName == 'tp':
+            self.workload.threadpool = paramValue
+        elif paramName.startswith('wl:'):
+            paramName = paramName[3:]
+            
+            if paramName not in self.workload.params:
+                raise ProfileError("Invalid workload parameter '%s'." % paramName)
+            
+            wlp = self.workloadType.params[paramName]
+            value = WLParamHelper.parseParamValue(wlp, paramValue)
+            
+            self.workload.params[paramName] = value
+        else:
+            raise ProfileError("Invalid parameter '%s'" % paramName) 
+        
+        # We didn't raise ProfileError if we are here - set profile modified flag
+        self.parent.setCommitState(False)
+    set.args = ['{agent|wltype|threadpool|wl:*} <value>']
+            
 
 class ProfileConfigurationContext(CLIContext):
     operations = ['info', 'commit', 'create', 'select', 'remove']
@@ -62,7 +150,7 @@ class ProfileConfigurationContext(CLIContext):
             workload = TSExperimentWorkload.createEmptyWorkload()
             workload.name = workloadName
         
-        workloadContext.threadpool = workload 
+        workloadContext.workload = workload 
         workloadContext.name = repr(workloadName)
         
         self.workloadContexts[workloadName] = workloadContext

@@ -1,0 +1,109 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+	<table width="100%">
+	<tr>
+		<td>
+		<h2>Experiment profile '<span><nevow:slot name="profileName">PROFILE</nevow:slot></span>'</h2> <br />
+		
+		<p>
+			<b>User ID</b>: <nevow:slot name="userId" /> <br />
+			<b>Created</b>: <nevow:slot name="creationDate" /> <br />
+			
+			<nevow:slot name="description" />
+		</p>
+		
+		</td>
+		
+		<td> 
+			<div class="pull-right">
+				<a href="threadpool" class="btn btn-success btn-large">Create thread pool</a>
+				<a href="workload" class="btn btn-success btn-large">Create workload</a>
+			</div>
+		</td>
+	</tr>
+	</table>
+
+	<table width="100%">
+	<tr>
+	<td width="48%">
+		<h3>Thread pools</h3>
+	
+		<table class="table" id="mainTable">
+			<tr>
+	            <th>NAME</th>
+	            <th>AGENT</th>
+	            <th>WORKERS</th>
+	        </tr>
+	        <tbody nevow:data="threadpools" nevow:render="sequence">
+			    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+			        <tr>
+			            <td>
+			                <span><nevow:slot name="name">NAME</nevow:slot></span>
+			            </td>
+			            <td>
+			                <a href='#' onclick=''>
+			                	<nevow:slot name="agentName">AGENT</nevow:slot>
+			                	<nevow:attr name="href" nevow:render="data" nevow:data="agentHref">
+				                    <nevow:slot name="agentHref">#</nevow:slot>
+				                </nevow:attr>
+			                </a>
+			            </td>
+			            <td>
+			               <span><nevow:slot name="numWorkers">WORKERS</nevow:slot></span>
+			            </td>
+			        </tr>
+			    </nevow:invisible>
+		    </tbody>
+		</table>
+	</td>
+	<td width="4%">
+		 
+	</td>
+	<td width="48%">
+		<h3>Workloads</h3>
+	
+		<table class="table" id="mainTable">
+			<tr>
+	            <th>NAME</th>
+	            <th>AGENT</th>
+	            <th>TYPE</th>
+	            <th>THREADPOOL</th>
+	        </tr>
+	        <tbody nevow:data="workloads" nevow:render="sequence">
+			    <nevow:invisible nevow:pattern="item" nevow:render="mapping">
+			        <tr>
+			            <td>
+			                <a href='#' onclick=''>
+			                	<nevow:slot name="name">NAME</nevow:slot>
+			                	<nevow:attr name="href" nevow:render="data" nevow:data="workloadHref">
+				                    <nevow:slot name="workloadHref">#</nevow:slot>
+				                </nevow:attr>
+			                </a>
+			            </td>
+			            <td>
+			                <a href='#' onclick=''>
+			                	<nevow:slot name="agentName">AGENT</nevow:slot>
+			                	<nevow:attr name="href" nevow:render="data" nevow:data="agentHref">
+				                    <nevow:slot name="agentHref">#</nevow:slot>
+				                </nevow:attr>
+			                </a>
+			            </td>
+			            <td>
+			                <a href='#' onclick=''>
+			                	<nevow:slot name="workloadType">Type</nevow:slot>
+			                	<nevow:attr name="href" nevow:render="data" nevow:data="workloadTypeHref">
+				                    <nevow:slot name="workloadTypeHref">#</nevow:slot>
+				                </nevow:attr>
+			                </a>
+			            </td>
+			            
+			            <td>
+			               <span><nevow:slot name="threadpool">THREADPOOL</nevow:slot></span>
+			            </td>
+			        </tr>
+			    </nevow:invisible>
+		    </tbody>
+		</table>
+	</td>
+	</tr>
+	</table>
+</div>

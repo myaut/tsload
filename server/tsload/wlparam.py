@@ -6,6 +6,11 @@ Created on Jul 9, 2013
 
 from tsload.jsonts.api.load import *
 
+from tsload.util.format import parseSizeParam, parseTimeParam
+
+class WLParamRangeError(Exception):
+    pass
+
 class WLParamHelper:
     typeMap = {TSWLParamBoolean: 'bool',
                TSWLParamInteger: 'int',
@@ -53,3 +58,44 @@ class WLParamHelper:
                 # all of WL parameter types support default, but couldn't be sure
                 return wlp.getopt('default', None)
         return None
+    
+    @staticmethod
+    def parseParamValue(wlp, value):
+        if isinstance(wlp, TSWLParamBoolean):
+            return bool(value)
+        elif isinstance(wlp, TSWLParamInteger):
+            if isinstance(wlp, TSWLParamSize):
+                val = parseSizeParam(value)
+            elif isinstance(wlp, TSWLParamTime):
+                val = parseTimeParam(value)
+            else:
+                val = int(value)
+            
+            minVal, maxVal = WLParamHelper.getIntegerRange(wlp)
+            
+            if (maxVal is not None and val > maxVal) or \
+               (minVal is not None and val < minVal):
+                raise WLParamRangeError("Parameter value %d is outside range [%d...%d]" % (val,
+                                                                                           minVal,
+                                                                                           maxVal))  
+            
+            return val
+        elif isinstance(wlp, TSWLParamFloat):
+            return float(value)
+        elif isinstance(wlp, TSWLParamTime):
+            return parseTimeParam(value)
+        elif isinstance(wlp, TSWLParamString):
+            val = str(value)
+            
+            maxLen = WLParamHelper.getStringLength(wlp)
+            
+            if maxLen is not None and len(val) > maxLen:
+                raise WLParamRangeError("String too long (maximum: %d, current: %d)" % (maxLen, 
+                                                                                        len(val)))
+            
+            return val
+        elif isinstance(wlp, TSWLParamStringSet):
+            return str(value)
+        
+        return value
+            

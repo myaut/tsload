@@ -117,7 +117,7 @@ class MainPageMixin:
         
         mainMenu = MainMenu()
         mainMenuItems = [('Agents', '/agent'),
-                         ('Profiles', '/profiles'),
+                         ('Profiles', '/profile'),
                          ('Experiments', '/experiment'),
                          ('Monitoring', '/monitoring')]
         

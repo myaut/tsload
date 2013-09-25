@@ -20,6 +20,7 @@ from tsload.web import webappPath
 from tsload.web.main import MainPage, AboutPage
 from tsload.web.login import LoginPage, LogoutPage
 from tsload.web.agent import AgentPage
+from tsload.web.profile import ProfilePage
 
 main = MainPage()
 
@@ -33,7 +34,9 @@ main.putChild('images', File(webappPath('images')))
 main.putChild('about', AboutPage())
 main.putChild('login', LoginPage())
 main.putChild('logout', LogoutPage())
+
 main.putChild('agent', AgentPage())
+main.putChild('profile', ProfilePage())
 
 site = NevowSite(main, logPath = config.get('logging', 'logaccess'))
 

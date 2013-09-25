@@ -366,11 +366,11 @@ class TSExperimentSvcAgent(TSLocalAgent):
                     
                     del profile.threadpools[threadpoolObj.name]
                     
-                    threadpools[threadpool.name] = threadpoolObj
-                    
                     yield self.dbStore.add(threadpoolObj)
+                    
+                    threadpools[threadpoolObj.name] = threadpoolObj
                 else:
-                    yield threadpoolObj.remove()
+                    yield self.dbStore.remove(threadpoolObj)
         
         # Add new threadpools
         for threadpoolName, threadpool in profile.threadpools.iteritems():
@@ -385,11 +385,12 @@ class TSExperimentSvcAgent(TSLocalAgent):
             
             yield self.dbStore.add(threadpoolObj)
         
+        @inlineCallbacks
         def _setWorkloadType(workload, workloadObj):
             if workload.workloadType is not None and workload.agentId is not None:
                 workloadTypeSet = yield self.dbStore.find(WorkloadType,
                                                           And(WorkloadType.aid == workload.agentId,
-                                                              WorkloadType.name == workload.workloadType))
+                                                              WorkloadType.name == unicode(workload.workloadType)))
                 workloadTypeObj = workloadTypeSet.one()
                 
                 workloadObj.wltid = workloadTypeObj.id
@@ -397,7 +398,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
                 workloadObj.wltid = None
         
         def _setThreadpool(workload, workloadObj):
-            workloadObj.tpid = threadpools[workload.name].id            \
+            workloadObj.tpid = threadpools[workloadObj.name].id            \
                                 if workload.threadpool is not None      \
                                 else None
         
@@ -410,7 +411,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
                     workload = profile.workloads[workloadObj.name]
                     
                     _setThreadpool(workload, workloadObj)
-                    _setWorkloadType(workload, workloadObj)
+                    yield _setWorkloadType(workload, workloadObj)
                                             
                     workloadObj.params = workload.params
                     
@@ -418,7 +419,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
                     
                     yield self.dbStore.add(workloadObj)
                 else:
-                    yield workloadObj.remove()
+                    yield self.dbStore.remove(workloadObj)
             
         
         for workloadName, workload in profile.workloads.iteritems():
@@ -428,7 +429,7 @@ class TSExperimentSvcAgent(TSLocalAgent):
             workloadObj.profile = profileObj
             
             _setThreadpool(workload, workloadObj)
-            _setWorkloadType(workload, workloadObj)
+            yield _setWorkloadType(workload, workloadObj)
             
             workloadObj.params = workload.params
             
