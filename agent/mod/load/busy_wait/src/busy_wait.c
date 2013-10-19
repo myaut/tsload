@@ -80,5 +80,7 @@ MODEXPORT int mod_config(module_t* mod) {
 }
 
 MODEXPORT int mod_unconfig(module_t* mod) {
+	wl_type_unregister(mod, &busy_wait_wlt);
+
 	return MOD_OK;
 }

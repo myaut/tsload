@@ -115,12 +115,17 @@ void mod_destroy(module_t* mod) {
 	/*It doesn't unlink module from linked list because this function is called during cleanup*/
 	/*TODO: cleanup other fields like mod_private*/
 
+	if(mod->mod_status == MOD_READY) {
+		mod->mod_unconfig(mod);
+	}
+
 	if(mod->mod_status != MOD_UNITIALIZED) {
 		if((err = plat_mod_close(&mod->mod_library)) != 0) {
-			logmsg(LOG_WARN, "Failed to close module %s. platform-specific error code: %d", mod->mod_name, err);
+			logmsg(LOG_WARN, "Failed to close module %s. platform-specific error code: %d",
+					mod->mod_path, err);
 		}
 
-		logmsg(LOG_INFO, "Destroying module %s", mod->mod_name);
+		logmsg(LOG_INFO, "Destroying module %s", mod->mod_path);
 	}
 
 	mp_free(mod);
@@ -253,7 +258,7 @@ int mod_init(void) {
 }
 
 void mod_fini(void) {
-	mp_cache_destroy(&mod_cache);
-
 	unload_modules();
+
+	mp_cache_destroy(&mod_cache);
 }

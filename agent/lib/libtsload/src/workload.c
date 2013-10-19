@@ -141,6 +141,8 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 void wl_destroy_nodetach(workload_t* wl) {
 	hash_map_remove(&workload_hash_map, wl);
 
+	t_destroy(&wl->wl_cfg_thread);
+
 	list_del(&wl->wl_chain);
 
 	mutex_destroy(&wl->wl_rq_mutex);
@@ -404,6 +406,7 @@ request_t* wl_create_request(workload_t* wl, int thread_id) {
 	rq->rq_flags = 0;
 
 	rq->rq_workload = wl;
+	strcpy(rq->rq_wl_name, wl->wl_name);
 
 	rq->rq_start_time = 0;
 	rq->rq_end_time = 0;
@@ -493,7 +496,7 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
 		jrq = json_new(JSON_NODE);
 
-		json_push_back(jrq, json_new_a("workload_name", rq->rq_workload->wl_name));
+		json_push_back(jrq, json_new_a("workload_name", rq->rq_wl_name));
 
 		json_push_back(jrq, json_new_i("step", rq->rq_step));
 		json_push_back(jrq, json_new_i("request", rq->rq_id));
@@ -624,11 +627,13 @@ int wl_init(void) {
 void wl_fini(void) {
 	etrc_provider_destroy(&tsload__workload);
 
-	squeue_destroy(&wl_requests, wl_rq_chain_destroy);
+	squeue_push(&wl_requests, NULL);
 	t_destroy(&t_wl_requests);
+	squeue_destroy(&wl_requests, wl_rq_chain_destroy);
 
-	squeue_destroy(&wl_notifications, mp_free);
+	squeue_push(&wl_notifications, NULL);
 	t_destroy(&t_wl_notify);
+	squeue_destroy(&wl_notifications, mp_free);
 
 	hash_map_destroy(&workload_hash_map);
 

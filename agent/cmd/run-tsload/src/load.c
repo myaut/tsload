@@ -59,7 +59,7 @@ int				tp_count = 0;
 
 boolean_t		load_error = B_FALSE;
 
-FILE*			rqreport_file;
+FILE*			rqreport_file = NULL;
 
 const char* wl_status_msg(wl_status_t wls) {
 	switch(wls) {
@@ -517,10 +517,13 @@ void do_workload_status(const char* wl_name,
 void do_requests_report(list_head_t* rq_list) {
 	request_t* rq;
 
+	if(!rqreport_file)
+		return;
+
 	mutex_lock(&rqreport_lock);
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
 		fprintf(rqreport_file, "%s,%ld,%d,%d,%lld,%lld,%x\n",
-				rq->rq_workload->wl_name,
+				rq->rq_wl_name,
 				rq->rq_step,
 				rq->rq_id,
 				rq->rq_thread_id,
@@ -613,5 +616,18 @@ int load_init(void) {
 void load_fini(void) {
 	event_destroy(&workload_event);
 	mutex_destroy(&output_lock);
+
+	/* Could not close it during do_load() cause writing is done in separate thread.
+	 * May implement CV, but load_fini() is called when we already reported all requests
+	 * in wl_fini() of libtsload. */
+	if(rqreport_file) {
+		mutex_lock(&rqreport_lock);
+
+		fclose(rqreport_file);
+		rqreport_file = NULL;
+
+		mutex_unlock(&rqreport_lock);
+	}
+
 	mutex_destroy(&rqreport_lock);
 }

@@ -32,13 +32,16 @@ int ts_init(struct subsystem** subsys_list, int count) {
 
 		if(err != 0) {
 			tsi_subsys[i]->s_state = SS_ERROR;
+			tsi_subsys[i]->s_error_code = err;
+
 			fprintf(stderr, "Failure initializing %s, exiting\n", tsi_subsys[i]->s_name);
 			exit(err);
 
 			return err;
 		}
 
-		tsi_subsys[i]->s_error_code = err;
+		tsi_subsys[i]->s_state = SS_OK;
+		tsi_subsys[i]->s_error_code = 0;
 	}
 
 	return 0;

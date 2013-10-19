@@ -61,6 +61,7 @@ typedef struct wl_type {
 } wl_type_t;
 
 LIBEXPORT int wl_type_register(module_t* mod, wl_type_t* wlt);
+LIBEXPORT int wl_type_unregister(module_t* mod, wl_type_t* wlt);
 wl_type_t* wl_type_search(const char* name);
 
 int wlt_init(void);

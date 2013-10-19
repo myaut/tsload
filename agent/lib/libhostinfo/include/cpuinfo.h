@@ -11,8 +11,6 @@
 #include <defs.h>
 #include <list.h>
 
-#include <libjson.h>
-
 #include <hiobject.h>
 
 #define 	HI_CPU_ANY			-1

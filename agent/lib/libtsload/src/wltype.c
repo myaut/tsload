@@ -54,6 +54,10 @@ int wl_type_register(module_t* mod, wl_type_t* wlt) {
 	return hash_map_insert(&wl_type_hash_map, wlt);
 }
 
+int wl_type_unregister(module_t* mod, wl_type_t* wlt) {
+	return hash_map_remove(&wl_type_hash_map, wlt);
+}
+
 wl_type_t* wl_type_search(const char* name) {
 	void* object = hash_map_find(&wl_type_hash_map, name);
 	wl_type_t* wlt = (wl_type_t*) object;

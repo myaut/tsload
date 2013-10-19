@@ -201,6 +201,10 @@ static boolean_t cpuinfo_read_var(const char* line, const char* param, char* val
 
 	int mode = 0;
 
+	/* Cut out last '\n' */
+	end = line + linelen;
+	*(--end) = '\0';
+
 	if(strncmp(line, param, paramlen) == 0) {
 		/* Ignore parameter name with whitespaces. Acts as FSM.  */
 		while((mode == 0 && (*p != ':')) ||
@@ -214,10 +218,6 @@ static boolean_t cpuinfo_read_var(const char* line, const char* param, char* val
 		}
 
 		strncpy(value, p + 1, vallen);
-
-		/* Cut out last '\n' */
-		end = value + strlen(value);
-		*--end = '\0';
 
 		return B_TRUE;
 	}
@@ -254,7 +254,7 @@ hi_cpu_object_t* hi_linux_proc_chip(hi_cpu_object_t* node, int strandid, int chi
 	if(cpuinfo) {
 		while(fgets(line, 256, cpuinfo) != NULL) {
 			if(cpuinfo_read_var(line, "processor", value, 64)) {
-				chipid = strtol(value, NULL, 10);
+				ci_chipid = strtol(value, NULL, 10);
 				continue;
 			}
 

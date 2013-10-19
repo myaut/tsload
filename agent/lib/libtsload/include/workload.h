@@ -51,6 +51,8 @@ typedef struct request {
 	int rq_flags;
 
 	struct workload* rq_workload;
+	char rq_wl_name[WLNAMELEN];
+
 	list_node_t rq_node;		/* Next request in chain */
 } request_t;
 

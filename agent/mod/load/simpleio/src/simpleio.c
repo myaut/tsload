@@ -264,5 +264,8 @@ MODEXPORT int mod_config(module_t* mod) {
 }
 
 MODEXPORT int mod_unconfig(module_t* mod) {
+	wl_type_unregister(mod, &simpleio_wlt_read);
+	wl_type_unregister(mod, &simpleio_wlt_write);
+
 	return 0;
 }

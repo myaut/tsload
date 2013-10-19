@@ -19,6 +19,7 @@ int hi_linux_sysfs_readstr(const char* root, const char* name, const char* objec
 	char path[256];
 	int fd;
 	uint64_t i;
+	ssize_t num;
 
 	path_join(path, 256, root, name, object, NULL);
 
@@ -28,7 +29,9 @@ int hi_linux_sysfs_readstr(const char* root, const char* name, const char* objec
 		return HI_LINUX_SYSFS_ERROR;
 	}
 
-	read(fd, str, len);
+	num = read(fd, str, len);
+	*(str + num) = '\0';
+
 	close(fd);
 
 	hi_sysfs_dprintf("hi_linux_sysfs_readstr: %s/%s/%s\n", root, name, object);
@@ -92,7 +95,7 @@ int hi_linux_sysfs_parsebitmap(const char* str, uint32_t* bitmap, int len) {
 	char *ps = p;
 
 	/* Parse bitmap. May be implemented on top of strchr/sscanf,
-	 * but dump implementation is simpler
+	 * but dumb implementation is simpler
 	 *
 	 * 0  -  7  ,  9
 	 * ^ps^pm   ^p*/
