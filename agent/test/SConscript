@@ -29,8 +29,9 @@ def CreateConfig(target, source, env):
     # Resolve libraries to real path of files
     lib_sect = cfg.add_section('libs')
     for lib in test.libs:
-        lib_path = str(env['TESTLIBS'][lib][0])
-        cfg.set('libs', lib, lib_path)
+        if lib in env['TESTLIBS']:
+            lib_path = str(env['TESTLIBS'][lib][0])
+            cfg.set('libs', lib, lib_path)
         
     use_sect = cfg.add_section('uses')
     for use in test.uses:

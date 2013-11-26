@@ -25,7 +25,7 @@
 #	 expect=signal:SIG 			-  expect=ok is default
 #	 expect=return:err								  
 
-# Dummy tests are testing suite itself
+# Dummy tests are tests for testing test suite itself
 
 ^dummy				enabled=False
 
@@ -59,3 +59,7 @@ threads/solaris_pset file=solaris_pset.c lib=libhostinfo plat=solaris
 # Tests for hostinfo
 ^hostinfo 			lib=libjson 	lib=libtscommon		lib=libhostinfo
 hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c  plat=linux
+
+# Tests for random generators
+^random 			lib=libjson lib=libtscommon lib=libhostinfo lib=libtsload	
+random/chisquare	file=chisquare.c lib=m

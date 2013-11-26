@@ -76,6 +76,10 @@ AddOption('--runner-threads',  dest='runner_threads', action="store", default='1
 AddOption('--test-dir',  dest='test_directory', action="store", default='',
           metavar='TESTDIR', help='Path to test directory')
 
+# tsload options
+AddEnableOption('fast-randgen',  dest='fast_randgen', default=False,
+                help='Use faster (but less precise) method in rg_calculate_double()')
+
 # Installation directories options are specified below
 
 # -------------------------

@@ -11,6 +11,9 @@ lib = env.Clone()
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['advapi32']) 
 
+if GetOption('fast_randgen'):
+    lib.Macroses('TSLOAD_RANDGEN_FAST')
+
 lib.AddDeps(('lib', 'libjson'), 
             ('lib', 'libtscommon'), 
             ('lib', 'libhostinfo'))
