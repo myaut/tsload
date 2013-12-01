@@ -20,6 +20,7 @@
 #include <tsload.h>
 #include <tstime.h>
 #include <etrace.h>
+#include <disp.h>
 
 #include <libjson.h>
 
@@ -127,6 +128,9 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 
 	wl->wl_notify_time = 0;
 
+	wl->wl_disp_class = NULL;
+	wl->wl_disp_private = NULL;
+
 	mutex_init(&wl->wl_rq_mutex, "wl-%s-rq", name);
 
 	hash_map_insert(&workload_hash_map, wl);
@@ -141,7 +145,10 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 void wl_destroy_nodetach(workload_t* wl) {
 	hash_map_remove(&workload_hash_map, wl);
 
-	t_destroy(&wl->wl_cfg_thread);
+	wl->wl_disp_class->disp_fini(wl);
+
+	if(wl->wl_status != WLS_NEW)
+		t_destroy(&wl->wl_cfg_thread);
 
 	list_del(&wl->wl_chain);
 
@@ -383,6 +390,8 @@ int wl_advance_step(workload_step_t* step) {
 	step_off = wl->wl_current_step  & WLSTEPQMASK;
 	step->wls_rq_count = wl->wl_rqs_per_step[step_off];
 
+	wl->wl_disp_class->disp_step(step);
+
 done:
 	mutex_unlock(&wl->wl_rq_mutex);
 
@@ -408,8 +417,11 @@ request_t* wl_create_request(workload_t* wl, int thread_id) {
 	rq->rq_workload = wl;
 	strcpy(rq->rq_wl_name, wl->wl_name);
 
+	rq->rq_sched_time = 0;
 	rq->rq_start_time = 0;
 	rq->rq_end_time = 0;
+
+	wl->wl_disp_class->disp_pre_request(rq);
 
 	list_node_init(&rq->rq_node);
 
@@ -436,14 +448,15 @@ void wl_run_request(request_t* rq) {
 	ret = wl->wl_type->wlt_run_request(rq);
 	rq->rq_end_time = tm_get_clock();
 
-	/* FIXME: on-time condition*/
-	if(rq->rq_end_time < (wl->wl_tp->tp_time + wl->wl_tp->tp_quantum))
+	if(rq->rq_start_time <= rq->rq_sched_time)
 		rq->rq_flags |= RQF_ONTIME;
 
 	if(ret == 0)
 		rq->rq_flags |= RQF_SUCCESS;
 
 	rq->rq_flags |= RQF_FINISHED;
+
+	wl->wl_disp_class->disp_post_request(rq);
 
 	ETRC_PROBE2(tsload__workload, request__finish, workload_t*, wl, request_t*, rq);
 }
@@ -589,6 +602,13 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 
 	/* Create workload */
 	wl = wl_create(wl_name, wlt, tp);
+
+	/* Process request dispatcher */
+	ret = json_disp_proc(node, wl);
+
+	if(ret != DISP_JSON_OK) {
+		goto fail;
+	}
 
 	/* Process params from i_params to wl_params, where mod_params contains
 	 * parameters descriptions (see wlparam) */

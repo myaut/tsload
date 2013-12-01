@@ -522,11 +522,12 @@ void do_requests_report(list_head_t* rq_list) {
 
 	mutex_lock(&rqreport_lock);
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
-		fprintf(rqreport_file, "%s,%ld,%d,%d,%lld,%lld,%x\n",
+		fprintf(rqreport_file, "%s,%ld,%d,%d,%lld,%lld,%lld,%x\n",
 				rq->rq_wl_name,
 				rq->rq_step,
 				rq->rq_id,
 				rq->rq_thread_id,
+				rq->rq_sched_time,
 				rq->rq_start_time,
 				rq->rq_end_time,
 				rq->rq_flags);

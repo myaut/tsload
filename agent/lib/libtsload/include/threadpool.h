@@ -21,7 +21,9 @@
 #define TPHASHSIZE		4
 #define	TPHASHMASK		3
 
-#define TP_MIN_QUANTUM	10 * T_MS
+#define TP_MIN_QUANTUM			(10 * T_MS)
+#define TP_WORKER_MIN_SLEEP 	(500 * T_US)
+#define TP_WORKER_OVERHEAD	 	(200 * T_US)
 
 #define DEFAULT_TP_NAME	"[DEFAULT]"
 

@@ -38,6 +38,7 @@
 #define RQF_FINISHED	0x08
 
 struct workload;
+struct disp_class;
 
 typedef struct request {
 	long rq_step;
@@ -45,6 +46,7 @@ typedef struct request {
 
 	int rq_thread_id;
 
+	ts_time_t rq_sched_time;
 	ts_time_t rq_start_time;
 	ts_time_t rq_end_time;
 
@@ -100,6 +102,9 @@ typedef struct workload {
 
 	unsigned		 wl_rqs_per_step[WLSTEPQSIZE];	/**< Contains number of requests per step*/
 	/* End of requests queue*/
+
+	struct disp_class* wl_disp_class; /**< Dispatcher class*/
+	void* wl_disp_private;			 /**< Dispatcher data */
 
 	struct workload* wl_hm_next;		/**<next in workload hashmap*/
 

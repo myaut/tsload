@@ -67,6 +67,10 @@ for test in suite:
     tst = env.Clone()
     
     for lib in test.libs:
+        # Hack for chisquare test && windows
+        if lib=='m' and not tst.SupportedPlatform('posix'):
+            continue
+        
         tst.AddDeps(('lib', lib))
     
     tst['TEST'] = test

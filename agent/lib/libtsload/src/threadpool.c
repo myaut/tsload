@@ -101,6 +101,8 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 
 	tp->tp_wl_count = 0;
 
+	tp->tp_next = NULL;
+
 	/*Initialize objects*/
 	list_head_init(&tp->tp_wl_head, "tp-%s", name);
     event_init(&tp->tp_event, "tp-%s", name);
@@ -249,6 +251,10 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 
 	int* num_rqs = NULL;
 	request_t* rq;
+	request_t* last_rq;
+	request_t* next_rq;
+
+	list_head_t* rq_list;
 
 	int tid;
 
@@ -259,11 +265,69 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 
 	distribute_requests(rq_per_worker, extra_rqs, tp->tp_num_threads, num_rqs);
 
+	/* Create sorted list of requests */
 	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
+		rq_list = &tp->tp_workers[tid].w_requests;
+
+		if(list_empty(rq_list)) {
+			last_rq = NULL;
+		}
+		else {
+			last_rq = list_entry(list_head_node(rq_list), request_t, rq_node);
+		}
+
 		while(num_rqs[tid] > 0) {
 			rq = wl_create_request(step->wls_workload, tid);
 
-			list_add_tail(&rq->rq_node, &tp->tp_workers[tid].w_requests);
+			/* Usually there are only one workload per threadpool, so we may simple put
+			 * new request after last request. But if it is second workload, these conditions
+			 * would not be satisfied (there would be requests after current request, and
+			 * we have to find appropriate place for it. */
+			if(!last_rq ||
+			    (list_is_last(last_rq, rq_list) && rq->rq_sched_time >= last_rq->rq_sched_time) ) {
+					list_add_tail(&rq->rq_node, rq_list);
+					last_rq = rq;
+			}
+			else {
+				boolean_t middle = B_FALSE;
+
+				next_rq = last_rq;
+
+				if(rq->rq_sched_time >= last_rq->rq_sched_time) {
+					/* Search forward */
+					list_for_each_entry_continue(request_t, next_rq, rq_list, rq_node) {
+						if(rq->rq_sched_time < next_rq->rq_sched_time) {
+							middle = B_TRUE;
+							break;
+						}
+						last_rq = next_rq;
+					}
+
+					if(!middle) {
+						list_add_tail(&rq->rq_node, rq_list);
+					}
+				}
+				else {
+					/* Search backward */
+					list_for_each_entry_continue_reverse(request_t, last_rq, rq_list, rq_node) {
+						if(rq->rq_sched_time >= last_rq->rq_sched_time) {
+							middle = B_TRUE;
+							break;
+						}
+
+						next_rq = last_rq;
+					}
+
+					if(!middle) {
+						list_add(&rq->rq_node, rq_list);
+					}
+				}
+
+				if(middle) {
+					/* Insert new request between next_rq and last_rq */
+					__list_add(&rq->rq_node, &last_rq->rq_node, &next_rq->rq_node);
+				}
+			}
 
 			--num_rqs[tid];
 		}

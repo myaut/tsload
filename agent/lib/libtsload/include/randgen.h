@@ -29,6 +29,7 @@ typedef void (*randgen_func_t)(randgen_t* rg);
 
 typedef struct randgen_class {
 	boolean_t rg_is_singleton;
+	int		  rg_ref_count;
 	randgen_t* rg_object;
 
 	uint64_t rg_max;
@@ -41,11 +42,12 @@ typedef struct randgen_class {
 
 #define RG_CLASS_HEAD(is_singleton, max)		\
 	SM_INIT(.rg_is_singleton, is_singleton),	\
+	SM_INIT(.rg_ref_count, 0),					\
 	SM_INIT(.rg_object, NULL),					\
 	SM_INIT(.rg_max, max)
 
-randgen_t* rg_create(randgen_class_t* class, uint64_t seed);
-void rg_destroy(randgen_t* rg);
+LIBEXPORT randgen_t* rg_create(randgen_class_t* class, uint64_t seed);
+LIBEXPORT void rg_destroy(randgen_t* rg);
 
 /**
  * Generates integer with uniform distribution in range
@@ -55,16 +57,16 @@ static uint64_t rg_generate_int(randgen_t* rg) {
 	return rg->rg_class->rg_generate_int(rg);
 }
 
-double rg_generate_double(randgen_t* rg);
+LIBEXPORT double rg_generate_double(randgen_t* rg);
 
-int  rg_init_dummy(randgen_t* rg);
-void rg_destroy_dummy(randgen_t* rg);
+LIBEXPORT int  rg_init_dummy(randgen_t* rg);
+LIBEXPORT void rg_destroy_dummy(randgen_t* rg);
 
 /**
  * Default random generator provided by standard library:
  * rand()/srand() & RAND_MAX
  * */
-extern randgen_class_t rg_libc;
+LIBIMPORT randgen_class_t rg_libc;
 
 #define	RV_PARAM_OK				0
 #define RV_INVALID_PARAM_NAME	-1
@@ -88,8 +90,8 @@ typedef struct randvar_class {
 	double (*rv_variate_double)(randvar_t* rv, double u);
 } randvar_class_t;
 
-randvar_t* rv_create(randvar_class_t* class, randgen_t* rg);
-void rv_destroy(randvar_t* rv);
+LIBEXPORT randvar_t* rv_create(randvar_class_t* class, randgen_t* rg);
+LIBEXPORT void rv_destroy(randvar_t* rv);
 
 static int rv_set_int(randvar_t* rv, const char* name, uint64_t value) {
 	return rv->rv_class->rv_set_int(rv, name, value);
@@ -105,7 +107,7 @@ static double rv_variate_double(randvar_t* rv) {
 	return rv->rv_class->rv_variate_double(rv, u);
 }
 
-extern randvar_class_t rv_uniform_class;
-extern randvar_class_t rv_exponential_class;
+LIBIMPORT randvar_class_t rv_uniform_class;
+LIBIMPORT randvar_class_t rv_exponential_class;
 
 #endif /* RANDGEN_H_ */

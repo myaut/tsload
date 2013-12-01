@@ -46,7 +46,7 @@ thread_result_t control_thread(thread_arg_t arg) {
 	logmsg(LOG_DEBUG, "Started control thread (tpool: %s)", tp->tp_name);
 
 	while(!tp->tp_is_dead) {
-		tp->tp_time = tm_get_time();
+		tp->tp_time = tm_get_clock();
 
 		logmsg(LOG_TRACE, "Control thread %s is running (tm: %lld)",
 					tp->tp_name, tp->tp_time);
@@ -57,7 +57,7 @@ thread_result_t control_thread(thread_arg_t arg) {
 
 		/* = INITIALIZE STEP ARRAY = */
 		if(unlikely(tp->tp_wl_changed)) {
-			/* Workload count changes whery rare,
+			/* Workload count changes very rare,
 			 * so it's easier to reallocate step array */
 			if(unlikely(wl_count != wl_count_prev)) {
 				mp_free(step);
@@ -157,6 +157,10 @@ thread_result_t worker_thread(thread_arg_t arg) {
 
 	thread_pool_t* tp = worker->w_tp;
 
+	ts_time_t cur_time;
+	ts_time_t next_time;
+	ts_time_t delta;
+
 	long worker_step = 0;
 
 	logmsg(LOG_DEBUG, "Started worker thread #%d (tpool: %s)",
@@ -170,6 +174,7 @@ thread_result_t worker_thread(thread_arg_t arg) {
 
 		if(!list_empty(&worker->w_requests)) {
 			/*There are new requests on queue*/
+			cur_time = tm_get_clock();
 
 			rq_chain = (list_head_t*) mp_malloc(sizeof(list_head_t));
 			list_head_init(rq_chain, "rqs-%s-%d", tp->tp_name, thread->t_local_id);
@@ -179,7 +184,16 @@ thread_result_t worker_thread(thread_arg_t arg) {
 			mutex_unlock(&worker->w_rq_mutex);
 
 			list_for_each_entry(request_t, rq, rq_chain, rq_node)  {
+				next_time = rq->rq_sched_time;
+				delta = tm_diff(cur_time, next_time);
+
+				if(cur_time < next_time && delta > TP_WORKER_MIN_SLEEP) {
+					tm_sleep_nano(delta - TP_WORKER_OVERHEAD);
+				}
+
 				wl_run_request(rq);
+
+				cur_time = rq->rq_end_time;
 
 				if(atomic_read(&worker->w_state) == INTERRUPT) {
 					do_sleep = B_FALSE;

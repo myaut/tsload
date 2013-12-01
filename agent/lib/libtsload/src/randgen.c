@@ -16,8 +16,10 @@
 randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 	randgen_t* rg;
 
-	if(class->rg_is_singleton && (class->rg_object != NULL))
+	if(class->rg_is_singleton && (class->rg_object != NULL)) {
+		++class->rg_ref_count;
 		return class->rg_object;
+	}
 
 	rg = (randgen_t*) mp_malloc(sizeof(randgen_t));
 
@@ -33,15 +35,17 @@ randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 		return NULL;
 	}
 
+	++class->rg_ref_count;
 	class->rg_object = rg;
 
 	return rg;
 }
 
 void rg_destroy(randgen_t* rg) {
-	rg->rg_class->rg_destroy(rg);
-
-	mp_free(rg);
+	if(--rg->rg_class->rg_ref_count == 0) {
+		rg->rg_class->rg_destroy(rg);
+		mp_free(rg);
+	}
 }
 
 /**
@@ -154,19 +158,58 @@ int rv_set_double_dummy(randvar_t* rv, const char* name, double value) {
 }
 
 /* Uniformally distributed variator
- * (because generators already use uniform distribution,
- * simply bind to it's functions) */
+ */
+
+typedef struct rv_uniform {
+	double min;
+	double max;
+} rv_uniform_t;
+
+int rv_init_uniform(randvar_t* rv) {
+	rv_uniform_t* rvu = (rv_uniform_t*) mp_malloc(sizeof(rv_uniform_t));
+
+	if(rvu == NULL)
+		return 1;
+
+	rvu->min = 0.0;
+	rvu->max = 1.0;
+	rv->rv_private = rvu;
+
+	return 0;
+}
+
+void rv_destroy_uniform(randvar_t* rv) {
+	mp_free(rv->rv_private);
+}
+
+int rv_set_double_uniform(randvar_t* rv, const char* name, double value) {
+	rv_uniform_t* rvu = (rv_uniform_t*) rv->rv_private;
+
+	if(strcmp(name, "min") == 0) {
+		rvu->min = value;
+	}
+	else if(strcmp(name, "max") == 0) {
+		rvu->max = value;
+	}
+	else {
+		return RV_INVALID_PARAM_NAME;
+	}
+
+	return RV_PARAM_OK;
+}
 
 double rv_variate_double_uniform(randvar_t* rv, double u) {
-	return u;
+	rv_uniform_t* rvu = (rv_uniform_t*) rv->rv_private;
+
+	return u * (rvu->max - rvu->min) + rvu->min;
 }
 
 randvar_class_t rv_uniform_class = {
-	SM_INIT(.rv_init, rv_init_dummy),
-	SM_INIT(.rv_destroy, rv_destroy_dummy),
+	SM_INIT(.rv_init, rv_init_uniform),
+	SM_INIT(.rv_destroy, rv_destroy_uniform),
 
 	SM_INIT(.rv_set_int, rv_set_int_dummy),
-	SM_INIT(.rv_set_double, rv_set_double_dummy),
+	SM_INIT(.rv_set_double, rv_set_double_uniform),
 
 	SM_INIT(.rv_variate_double, rv_variate_double_uniform),
 };
@@ -202,8 +245,11 @@ int rv_set_double_exp(randvar_t* rv, const char* name, double value) {
 
 		rve->rate = value;
 	}
+	else {
+		return RV_INVALID_PARAM_NAME;
+	}
 
-	return RV_INVALID_PARAM_NAME;
+	return RV_PARAM_OK;
 }
 
 double rv_variate_double_exp(randvar_t* rv, double u) {

@@ -3,6 +3,10 @@
 	"steps": {
 		"test1": {
 			"num_steps":	20,
+ 			"num_requests": 50
+		},
+		"test2": {
+			"num_steps":	20,
  			"num_requests": 200
 		}
 	},
@@ -10,7 +14,21 @@
 		"test1" : {
 			"wltype": "busy_wait",
 			"threadpool": "[DEFAULT]",
+			"disp": "iat",
+			"disp_params": {
+				"distribution": "exponential"
+			},
 			"params": { "num_cycles": 400000 }
+		},
+		"test2" : {
+			"wltype": "busy_wait",
+			"threadpool": "[DEFAULT]",
+			"disp": "iat",
+			"disp_params": {
+				"distribution": "uniform",
+				"scope": 0.5
+			},
+			"params": { "num_cycles": 200000 }
 		}
 	}
 }
