@@ -84,7 +84,7 @@ typedef struct randvar_class {
 	int (*rv_init)(randvar_t* rv);
 	void (*rv_destroy)(randvar_t* rv);
 
-	int (*rv_set_int)(randvar_t* rv, const char* name, uint64_t value);
+	int (*rv_set_int)(randvar_t* rv, const char* name, long value);
 	int (*rv_set_double)(randvar_t* rv, const char* name, double value);
 
 	double (*rv_variate_double)(randvar_t* rv, double u);
@@ -93,15 +93,15 @@ typedef struct randvar_class {
 LIBEXPORT randvar_t* rv_create(randvar_class_t* class, randgen_t* rg);
 LIBEXPORT void rv_destroy(randvar_t* rv);
 
-static int rv_set_int(randvar_t* rv, const char* name, uint64_t value) {
+STATIC_INLINE int rv_set_int(randvar_t* rv, const char* name, long value) {
 	return rv->rv_class->rv_set_int(rv, name, value);
 }
 
-static int rv_set_double(randvar_t* rv, const char* name, double value) {
+STATIC_INLINE int rv_set_double(randvar_t* rv, const char* name, double value) {
 	return rv->rv_class->rv_set_double(rv, name, value);
 }
 
-static double rv_variate_double(randvar_t* rv) {
+STATIC_INLINE double rv_variate_double(randvar_t* rv) {
 	double u = rg_generate_double(rv->rv_generator);
 
 	return rv->rv_class->rv_variate_double(rv, u);
@@ -109,5 +109,7 @@ static double rv_variate_double(randvar_t* rv) {
 
 LIBIMPORT randvar_class_t rv_uniform_class;
 LIBIMPORT randvar_class_t rv_exponential_class;
+LIBIMPORT randvar_class_t rv_erlang_class;
+LIBIMPORT randvar_class_t rv_normal_class;
 
 #endif /* RANDGEN_H_ */

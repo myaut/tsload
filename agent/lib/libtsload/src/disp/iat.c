@@ -34,6 +34,13 @@ void disp_step_iat(workload_step_t* step) {
 	case DD_EXPONENTIAL:
 		rv_set_double(disp->disp_randvar, "rate", 1.0 / iat);
 		break;
+	case DD_ERLANG:
+		rv_set_double(disp->disp_randvar, "rate", ((double) disp->disp_params.e_shape) / iat);
+		break;
+	case DD_NORMAL:
+		rv_set_double(disp->disp_randvar, "mean", iat);
+		rv_set_double(disp->disp_randvar, "stddev", sqrt(disp->disp_params.n_dispersion * iat));
+		break;
 	}
 
 	disp->last_iat = 0ull;

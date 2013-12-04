@@ -7,7 +7,15 @@
 		},
 		"test2": {
 			"num_steps":	20,
- 			"num_requests": 200
+ 			"num_requests": 50
+		},
+		"test3": {
+			"num_steps":	20,
+ 			"num_requests": 50
+		},
+		"test4": {
+			"num_steps":	20,
+ 			"num_requests": 50
 		}
 	},
 	"workloads" :	{
@@ -29,6 +37,26 @@
 				"scope": 0.5
 			},
 			"params": { "num_cycles": 200000 }
+		},
+		"test3" : {
+			"wltype": "busy_wait",
+			"threadpool": "[DEFAULT]",
+			"disp": "iat",
+			"disp_params": {
+				"distribution": "erlang",
+				"shape": 3
+			},
+			"params": { "num_cycles": 300000 }
+		},
+		"test4" : {
+			"wltype": "busy_wait",
+			"threadpool": "[DEFAULT]",
+			"disp": "iat",
+			"disp_params": {
+				"distribution": "normal",
+				"dispersion": 0.5
+			},
+			"params": { "num_cycles": 250000 }
 		}
 	}
 }

@@ -84,9 +84,51 @@ static int json_disp_proc_common(JSONNODE* node, workload_t* wl, disp_common_t* 
 		disp->disp_randvar = rv_create(&rv_uniform_class, disp->disp_randgen);
 		disp->disp_distribution = DD_UNIFORM;
 	}
+	else if(strcmp(distribution, "erlang") == 0) {
+		JSONNODE_ITERATOR i_shape = json_find(node, "shape");
+		int shape = 1.0;
+
+		if(i_shape != i_end) {
+			shape = json_as_int(*i_shape);
+
+			if(shape < 1) {
+				tsload_error_msg(TSE_INVALID_DATA, "Invalid shape value '%d' for workload %s",
+								  shape, wl->wl_name);
+				ret = DISP_JSON_INVALID_PARAM;
+				goto end;
+			}
+		}
+
+		disp->disp_params.e_shape = shape;
+
+		disp->disp_randvar = rv_create(&rv_erlang_class, disp->disp_randgen);
+		disp->disp_distribution = DD_ERLANG;
+
+		rv_set_int(disp->disp_randvar, "shape", shape);
+	}
 	else if(strcmp(distribution, "exponential") == 0) {
 		disp->disp_randvar = rv_create(&rv_exponential_class, disp->disp_randgen);
 		disp->disp_distribution = DD_EXPONENTIAL;
+	}
+	else if(strcmp(distribution, "normal") == 0) {
+		JSONNODE_ITERATOR i_dispersion = json_find(node, "dispersion");
+		double dispersion = 1.0;
+
+		if(i_dispersion != i_end) {
+			dispersion = json_as_float(*i_dispersion);
+
+			if(dispersion < 0.0) {
+				tsload_error_msg(TSE_INVALID_DATA, "Invalid dispersion value '%f' for workload %s",
+						dispersion, wl->wl_name);
+				ret = DISP_JSON_INVALID_PARAM;
+				goto end;
+			}
+		}
+
+		disp->disp_params.n_dispersion = dispersion;
+
+		disp->disp_randvar = rv_create(&rv_normal_class, disp->disp_randgen);
+		disp->disp_distribution = DD_NORMAL;
 	}
 	else {
 		tsload_error_msg(TSE_INVALID_DATA, "Invalid distribution '%s' for workload %s",

@@ -47,7 +47,9 @@ typedef struct disp_class {
 
 typedef enum {
 	DD_UNIFORM,
-	DD_EXPONENTIAL
+	DD_EXPONENTIAL,
+	DD_ERLANG,
+	DD_NORMAL
 } disp_distribution_t;
 
 typedef struct disp_common {
@@ -58,6 +60,8 @@ typedef struct disp_common {
 
 	union {
 		double u_scope;
+		int    e_shape;
+		double n_dispersion;
 	} disp_params;
 
 	ts_time_t last_iat;

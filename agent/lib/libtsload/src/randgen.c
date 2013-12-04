@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+static const double rv_normal_magic_const = 1.7155277699214135;
+
 randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 	randgen_t* rg;
 
@@ -149,7 +151,7 @@ int rv_init_dummy(randvar_t* rg) {
 void rv_destroy_dummy(randvar_t* rg) {
 }
 
-int rv_set_int_dummy(randvar_t* rv, const char* name, uint64_t value) {
+int rv_set_int_dummy(randvar_t* rv, const char* name, long value) {
 	return RV_INVALID_PARAM_NAME;
 }
 
@@ -267,4 +269,169 @@ randvar_class_t rv_exponential_class = {
 	SM_INIT(.rv_set_double, rv_set_double_exp),
 
 	SM_INIT(.rv_variate_double, rv_variate_double_exp),
+};
+
+/* Erlang distribution */
+
+typedef struct rv_erlang {
+	double  rate;
+	long shape;
+} rv_erlang_t;
+
+int rv_init_erlang(randvar_t* rv) {
+	rv_erlang_t* rve = (rv_erlang_t*) mp_malloc(sizeof(rv_erlang_t));
+
+	if(rve == NULL)
+		return 1;
+
+	rve->shape = 0;
+	rv->rv_private = rve;
+
+	return 0;
+}
+
+void rv_destroy_erlang(randvar_t* rv) {
+	mp_free(rv->rv_private);
+}
+
+int rv_set_double_erlang(randvar_t* rv, const char* name, double value) {
+	rv_erlang_t* rve = (rv_erlang_t*) rv->rv_private;
+
+	if(strcmp(name, "rate") == 0) {
+		if(value <= 0.0)
+			return RV_INVALID_PARAM_VALUE;
+
+		rve->rate = value;
+	}
+	else {
+		return RV_INVALID_PARAM_NAME;
+	}
+
+	return RV_PARAM_OK;
+}
+
+int rv_set_int_erlang(randvar_t* rv, const char* name, long value) {
+	rv_erlang_t* rve = (rv_erlang_t*) rv->rv_private;
+
+	if(strcmp(name, "shape") == 0) {
+		if(value < 1)
+			return RV_INVALID_PARAM_VALUE;
+
+		rve->shape = value;
+	}
+	else {
+		return RV_INVALID_PARAM_NAME;
+	}
+
+	return RV_PARAM_OK;
+}
+
+double rv_variate_double_erlang(randvar_t* rv, double u) {
+	rv_erlang_t* rve = (rv_erlang_t*) rv->rv_private;
+	int i;
+	double x;
+	double m = 1.0;
+
+	/* u already generated once (in rv_variate_double), so use it on first step
+	 * Also, Erlang distribution doesn't uses U(0,1], so ignore zeroes.
+	 *
+	 * See http://en.wikipedia.org/wiki/Erlang_distribution */
+
+	for(i = 0; i < rve->shape; ++i) {
+		if(i > 0)
+			u = rg_generate_double(rv->rv_generator);
+
+		if(likely(u > 0.0))
+			m *= u;
+		else
+			--i;
+	}
+
+	x = log(m) / -rve->rate;
+	return x;
+}
+
+randvar_class_t rv_erlang_class = {
+	SM_INIT(.rv_init, rv_init_erlang),
+	SM_INIT(.rv_destroy, rv_destroy_erlang),
+
+	SM_INIT(.rv_set_int, rv_set_int_erlang),
+	SM_INIT(.rv_set_double, rv_set_double_erlang),
+
+	SM_INIT(.rv_variate_double, rv_variate_double_erlang),
+};
+
+/* Normal distribution */
+
+typedef struct rv_normal {
+	double mean;
+	double stddev;
+} rv_normal_t;
+
+int rv_init_normal(randvar_t* rv) {
+	rv_normal_t* rvn = (rv_normal_t*) mp_malloc(sizeof(rv_normal_t));
+
+	if(rvn == NULL)
+		return 1;
+
+	rvn->mean = 0.0;
+	rvn->stddev = 0.0;
+	rv->rv_private = rvn;
+
+	return 0;
+}
+
+void rv_destroy_normal(randvar_t* rv) {
+	mp_free(rv->rv_private);
+}
+
+int rv_set_double_normal(randvar_t* rv, const char* name, double value) {
+	rv_normal_t* rvn = (rv_normal_t*) rv->rv_private;
+
+	if(strcmp(name, "mean") == 0) {
+		rvn->mean = value;
+	}
+	else if(strcmp(name, "stddev") == 0) {
+		if(value < 0.0)
+			return RV_INVALID_PARAM_VALUE;
+
+		rvn->stddev = value;
+	}
+	else {
+		return RV_INVALID_PARAM_NAME;
+	}
+
+	return RV_PARAM_OK;
+}
+
+double rv_variate_double_normal(randvar_t* rv, double u) {
+	rv_normal_t* rvn = (rv_normal_t*) rv->rv_private;
+	double x;
+	double u2;
+	double z, zz;
+
+	/* Uses Kinderman and Monahan method */
+	while(B_TRUE) {
+		u = rg_generate_double(rv->rv_generator);
+		u2 = 1 - rg_generate_double(rv->rv_generator);
+
+		z = rv_normal_magic_const * (u - 0.5) / u2;
+		zz = z * z / 4.0;
+
+		if(zz <= -log(u2))
+			break;
+	}
+
+	x = rvn->mean + z * rvn->stddev;
+	return x;
+}
+
+randvar_class_t rv_normal_class = {
+	SM_INIT(.rv_init, rv_init_normal),
+	SM_INIT(.rv_destroy, rv_destroy_normal),
+
+	SM_INIT(.rv_set_int, rv_set_int_dummy),
+	SM_INIT(.rv_set_double, rv_set_double_normal),
+
+	SM_INIT(.rv_variate_double, rv_variate_double_normal),
 };
