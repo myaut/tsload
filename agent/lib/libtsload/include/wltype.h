@@ -38,7 +38,9 @@ typedef enum wl_class {
 
 	WLC_NETWORK				= 0x1000,
 
-	WLC_OS_BENCHMARK		= 0x10000
+	WLC_OS_BENCHMARK		= 0x10000,
+
+	WLC_NET_CLIENT			= 0x100000
 } wl_class_t;
 
 typedef struct wl_type {

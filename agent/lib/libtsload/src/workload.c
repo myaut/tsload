@@ -145,7 +145,8 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 void wl_destroy_nodetach(workload_t* wl) {
 	hash_map_remove(&workload_hash_map, wl);
 
-	wl->wl_disp_class->disp_fini(wl);
+	if(wl->wl_disp_class)
+		wl->wl_disp_class->disp_fini(wl);
 
 	if(wl->wl_status != WLS_NEW)
 		t_destroy(&wl->wl_cfg_thread);

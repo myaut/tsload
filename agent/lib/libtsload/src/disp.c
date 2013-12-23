@@ -167,7 +167,7 @@ int json_disp_proc(JSONNODE* node, workload_t* wl) {
 	if(strcmp(disp_name, "simple") == 0) {
 		wl->wl_disp_class = &simple_disp;
 	}
-	if(strcmp(disp_name, "iat") == 0) {
+	else if(strcmp(disp_name, "iat") == 0) {
 		wl->wl_disp_class = &iat_disp;
 
 		if(i_disp_params != i_end) {

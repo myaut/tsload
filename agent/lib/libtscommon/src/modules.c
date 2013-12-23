@@ -167,7 +167,8 @@ module_t* mod_load(const char* path_name) {
 	err = plat_mod_open(&mod->mod_library, path_name);
 
 	if(err != 0) {
-		logmsg(LOG_WARN, "Failed loading, platform-specific error code: %d", err);
+		logmsg(LOG_WARN, "Failed loading, platform-specific error code: %d [%s]",
+				err, plat_mod_error_msg());
 		logerror();
 
 		goto fail;

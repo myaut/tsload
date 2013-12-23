@@ -70,6 +70,7 @@ LIBEXPORT module_t* mod_get_first();
 PLATAPI int plat_mod_open(plat_mod_library_t* lib, const char* path);
 PLATAPI int plat_mod_close(plat_mod_library_t* lib);
 PLATAPI void* plat_mod_load_symbol(plat_mod_library_t* lib, const char* name);
+PLATAPI char* plat_mod_error_msg(void);
 
 LIBEXPORT int mod_init(void);
 LIBEXPORT void mod_fini(void);

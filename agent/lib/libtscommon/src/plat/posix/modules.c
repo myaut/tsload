@@ -17,7 +17,7 @@ PLATAPI int plat_mod_open(plat_mod_library_t* lib, const char* path) {
 	lib->lib_library = dlopen(path, RTLD_NOW | RTLD_LOCAL);
 
 	if(!lib->lib_library) {
-		return dlerror();
+		return 1;
 	}
 
 	return 0;
@@ -25,7 +25,7 @@ PLATAPI int plat_mod_open(plat_mod_library_t* lib, const char* path) {
 
 PLATAPI int plat_mod_close(plat_mod_library_t* lib) {
 	if(dlclose(lib->lib_library) != 0) {
-		return dlerror();
+		return 1;
 	}
 
 	return 0;
@@ -33,4 +33,8 @@ PLATAPI int plat_mod_close(plat_mod_library_t* lib) {
 
 PLATAPI void* plat_mod_load_symbol(plat_mod_library_t* lib, const char* name) {
 	return dlsym(lib->lib_library, name);
+}
+
+PLATAPI char* plat_mod_error_msg(void) {
+	return dlerror();
 }

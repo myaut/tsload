@@ -33,3 +33,8 @@ PLATAPI int plat_mod_close(plat_mod_library_t* lib) {
 PLATAPI void* plat_mod_load_symbol(plat_mod_library_t* lib, const char* name) {
 	return GetProcAddress(lib->lib_library, name);
 }
+
+PLATAPI char* plat_mod_error_msg(void) {
+	/* FIXME: Implement with FormatMessage */
+	return "???";
+}

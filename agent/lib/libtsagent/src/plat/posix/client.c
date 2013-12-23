@@ -22,6 +22,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#ifndef PLAT_LINUX
+#define POLLRDHUP 0
+#endif
+
 PLATAPI plat_host_entry* plat_clnt_resolve(const char* host) {
 	static struct hostent* he;
 	int err = 0;
@@ -80,7 +84,7 @@ PLATAPI int plat_clnt_disconnect(plat_clnt_socket* clnt_socket) {
 PLATAPI int plat_clnt_poll(plat_clnt_socket* clnt_socket, ts_time_t timeout) {
 	struct pollfd sock_poll = {
 		.fd = *clnt_socket,
-		.events = POLLIN | POLLNVAL | POLLHUP,
+		.events = POLLIN | POLLNVAL | POLLHUP | POLLRDHUP,
 		.revents = 0
 	};
 
@@ -91,6 +95,11 @@ PLATAPI int plat_clnt_poll(plat_clnt_socket* clnt_socket, ts_time_t timeout) {
 
 	if(sock_poll.revents & POLLHUP)
 		return CLNT_POLL_DISCONNECT;
+
+#ifdef PLAT_LINUX
+	if(sock_poll.revents & POLLRDHUP)
+		return CLNT_POLL_DISCONNECT;
+#endif
 
 	if(sock_poll.revents & POLLIN)
 		return CLNT_POLL_NEW_DATA;
