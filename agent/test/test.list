@@ -47,6 +47,11 @@ tscommon/dirent		dir=dirent		use=dirent/test
 tscommon/paths		file=paths.c
 tscommon/cpumask	file=cpumask.c
 
+# Tests for network sockets
+^netsock 			lib=libjson 	lib=libtscommon
+netsock/netsock		file=netsock.c
+netsock/nonblocking	file=nonblocking.c
+
 # Tests for threads 
 ^threads			lib=libjson 	lib=libtscommon
 threads/thread1		file=thread1.c

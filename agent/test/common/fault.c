@@ -122,6 +122,7 @@ int fault_init(void) {
 	/* For DEBUG builds, MSVC CRT will report faults with pretty MessageBox
 	 * instead of silently killing application. Override this behavior.
 	 * */
+	_set_error_mode(_OUT_TO_STDERR);
 	_set_abort_behavior(0, _WRITE_ABORT_MSG);
 
 	signal(SIGABRT, fault_abort_handler);

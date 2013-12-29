@@ -10,8 +10,7 @@
 #include <client.h>
 #include <atomic.h>
 #include <tstime.h>
-
-#include <plat/client.h>
+#include <netsock.h>
 
 #include <libjson.h>
 
@@ -25,8 +24,8 @@ void clnt_on_disconnect(void);
 int clnt_send(JSONNODE* node);
 
 /* Globals */
-plat_clnt_socket clnt_socket;
-plat_clnt_addr	 clnt_addr;
+nsk_socket clnt_socket;
+nsk_addr	 clnt_addr;
 
 LIBEXPORT int clnt_port = 9090;
 LIBEXPORT char clnt_host[CLNTHOSTLEN] = "localhost";
@@ -318,14 +317,14 @@ thread_result_t clnt_recv_thread(thread_arg_t arg) {
 	int ret;
 
 	while(!clnt_finished && clnt_connected) {
-		switch(plat_clnt_poll(&clnt_socket, CLNT_RECV_TIMEOUT)) {
-		case CLNT_POLL_OK:
+		switch(nsk_poll(&clnt_socket, CLNT_RECV_TIMEOUT)) {
+		case NSK_POLL_OK:
 			/*No new data arrived*/
 			continue;
-		case CLNT_POLL_FAILURE:
+		case NSK_POLL_FAILURE:
 			logmsg(LOG_CRIT, "Failure while polling socket");
 			THREAD_EXIT(-1);
-		case CLNT_POLL_DISCONNECT:
+		case NSK_POLL_DISCONNECT:
 			logmsg(LOG_CRIT, "Disconnected while polling socket");
 			THREAD_EXIT(-1);
 		}
@@ -339,7 +338,7 @@ thread_result_t clnt_recv_thread(thread_arg_t arg) {
 		/*Receive data from socket by chunks of data*/
 		while(1) {
 			/*Receive chunk of data*/
-			ret = plat_clnt_recv(&clnt_socket, bufptr, remaining);
+			ret = nsk_recv(&clnt_socket, bufptr, remaining);
 
 			if(ret <= 0) {
 				logmsg(LOG_WARN, "recv() was failed, disconnecting");
@@ -351,7 +350,7 @@ thread_result_t clnt_recv_thread(thread_arg_t arg) {
 			remaining -= ret;
 
 			/*No more data left in socket, break*/
-			if(plat_clnt_poll(&clnt_socket, 0l) != CLNT_POLL_NEW_DATA)
+			if(nsk_poll(&clnt_socket, 0l) != NSK_POLL_NEW_DATA)
 				break;
 
 			/* We had filled buffer, reallocate it */
@@ -444,7 +443,7 @@ int clnt_send(JSONNODE* node) {
 	logmsg(LOG_TRACE, "OUT msg: %s", json_msg);
 
 	mutex_lock(&send_mutex);
-	ret = plat_clnt_send(&clnt_socket, json_msg, len);
+	ret = nsk_send(&clnt_socket, json_msg, len);
 	mutex_unlock(&send_mutex);
 
 	json_free(json_msg);
@@ -497,13 +496,13 @@ clnt_response_type_t clnt_invoke(const char* command, JSONNODE* msg_node, JSONNO
 PLATAPI int clnt_connect() {
 	int err;
 
-	err = plat_clnt_connect(&clnt_socket, &clnt_addr);
+	err = nsk_connect(&clnt_socket, &clnt_addr, NSK_STREAM);
 
 	switch(err) {
-		case CLNT_ERR_SOCKET:
+		case NSK_ERR_SOCKET:
 			logmsg(LOG_CRIT, "Failed to open socket");
 			return err;
-		case CLNT_ERR_CONNECT:
+		case NSK_ERR_CONNECT:
 			logmsg(LOG_CRIT, "Failed to connect to %s:%d, retrying in %lds", clnt_host, clnt_port,
 						(long) (CLNT_RETRY_TIMEOUT / T_SEC));
 			return err;
@@ -511,7 +510,7 @@ PLATAPI int clnt_connect() {
 
 	logmsg(LOG_INFO, "Connected to %s:%d", clnt_host, clnt_port);
 
-	return CLNT_OK;
+	return err;
 }
 
 thread_result_t clnt_connect_thread(thread_arg_t arg) {
@@ -521,7 +520,7 @@ thread_result_t clnt_connect_thread(thread_arg_t arg) {
 		if(!clnt_connected) {
 			agent_id = 0;
 
-			if(clnt_connect() != CLNT_OK) {
+			if(clnt_connect() != NSK_OK) {
 				tm_sleep_milli(CLNT_RETRY_TIMEOUT);
 				continue;
 			}
@@ -571,7 +570,7 @@ void clnt_on_disconnect(void) {
 
 	hash_map_walk(&hdl_hashmap, clnt_handler_disconnect, NULL);
 
-	plat_clnt_disconnect(&clnt_socket);
+	nsk_disconnect(&clnt_socket);
 
 	/*Notify connect thread*/
 	event_notify_all(&conn_event);
@@ -583,14 +582,10 @@ void clnt_on_disconnect(void) {
 }
 
 int clnt_init() {
-	if(plat_clnt_init() != 0) {
-		logmsg(LOG_CRIT, "Client platform-specific initialization failure!");
-		return -1;
-	}
+	nsk_host_entry he;
 
-	if(plat_clnt_setaddr(&clnt_addr,
-						 plat_clnt_resolve(clnt_host),
-						 clnt_port) == CLNT_ERR_RESOLVE) {
+	if(nsk_resolve(clnt_host, &he) == NSK_ERR_RESOLVE ||
+	   nsk_setaddr(&clnt_addr, &he, clnt_port) == NSK_ERR_RESOLVE) {
 		logmsg(LOG_CRIT, "Failed to resolve host %s", clnt_host);
 		return -1;
 	}
@@ -637,8 +632,6 @@ void clnt_fini(void) {
 	hash_map_destroy(&hdl_hashmap);
 
 	mp_cache_destroy(&hdl_cache);
-
-	plat_clnt_fini();
 }
 
 JSONNODE* json_clnt_command_format(const char* command, JSONNODE* msg_node, unsigned msg_id) {

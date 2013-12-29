@@ -96,13 +96,19 @@ class TestRunner(Thread):
     def wipe_test_dir(self):
         shutil.rmtree(self.test_dir)
         
-    def check_core(self, test_name):
+    def check_core(self, test_name, test_group):
         core_path = os.path.join(self.test_dir, 'core')
         
         if os.path.exists(core_path):
             core_name = 'core_' + test_name.replace(os.sep, '_')
-            shutil.copy(core_path, 
-                        os.path.join('build', 'test', core_name))
+            
+            if sys.platform == 'win32':
+                core_name += '.dmp'
+                dest_dir = os.path.join('build', 'test', test_group)
+            else:
+                dest_dir = os.path.join('build', 'test')
+            
+            shutil.copy(core_path, os.path.join(dest_dir, core_name))
             return True
         
         return False
@@ -110,7 +116,7 @@ class TestRunner(Thread):
     def run_test(self, test_name):
         test = self.read_test_config(test_name)
         test_bin = os.path.basename(test_name)
-        test_env = {}
+        test_env = os.environ.copy()
         
         self.prepare_test_dir(test, test_name)
         
@@ -133,7 +139,7 @@ class TestRunner(Thread):
         
         end = time.time()
         
-        core = self.check_core(test_name)
+        core = self.check_core(test_name, test.group)
         
         self.wipe_test_dir()
         
@@ -215,7 +221,8 @@ class TestSuite:
     def delete_test_dir(self):
         self.check_test_dir()
         
-        os.rmdir(self.test_dir)   
+        if self.test_dir_delete:
+            os.rmdir(self.test_dir)   
     
     def get(self):
         return self.queue.get()

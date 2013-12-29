@@ -18,6 +18,7 @@
 #include <tstime.h>
 #include <uname.h>
 #include <hiobject.h>
+#include <netsock.h>
 
 #include <tsinit.h>
 #include <tsload.h>
@@ -39,7 +40,8 @@ struct subsystem subsys[] = {
 	SUBSYSTEM("wl_type", wlt_init, wlt_fini),
 	SUBSYSTEM("modules", mod_init, mod_fini),
 	SUBSYSTEM("workload", wl_init, wl_fini),
-	SUBSYSTEM("threadpool", tp_init, tp_fini)
+	SUBSYSTEM("threadpool", tp_init, tp_fini),
+	SUBSYSTEM("netsock", nsk_init, nsk_fini),
 };
 
 JSONNODE* tsload_get_workload_types(void) {
