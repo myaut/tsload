@@ -10,6 +10,7 @@
 
 #include <defs.h>
 #include <list.h>
+#include <cpumask.h>
 
 #include <hiobject.h>
 
@@ -83,6 +84,7 @@ typedef struct hi_cpu_object {
 } hi_cpu_object_t;
 
 #define HI_CPU_FROM_OBJ(object)		((hi_cpu_object_t*) (object))
+#define HI_CPU_TO_OBJ(object)		((hi_object_t*) (object))
 #define HI_CPU_PARENT_OBJ(object)	object->hdr.node.parent
 #define HI_CPU_PARENT(object)		HI_CPU_FROM_OBJ(HI_CPU_PARENT_OBJ(object))
 
@@ -125,6 +127,8 @@ LIBEXPORT int hi_cpu_num_cpus(void);
 LIBEXPORT int hi_cpu_num_cores(void);
 
 LIBEXPORT size_t hi_cpu_mem_total(void);
+
+LIBEXPORT int hi_cpu_mask(hi_cpu_object_t* object, cpumask_t* mask);
 
 #ifndef NO_JSON
 #include <libjson.h>

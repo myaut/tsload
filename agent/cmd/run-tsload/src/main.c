@@ -38,11 +38,15 @@ LIBIMPORT int mod_type;
 
 LIBIMPORT char mod_search_path[];
 
-LIBEXPORT struct subsystem xsubsys[] = {
-	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
+LIBEXPORT struct subsystem pre_subsys[] = {
 	SUBSYSTEM("load", load_init, load_fini),
+};
+
+LIBEXPORT struct subsystem post_subsys[] = {
+	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
 	SUBSYSTEM("steps", steps_init, steps_fini)
 };
+
 
 enum {
 	CMD_NONE,
@@ -159,7 +163,7 @@ int main(int argc, char* argv[]) {
 	mod_type = MOD_TSLOAD;
 
 	atexit(ts_finish);
-	tsload_init(xsubsys, 3);
+	tsload_init(pre_subsys, 1, post_subsys, 2);
 
 	logmsg(LOG_INFO, "Started run-tsload");
 	logmsg(LOG_DEBUG, "run-tsload command: %d", command);

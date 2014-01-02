@@ -65,10 +65,12 @@ const char* wl_status_msg(wl_status_t wls) {
 	switch(wls) {
 	case WLS_CONFIGURING:
 		return "configuring";
-	case WLS_SUCCESS:
+	case WLS_CONFIGURED:
 		return "successfully configured";
-	case WLS_FAIL:
+	case WLS_CFG_FAIL:
 		return "configuration failed";
+	case WLS_STARTED:
+		return "started";
 	case WLS_FINISHED:
 		return "finished";
 	case WLS_RUNNING:
@@ -364,7 +366,8 @@ static void start_all_wls(void) {
 static int configure_threadpools(JSONNODE* tp_node) {
 	JSONNODE_ITERATOR iter = json_begin(tp_node),
 				      end = json_end(tp_node);
-	JSONNODE_ITERATOR i_num_threads, i_quantum, i_end, i_disp_name;
+	JSONNODE_ITERATOR i_num_threads, i_quantum, i_disp_name, i_bindings;
+	JSONNODE_ITERATOR i_end;
 	unsigned num_threads;
 	ts_time_t quantum;
 
@@ -385,6 +388,7 @@ static int configure_threadpools(JSONNODE* tp_node) {
 		CONFIGURE_TP_PARAM(i_num_threads, "num_threads", JSON_NUMBER);
 		CONFIGURE_TP_PARAM(i_quantum, "quantum", JSON_NUMBER);
 		CONFIGURE_TP_PARAM(i_disp_name, "disp_name", JSON_STRING);
+		i_bindings = json_find(*iter, "bindings");
 
 		num_threads = json_as_int(*i_num_threads);
 		quantum = json_as_int(*i_quantum);
@@ -394,6 +398,11 @@ static int configure_threadpools(JSONNODE* tp_node) {
 
 		if(tsload_ret != TSLOAD_OK) {
 			return LOAD_ERR_CONFIGURE;
+		}
+
+		if(i_bindings != i_end) {
+			/* If we fail to do bindings - ignore it */
+			(void) tsload_bind_threadpool(tp_name, *i_bindings);
 		}
 
 		load_fprintf(stdout, "Configured thread pool '%s' with %u threads and %lld ns quantum\n",
@@ -484,12 +493,12 @@ void do_workload_status(const char* wl_name,
 					 			 int status,
 								 long progress,
 								 const char* config_msg) {
-	if(status == WLS_FAIL ||
-	   status == WLS_SUCCESS) {
+	if(status == WLS_CFG_FAIL ||
+	   status == WLS_CONFIGURED) {
 		/* Workload ended it's configuration, may go further */
 		atomic_dec(&wl_cfg_count);
 
-		if(status == WLS_FAIL) {
+		if(status == WLS_CFG_FAIL) {
 			/* One of workload is failed to configure */
 			load_error = B_TRUE;
 		}
@@ -523,7 +532,7 @@ void do_requests_report(list_head_t* rq_list) {
 	mutex_lock(&rqreport_lock);
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
 		fprintf(rqreport_file, "%s,%ld,%d,%d,%lld,%lld,%lld,%x\n",
-				rq->rq_wl_name,
+				rq->rq_workload->wl_name,
 				rq->rq_step,
 				rq->rq_id,
 				rq->rq_thread_id,

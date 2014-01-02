@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	atexit(ts_finish);
-	tsload_init(xsubsys, XSUBSYS_COUNT);
+	tsload_init(NULL, 0, xsubsys, XSUBSYS_COUNT);
 
 	tsload_start(argv[0]);
 

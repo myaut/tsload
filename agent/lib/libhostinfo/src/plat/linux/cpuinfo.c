@@ -34,7 +34,7 @@ typedef uint32_t hi_linux_cpumask_t[HI_LINUX_CPUMASK_LEN];
 
 /* Returns most significant cpu for mask */
 static
-int cpumask_msc(hi_linux_cpumask_t mask) {
+int hi_linux_cpumask_msc(hi_linux_cpumask_t mask) {
 	int i;
 	int msc = -1, tmp;
 
@@ -49,7 +49,7 @@ int cpumask_msc(hi_linux_cpumask_t mask) {
 
 /* Needed to check whether */
 static
-void cpumask_set(hi_linux_cpumask_t mask, int strandid) {
+void hi_linux_cpumask_set(hi_linux_cpumask_t mask, int strandid) {
 	int i;
 
 	if(strandid > HI_LINUX_MAXCPUS)
@@ -59,7 +59,7 @@ void cpumask_set(hi_linux_cpumask_t mask, int strandid) {
 }
 
 static
-boolean_t cpumask_eq(hi_linux_cpumask_t mask1, hi_linux_cpumask_t mask2) {
+boolean_t hi_linux_cpumask_eq(hi_linux_cpumask_t mask1, hi_linux_cpumask_t mask2) {
 	int i;
 
 	for(i = 0; i < HI_LINUX_CPUMASK_LEN; ++i) {
@@ -71,7 +71,7 @@ boolean_t cpumask_eq(hi_linux_cpumask_t mask1, hi_linux_cpumask_t mask2) {
 }
 
 static
-void cpumask_create(hi_cpu_object_t* parent, hi_linux_cpumask_t core_mask) {
+void hi_linux_cpumask_create(hi_cpu_object_t* parent, hi_linux_cpumask_t core_mask) {
 	hi_object_child_t* child;
 	hi_cpu_object_t* cpu_object;
 
@@ -79,7 +79,7 @@ void cpumask_create(hi_cpu_object_t* parent, hi_linux_cpumask_t core_mask) {
 		cpu_object = HI_CPU_FROM_OBJ(child->object);
 
 		if(cpu_object->type == HI_CPU_STRAND) {
-			cpumask_set(core_mask, cpu_object->id);
+			hi_linux_cpumask_set(core_mask, cpu_object->id);
 		}
 	}
 }
@@ -130,7 +130,7 @@ void hi_linux_proc_cache(const char* name, void* arg) {
 
 	/* Linux duplicates entries for shared caches
 	 * Process only entries for one cpu by selecting most significant bit */
-	share_msc = cpumask_msc(share_mask);
+	share_msc = hi_linux_cpumask_msc(share_mask);
 	hi_cpu_dprintf("hi_linux_proc_cache: found cache %s, share_msc: %d strandid: %d\n", cache_name, share_msc, strand->id);
 
 	if(strand->id != share_msc)
@@ -138,8 +138,8 @@ void hi_linux_proc_cache(const char* name, void* arg) {
 
 	/* Check if cache is core-level or node-level.
 	 * Walk over core strands and check if their mask matches share_mask*/
-	cpumask_create(core, core_mask);
-	parent = (cpumask_eq(share_mask, core_mask))? core : chip;
+	hi_linux_cpumask_create(core, core_mask);
+	parent = (hi_linux_cpumask_eq(share_mask, core_mask))? core : chip;
 
 	/* Read cache information */
 	level = (int) hi_linux_sysfs_readuint(SYS_NODE_PATH, cache_name, "level", 8);

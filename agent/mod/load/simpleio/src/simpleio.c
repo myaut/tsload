@@ -78,7 +78,7 @@ int simpleio_write_file(workload_t* wl, io_file_t* iof, struct simpleio_workload
 
 	for(i = 0; i < last; ++i) {
 		if(io_file_write(iof, simpleio->block, simpleio->block_size) == -1) {
-			wl_notify(wl, WLS_FAIL, 0,
+			wl_notify(wl, WLS_CFG_FAIL, 0,
 					"Failed to write: %s", strerror(errno));
 			return -1;
 		}
@@ -104,7 +104,7 @@ int simpleio_prepare_file(workload_t* wl, struct simpleio_workload* simpleio) {
 	int ret = io_file_stat(&simpleio->iof, simpleio->path);
 
 	if(ret < 0) {
-		wl_notify(wl, WLS_FAIL, 0,
+		wl_notify(wl, WLS_CFG_FAIL, 0,
 					"Couldn't stat file %s: %s", simpleio->path, strerror(errno));
 		return -1;
 	}
@@ -114,7 +114,7 @@ int simpleio_prepare_file(workload_t* wl, struct simpleio_workload* simpleio) {
 	if(simpleio->iof.iof_exists) {
 		if(simpleio->file_size != 0 &&
 		   simpleio->iof.iof_file_type != IOF_REGULAR) {
-			wl_notify(wl, WLS_FAIL, 0,
+			wl_notify(wl, WLS_CFG_FAIL, 0,
 						"File %s is not regular, while it's creation is requested", simpleio->path);
 			return -1;
 		}
@@ -127,7 +127,7 @@ int simpleio_prepare_file(workload_t* wl, struct simpleio_workload* simpleio) {
 	logmsg(LOG_INFO, "Creating file %s with size %llu", simpleio->path, simpleio->file_size);
 
 	if(io_file_open(&simpleio->iof, B_TRUE, B_FALSE) < 0) {
-		wl_notify(wl, WLS_FAIL, 0,
+		wl_notify(wl, WLS_CFG_FAIL, 0,
 					"Couldn't open file %s for writing: %s", simpleio->path, strerror(errno));
 		return -1;
 	}
@@ -155,7 +155,7 @@ static int simpleio_wl_config(workload_t* wl, struct simpleio_workload* simpleio
 	ret = io_file_stat(&simpleio->iof, simpleio->path);
 
 	if(ret == -1 || !simpleio->iof.iof_exists) {
-		wl_notify(wl, WLS_FAIL, 0,
+		wl_notify(wl, WLS_CFG_FAIL, 0,
 					"Failed to create target file %s: %s", simpleio->path, strerror(errno));
 		return -1;
 	}

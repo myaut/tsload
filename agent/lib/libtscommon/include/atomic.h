@@ -87,11 +87,11 @@ STATIC_INLINE long atomic_sub(atomic_t* atom, long value) {
 }
 
 STATIC_INLINE long atomic_inc(atomic_t* atom) {
-	return InterlockedIncrement(atom);
+	return InterlockedIncrement(atom) - 1;
 }
 
 STATIC_INLINE long atomic_dec(atomic_t* atom) {
-	return InterlockedDecrement(atom);
+	return InterlockedDecrement(atom) + 1;
 }
 
 STATIC_INLINE long atomic_or(atomic_t* atom, long value) {

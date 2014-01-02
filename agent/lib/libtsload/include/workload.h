@@ -53,7 +53,6 @@ typedef struct request {
 	int rq_flags;
 
 	struct workload* rq_workload;
-	char rq_wl_name[WLNAMELEN];
 
 	list_node_t rq_node;		/* Next request in chain */
 } request_t;
@@ -67,11 +66,33 @@ typedef struct workload_step {
 typedef enum {
 	WLS_NEW = 0,
 	WLS_CONFIGURING = 1,
-	WLS_SUCCESS = 2,
-	WLS_FAIL = 3,
-	WLS_FINISHED = 4,
-	WLS_RUNNING	= 5
+	WLS_CFG_FAIL = 2,
+	WLS_CONFIGURED = 3,
+	WLS_STARTED = 4,
+	WLS_RUNNING	= 5,
+	WLS_FINISHED = 6,
+	WLS_DESTROYED = 7
 } wl_status_t;
+
+/**
+ * Workload FSM
+ *
+ * wl_create() 		-> NEW
+ *                      |
+ * cfg_thread()	--> CONFIGURING
+ *                     / \
+ *                    /   \
+ *                   /     \
+ *             CONFIGURED CFG_FAIL
+ *                 |
+ *               STARTED
+ *                 |
+ *               RUNNING-----+
+ *                 |         |
+ *              FINISHED     |
+ *                 |         |
+ *              DESTROYED <--+
+ */
 
 typedef struct workload {
 	char 			 wl_name[WLNAMELEN];
@@ -84,13 +105,13 @@ typedef struct workload {
 
 	thread_t		 wl_cfg_thread;		/**< Thread responsible for configuration*/
 
-	boolean_t		 wl_is_configured;
+	thread_mutex_t	 wl_status_mutex;	/**< Protects wl_status*/
 	wl_status_t 	 wl_status;
+	atomic_t		 wl_ref_count;
 
 	int				 wl_current_rq;
 
 	ts_time_t		 wl_start_time;
-	boolean_t		 wl_is_started;
 
 	ts_time_t		 wl_notify_time;
 
@@ -140,6 +161,18 @@ void wl_rq_chain_push(list_head_t* rq_chain);
 
 LIBEXPORT int wl_init(void);
 LIBEXPORT void wl_fini(void);
+
+/**
+ * Workload reference tracker. It may be held by
+ * 	- Creator
+ * 	- Threadpool it attached to
+ * 	- Request belongs to it
+ *
+ * Last owner released reference frees workload,
+ * but not until creator does that.
+ * */
+void wl_hold(workload_t* wl);
+void wl_rele(workload_t* wl);
 
 #define WL_STEP_OK				0
 #define WL_STEP_QUEUE_FULL		-1

@@ -45,7 +45,8 @@ LIBEXPORT JSONNODE* tsload_get_threadpools(void);
 LIBEXPORT JSONNODE* tsload_get_dispatchers(void);
 LIBEXPORT int tsload_destroy_threadpool(const char* tp_name);
 
-LIBEXPORT int tsload_init(struct subsystem* xsubsys, unsigned xs_count);
+LIBEXPORT int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,
+						  struct subsystem* post_subsys, unsigned post_count);
 LIBEXPORT int tsload_start(const char* basename);
 
 #endif /* TSLOAD_H_ */

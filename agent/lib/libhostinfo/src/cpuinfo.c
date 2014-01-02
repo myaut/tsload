@@ -8,6 +8,7 @@
 #include <cpuinfo.h>
 #include <mempool.h>
 #include <hiobject.h>
+#include <cpumask.h>
 
 #include <ctype.h>
 
@@ -167,6 +168,65 @@ size_t hi_cpu_mem_total(void) {
 	/* TODO: Should sum all NUMA node mem_total values */
 	return 0;
 }
+
+static int hi_cpu_mask_all(cpumask_t* mask) {
+	hi_object_t *object;
+	hi_cpu_object_t *cpu_object;
+
+	list_head_t* list = hi_cpu_list(B_FALSE);
+
+	hi_for_each_object(object, list) {
+		cpu_object = HI_CPU_FROM_OBJ(object);
+
+		if(cpu_object->type == HI_CPU_STRAND) {
+			cpumask_set(mask, cpu_object->id);
+		}
+	}
+
+	return 0;
+}
+
+static int hi_cpu_mask_impl(hi_cpu_object_t* object, cpumask_t* mask) {
+	hi_object_t* parent = HI_CPU_TO_OBJ(object);
+	hi_object_child_t* child;
+	hi_cpu_object_t* cpu_object;
+
+	hi_for_each_child(child, parent) {
+		cpu_object = HI_CPU_FROM_OBJ(child->object);
+
+		/* Ignore caches */
+		if(cpu_object->type == HI_CPU_CACHE) {
+			continue;
+		}
+
+		if(cpu_object->type == HI_CPU_STRAND) {
+			cpumask_set(mask, object->id);
+			continue;
+		}
+
+		/* Recursively call */
+		hi_cpu_mask_impl(cpu_object, mask);
+	}
+
+	return 0;
+}
+
+/**
+ * Create cpumask for cpu object
+ *
+ * For caches processes nearest core/chip object (parent)
+ * For other cpu objects - processes all child strands
+ * For null creates mask that includes all strands*/
+int hi_cpu_mask(hi_cpu_object_t* object, cpumask_t* mask) {
+	if(object == NULL)
+		return hi_cpu_mask_all(mask);
+
+	if(object->type == HI_CPU_CACHE)
+		return hi_cpu_mask_impl(HI_CPU_PARENT(object), mask);
+
+	return hi_cpu_mask_impl(object, mask);
+}
+
 
 int hi_cpu_init(void) {
 	mp_cache_init(&hi_cpu_obj_cache, hi_cpu_object_t);

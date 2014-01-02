@@ -15,6 +15,8 @@ extern disp_class_t iat_disp;
 void disp_common_destroy(disp_common_t* disp) {
 	rv_destroy(disp->disp_randvar);
 	rg_destroy(disp->disp_randgen);
+
+	mp_free(disp);
 }
 
 static int json_disp_proc_common(JSONNODE* node, workload_t* wl, disp_common_t* disp) {

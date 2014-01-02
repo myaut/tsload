@@ -71,9 +71,13 @@ typedef struct thread_pool {
 	thread_t  tp_ctl_thread;		/**< Dispatcher thread*/
 	tp_worker_t* tp_workers;		/**< Worker threads*/
 
-	thread_event_t tp_event;		/**< Used to wake up worker threads when next quantum starts */
+	thread_mutex_t tp_mutex;				/**< Protects workload list and tp_cv*/
+	thread_cv_t	   tp_cv_control;			/**< Notification worker->control */
+	thread_cv_t	   tp_cv_worker;			/**< Notification control->worker */
 
-	thread_mutex_t tp_mutex;		/**< Protects workload list*/
+	atomic_t	   tp_ref_count;
+
+	int tp_ready_workers;
 
 	list_head_t	   tp_wl_head;
 	int tp_wl_count;
@@ -95,10 +99,14 @@ void tp_distribute_requests(struct workload_step* step, thread_pool_t* tp);
 LIBEXPORT int tp_init(void);
 LIBEXPORT void tp_fini(void);
 
+void tp_hold(thread_pool_t* tp);
+void tp_rele(thread_pool_t* tp, boolean_t may_destroy);
+
 #ifndef NO_JSON
 #include <libjson.h>
 
 JSONNODE* json_tp_format_all(void);
+int json_tp_bind(thread_pool_t* tp, JSONNODE* bindings);
 #endif
 
 #endif /* THREADPOOL_H_ */

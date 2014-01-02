@@ -15,6 +15,11 @@
 #include <threadpool.h>
 #include <defs.h>
 #include <workload.h>
+#include <cpuinfo.h>
+#include <cpumask.h>
+#include <schedutil.h>
+#include <tsload.h>
+#include <list.h>
 
 #include <assert.h>
 #include <string.h>
@@ -37,6 +42,13 @@ DECLARE_HASH_MAP(tp_hash_map, thread_pool_t, TPHASHSIZE, tp_name, tp_next,
 
 /* Minimum quantum duration. Should be set to system's tick */
 ts_time_t tp_min_quantum = TP_MIN_QUANTUM;
+
+boolean_t tp_collector_enabled = B_TRUE;
+ts_time_t tp_collector_interval = T_SEC / 2;
+
+static thread_t  t_tp_collector;
+
+static atomic_t tp_count = (atomic_t) 0l;
 
 void* worker_thread(void* arg);
 void* control_thread(void* arg);
@@ -91,6 +103,7 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	strncpy(tp->tp_name, name, TPNAMELEN);
 
 	tp->tp_num_threads = num_threads;
+	tp->tp_ready_workers = num_threads;
 	tp->tp_workers = (tp_worker_t*) mp_cache_alloc_array(&tp_worker_cache, num_threads);
 
 	tp->tp_time	   = 0ll;	   /*Time is set by control thread*/
@@ -103,10 +116,14 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 
 	tp->tp_next = NULL;
 
+	tp->tp_ref_count = (atomic_t) 0l;
+	tp_hold(tp);
+
 	/*Initialize objects*/
 	list_head_init(&tp->tp_wl_head, "tp-%s", name);
-    event_init(&tp->tp_event, "tp-%s", name);
     mutex_init(&tp->tp_mutex, "tp-%s", name);
+    cv_init(&tp->tp_cv_control, "tp-%s-cv-ctl", name);
+    cv_init(&tp->tp_cv_worker, "tp-%s-cv-w", name);
 
 	/*Create threads*/
 	t_init(&tp->tp_ctl_thread, (void*) tp, control_thread,
@@ -117,6 +134,8 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 		tp_create_worker(tp, tid);
 	}
 
+	atomic_inc(&tp_count);
+
 	hash_map_insert(&tp_hash_map, tp);
 
 	logmsg(LOG_INFO, "Created thread pool %s with %d threads", name, num_threads);
@@ -124,23 +143,25 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	return tp;
 }
 
-static void tp_destroy_impl(thread_pool_t* tp) {
+static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 	int tid;
 	workload_t *wl, *tmp;
 
-	tp->tp_is_dead = B_TRUE;
+	if(may_remove)
+		hash_map_remove(&tp_hash_map, tp);
 
+#if 0
 	/* Destroy all workloads. No need to detach them,
 	 * because we destroy entire threadpool */
 	mutex_lock(&tp->tp_mutex);
 	list_for_each_entry_safe(workload_t, wl, tmp, &tp->tp_wl_head, wl_tp_node) {
 		wl_unconfig(wl);
-		wl_destroy_nodetach(wl);
+		tp_detach_nolock(tp, wl);
 	}
 	mutex_unlock(&tp->tp_mutex);
+#endif
 
-	/* Notify workers that we are done */
-	event_notify_all(&tp->tp_event);
+	assert(list_empty(&tp->tp_wl_head));
 
 	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
 		tp_destroy_worker(tp, tid);
@@ -148,21 +169,46 @@ static void tp_destroy_impl(thread_pool_t* tp) {
 
 	t_destroy(&tp->tp_ctl_thread);
 
-	event_destroy(&tp->tp_event);
+	cv_destroy(&tp->tp_cv_worker);
+	cv_destroy(&tp->tp_cv_control);
 	mutex_destroy(&tp->tp_mutex);
 
 	mp_cache_free_array(&tp_worker_cache, tp->tp_workers, tp->tp_num_threads);
 	mp_cache_free(&tp_cache, tp);
+
+	atomic_dec(&tp_count);
 }
 
 void tp_destroy(thread_pool_t* tp) {
-	hash_map_remove(&tp_hash_map, tp);
+	/* Notify workers that we are done */
 
-	tp_destroy_impl(tp);
+	mutex_lock(&tp->tp_mutex);
+	tp->tp_is_dead = B_TRUE;
+	cv_notify_all(&tp->tp_cv_worker);
+	mutex_unlock(&tp->tp_mutex);
+
+	tp_rele(tp, B_TRUE);
 }
 
 thread_pool_t* tp_search(const char* name) {
 	return hash_map_find(&tp_hash_map, name);
+}
+
+void tp_hold(thread_pool_t* tp) {
+	atomic_inc(&tp->tp_ref_count);
+}
+
+/**
+ * @param may_destroy - may tp_rele free thread_pool
+ *
+ * Some tp_rele's may be called from control/worker thread
+ * In this case we may deadlock because we will join ourselves
+ * Do not destroy tp in this case - leave it to collector/tp_fini
+ * */
+void tp_rele(thread_pool_t* tp, boolean_t may_destroy) {
+	if(atomic_dec(&tp->tp_ref_count) == 1l && may_destroy) {
+		tp_destroy_impl(tp, B_TRUE);
+	}
 }
 
 /**
@@ -178,14 +224,24 @@ void tp_attach(thread_pool_t* tp, struct workload* wl) {
 	tp->tp_wl_changed = B_TRUE;
 
 	mutex_unlock(&tp->tp_mutex);
+
+	tp_hold(tp);
 }
 
 void tp_detach_nolock(thread_pool_t* tp, struct workload* wl) {
+	mutex_lock(&wl->wl_status_mutex);
+
+	if(wl->wl_status < WLS_FINISHED)
+		wl->wl_status = WLS_FINISHED;
+
 	wl->wl_tp = NULL;
+	mutex_unlock(&wl->wl_status_mutex);
 
 	list_del(&wl->wl_tp_node);
 	--tp->tp_wl_count;
 	tp->tp_wl_changed = B_TRUE;
+
+	tp_rele(tp, B_FALSE);
 }
 
 /**
@@ -195,9 +251,7 @@ void tp_detach(thread_pool_t* tp, struct workload* wl) {
 	assert(wl->wl_tp == tp);
 
 	mutex_lock(&tp->tp_mutex);
-
 	tp_detach_nolock(tp, wl);
-
 	mutex_unlock(&tp->tp_mutex);
 }
 
@@ -284,7 +338,7 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 			 * would not be satisfied (there would be requests after current request, and
 			 * we have to find appropriate place for it. */
 			if(!last_rq ||
-			    (list_is_last(last_rq, rq_list) && rq->rq_sched_time >= last_rq->rq_sched_time) ) {
+			    (list_is_last(&last_rq->rq_node, rq_list) && rq->rq_sched_time >= last_rq->rq_sched_time) ) {
 					list_add_tail(&rq->rq_node, rq_list);
 					last_rq = rq;
 			}
@@ -337,12 +391,20 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 }
 
 JSONNODE* json_tp_format(hm_item_t* object) {
-	JSONNODE* node = json_new(JSON_NODE);
-	JSONNODE* wl_list = json_new(JSON_ARRAY);
+	JSONNODE* node = NULL;
+	JSONNODE* wl_list = NULL;
 	JSONNODE* jwl;
 	workload_t* wl;
 
 	thread_pool_t* tp = (thread_pool_t*) object;
+
+	/* TODO: Should return bindings */
+
+	if(tp->tp_is_dead)
+		return NULL;
+
+	node = json_new(JSON_NODE);
+	wl_list = json_new(JSON_ARRAY);
 
 	json_push_back(node, json_new_i("num_threads", tp->tp_num_threads));
 	json_push_back(node, json_new_i("quantum", tp->tp_quantum));
@@ -369,12 +431,131 @@ JSONNODE* json_tp_format_all(void) {
 	return json_hm_format_all(&tp_hash_map, json_tp_format);
 }
 
-int tp_destroy_walk(hm_item_t* object, void* arg) {
-	thread_pool_t* tp = (thread_pool_t*) object;
+#define JSON_GET_VALIDATE_PARAM(iter, tp_name, name, req_type)	\
+	{											\
+		iter = json_find(node, name);			\
+		if(iter == i_end) {						\
+			tsload_error_msg(TSE_MESSAGE_FORMAT,	\
+					"Failed to parse threadpool %s, missing parameter %s", tp_name, name);	\
+			return 1;							\
+		}										\
+		if(json_type(*iter) != req_type) {		\
+			tsload_error_msg(TSE_MESSAGE_FORMAT,	\
+					"Expected that " name " is " #req_type );	\
+			return 1;							\
+		}										\
+	}
 
-	tp_destroy_impl(tp);
+static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
+	JSONNODE_ITERATOR i_tid;
+	JSONNODE_ITERATOR i_objects;
+	JSONNODE_ITERATOR i_object;
+	JSONNODE_ITERATOR i_objects_end;
+	JSONNODE_ITERATOR i_end;
 
-	return HM_WALKER_CONTINUE | HM_WALKER_REMOVE;
+	char* obj_name;
+	hi_cpu_object_t* object;
+	int tid;
+
+	int err = 0;
+
+	cpumask_t* binding;
+
+	if(json_type(node) != JSON_NODE) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to bind threadpool %s, binding must be node",
+								tp->tp_name);
+		return 1;
+	}
+
+	i_end = json_end(node);
+
+	JSON_GET_VALIDATE_PARAM(i_tid, tp->tp_name, "tid", JSON_NUMBER);
+	JSON_GET_VALIDATE_PARAM(i_objects, tp->tp_name, "objects", JSON_ARRAY);
+
+	tid = json_as_int(*i_tid);
+	if(tid > tp->tp_num_threads || tid < 0) {
+		tsload_error_msg(TSE_INVALID_DATA, "Failed to bind threadpool %s, invalid tid %d",
+								tp->tp_name, tid);
+		return 1;
+	}
+
+	binding = cpumask_create();
+
+	i_objects_end = json_end(*i_objects);
+	i_object = json_begin(i_object);
+
+	if(i_objects_end == i_object) {
+		hi_cpu_mask(NULL, binding);
+	}
+	else {
+		for( ; i_object != i_end ; ++i_object) {
+			obj_name = json_as_string(*i_object);
+			object = hi_cpu_find(obj_name);
+
+			if(object == NULL) {
+				tsload_error_msg(TSE_INVALID_DATA, "Failed to bind threadpool %s: no such object '%s'",
+												tp->tp_name, obj_name);
+				json_free(obj_name);
+				goto end;
+			}
+
+			hi_cpu_mask(object, binding);
+		}
+	}
+
+	sched_set_affinity(&tp->tp_workers[tid].w_thread, binding);
+
+end:
+	cpumask_destroy(binding);
+
+	return err;
+}
+
+int json_tp_bind(thread_pool_t* tp, JSONNODE* bindings) {
+	JSONNODE_ITERATOR i_binding;
+	JSONNODE_ITERATOR i_end;
+
+	if(json_type(bindings) != JSON_ARRAY) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to bind threadpool %s, 'bindings' must be array", tp->tp_name);
+		return 1;
+	}
+
+	i_end = json_end(bindings);
+	for(i_binding = json_begin(bindings);
+		i_binding != i_end ; ++i_binding) {
+			if(json_tp_bind_worker(tp, *i_binding) != 0) {
+				/* XXX: revert previous bindings?  */
+				return 1;
+			}
+	}
+
+	return 0;
+}
+
+static int tp_collect_tp(hm_item_t* item, void* arg) {
+	thread_pool_t* tp = (thread_pool_t*) item;
+
+	if(tp->tp_is_dead && atomic_read(&tp->tp_ref_count) == 0l) {
+		tp_destroy_impl(tp, B_FALSE);
+		return HM_WALKER_REMOVE | HM_WALKER_CONTINUE;
+	}
+
+	return HM_WALKER_CONTINUE;
+}
+
+static void tp_collect(void) {
+	while(tp_collector_enabled || atomic_read(&tp_count) > 0) {
+		hash_map_walk(&tp_hash_map, tp_collect_tp, NULL);
+		tm_sleep_milli(tp_collector_interval);
+	}
+}
+
+static thread_result_t tp_collector_thread(thread_arg_t arg) {
+	THREAD_ENTRY(arg, void, unused);
+	tp_collect();
+
+THREAD_END:
+	THREAD_FINISH(arg);
 }
 
 int tp_init(void) {
@@ -383,16 +564,30 @@ int tp_init(void) {
 	mp_cache_init(&tp_cache, thread_pool_t);
 	mp_cache_init(&tp_worker_cache, tp_worker_t);
 
-	/*FIXME: default pool should have threads number num_of_phys_cores*/
+	if(tp_collector_enabled) {
+		t_init(&t_tp_collector, NULL, tp_collector_thread, "tp_collector");
+	}
+
 	default_pool = tp_create(DEFAULT_TP_NAME, 4, T_SEC, "simple");
 
 	return 0;
 }
 
 void tp_fini(void) {
+	tp_destroy(default_pool);
+
+	if(tp_collector_enabled) {
+		tp_collector_enabled = B_FALSE;
+
+		/* FIXME: May wait up to tp_collector_interval - implement via timed events */
+		t_destroy(&t_tp_collector);
+	}
+	else {
+		tp_collect();
+	}
+
 	mp_cache_destroy(&tp_worker_cache);
 	mp_cache_destroy(&tp_cache);
 
-	hash_map_walk(&tp_hash_map, tp_destroy_walk, NULL);
 	hash_map_destroy(&tp_hash_map);
 }

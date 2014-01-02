@@ -38,6 +38,8 @@ thread_result_t control_thread(thread_arg_t arg) {
 	int wi;
 	tp_worker_t* worker;
 
+	tp_hold(tp);
+
 	/* Synchronize all control-threads on all nodes to start
 	 * quantum at beginning of next second (real time synchronization
 	 * is provided by NTP) */
@@ -54,6 +56,14 @@ thread_result_t control_thread(thread_arg_t arg) {
 		mutex_lock(&tp->tp_mutex);
 
 		wl_count = tp->tp_wl_count;
+
+		/* = RESET WORKERS = */
+		for(wi = 0; wi < tp->tp_num_threads; ++wi) {
+			atomic_set(&tp->tp_workers[wi].w_state, INTERRUPT);
+		}
+
+		while(tp->tp_ready_workers < tp->tp_num_threads)
+			cv_wait(&tp->tp_cv_control, &tp->tp_mutex);
 
 		/* = INITIALIZE STEP ARRAY = */
 		if(unlikely(tp->tp_wl_changed)) {
@@ -130,13 +140,7 @@ thread_result_t control_thread(thread_arg_t arg) {
 		for(tid = 0; tid < tp->tp_num_threads; ++tid)
 			mutex_unlock(&tp->tp_workers[tid].w_rq_mutex);
 
-
-		/* = START WORKERS = */
-		for(wi = 0; wi < tp->tp_num_threads; ++wi) {
-			atomic_set(&tp->tp_workers[wi].w_state, INTERRUPT);
-		}
-
-		event_notify_all(&tp->tp_event);
+		cv_notify_all(&tp->tp_cv_worker);
 
 	quantum_sleep:
 		mutex_unlock(&tp->tp_mutex);
@@ -145,6 +149,8 @@ thread_result_t control_thread(thread_arg_t arg) {
 	}
 
 THREAD_END:
+	mp_free(step);
+	tp_rele(tp, B_FALSE);
 	THREAD_FINISH(arg);
 }
 
@@ -152,8 +158,6 @@ thread_result_t worker_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, tp_worker_t, worker);
 	list_head_t* rq_chain;
 	request_t* rq;
-
-	boolean_t do_sleep = B_FALSE;
 
 	thread_pool_t* tp = worker->w_tp;
 
@@ -163,6 +167,8 @@ thread_result_t worker_thread(thread_arg_t arg) {
 
 	long worker_step = 0;
 
+	tp_hold(tp);
+
 	logmsg(LOG_DEBUG, "Started worker thread #%d (tpool: %s)",
 			thread->t_local_id, tp->tp_name);
 
@@ -170,7 +176,10 @@ thread_result_t worker_thread(thread_arg_t arg) {
 		mutex_lock(&worker->w_rq_mutex);
 
 		atomic_set(&worker->w_state, WORKING);
-		do_sleep = B_TRUE;
+
+		mutex_lock(&tp->tp_mutex);
+		--tp->tp_ready_workers;
+		mutex_unlock(&tp->tp_mutex);
 
 		if(!list_empty(&worker->w_requests)) {
 			/*There are new requests on queue*/
@@ -193,10 +202,12 @@ thread_result_t worker_thread(thread_arg_t arg) {
 
 				wl_run_request(rq);
 
-				cur_time = rq->rq_end_time;
+				/* Do not bother OS, if we recently asked about time */
+				cur_time = (rq->rq_end_time != 0)
+						? rq->rq_end_time
+						: tm_get_clock();
 
 				if(atomic_read(&worker->w_state) == INTERRUPT) {
-					do_sleep = B_FALSE;
 					break;
 				}
 			}
@@ -209,12 +220,18 @@ thread_result_t worker_thread(thread_arg_t arg) {
 			mutex_unlock(&worker->w_rq_mutex);
 		}
 
-		if(do_sleep) {
+		mutex_lock(&tp->tp_mutex);
+		if(!worker->w_tp->tp_is_dead) {
+			++tp->tp_ready_workers;
+			cv_notify_one(&tp->tp_cv_control);
 			atomic_set(&worker->w_state, SLEEPING);
-			event_wait(&tp->tp_event);
+			cv_wait(&tp->tp_cv_worker, &tp->tp_mutex);
 		}
+		mutex_unlock(&tp->tp_mutex);
 	}
 
 THREAD_END:
+	assert(list_empty(&worker->w_requests));
+	tp_rele(tp, B_FALSE);
 	THREAD_FINISH(arg);
 }

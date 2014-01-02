@@ -270,7 +270,8 @@ int json_hm_walker(hm_item_t* object, void* arg) {
 	struct hm_fmt_context* context = (struct hm_fmt_context*) arg;
 	JSONNODE* item_node = context->formatter(object);
 
-	json_push_back(context->node, item_node);
+	if(item_node != NULL)
+		json_push_back(context->node, item_node);
 
 	return HM_WALKER_CONTINUE;
 }

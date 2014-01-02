@@ -92,6 +92,9 @@ DECLARE_HASH_MAP(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_hm_next,
 	}
 )
 
+static atomic_t wl_count = (atomic_t) 0l;
+ts_time_t wl_poll_interval = 200 * T_MS;
+
 /**
  * wl_create - create new workload: allocate memory and initialize fields
  *
@@ -120,8 +123,6 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_params = mp_malloc(wlt->wlt_params_size);
 	wl->wl_private = NULL;
 
-	wl->wl_is_configured = B_FALSE;
-	wl->wl_is_started = B_FALSE;
 	wl->wl_status = WLS_NEW;
 
 	wl->wl_start_time = TS_TIME_MAX;
@@ -132,8 +133,13 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_disp_private = NULL;
 
 	mutex_init(&wl->wl_rq_mutex, "wl-%s-rq", name);
+	mutex_init(&wl->wl_status_mutex, "wl-%s-st", name);
+	wl->wl_ref_count = (atomic_t) 0ul;
 
 	hash_map_insert(&workload_hash_map, wl);
+	atomic_inc(&wl_count);
+
+	wl_hold(wl);
 
 	return wl;
 }
@@ -142,9 +148,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
  * wl_destroy_nodetach - workload destructor
  *
  * */
-void wl_destroy_nodetach(workload_t* wl) {
-	hash_map_remove(&workload_hash_map, wl);
-
+void wl_destroy_impl(workload_t* wl) {
 	if(wl->wl_disp_class)
 		wl->wl_disp_class->disp_fini(wl);
 
@@ -154,19 +158,25 @@ void wl_destroy_nodetach(workload_t* wl) {
 	list_del(&wl->wl_chain);
 
 	mutex_destroy(&wl->wl_rq_mutex);
+	mutex_destroy(&wl->wl_status_mutex);
 
 	mp_free(wl->wl_params);
 	mp_cache_free(&wl_cache, wl);
+
+	atomic_dec(&wl_count);
 }
 
 /**
- * wl_destroy - destroy workload and detach it from threadpool
+ * wl_destroy - destroy workload
  * */
 void wl_destroy(workload_t* wl) {
-	if(wl->wl_tp)
-		tp_detach(wl->wl_tp, wl);
+	mutex_lock(&wl->wl_status_mutex);
+	wl->wl_status = WLS_DESTROYED;
+	mutex_unlock(&wl->wl_status_mutex);
 
-	wl_destroy_nodetach(wl);
+	hash_map_remove(&workload_hash_map, wl);
+
+	wl_rele(wl);
 }
 
 /**
@@ -182,6 +192,23 @@ void wl_destroy_all(list_head_t* wl_head) {
 
 workload_t* wl_search(const char* name) {
 	return hash_map_find(&workload_hash_map, name);
+}
+
+void wl_hold(workload_t* wl) {
+	atomic_inc(&wl->wl_ref_count);
+}
+
+void wl_rele(workload_t* wl) {
+	if(atomic_dec(&wl->wl_ref_count) == 1l) {
+		boolean_t is_destroyed;
+
+		mutex_lock(&wl->wl_status_mutex);
+		is_destroyed = wl->wl_status == WLS_DESTROYED;
+		mutex_unlock(&wl->wl_status_mutex);
+
+		if(is_destroyed)
+			wl_destroy_impl(wl);
+	}
 }
 
 /**
@@ -201,7 +228,7 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 
 	ts_time_t now = tm_get_time();
 
-	/* Ignore intermediate progress messages if they are going too fasy */
+	/* Ignore intermediate progress messages if they are going too fast */
 	if( status == WLS_CONFIGURING && progress > 2 && progress < 98 &&
 		(now - wl->wl_notify_time) < (T_SEC / WL_NOTIFICATIONS_PER_SEC)) {
 		return;
@@ -215,10 +242,10 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 		if(progress < 0) progress = 0;
 		if(progress > 100) progress = 100;
 	break;
-	case WLS_FAIL:
+	case WLS_CFG_FAIL:
 		progress = -1;
 	break;
-	case WLS_SUCCESS:
+	case WLS_CONFIGURED:
 		progress = 100;
 	break;
 	case WLS_RUNNING:
@@ -230,7 +257,9 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	break;
 	}
 
+	mutex_lock(&wl->wl_status_mutex);
 	wl->wl_status = status;
+	mutex_unlock(&wl->wl_status_mutex);
 
 	msg = mp_malloc(sizeof(wl_notify_msg_t));
 
@@ -238,7 +267,7 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	vsnprintf(msg->msg, 512, format, args);
 	va_end(args);
 
-	logmsg((status == WLS_FAIL)? LOG_WARN : LOG_INFO,
+	logmsg((status == WLS_CFG_FAIL)? LOG_WARN : LOG_INFO,
 			"Workload %s status: %s", wl->wl_name, msg->msg);
 
 	msg->wl = wl;
@@ -284,9 +313,8 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 	}
 
 	tp_attach(wl->wl_tp, wl);
-	wl->wl_is_configured = B_TRUE;
 
-	wl_notify(wl, WLS_SUCCESS, 100, "Successfully configured workload %s", wl->wl_name);
+	wl_notify(wl, WLS_CONFIGURED, 100, "Successfully configured workload %s", wl->wl_name);
 
 
 THREAD_END:
@@ -303,18 +331,23 @@ void wl_unconfig(workload_t* wl) {
 }
 
 int wl_is_started(workload_t* wl) {
-	if(wl->wl_is_started)
+	boolean_t ret = B_FALSE;
+
+	/* fastpath - not lock nutex */
+	if(wl->wl_status == WLS_STARTED || wl->wl_status == WLS_RUNNING)
 		return B_TRUE;
 
-	if(wl->wl_is_configured &&
+	mutex_lock(&wl->wl_status_mutex);
+	if(wl->wl_status == WLS_CONFIGURED &&
 	   tm_get_time() >= wl->wl_start_time) {
 		logmsg(LOG_INFO, "Starting workload %s...", wl->wl_name);
 
-		wl->wl_is_started = B_TRUE;
-		return B_TRUE;
+		wl->wl_status = WLS_STARTED;
+		ret = B_TRUE;
 	}
+	mutex_unlock(&wl->wl_status_mutex);
 
-	return B_FALSE;
+	return ret;
 }
 
 /**
@@ -416,7 +449,6 @@ request_t* wl_create_request(workload_t* wl, int thread_id) {
 	rq->rq_flags = 0;
 
 	rq->rq_workload = wl;
-	strcpy(rq->rq_wl_name, wl->wl_name);
 
 	rq->rq_sched_time = 0;
 	rq->rq_start_time = 0;
@@ -426,12 +458,16 @@ request_t* wl_create_request(workload_t* wl, int thread_id) {
 
 	list_node_init(&rq->rq_node);
 
+	wl_hold(wl);
+
 	return rq;
 }
 
 /**
  * Free request's memory */
-void wl_request_free(request_t* rq) {
+void wl_request_destroy(request_t* rq) {
+	wl_rele(rq->rq_workload);
+
 	mp_cache_free(&wl_rq_cache, rq);
 }
 
@@ -444,6 +480,10 @@ void wl_run_request(request_t* rq) {
 	rq->rq_flags |= RQF_STARTED;
 
 	ETRC_PROBE2(tsload__workload, request__start, workload_t*, wl, request_t*, rq);
+
+	/* Workload finished & detached */
+	if(rq->rq_workload->wl_tp == NULL)
+		return;
 
 	rq->rq_start_time = tm_get_clock();
 	ret = wl->wl_type->wlt_run_request(rq);
@@ -471,7 +511,7 @@ void wl_rq_chain_destroy(void *p_rq_chain) {
 	request_t *rq, *rq_tmp;
 
 	list_for_each_entry_safe(request_t, rq, rq_tmp, rq_chain, rq_node) {
-		wl_request_free(rq);
+		wl_request_destroy(rq);
 	}
 
 	mp_free(p_rq_chain);
@@ -510,7 +550,7 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
 		jrq = json_new(JSON_NODE);
 
-		json_push_back(jrq, json_new_a("workload_name", rq->rq_wl_name));
+		json_push_back(jrq, json_new_a("workload_name", rq->rq_workload->wl_name));
 
 		json_push_back(jrq, json_new_i("step", rq->rq_step));
 		json_push_back(jrq, json_new_i("request", rq->rq_id));
@@ -542,17 +582,18 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 		}										\
 	}
 
-#define SEARCH_OBJ(dest, iter, type, search) 		\
+#define SEARCH_OBJ(dest, iter, type, search) 				\
 	do {									\
 		type* obj = NULL;					\
 		char* name = json_as_string(*iter);	\
 		obj = search(name);					\
-		json_free(name);					\
 		if(obj == NULL) {					\
 			tsload_error_msg(TSE_INVALID_DATA,				\
-					"Invalid " #type " name %s", name);		\
+					"Invalid " #type " name '%s'", name);	\
+			json_free(name);								\
 			goto fail;						\
 		}									\
+		json_free(name);					\
 		dest = obj;							\
 	} while(0);
 
@@ -647,6 +688,10 @@ int wl_init(void) {
 
 void wl_fini(void) {
 	etrc_provider_destroy(&tsload__workload);
+
+	while(atomic_read(&wl_count) > 0l) {
+		tm_sleep_milli(wl_poll_interval);
+	}
 
 	squeue_push(&wl_requests, NULL);
 	t_destroy(&t_wl_requests);

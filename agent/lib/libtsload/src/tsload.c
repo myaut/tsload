@@ -95,7 +95,7 @@ int tsload_start_workload(const char* wl_name, ts_time_t start_time) {
 		return TSLOAD_ERROR;
 	}
 
-	if(wl->wl_is_configured == B_FALSE) {
+	if(wl->wl_status != WLS_CONFIGURED) {
 		tsload_error_msg(TSE_INVALID_STATE, "Workload %s not yet configured", wl_name);
 		return TSLOAD_ERROR;
 	}
@@ -163,6 +163,19 @@ JSONNODE* tsload_get_threadpools(void) {
 	return json_tp_format_all();
 }
 
+int tsload_bind_threadpool(const char* tp_name, JSONNODE* bindings) {
+	thread_pool_t* tp = tp_search(tp_name);
+
+	if(tp == NULL) {
+		tsload_error_msg(TSE_INVALID_DATA, "Thread pool '%s' not exists", tp_name);
+		return TSLOAD_ERROR;
+	}
+
+	json_tp_bind(tp, bindings);
+
+	return TSLOAD_OK;
+}
+
 JSONNODE* tsload_get_dispatchers(void) {
 	JSONNODE* disps = json_new(JSON_ARRAY);
 
@@ -188,22 +201,26 @@ int tsload_destroy_threadpool(const char* tp_name) {
 	return TSLOAD_OK;
 }
 
-int tsload_init(struct subsystem* xsubsys, unsigned xs_count) {
+int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,
+				struct subsystem* post_subsys, unsigned post_count) {
 	struct subsystem** subsys_list = NULL;
 	unsigned s_count = sizeof(subsys) / sizeof(struct subsystem);
-	int si, xsi;
+	int si = 0, xsi;
+	unsigned count = s_count + pre_count + post_count;
 
 	/* Mempool is not yet initialized, so use libc; freed by ts_finish */
-	subsys_list = malloc((s_count + xs_count) * sizeof(struct subsystem*));
+	subsys_list = malloc(count * sizeof(struct subsystem*));
 
 	/* Initialize [0:s_count] subsystems with tsload's subsystems
 	 * and [s_count:s_count+xs_count] with extended subsystems */
-	for(si = 0; si < s_count; ++si)
-		subsys_list[si] = &subsys[si];
-	for(xsi = 0; xsi < xs_count; ++si, ++xsi)
-		subsys_list[si] = &xsubsys[xsi];
+	for(xsi = 0; xsi < pre_count; ++si, ++xsi)
+		subsys_list[si] = &pre_subsys[xsi];
+	for(xsi = 0; xsi < s_count; ++si, ++xsi)
+		subsys_list[si] = &subsys[xsi];
+	for(xsi = 0; xsi < post_count; ++si, ++xsi)
+		subsys_list[si] = &post_subsys[xsi];
 
-	return ts_init(subsys_list, s_count + xs_count);
+	return ts_init(subsys_list, count);
 }
 
 int tsload_start(const char* basename) {
