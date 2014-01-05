@@ -191,18 +191,18 @@ static int hi_cpu_mask_impl(hi_cpu_object_t* object, cpumask_t* mask) {
 	hi_object_child_t* child;
 	hi_cpu_object_t* cpu_object;
 
+	/* Ignore caches */
+	if(object->type == HI_CPU_CACHE) {
+		return 1;
+	}
+
+	if(object->type == HI_CPU_STRAND) {
+		cpumask_set(mask, object->id);
+		return 0;
+	}
+
 	hi_for_each_child(child, parent) {
 		cpu_object = HI_CPU_FROM_OBJ(child->object);
-
-		/* Ignore caches */
-		if(cpu_object->type == HI_CPU_CACHE) {
-			continue;
-		}
-
-		if(cpu_object->type == HI_CPU_STRAND) {
-			cpumask_set(mask, object->id);
-			continue;
-		}
 
 		/* Recursively call */
 		hi_cpu_mask_impl(cpu_object, mask);

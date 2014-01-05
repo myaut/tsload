@@ -53,6 +53,55 @@ static atomic_t tp_count = (atomic_t) 0l;
 void* worker_thread(void* arg);
 void* control_thread(void* arg);
 
+static char* worker_affinity_print(thread_pool_t* tp, int tid) {
+	tp_worker_t* worker = tp->tp_workers + tid;
+	size_t len = 0, capacity = 256;
+	char* str = NULL;
+
+	boolean_t first = B_TRUE;
+
+	cpumask_t* mask = cpumask_create();
+
+	hi_object_t *object;
+	hi_cpu_object_t *cpu_object;
+
+	list_head_t* list = hi_cpu_list(B_FALSE);
+
+	/* Get affinity of worker */
+	if(sched_get_affinity(&worker->w_thread, mask) != SCHED_OK) {
+		goto end;
+	}
+
+	str = mp_malloc(capacity);
+
+	/* Walk CPU strands. If they set in mask - append to string */
+	hi_for_each_object(object, list) {
+		cpu_object = HI_CPU_FROM_OBJ(object);
+
+		if(cpu_object->type == HI_CPU_STRAND) {
+			if(cpumask_isset(mask, cpu_object->id)) {
+				if(first) {
+					len = snprintf(str, capacity, "%d", cpu_object->id);
+					first = B_FALSE;
+
+					continue;
+				}
+
+				if((capacity - len) < 8) {
+					capacity += 256;
+					str = mp_realloc(str, capacity);
+				}
+
+				len += snprintf(str + len, capacity - len, ",%d", cpu_object->id);
+			}
+		}
+	}
+
+end:
+	cpumask_destroy(mask);
+	return str;
+}
+
 static void tp_create_worker(thread_pool_t* tp, int tid) {
 	tp_worker_t* worker = tp->tp_workers + tid;
 
@@ -446,6 +495,18 @@ JSONNODE* json_tp_format_all(void) {
 		}										\
 	}
 
+/*
+ * To check bindings externally:
+ * Linux:
+ * 		# taskset -p <pid>
+ * Solaris (for single-strand bindings):
+ * 		# pbind -Q
+ * Windows:
+ *		Attach windbg to a process
+ *		> ~*
+ *		Look at Affinity field
+ * */
+
 static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 	JSONNODE_ITERATOR i_tid;
 	JSONNODE_ITERATOR i_objects;
@@ -460,6 +521,8 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 	int err = 0;
 
 	cpumask_t* binding;
+
+	char* binding_str;
 
 	if(json_type(node) != JSON_NODE) {
 		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to bind threadpool %s, binding must be node",
@@ -482,13 +545,13 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 	binding = cpumask_create();
 
 	i_objects_end = json_end(*i_objects);
-	i_object = json_begin(i_object);
+	i_object = json_begin(*i_objects);
 
 	if(i_objects_end == i_object) {
 		hi_cpu_mask(NULL, binding);
 	}
 	else {
-		for( ; i_object != i_end ; ++i_object) {
+		for( ; i_object != i_objects_end ; ++i_object) {
 			obj_name = json_as_string(*i_object);
 			object = hi_cpu_find(obj_name);
 
@@ -504,6 +567,17 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 	}
 
 	sched_set_affinity(&tp->tp_workers[tid].w_thread, binding);
+
+	binding_str = worker_affinity_print(tp, tid);
+	if(binding_str) {
+		logmsg(LOG_INFO, "json_tp_bind_worker: tp: '%s' tid: %d binding: %s",
+				tp->tp_name, tid, binding_str);
+		mp_free(binding_str);
+	}
+	else {
+		logmsg(LOG_INFO, "json_tp_bind_worker: tp: '%s' tid: %d binding: ???",
+				tp->tp_name, tid);
+	}
 
 end:
 	cpumask_destroy(binding);

@@ -18,10 +18,27 @@
  			"num_requests": 50
 		}
 	},
+	"threadpools": {
+		"test_tp" : {
+            "num_threads": 4,
+            "quantum": 1000000000,
+            "disp_name": "simple",
+            "bindings": [
+            	{ "tid": 0,
+            	  "objects": ["strand:0:0:0"] },
+            	{ "tid": 1,
+            	  "objects": ["strand:0:1:1"] },
+            	{ "tid": 2,
+            	  "objects": ["strand:0:2:2"] },
+            	{ "tid": 3,
+            	  "objects": ["strand:0:3:3"] }            	 
+            ]
+        }
+	},
 	"workloads" :	{
 		"test1" : {
 			"wltype": "busy_wait",
-			"threadpool": "[DEFAULT]",
+			"threadpool": "test_tp",
 			"disp": "iat",
 			"disp_params": {
 				"distribution": "exponential"
@@ -30,7 +47,7 @@
 		},
 		"test2" : {
 			"wltype": "busy_wait",
-			"threadpool": "[DEFAULT]",
+			"threadpool": "test_tp",
 			"disp": "iat",
 			"disp_params": {
 				"distribution": "uniform",
@@ -40,7 +57,7 @@
 		},
 		"test3" : {
 			"wltype": "busy_wait",
-			"threadpool": "[DEFAULT]",
+			"threadpool": "test_tp",
 			"disp": "iat",
 			"disp_params": {
 				"distribution": "erlang",

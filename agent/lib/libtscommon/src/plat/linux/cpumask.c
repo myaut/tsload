@@ -6,6 +6,7 @@
  */
 
 #include <cpumask.h>
+#include <mempool.h>
 
 #include <plat/cpumask.h>
 
