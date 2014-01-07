@@ -18,6 +18,7 @@
 #include <tstime.h>
 #include <pathutil.h>
 #include <plat/posixdecl.h>
+#include <tsfile.h>
 
 #include <tsload.h>
 
@@ -30,6 +31,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#include <assert.h>
 
 char experiment_dir[PATHMAXLEN];
 
@@ -46,7 +48,6 @@ char experiment_name[EXPNAMELEN];
 
 /* Wait until experiment finishes or fails */
 thread_mutex_t	output_lock;
-thread_mutex_t	rqreport_lock;
 thread_event_t	workload_event;
 
 char**			wl_name_array = NULL;	/* Names of configured workloads */
@@ -59,7 +60,40 @@ int				tp_count = 0;
 
 boolean_t		load_error = B_FALSE;
 
-FILE*			rqreport_file = NULL;
+tsfile_t* 		rqreport_file = NULL;
+
+#define REQUEST_ENTRY_SIZE		128
+
+int rqe_array_length = 12;
+
+#pragma pack(push, 1)
+struct request_entry {
+	char		workload_name[WLNAMELEN];
+	uint32_t	step;
+	uint32_t	request;
+	uint32_t	thread;
+	int64_t		sched_time;
+	int64_t		start_time;
+	int64_t		end_time;
+	uint16_t	flags;
+
+	char 		padding[26];
+} PACKED_STRUCT;
+#pragma pack(pop)
+
+tsfile_schema_t request_schema = {
+	TSFILE_SCHEMA_HEADER(128, 8),
+	{
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, workload_name, TSFILE_FIELD_STRING),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, step, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, request, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, thread, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, sched_time, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, start_time, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, end_time, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, flags, TSFILE_FIELD_INT),
+	}
+};
 
 const char* wl_status_msg(wl_status_t wls) {
 	switch(wls) {
@@ -440,7 +474,7 @@ static int prepare_experiment(void) {
 	int err = LOAD_OK;
 	char* name;
 
-	rqreport_file = fopen(rqreport_filename, "w");
+	rqreport_file = tsfile_create(rqreport_filename, &request_schema);
 
 	if(!rqreport_file)
 		return LOAD_ERR_CONFIGURE;
@@ -525,23 +559,42 @@ void do_workload_status(const char* wl_name,
 
 void do_requests_report(list_head_t* rq_list) {
 	request_t* rq;
+	size_t rqe_size = sizeof(struct request_entry);
+	struct request_entry* rqe_array = NULL;
+	struct request_entry* rqe;
+	int count = 0;
 
 	if(!rqreport_file)
 		return;
 
-	mutex_lock(&rqreport_lock);
+	assert(rqe_size == REQUEST_ENTRY_SIZE);
+	rqe_array = mp_malloc(rqe_size * rqe_array_length);
+
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
-		fprintf(rqreport_file, "%s,%ld,%d,%d,%lld,%lld,%lld,%x\n",
-				rq->rq_workload->wl_name,
-				rq->rq_step,
-				rq->rq_id,
-				rq->rq_thread_id,
-				rq->rq_sched_time,
-				rq->rq_start_time,
-				rq->rq_end_time,
-				rq->rq_flags);
+		rqe = rqe_array + count;
+
+		strcpy(rqe->workload_name, rq->rq_workload->wl_name);
+		rqe->step = rq->rq_step;
+		rqe->request = rq->rq_id;
+		rqe->thread = rq->rq_thread_id;
+
+		rqe->sched_time = rq->rq_sched_time;
+		rqe->start_time = rq->rq_start_time;
+		rqe->end_time = rq->rq_end_time;
+
+		rqe->flags = rq->rq_flags;
+
+		++count;
+
+		if(count == rqe_array_length) {
+			tsfile_add(rqreport_file, rqe_array, count);
+			count = 0;
+		}
 	}
-	mutex_unlock(&rqreport_lock);
+
+	if(count > 0) {
+		tsfile_add(rqreport_file, rqe_array, count);
+	}
 }
 
 void generate_rqreport_filename(void) {
@@ -554,7 +607,7 @@ void generate_rqreport_filename(void) {
 	/* Generate request-report filename. If file already exists, choose next name with suffix .1 */
 	now = time(NULL);
 
-	strftime(rqreport_fn, 32, "rq-%Y-%m-%d-%H_%M_%S.out", localtime(&now));
+	strftime(rqreport_fn, 32, "rq-%Y-%m-%d-%H_%M_%S.tsf", localtime(&now));
 	path_join(rqreport_filename_temp, PATHMAXLEN, experiment_dir, rqreport_fn, NULL);
 
 	do {
@@ -577,8 +630,9 @@ int do_load() {
 	wl_cfg_count = (atomic_t) 0l;
 	wl_run_count = (atomic_t) 0l;
 
-	/* Install tsload handlers */
+	/* Install tsload/tsfile handlers */
 	tsload_error_msg = do_error_msg;
+	tsfile_error_msg = do_error_msg;
 	tsload_workload_status = do_workload_status;
 	tsload_requests_report = do_requests_report;
 
@@ -618,7 +672,6 @@ int do_load() {
 int load_init(void) {
 	event_init(&workload_event, "workload_event");
 	mutex_init(&output_lock, "output_lock");
-	mutex_init(&rqreport_lock, "rqreport_lock");
 
 	return 0;
 }
@@ -631,13 +684,6 @@ void load_fini(void) {
 	 * May implement CV, but load_fini() is called when we already reported all requests
 	 * in wl_fini() of libtsload. */
 	if(rqreport_file) {
-		mutex_lock(&rqreport_lock);
-
-		fclose(rqreport_file);
-		rqreport_file = NULL;
-
-		mutex_unlock(&rqreport_lock);
+		tsfile_close(rqreport_file);
 	}
-
-	mutex_destroy(&rqreport_lock);
 }

@@ -24,15 +24,17 @@ LIBIMPORT char log_filename[];
 LIBIMPORT int log_debug;
 LIBIMPORT int log_trace;
 
-int format = FORMAT_JSON;
+tsfutil_backend_t* backend = &json_backend;
 int command = COMMAND_CREATE;
 
 char tsf_path[PATHMAXLEN];
-char file_path[PATHMAXLEN];
 char schema_path[PATHMAXLEN];
 
 int start = 0;
 int end = -1;
+
+char file_path[PATHMAXLEN];
+boolean_t use_std_streams = B_FALSE;
 
 LIBEXPORT struct subsystem subsys[] = {
 	SUBSYSTEM("log", log_init, log_fini),
@@ -43,7 +45,7 @@ LIBEXPORT struct subsystem subsys[] = {
 
 void usage() {
 	fprintf(stderr, "command line: \n"
-					"\ttsgenuuid -s <schema.json> [-F <csv|json>] [action] <tsf-file> [<file>] \n"
+					"\ttsgenuuid -s <schema.json> [-F <csv|json|jsonraw>] [action] <tsf-file> [<file>] \n"
 					"\t\tWhere action is one of:\n"
 					"\t\t  (no option) - create new TSF\n"
 					"\t\t  -a - add entries from <file>\n"
@@ -62,7 +64,7 @@ int parse_get_range(const char* range) {
 	if(*ptr != ':' || start == -1)
 		return 1;
 
-	++end;
+	++ptr;
 	if(*ptr == '$') {
 		end = -1;
 	}
@@ -98,7 +100,10 @@ void parse_options_args(int argc, const char* argv[]) {
 				ok = 0;
 			}
 			else if(strcmp(optarg, "json") == 0) {
-				format = FORMAT_JSON;
+				backend = &json_backend;
+			}
+			else if(strcmp(optarg, "jsonraw") == 0) {
+				backend = &jsonraw_backend;
 			}
 			else {
 				ok = 0;
@@ -157,8 +162,27 @@ void parse_options_args(int argc, const char* argv[]) {
 		strncpy(file_path, argv[argi], PATHMAXLEN);
 	}
 	else {
-		strcpy(file_path, "-");
+		use_std_streams = B_TRUE;
 	}
+}
+
+FILE* tsfutil_open_file(void) {
+	if(command == COMMAND_GET_ENTRIES) {
+		if(use_std_streams)
+			return stdout;
+
+		return fopen(file_path, "w");
+	}
+
+	if(use_std_streams)
+		return stdin;
+
+	return fopen(file_path, "r");
+}
+
+void tsfutil_close_file(FILE* file) {
+	if(!use_std_streams)
+		fclose(file);
 }
 
 int tsfutil_init(void) {
@@ -188,8 +212,9 @@ void tsfutil_error_msg(ts_errcode_t errcode, const char* format, ...) {
 }
 
 int do_command(void) {
-	tsfile_t* file;
+	tsfile_t* ts_file;
 	tsfile_schema_t* schema = schema_read(schema_path);
+	FILE* file;
 
 	int ret = 0;
 
@@ -197,29 +222,47 @@ int do_command(void) {
 		return 1;
 
 	if(command == COMMAND_CREATE) {
-		file = tsfile_create(tsf_path, schema);
+		ts_file = tsfile_create(tsf_path, schema);
 	}
 	else {
-		file = tsfile_open(tsf_path, schema);
+		ts_file = tsfile_open(tsf_path, schema);
 	}
 
 	mp_free(schema);
-	if(file == NULL) {
+	if(ts_file == NULL) {
 		return 1;
 	}
 
 	if(command != COMMAND_CREATE) {
 		if(command == COMMAND_GET_COUNT) {
-			uint32_t count = tsfile_get_count(file);
+			uint32_t count = tsfile_get_count(ts_file);
 			fprintf(stdout, "%lu\n", (unsigned long) count);
 		}
 		else {
-			logmsg(LOG_WARN, "Command not implemented");
-			ret = 1;
+			file = tsfutil_open_file();
+
+			if(!file) {
+				ret = 1;
+				goto end;
+			}
+
+			if(command == COMMAND_GET_ENTRIES) {
+				if(end == -1) {
+					end = (int) tsfile_get_count(ts_file);
+				}
+
+				backend->get(file, ts_file, start, end);
+			}
+			else if(command == COMMAND_ADD) {
+				backend->add(file, ts_file);
+			}
+
+			tsfutil_close_file(file);
 		}
 	}
 
-	tsfile_close(file);
+end:
+	tsfile_close(ts_file);
 	return ret;
 }
 

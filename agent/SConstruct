@@ -182,7 +182,8 @@ AddBuildItem('load', 'agent',
                      'load-lib'])
 AddBuildItem('load', 'tool',
              targets = ['cmd/run-tsload'],
-             deps = ['load-lib'])
+             deps = ['load-lib', 
+                     'tsfile-lib'])
 AddBuildItem('load', 'modules',
              deps = ['core-lib'])
 

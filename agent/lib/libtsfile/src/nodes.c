@@ -111,7 +111,7 @@ JSONNODE** tsfile_get_nodes(tsfile_t* file, int count) {
 	return nodes;
 }
 
-void tsfile_put_node(tsfile_t* file, JSONNODE* node) {
+boolean_t tsfile_put_node(tsfile_t* file, JSONNODE* node) {
 	boolean_t cached = B_FALSE;
 
 	mutex_lock(&file->node_mutex);
@@ -133,6 +133,8 @@ void tsfile_put_node(tsfile_t* file, JSONNODE* node) {
 	if(!cached) {
 		json_delete(node);
 	}
+
+	return cached;
 }
 
 void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
@@ -149,6 +151,7 @@ void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
 
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		value = ((char*) entry) + schema->fields[fi].offset;
+		assert(i_field != i_end);
 
 		switch(schema->fields[fi].type) {
 		case TSFILE_FIELD_BOOLEAN:
@@ -190,7 +193,6 @@ void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
 		}
 
 		++i_field;
-		assert(i_field != i_end);
 	}
 }
 

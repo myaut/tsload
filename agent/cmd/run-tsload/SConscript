@@ -51,7 +51,8 @@ cmd = env.Clone()
 
 cmd.AddDeps(('lib', 'libtsagent'), 
             ('lib', 'libtscommon'), 
-            ('lib', 'libjson'), 
+            ('lib', 'libjson'),
+            ('lib', 'libtsfile'),  
             ('lib', 'libhostinfo'), 
             ('lib', 'libtsload'))
 objects = cmd.CompileProgram()

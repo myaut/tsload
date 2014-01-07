@@ -130,14 +130,14 @@ static int schema_parse_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t o
 	if(offset == ((ptrdiff_t)-1)) {
 		PARSE_SCHEMA_FIELD(node, i_offset, "offset", JSON_NUMBER,
 								SCHEMA_FIELD_MISSING_OFF);
-		field->offset = json_as_int(*i_offset);
+		field->offset = (ptrdiff_t) json_as_int(*i_offset);
 	}
 
 	/* Parse field size */
 	if(need_size) {
 		PARSE_SCHEMA_FIELD(node, i_size, "size", JSON_NUMBER,
 								SCHEMA_FIELD_MISSING_SIZE);
-		field->size = json_as_int(*i_size);
+		field->size = (size_t) json_as_int(*i_size);
 	}
 
 	return SCHEMA_FIELD_OK;

@@ -21,17 +21,17 @@
 			"size": 4,
 			"offset": 72
 		},
-		"sched": {
+		"sched_time": {
 			"type": "int",
 			"size": 8,
 			"offset": 76
 		},
-		"start": {
+		"start_time": {
 			"type": "int",
 			"size": 8,
 			"offset": 84
 		},
-		"sched": {
+		"end_time": {
 			"type": "int",
 			"size": 8,
 			"offset": 92

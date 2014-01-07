@@ -16,6 +16,7 @@
 #include <pathutil.h>
 #include <tsversion.h>
 #include <hiobject.h>
+#include <tsfile.h>
 
 #include <steps.h>
 #include <commands.h>
@@ -43,6 +44,7 @@ LIBEXPORT struct subsystem pre_subsys[] = {
 };
 
 LIBEXPORT struct subsystem post_subsys[] = {
+	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini),
 	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
 	SUBSYSTEM("steps", steps_init, steps_fini)
 };

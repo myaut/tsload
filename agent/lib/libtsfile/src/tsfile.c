@@ -22,6 +22,8 @@ tsfile_error_msg_func tsfile_error_msg = NULL;
 			((header)->sb[(sbi)].count = new_count);		\
 			((header)->sb[(sbi)].time = tm_get_time())
 
+int tsfile_errno;
+
 /**
  * TimeSeries File Format Library
  *
@@ -93,8 +95,11 @@ static void tsfile_close_file(tsfile_t* file) {
 static boolean_t tsfile_check_schema(tsfile_schema_t* schema) {
 	int fi;
 
-	if(schema->hdr.count > MAXFIELDCOUNT)
+	if(schema->hdr.count > MAXFIELDCOUNT) {
+		tsfile_error_msg(TSE_INTERNAL_ERROR,
+						 "Invalid schema- too many fields");
 		return B_FALSE;
+	}
 
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		switch(schema->fields[fi].type) {
@@ -108,6 +113,8 @@ static boolean_t tsfile_check_schema(tsfile_schema_t* schema) {
 			case 4: case 8:
 				break;
 			default:
+				tsfile_error_msg(TSE_INTERNAL_ERROR,
+								 "Invalid schema field #%d - wrong size of integer", fi);
 				return B_FALSE;
 			}
 		}
@@ -119,11 +126,15 @@ static boolean_t tsfile_check_schema(tsfile_schema_t* schema) {
 			case sizeof(double):
 				break;
 			default:
+				tsfile_error_msg(TSE_INTERNAL_ERROR,
+								 "Invalid schema field #%d - wrong size of float", fi);
 				return B_FALSE;
 			}
 		}
 		break;
 		default:
+			tsfile_error_msg(TSE_INTERNAL_ERROR,
+							 "Invalid schema field #%d - wrong type", fi);
 			return B_FALSE;
 		}
 	}
@@ -139,6 +150,8 @@ static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t
 
 	if(schema1->hdr.count 	   != schema2->hdr.count ||
 	   schema1->hdr.entry_size != schema2->hdr.entry_size) {
+			tsfile_error_msg(TSE_INTERNAL_ERROR,
+							 "Different schema headers", fi);
 			return B_FALSE;
 	}
 
@@ -146,15 +159,24 @@ static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t
 		f1 = &schema1->fields[fi];
 		f2 = &schema2->fields[fi];
 
-		if(f1->type != f2->type)
+		if(f1->type != f2->type) {
+			tsfile_error_msg(TSE_INTERNAL_ERROR,
+							 "Different schema field #%d - type", fi);
 			return B_FALSE;
+		}
 
-		if(strncmp(f1->name, f2->name, MAXFIELDLEN) != 0)
+		if(strncmp(f1->name, f2->name, MAXFIELDLEN) != 0) {
+			tsfile_error_msg(TSE_INTERNAL_ERROR,
+							 "Different schema field #%d - name", fi);
 			return B_FALSE;
+		}
 
-		if(f1->type == TSFILE_FIELD_INT || f1->type == TSFILE_FIELD_FLOAT) {
-			if(f1->size != f2->size)
+		if(f1->type != TSFILE_FIELD_BOOLEAN) {
+			if(f1->size != f2->size) {
+				tsfile_error_msg(TSE_INTERNAL_ERROR,
+								 "Different schema field #%d - size", fi);
 				return B_FALSE;
+			}
 		}
 
 	}
@@ -170,7 +192,6 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 						 schema->hdr.count * sizeof(tsfile_field_t);
 
 	if(!tsfile_check_schema(schema)) {
-		tsfile_error_msg(TSE_INTERNAL_ERROR, "tsfile_create: Invalid schema");
 		return NULL;
 	}
 
@@ -285,37 +306,38 @@ int tsfile_add(tsfile_t* file, void* entries, int count) {
 	uint32_t cur_count;
 	size_t entry_size = file->header->schema.hdr.entry_size;
 	size_t size = count * entry_size;
+	off_t end;
 
-	off_t end = TSFILE_HEADER_SIZE + cur_count * entry_size;
-
-	int ret = TSFILE_OK;
+	tsfile_errno = TSFILE_OK;
 
 	mutex_lock(&file->mutex);
 
+	/* Calculate counts and offsets */
+	cur_count = TSFILE_SB_GET_COUNT(file->header, file->cur_sb);
+	end = TSFILE_HEADER_SIZE + cur_count * entry_size;
+
 	/* Write to the end of file */
 	if(pwrite(file->fd, entries, size, end) < size) {
-		ret = TSFILE_DATA_FAIL;
+		tsfile_errno = TSFILE_DATA_FAIL;
 		goto end;
 	}
 
 	file->size += size;
 
 	/* Update superblock */
-	cur_count = TSFILE_SB_GET_COUNT(file->header, file->cur_sb);
-
 	file->cur_sb = (file->cur_sb + 1) & SBMASK;
 	TSFILE_SB_SET_COUNT(file->header, file->cur_sb, cur_count + count);
 
 	/* Rewrite header (only first 512 bytes actually) */
 	if(pwrite(file->fd, file->header,
-			  TSFILE_SB_WRITE_LEN, end) < TSFILE_SB_WRITE_LEN) {
-		ret = TSFILE_SB_FAIL;
+			  TSFILE_SB_WRITE_LEN, 0) < TSFILE_SB_WRITE_LEN) {
+		tsfile_errno = TSFILE_SB_FAIL;
 	}
 
 end:
 	mutex_unlock(&file->mutex);
 
-	return ret;
+	return tsfile_errno;
 }
 
 uint32_t tsfile_get_count(tsfile_t* file) {
@@ -330,30 +352,33 @@ uint32_t tsfile_get_count(tsfile_t* file) {
 
 int tsfile_get_entries(tsfile_t* file, void* entries, int start, int end) {
 	uint32_t cur_count;
-	int ret = TSFILE_OK;
+	tsfile_errno = TSFILE_OK;
 
 	size_t entry_size = file->header->schema.hdr.entry_size;
 	off_t off = TSFILE_HEADER_SIZE + start * entry_size;
 	size_t size = (end - start) * entry_size;
 
-	if(start >= end)
-		return TSFILE_INVAL_RANGE;
+	if(start >= end) {
+		tsfile_errno = TSFILE_INVAL_RANGE;
+		return tsfile_errno;
+	}
 
 	mutex_lock(&file->mutex);
 	cur_count = TSFILE_SB_GET_COUNT(file->header, file->cur_sb);
 
 	if(start > cur_count || end > cur_count) {
 		mutex_unlock(&file->mutex);
-		return TSFILE_INVAL_RANGE;
+		tsfile_errno = TSFILE_INVAL_RANGE;
+		return tsfile_errno;
 	}
 
-	if(pread(file->fd, entries, off, size) < size) {
-		ret = TSFILE_DATA_FAIL;
+	if(pread(file->fd, entries, size, off) < size) {
+		tsfile_errno = TSFILE_DATA_FAIL;
 	}
 
 	mutex_unlock(&file->mutex);
 
-	return ret;
+	return tsfile_errno;
 }
 
 JSONNODE* json_tsfile_get(tsfile_t* file, int number) {
@@ -406,8 +431,10 @@ JSONNODE* json_tsfile_get_array(tsfile_t* file, int start, int end) {
 	int count = end - start;
 	int ni;
 
-	if(count <= 0)
+	if(count <= 0) {
+		tsfile_errno = TSFILE_INVAL_RANGE;
 		return NULL;
+	}
 
 	entries = mp_malloc(entry_size * count);
 	if(tsfile_get_entries(file, entries, start, end) != TSFILE_OK) {
@@ -432,14 +459,18 @@ end:
 }
 
 void json_tsfile_put_array(tsfile_t* file, JSONNODE* node_array) {
-	JSONNODE_ITERATOR i_end, i_node;
+	int size = json_size(node_array);
+	int i;
+	JSONNODE* node;
 
-	i_node = json_begin(node_array);
-	i_end = json_end(node_array);
+	for(i = 0; i < size; ++i) {
+		node = json_pop_back_at(node_array, 0);
 
-	while(i_node != i_end) {
-		tsfile_put_node(file, *i_node);
-		i_node = json_erase(node_array, i_node);
+		if(!tsfile_put_node(file, node)) {
+			/* Filled "death row" array. Abandon other nodes
+			 * They will be deallocated in json_delete() call below */
+			break;
+		}
 	}
 
 	json_delete(node_array);

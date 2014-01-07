@@ -90,8 +90,34 @@ typedef struct tsfile {
 	thread_mutex_t	node_mutex;
 } tsfile_t;
 
+#define TSFILE_SCHEMA_HEADER(a_entry_size, a_field_count)		\
+		{														\
+			SM_INIT(.entry_size, a_entry_size),					\
+			SM_INIT(.count, a_field_count)						\
+		}
+
+#define TSFILE_SCHEMA_FIELD(a_name, a_type, a_size, a_offset)	\
+		{														\
+			SM_INIT(.name, a_name),								\
+			SM_INIT(.type, a_type),								\
+			SM_INIT(.size, a_size),								\
+			SM_INIT(.offset, a_offset)							\
+		}
+
+#define TSFILE_SCHEMA_FIELD_REF(struct_type, member, a_type)	\
+		TSFILE_SCHEMA_FIELD( #member, a_type,					\
+							 sizeof(((struct_type*)0)->member),	\
+							 offsetof(struct_type, member))
+
 typedef void (*tsfile_error_msg_func)(ts_errcode_t errcode, const char* format, ...);
 LIBIMPORT tsfile_error_msg_func tsfile_error_msg;
+
+#define		TSFILE_OK		   0
+#define		TSFILE_SB_FAIL	   -1
+#define 	TSFILE_DATA_FAIL   -2
+#define 	TSFILE_INVAL_RANGE -3
+
+LIBIMPORT	int tsfile_errno;
 
 /* Schema API */
 
@@ -107,10 +133,6 @@ tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset);
 
 
 /* Nodes API (internal) */
-#define		TSFILE_OK		   0
-#define		TSFILE_SB_FAIL	   -1
-#define 	TSFILE_DATA_FAIL   -2
-#define 	TSFILE_INVAL_RANGE -3
 
 void tsfile_init_nodes(tsfile_t* file);
 void tsfile_destroy_nodes(tsfile_t* file);
@@ -118,7 +140,7 @@ void tsfile_destroy_nodes(tsfile_t* file);
 #ifndef NO_JSON
 JSONNODE* tsfile_create_node(tsfile_t* file);
 JSONNODE** tsfile_get_nodes(tsfile_t* file, int count);
-void tsfile_put_node(tsfile_t* file, JSONNODE* node);
+boolean_t tsfile_put_node(tsfile_t* file, JSONNODE* node);
 
 void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry);
 int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry);

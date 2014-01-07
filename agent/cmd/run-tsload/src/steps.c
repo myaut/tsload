@@ -23,6 +23,8 @@ DECLARE_HASH_MAP(steps_hash_map, steps_generator_t, WLHASHSIZE, sg_wl_name, sg_n
 	}
 )
 
+/* TODO: Implement TSFile steps */
+
 int step_get_step_file(steps_file_t* sf, long* step_id, unsigned* p_num_rqs);
 int step_get_step_const(steps_const_t* sc, long* step_id, unsigned* p_num_rqs);
 
