@@ -556,6 +556,7 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 		json_push_back(jrq, json_new_i("request", rq->rq_id));
 		json_push_back(jrq, json_new_i("thread", rq->rq_thread_id));
 
+		json_push_back(jrq, json_new_i("sched", rq->rq_sched_time));
 		json_push_back(jrq, json_new_i("start", rq->rq_start_time));
 		json_push_back(jrq, json_new_i("end", rq->rq_end_time));
 

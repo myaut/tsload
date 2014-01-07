@@ -156,6 +156,7 @@ AddBuildItem('core', 'agent',
              targets = ['lib/libtsagent'],
              deps = ['core-lib'])
 
+
 AddBuildItem('swat', 'tool',
              targets = ['cmd/swat-import'],
              deps = ['core-lib'],
@@ -163,6 +164,14 @@ AddBuildItem('swat', 'tool',
 AddBuildItem('hostinfo', 'tool',
              targets = ['cmd/tshostinfo'],
              deps = ['core-lib'])
+
+AddBuildItem('tsfile', 'lib',
+             targets = ['lib/libtsfile'],
+             deps = ['core-lib'])
+AddBuildItem('tsfile', 'util',
+             targets = ['cmd/tsfutil'],
+             deps = ['core-lib', 
+                     'tsfile-lib'])
 
 AddBuildItem('load', 'lib',
              targets = ['lib/libtsload'],

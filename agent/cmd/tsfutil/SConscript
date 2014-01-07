@@ -1,0 +1,19 @@
+from pathutil import *
+
+tgtdir = 'bin'
+target = 'tsfutil'
+
+Import('env')
+
+cmd = env.Clone()
+
+cmd.PreparePlatform()
+
+cmd.AddDeps(('lib', 'libtscommon'),
+            ('lib', 'libjson'),
+            ('lib', 'libtsfile'))
+
+objects = cmd.CompileProgram()
+tsgenuuid = cmd.Program(target, objects)
+
+cmd.InstallTarget(cmd['INSTALL_BIN'], tsgenuuid)

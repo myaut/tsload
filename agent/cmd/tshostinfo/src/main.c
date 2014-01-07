@@ -120,6 +120,7 @@ int init(void) {
 		subsys_list[i] = &subsys[i];
 	}
 
+	atexit(ts_finish);
 	return ts_init(subsys_list, count);
 }
 

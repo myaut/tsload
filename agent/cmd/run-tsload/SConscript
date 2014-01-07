@@ -63,6 +63,11 @@ i_run_tsload = cmd.InstallTarget(cmd['INSTALL_BIN'], run_tsload)
 InstallExperiment('simpleio')
 InstallExperiment('busy_wait')
 
+# Install request schema file
+request_schema = 'request-schema.json'
+cmd.Depends(run_tsload, request_schema)
+cmd.InstallTarget(cmd['INSTALL_VAR'], request_schema)
+
 # Generate run-tsload script
 if env.SupportedPlatform('posix'):
     suffix = '.sh'

@@ -79,18 +79,18 @@ int log_init() {
 	mutex_init(&log_mutex, "log_mutex");
 
 	if(strcmp(log_filename, "-") == 0) {
-		log_file = stdout;
-		return 0;
+		log_file = stderr;
 	}
+	else {
+		if((ret = log_rotate()) != 0)
+			return ret;
 
-	if((ret = log_rotate()) != 0)
-		return ret;
+		log_file = fopen(log_filename, "a");
 
-	log_file = fopen(log_filename, "a");
-
-	if(!log_file) {
-		fprintf(stderr, "Couldn't open log file '%s'\n", log_filename);
-		return -1;
+		if(!log_file) {
+			fprintf(stderr, "Couldn't open log file '%s'\n", log_filename);
+			return -1;
+		}
 	}
 
 #	ifdef JSON_DEBUG

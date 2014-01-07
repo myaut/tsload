@@ -1,0 +1,45 @@
+{
+	"entry_size": 128,
+	"fields": {
+		"workload_name": {
+			"type": "string",
+			"size": 64,
+			"offset": 0
+		},
+		"step": {
+			"type": "int",
+			"size": 4,
+			"offset": 64
+		},
+		"request": {
+			"type": "int",
+			"size": 4,
+			"offset": 68
+		},
+		"thread": {
+			"type": "int",
+			"size": 4,
+			"offset": 72
+		},
+		"sched": {
+			"type": "int",
+			"size": 8,
+			"offset": 76
+		},
+		"start": {
+			"type": "int",
+			"size": 8,
+			"offset": 84
+		},
+		"sched": {
+			"type": "int",
+			"size": 8,
+			"offset": 92
+		},
+		"flags": {
+			"type": "int",
+			"size": 2,
+			"offset": 100
+		}
+	}
+}
