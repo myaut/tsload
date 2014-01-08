@@ -33,13 +33,31 @@ library = lib.LinkSharedLibrary(target, objects)
 
 lib.InstallTarget(lib['INSTALL_LIB'], library)
 
-if 'doc' in BUILD_TARGETS:
-    config = lib.DoxyConfigBuilder(File('config.doxy'), 
-                                   [Dir('src'), Dir('include')])
-    lib.AlwaysBuild(config)
-    
-    docdir = Dir(PathJoin('doc'))
-    tsdoc = lib.Command(docdir, config, 
-                        [Mkdir(docdir),
-                        'doxygen $SOURCE > $TARGET/doxygen.log'])
-    lib.Alias('doc', tsdoc)
+tsdoc = [lib.DocBuilder(['include/hashmap.h', 'src/hashmap.c']),
+         lib.DocBuilder(['include/syncqueue.h', 'src/syncqueue.c']),
+         lib.DocBuilder(['include/list.h']),
+         
+         lib.DocBuilder(['include/pathutil.h', 'src/pathutil.c']),
+         lib.DocBuilder(['include/tsdirent.h']),
+         lib.DocBuilder(['include/readlink.h']),
+         
+         lib.DocBuilder(['include/threads.h', 'src/threads.c', 'src/tutil.c']),
+         lib.DocBuilder(['include/cpumask.h']),
+         lib.DocBuilder(['include/schedutil.h']),
+         
+         lib.DocBuilder(['include/tstime.h', 'src/tstime.c']),
+         lib.DocBuilder(['include/mempool.h', 'src/mempool.c', 'src/mempool_libc.c']),
+         
+         lib.DocBuilder(['include/atomic.h']),
+         lib.DocBuilder(['include/ilog2.h']),
+         
+         lib.DocBuilder(['include/log.h', 'src/log.c']),
+         lib.DocBuilder(['include/getopt.h']),
+         lib.DocBuilder(['include/filemmap.h']),
+         lib.DocBuilder(['include/netsock.h']),
+         lib.DocBuilder(['include/modules.h', 'include/modapi.h']),
+         
+         lib.DocBuilder(['include/tsinit.h', 'src/tsinit.c']),
+        ]
+lib.InstallTarget(PathJoin(lib['INSTALL_SHARE'], 'doc', 'tscommon'), tsdoc)
+lib.Alias('doc', tsdoc)

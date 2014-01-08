@@ -1,3 +1,4 @@
+import sys
 from pathutil import *
 
 Import('env')
@@ -29,7 +30,10 @@ def GenerateDoxyConfig(target, source, env):
     
     config_file.close()
 
+DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCES > $TARGET' % (sys.executable),
+                     suffix = '.md')
 DoxyConfigBuilder = Builder(action=GenerateDoxyConfig,
                             suffix='.doxy')
 
-env.Append(BUILDERS = {'DoxyConfigBuilder': DoxyConfigBuilder})
+env.Append(BUILDERS = {'DoxyConfigBuilder': DoxyConfigBuilder,
+                       'DocBuilder': DocBuilder})
