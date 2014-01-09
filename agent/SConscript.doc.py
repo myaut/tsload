@@ -17,7 +17,7 @@ else:
 env.Append(ENV = {'TSDOC_FORMAT': doc_format})
 
 DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCES > $TARGET' % (sys.executable),
-                     suffix = doc_suffix)
+                     suffix = '.tsdoc')
 
 env.Append(BUILDERS = {'DocBuilder': DocBuilder})
 
