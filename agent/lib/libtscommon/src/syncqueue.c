@@ -42,8 +42,8 @@ void squeue_init(squeue_t* sq, const char* namefmt, ...) {
  * Extract element from synchronized queue.
  * If no elements on queue, blocks until squeue_push will add an element.
  *
- * May be called from multiple threads simultainously, thread selected
- * in event_notify_one wins.
+ * May be called from multiple threads simultaneously, thread selected
+ * in cv_notify_one wins (undetermined for most platforms).
  *
  * @param sq queue
  *
@@ -86,7 +86,7 @@ retry:
 }
 
 /**
- * Add an element to synchronized queue.
+ * Put an element on synchronized queue.
  *
  * @param object element
  */
@@ -126,12 +126,16 @@ void squeue_push(squeue_t* sq, void* object) {
 		cv_notify_one(&sq->sq_cv);
 }
 
-/*
- * Destroy all elements in queue and queue itself
- * Also notifies squeue_pop
+/**
+ * Destroy all elements in queue and queue itself. Also notifies squeue_pop
+ * Doesn't deallocate squeue_t
  *
  * @param sq synchronized queue to destroy
  * @param free helper to destroy element's data
+ *
+ * @note squeue_destroy() will notify consumer but doesn't guarantee that it \
+ * 		will leave squeue_pop(). You need to check this on your own.		 \
+ * 		It could be easily done by joining consumer thread.
  * */
 void squeue_destroy(squeue_t* sq, void (*el_free)(void* obj)) {
 	squeue_el_t* el;

@@ -44,6 +44,12 @@ AddOption('--mach',  dest='mach', action="store", default='',
 AddOption('--update-build',  dest='update_build', action="store_true",
           help='Update build file')
 
+AddOption('--update-doc',  dest='update_doc', action="store_true",
+          help='Update documentation')
+AddOption('--doc-format',  dest='doc_format', action="store", default='html',
+          metavar='FORMAT', help='Documentation format (markdown or html)')
+
+
 AddEnableOption('mempool-alloc',  dest='mempool_alloc', default=False,
           help='mempool allocator [EXPERIMENTAL]')
 AddEnableOption('mempool-valgrind',  dest='mempool_valgrind', default=False,
@@ -124,10 +130,6 @@ env.Append(CPPPATH = [env.BuildDir('include')])
 
 SConscript('SConscript.conf.py', 'env')
 
-#------------
-# DOC
-SConscript('SConscript.doc.py', 'env')
-
 # ------------------------
 # INSTALLATION DIRECTORIES
 
@@ -143,6 +145,10 @@ env['LOAD_MODPATH'] = PathJoin(env['PREFIX'], env['INSTALL_MOD_LOAD'])
 if env.SupportedPlatform('posix') and env['CC'] == 'gcc':
     env.Append(LINKFLAGS = ['-zorigin'])
     env.Append(RPATH = env.Literal(os.path.join('\\$$ORIGIN', os.pardir, 'lib')))
+
+#------------
+# DOC
+SConscript('SConscript.doc.py', 'env')
 
 # -------------------------
 # BUILD ITEMS AND DEPENDENCIES  

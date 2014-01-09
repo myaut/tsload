@@ -7,6 +7,7 @@ class DEF:
     
     PROTO   = 10
     DEFINE  = 11
+    VARIABLE = 12
     
     ENUM    = 20
     STRUCT  = 21
@@ -93,6 +94,12 @@ def parse_variable(variable):
     return (type_tokens, var_name)
 
 def parse_function(proto):
+    # Function may have __attribute__ at the end of it - cut them out
+    for attr in ['CHECKFORMAT', '__attribute__']:
+        aidx = proto.rfind(attr)  
+        if aidx != -1:
+            proto = proto[:aidx]  
+    
     lidx = proto.index('(')
     ridx = proto.rindex(')')
     
@@ -198,6 +205,8 @@ class Definition:
         
         self.type_refs = []
         
+        self.tags = []
+        
         self.public = False
     
     def add_line(self, line, raw_line):
@@ -219,7 +228,8 @@ class Definition:
     
     def __repr__(self):        
         text = ''.join(self.lines[:min(len(self.lines), 3)])
-        return '<%s @%d "%s">' % (self.__class__.__name__, self.lineno, text)
+        return '<%s DEF.%d @%d "%s">' % (self.__class__.__name__, 
+                                         self.deftype, self.lineno, text)
     
     def get_text(self):
         return self.text
@@ -249,7 +259,22 @@ class Comment(Definition):
             
             lines.append(line)
         
-        self.text = '\n'.join(lines) 
+        self.text = '\n'.join(lines)
+    
+    def find_directive(self, directive):
+        text = self.text
+        
+        diridx = text.find(directive)
+        if diridx == -1:
+            return None
+        diridx += len(directive)
+        
+        endidx = text.find('\n', diridx)
+        if endidx == -1:
+            return text[diridx:]
+        else:
+            return text[diridx:endidx]
+        
             
 class TypeDef(Definition):        
     def __init__(self, deftype, lineno):
@@ -408,8 +433,8 @@ class Prototype(Definition):
         try:
             name, retvalue, args, specifiers = parse_function(proto)
             
-            self.public =  'LIBEXPORT' in specifiers
-            self.platfunc = 'PLATAPI' in specifiers
+            self.public = 'LIBEXPORT' in specifiers
+            self.tags = specifiers 
             
             self._add_type_ref(retvalue)
             for (types, arg_name) in args:
@@ -421,8 +446,9 @@ class Prototype(Definition):
             idx = proto.index(retvalue)
             self.name = name
             self.text = proto[idx:]
-        except ValueError:
+        except ValueError:            
             self.is_function = False
+            self.deftype = DEF.VARIABLE
             
             types, var_name = parse_variable(proto)
             
@@ -436,8 +462,10 @@ class DefinitionGroup:
     def __init__(self):
         self.lines = []
         self.defs = []
+        self.tags = []
         
-        self.leader = None
+        self.disabled = False
+        
         self.defobj = None
         self.deftype = DEF.NONE
         
@@ -471,14 +499,20 @@ class DefinitionGroup:
         
         if defobj is not None:
             if defobj.add_line(line, raw_line):
-                defobj.parse()
-                self.defs.append(defobj)
+                self._add_defobj(defobj)
                 defobj = None
         
         self.defobj = defobj
         return defobj is None
     
+    def _add_defobj(self, defobj):
+        defobj.parse()
+        self.defs.append(defobj)
+    
     def is_public(self):
+        if 'public' in self.tags:
+            return True
+        
         return any(defobj.public or defobj.deftype == DEF.DOCTEXT
                    for defobj in self.defs)
     
@@ -494,8 +528,8 @@ class DefinitionGroup:
             return max_deftype
         elif max_deftype == DEF.PROTO:
             return DEF.PROTO
-        elif max_deftype == DEF.DEFINE:
-            return DEF.DEFINE
+        elif max_deftype == DEF.DEFINE or max_deftype == DEF.VARIABLE:
+            return DEF.VARIABLE
         
         return DEF.TYPEDEF
     
@@ -507,9 +541,36 @@ class DefinitionGroup:
                 
         return names
     
+    def update_tags(self, is_header):
+        # Interpret tags - deduce function 'visibility'
+        tags = []
+        for defobj in self.defs:
+            for tag in defobj.tags:
+                if tag == 'LIBEXPORT':
+                    tags.append('public')
+                elif tag == 'static' or tag == 'STATIC_INLINE':
+                    if is_header:
+                        tags.append('public')
+                    else:
+                        tags.append('private')                
+                elif tag == 'PLATAPI':
+                    tags.append('plat')
+                elif tag == 'TSDOC_HIDDEN':
+                    defobj.public = False
+                    tags = []
+                    break
+        
+        self.tags = tags
+    
     def create_header(self):
         if self.header is not None:
             return self.header
+        
+        for defobj in self.defs:
+            if defobj.deftype == DEF.DOCTEXT:
+                name = defobj.find_directive('@name')
+                if name:
+                    return name
         
         names = self.get_names()
         if not names:
@@ -544,8 +605,13 @@ class DefinitionGroup:
                 
                 self.defs.remove(defobj)
                 new_group.defs.append(defobj)
+                new_group.tags.extend(self.tags)
         
         return new_group
+    
+    def __repr__(self):
+        names = self.get_names(False) or hex(id(self))
+        return '<DefinitionGroup %s>' % names
 
 if __name__ == '__main__':
     assert parse_variable('const long int i') == (['const', 'long', 'int'], 'i')

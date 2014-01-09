@@ -61,7 +61,7 @@ PLATAPI int nsk_resolve(const char* host, nsk_host_entry* he) {
 	return NSK_OK;
 }
 
-PLATAPI int nsk_setaddr(nsk_addr* sa, nsk_host_entry* he, int port) {
+PLATAPI int nsk_setaddr(nsk_addr* sa, nsk_host_entry* he, unsigned short port) {
 	if(he == NULL) {
 		return NSK_ERR_RESOLVE;
 	}

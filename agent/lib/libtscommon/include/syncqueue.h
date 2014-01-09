@@ -12,9 +12,20 @@
 
 #define SQUEUENAMELEN		24
 
+/**
+ * @module Synchronized queue
+ *
+ * This queue may be used for implementation of producer-consumer models.
+ * While producer creates objects and puts them onto queue via squeue_push(),
+ * consumer (one or many) waits for it objects in squeue_pop() and awakes
+ * if object was put on queue.
+ *
+ * Since there is no way to interrupt consumers, you may put NULL onto
+ * queue and handle this situation in consumer code or call squeue_destroy()
+ */
+
 typedef struct squeue_el {
 	struct squeue_el* s_next;
-
 	void* s_data;
 } squeue_el_t;
 

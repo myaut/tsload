@@ -22,11 +22,15 @@
 #include <string.h>
 #include <stdio.h>
 
+/**
+ * Module search path
+ */
 LIBEXPORT char mod_search_path[MODPATHLEN];
 
 mp_cache_t mod_cache;
 
-/*First module in modules linked list*/
+/* First module in modules linked list
+ * TODO: Replace with hash_map? */
 module_t* first_module = NULL;
 
 LIBEXPORT int mod_type = -1;
@@ -34,7 +38,7 @@ LIBEXPORT int mod_type = -1;
 module_t* mod_load(const char* path_name);
 void mod_destroy(module_t* mod);
 
-int load_modules() {
+static int load_modules() {
 	plat_dir_t* dir = plat_opendir(mod_search_path);
 	plat_dir_entry_t* d = NULL;
 	char path[MODPATHLEN];
@@ -73,7 +77,7 @@ int load_modules() {
 	return 0;
 }
 
-void unload_modules(void) {
+static void unload_modules(void) {
 	module_t* mod = first_module;
 	module_t* next;
 
@@ -131,6 +135,11 @@ void mod_destroy(module_t* mod) {
 	mp_free(mod);
 }
 
+/**
+ * Search module by it's name
+ *
+ * @return pointer to module or NULL if it was not found
+ */
 module_t* mod_search(const char* name) {
 	module_t* mod = first_module;
 
@@ -233,6 +242,9 @@ fail:
 	return NULL;
 }
 
+/**
+ * Report error from module mod
+ */
 int mod_error(module_t* mod, char* fmtstr, ...) {
 	char status[512];
 	va_list args;
@@ -244,7 +256,6 @@ int mod_error(module_t* mod, char* fmtstr, ...) {
 	va_end(args);
 
 	logmsg(LOG_WARN, "Error in module %s: %s", mod->mod_name, status);
-
 	mod->mod_status_msg = strdup(status);
 
 	return 0;

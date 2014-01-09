@@ -22,7 +22,9 @@
 
 LIBEXPORT char log_filename[LOGFNMAXLEN];
 
-/* By default, debug and tracing are disabled
+/**
+ * By default, debug and tracing are disabled
+ * set log_debug or log_trace to 1 if you want to enable it
  * */
 LIBEXPORT int log_debug = 0;
 LIBEXPORT int log_trace	= 0;
@@ -31,7 +33,8 @@ boolean_t log_initialized = B_FALSE;
 
 FILE* log_file;
 
-/* Allows to dump backtraces with messages */
+/**
+ * Allows to dump backtraces with messages */
 boolean_t log_trace_callers = B_FALSE;
 
 thread_mutex_t	log_mutex;
@@ -142,7 +145,6 @@ int logmsg_src(int severity, const char* source, const char* format, ...)
 	    severity > LOG_TRACE || severity < 0)
 			return -1;
 
-
 	log_gettime(time, 64);
 
 	mutex_lock(&log_mutex);
@@ -169,8 +171,10 @@ int logmsg_src(int severity, const char* source, const char* format, ...)
 	return ret + 1;	/*+1 for \n*/
 }
 
-/* Log error provided by errno
+/**
+ * Log error provided by errno
  * */
 int logerror() {
+	/* FIXME: Should be PLATAPI and have Windows implementation */
 	return logmsg_src(LOG_CRIT, "error", "Error: %s", strerror(errno));
 }

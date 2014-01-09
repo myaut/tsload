@@ -25,8 +25,9 @@ PLATAPI void mmf_close(mmap_file_t* mmf) {
 		close(mmf->mmf_fd);
 }
 
-PLATAPI void* mmf_create(mmap_file_t* mmf, long long offset, size_t length) {
+PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void** mapping_ptr) {
 	int prot;
+	void* area;
 
 	switch(mmf->mmf_mode) {
 	case MMFL_RDONLY:
@@ -48,7 +49,14 @@ PLATAPI void* mmf_create(mmap_file_t* mmf, long long offset, size_t length) {
 	}
 
 	mmf->mmf_length = length;
-	return mmap(NULL, length, prot, MAP_PRIVATE, mmf->mmf_fd, offset);
+	area = mmap(NULL, length, prot, MAP_PRIVATE, mmf->mmf_fd, offset);
+
+	if(area == MAP_FAILED) {
+		return MME_MMAP_ERROR;
+	}
+
+	*mapping_ptr = area;
+	return MME_OK;
 }
 
 PLATAPI void mmf_destroy(mmap_file_t* mmf, void* mapping) {

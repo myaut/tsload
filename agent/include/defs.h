@@ -109,4 +109,7 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #	include <stdlib.h>
 #endif
 
+/* Hint to TSDOC that function is not documentable */
+#define TSDOC_HIDDEN
+
 #endif /* DEFS_H_ */

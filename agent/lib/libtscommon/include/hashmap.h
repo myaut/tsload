@@ -14,7 +14,7 @@
 #include <stddef.h>
 
 /**
- * Hash maps
+ * @module Hash maps
  * */
 
 #ifdef _MSC_VER
@@ -39,11 +39,12 @@ typedef struct {
 } hashmap_t;
 
 LIBEXPORT void hash_map_init(hashmap_t* hm, const char* name);
+LIBEXPORT void hash_map_destroy(hashmap_t* hm);
+
 LIBEXPORT int  hash_map_insert(hashmap_t* hm, hm_item_t* object);
 LIBEXPORT int  hash_map_remove(hashmap_t* hm, hm_item_t* object);
 LIBEXPORT void* hash_map_find(hashmap_t* hm, const hm_key_t* key);
 LIBEXPORT void* hash_map_walk(hashmap_t* hm, int (*func)(hm_item_t* object, void* arg), void* arg);
-LIBEXPORT void hash_map_destroy(hashmap_t* hm);
 
 LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 
@@ -79,10 +80,24 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 		SM_INIT(.hm_compare, hm_compare_##name)				\
 	};
 
+/**
+ * hm_* functions return codes
+ *
+ * @value HASH_MAP_OK everything went fine
+ * @value HASH_MAP_DUPLICATE element with such key exists
+ * @value HASH_MAP_NOT_FOUND such element not found
+ * */
 #define HASH_MAP_OK				0
 #define HASH_MAP_DUPLICATE		-1
 #define HASH_MAP_NOT_FOUND		-2
 
+/**
+ * Walker flags for hash_map_walk. Returned by walker func.
+ *
+ * @value HM_WALKER_CONTINUE continue walking
+ * @value HM_WALKER_STOP stop walking here and return current object (useful for "find")
+ * @value HM_WALKER_REMOVE remove current element
+ * */
 #define HM_WALKER_CONTINUE		0
 #define HM_WALKER_STOP			0x01
 #define HM_WALKER_REMOVE		0x02

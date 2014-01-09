@@ -11,6 +11,8 @@
 #include <defs.h>
 
 /**
+ * @module Event tracing
+ *
  * Cross-platform event tracing subsystem.
  * Supports DTrace or SystemTap USDT and ETW (Event Tracing for Windows)
  *
@@ -73,7 +75,7 @@ static void etrc_provider_destroy(etrc_provider_t* provider) {
 	EventUnregister(provider->etp_reghandle);
 }
 
-static ULONG etrc_probe_n(etrc_provider_t* provider, const EVENT_DESCRIPTOR* event, int numargs,
+TSDOC_HIDDEN static ULONG etrc_probe_n(etrc_provider_t* provider, const EVENT_DESCRIPTOR* event, int numargs,
 	void* arg1, size_t size1, void* arg2, size_t size2, void* arg3, size_t size3, void* arg4, size_t size4,
 	void* arg5, size_t size5, void* arg6, size_t size6) {
 	EVENT_DATA_DESCRIPTOR EventData[6];
@@ -132,31 +134,36 @@ static ULONG etrc_probe_n(etrc_provider_t* provider, const EVENT_DESCRIPTOR* eve
 
 #else
 
+/**
+ * Define profiler and events.
+ *
+ * @note you need manually assign event id's
+ */
 #define ETRC_DEFINE_PROVIDER(provider, guid)
 #define ETRC_DEFINE_EVENT(provider, event, id)
 
+/**
+ * Initialize/destroy provider object
+ */
 #define etrc_provider_init(provider) 		do { } while(0)
 #define etrc_provider_destroy(provider) 	do { } while(0)
 
+/**
+ * Probe functions
+ */
 #define ETRC_PROBE0(provider, name)			do { } while(0)
-
 #define ETRC_PROBE1(provider, name, type1, arg1)							\
 		do { } while(0)
-
 #define ETRC_PROBE2(provider, name, type1, arg1, type2, arg2)				\
 		do { } while(0)
-
 #define ETRC_PROBE3(provider, name, type1, arg1, type2, arg2, type3, arg3)	\
 		do { } while(0)
-
 #define ETRC_PROBE4(provider, name, type1, arg1, type2, arg2, type3, arg3,	\
 		type4, arg4)														\
 				do { } while(0)
-
 #define ETRC_PROBE5(provider, name, type1, arg1, type2, arg2, type3, arg3,	\
 		type4, arg4, type5, arg5)											\
 				do { } while(0)
-
 
 #endif
 

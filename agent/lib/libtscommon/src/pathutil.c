@@ -128,12 +128,17 @@ static const char* strrchr_x(const char* s, const char* from, int c) {
  * Split path into parts. Saves result into path iterator which may be walked using
  * path_split_next. Returns first part of path or NULL if max is too large.
  *
- * If max negative, path_split would split reversely, so first item would be basename
+ * If max value is negative, path_split would put paths in reverse order, so
+ * first part would be filename.
  *
- * @param iter Allocated split path iterator
- * @param max Maximum parts which will be processed.
+ * Uses iter as temporary storage, it is re-enterable.
  *
- * @return First path part
+ * @param iter pre-allocated split path iterator
+ * @param max maximum number parts which will be processed
+ *
+ * @note if number of parts exceeds PATHMAXPARTS, will fail and returns NULL
+ *
+ * @return Pointer to first part or NULL in case of error
  * */
 char* path_split(path_split_iter_t* iter, int max, const char* path) {
     char* dest = iter->ps_storage;
@@ -197,7 +202,8 @@ char* path_split(path_split_iter_t* iter, int max, const char* path) {
 }
 
 /**
- * @return next path part from iterator
+ * Returns next path part from iterator or NULL if all parts was
+ * walked.
  * */
 char* path_split_next(path_split_iter_t* iter) {
     if(iter->ps_part == iter->ps_num_parts)

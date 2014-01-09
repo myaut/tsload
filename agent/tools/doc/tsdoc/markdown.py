@@ -8,6 +8,12 @@ class MarkdownPrinter:
     def __init__(self, stream):
         self.stream = stream
     
+    def prepare(self, title):
+        pass
+    
+    def finalize(self):
+        pass
+    
     def text(self, text):
         self.stream.write(text)
     
@@ -15,7 +21,7 @@ class MarkdownPrinter:
         size = min(size, 6)
         header = md_filter(header)
         
-        self.text('\n' + '#' * size + ' ' + header + '\n')
+        self.text('\n' + '#' * size + ' ' + header + '\n\n')
     
     def bold_text(self, text):
         self.stream.write('**' + md_filter(text) + '**')
@@ -25,7 +31,10 @@ class MarkdownPrinter:
         
     def raw_text(self, text):
         self.stream.write(md_filter(text))
-        
+    
+    def label_text(self, text):
+        self.stream.write(md_filter(text))
+    
     def list_entry(self):
         self.stream.write(' * ')
     
@@ -36,3 +45,9 @@ class MarkdownPrinter:
         self.stream.write('\n```\n')
         self.stream.write(code)
         self.stream.write('\n```\n')
+    
+    def paragraph_begin(self):
+        self.stream.write('\n\n')
+        
+    def paragraph_end(self):
+        self.stream.write('\n\n')

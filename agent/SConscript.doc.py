@@ -1,39 +1,27 @@
 import sys
 from pathutil import *
 
+from SCons.Errors import StopError 
+
 Import('env')
 
-tgtdir = PathJoin('#build', 'doc')
-target = PathJoin(tgtdir, 'doc')
+doc_format = GetOption('doc_format')
 
-doxy_vars = {'PROJECT_NAME': env['TSPROJECT'],
-             'PROJECT_NUMBER': env['TSVERSION'],
-             'OUTPUT_DIRECTORY': PathJoin('build', 'doc'),
-             'FILE_PATTERNS': '*.c *.h',
-             'OPTIMIZE_OUTPUT_FOR_C': 'YES',
-             'RECURSIVE': 'NO',
-             'EXTRACT_ALL': 'YES',
-             'GENERATE_XML': 'NO',
-             'GENERATE_HTML': 'YES',
-             'GENERATE_RTF': 'NO',
-             'GENERATE_LATEX': 'NO'}
+if doc_format == 'html':
+    doc_suffix = '.html'
+elif doc_format == 'markdown':
+    doc_suffix = '.md'
+else:
+    raise StopError("Invalid documentation format '%s'" % doc_format)
 
-def GenerateDoxyConfig(target, source, env):
-    config_path = str(target[0])
-    config_file = open(config_path, 'w')
-    
-    for key, value in doxy_vars.iteritems():
-        config_file.write('%s = %s\n' % (key, value))
-    
-    input = ' '.join(map(str, source))
-    config_file.write('INPUT = %s\n' % input)
-    
-    config_file.close()
+env.Append(ENV = {'TSDOC_FORMAT': doc_format})
 
 DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCES > $TARGET' % (sys.executable),
-                     suffix = '.md')
-DoxyConfigBuilder = Builder(action=GenerateDoxyConfig,
-                            suffix='.doxy')
+                     suffix = doc_suffix)
 
-env.Append(BUILDERS = {'DoxyConfigBuilder': DoxyConfigBuilder,
-                       'DocBuilder': DocBuilder})
+env.Append(BUILDERS = {'DocBuilder': DocBuilder})
+
+if doc_format == 'html':
+    env.InstallTarget(PathJoin(env['INSTALL_SHARE'], 'doc'), 'doc/bootstrap')
+
+Export('env')

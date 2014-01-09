@@ -16,14 +16,28 @@
 #define MODPATHLEN	256
 #define MODSTATUSMSG 512
 
-/*
+/**
+ * @module Modules
+ *
+ * API for working with plugins.
+ *
+ * mod_init() walks mod_search_path, loads every shared file, checks if it is
+ * compliant with 'modapi' and runs mod_config() from it.
+ *
+ * mod_fini() calls mod_unconfig() for each loaded module and unmaps them
+ *
+ *
  * Module states
  *
+ * ```
  *                       +----------> CONFIG_ERROR
  * 						 |
  * UNITIALIZED ---> UNCONFIGURED ---> READY ---> REQUEST_ERROR
  *                                     ^                |
  *                                     +----------------+
+ * ```
+ *
+ * @note Modules are not signed, so do not play with permissions to module path
  */
 
 typedef enum mod_status {
@@ -34,9 +48,17 @@ typedef enum mod_status {
 	MOD_REQUEST_ERROR
 } mod_status_t;
 
+/**
+ * Module main structure
+ *
+ * @member mod_path		Path to module file (realpath)
+ * @member mod_name		Internal module name
+ * @member mod_status_msg Status message reported by module
+ * @member mod_private  Field available to module for it's internals
+ */
 typedef struct module {
 	char mod_path[MODPATHLEN];
-	plat_mod_library_t mod_library;		/**< Handle provided by dlopen() */
+	plat_mod_library_t mod_library;
 
 	char* mod_name;
 
@@ -46,7 +68,7 @@ typedef struct module {
 	mod_config_func mod_config;
 	mod_config_func mod_unconfig;
 
-	void* mod_private;		/**< Allocated when module is configured*/
+	void* mod_private;
 
 	struct module* mod_next;
 } module_t;

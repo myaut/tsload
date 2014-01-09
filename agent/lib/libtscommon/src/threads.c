@@ -18,7 +18,7 @@
 #include <stdarg.h>
 #include <assert.h>
 
-/* Thread hash map. Maps pthread to our thread */
+/* Thread hash map. Maps pthreads to our threads */
 DECLARE_HASH_MAP(thread_hash_map, thread_t, THASHSIZE, t_id, t_next,
 	/*hash*/ {
 		thread_id_t tid = * (thread_id_t*) key;
@@ -45,16 +45,19 @@ thread_t* t_self() {
 }
 
 /*
- * Generate next thread id
- * */
-thread_id_t t_assign_id() {
+ * Generate next thread id */
+static thread_id_t t_assign_id() {
 	static thread_id_t tid = 0;
-
 	return ++tid;
 }
 
-/*
+/**
  * Initialize and run thread
+ *
+ * @param thread	 pointer to thread
+ * @param arg 		 argument passed to thread
+ * @param start      thread function
+ * @param namefmt	 format string and it's arguments for thread name
  * */
 void t_init(thread_t* thread, void* arg,
 		thread_start_func start,
@@ -86,12 +89,14 @@ void t_init(thread_t* thread, void* arg,
 	plat_tsched_init(thread);
 }
 
-/*
- * Post-initialize thread. Called from context of thread: inserts it to
- * hash-map and sets system's thread id
+/**
+ * Post-initialize thread. Called from context of thread by THREAD_ENTRY
+ * Inserts it to hash-map and sets platform thread id if possible
  *
  * @param t - current thread
  * @return t (for THREAD_ENTRY)
+ *
+ * @note Do not call this function directly, use THREAD_ENTRY macro
  * */
 thread_t* t_post_init(thread_t* t) {
 	t->t_system_id = plat_gettid();
@@ -109,9 +114,11 @@ thread_t* t_post_init(thread_t* t) {
 	return t;
 }
 
-/*
- * Exit thread. Called from context of thread: notifies thread which is joined to t
- * and remove thread from hash_map
+/**
+ * Exit from thread. Called from context of thread: notifies thread which is joined to t
+ * and remove thread from hash_map.
+ *
+ * @note Do not call this function directly, use THREAD_EXIT macro
  * */
 void t_exit(thread_t* t) {
 	atomic_set(&t->t_state_atomic, TS_DEAD);
@@ -122,7 +129,7 @@ void t_exit(thread_t* t) {
 		event_notify_all(t->t_event);
 }
 
-/*
+/**
  * Wait until thread starts
  * */
 void t_wait_start(thread_t* thread) {
@@ -139,7 +146,7 @@ void t_wait_start(thread_t* thread) {
 	thread->t_event = NULL;
 }
 
-/*
+/**
  * Wait until thread finishes
  * */
 void t_join(thread_t* thread) {
@@ -148,7 +155,8 @@ void t_join(thread_t* thread) {
 	}
 }
 
-/* Destroy dead thread
+/**
+ * Destroy thread. If thread is still alive - join to it.
  *
  * @note blocks until thread exits from itself!
  * */
@@ -159,12 +167,7 @@ void t_destroy(thread_t* thread) {
 	plat_tsched_destroy(thread);
 }
 
-/*
- * Gives how many time thread spent on event/mutex
- *
- * @param tv - time interwal
- * */
-#if 0
+#ifdef THREAD_DUMP_ENABLED
 static int t_dump_thread(void* object, void* arg) {
 	const char* t_state_name[] = {
 			"INIT",
@@ -205,6 +208,9 @@ static int t_dump_thread(void* object, void* arg) {
 	return HM_WALKER_CONTINUE;
 }
 
+/**
+ * Logs how many time each thread spent on event/mutex
+ * */
 void t_dump_threads() {
 	logmsg(LOG_DEBUG, "%5s %5s %32s %5s %s", "TID", "STID", "NAME", "STATE", "BLOCK");
 

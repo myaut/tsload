@@ -56,8 +56,12 @@ tsdoc = [lib.DocBuilder(['include/hashmap.h', 'src/hashmap.c']),
          lib.DocBuilder(['include/filemmap.h']),
          lib.DocBuilder(['include/netsock.h']),
          lib.DocBuilder(['include/modules.h', 'include/modapi.h']),
+         lib.DocBuilder(['include/etrace.h']),
          
          lib.DocBuilder(['include/tsinit.h', 'src/tsinit.c']),
         ]
-lib.InstallTarget(PathJoin(lib['INSTALL_SHARE'], 'doc', 'tscommon'), tsdoc)
-lib.Alias('doc', tsdoc)
+        
+if GetOption('update_doc'):
+	lib.AlwaysBuild(tsdoc)
+	lib.InstallTarget(PathJoin(lib['INSTALL_SHARE'], 'doc', 'tscommon'), tsdoc)
+	lib.Alias('doc', tsdoc)

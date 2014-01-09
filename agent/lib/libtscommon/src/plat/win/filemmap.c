@@ -27,10 +27,11 @@ PLATAPI void mmf_close(mmap_file_t* mmf) {
 		CloseHandle(mmf->mmf_file);
 }
 
-PLATAPI void* mmf_create(mmap_file_t* mmf, long long offset, size_t length) {
+PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void** mapping_ptr) {
 	DWORD prot;
 	DWORD file_size_high;
 	DWORD file_size_low;
+	void* ptr;
 
 	switch(mmf->mmf_mode) {
 	case MMFL_RDONLY:
@@ -61,10 +62,15 @@ PLATAPI void* mmf_create(mmap_file_t* mmf, long long offset, size_t length) {
 								     prot, file_size_high, file_size_low, NULL);
 
 	if(mmf->mmf_map == ERROR_INVALID_HANDLE)
-		return NULL;
+		return MME_MMAP_ERROR;
 
-	return MapViewOfFile(mmf->mmf_map, prot, offset & 0xFFFFFFFF,
+	ptr = MapViewOfFile(mmf->mmf_map, prot, offset & 0xFFFFFFFF,
 						 offset >> 32, length);
+	if(ptr == NULL)
+		return MME_MMAP_ERROR;
+
+	*mapping_ptr = area;
+	return MME_OK;
 }
 
 PLATAPI void mmf_destroy(mmap_file_t* mmf, void* mapping) {

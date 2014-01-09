@@ -15,14 +15,18 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-/*
- * Simple doubly linked list implementation.
+/**
+ * @module Double linked list
+ *
+ * Simple double linked list implementation.
  *
  * Some of the internal functions ("__xxx") are useful when
  * manipulating whole lists rather than single entries, as
  * sometimes we already know the next/prev entries and we can
  * generate better code by using them directly rather than
  * using the generic single-entry routines.
+ *
+ * @note Implementation is taken from Linux Kernel
  */
 
 #define LISTNAMELEN		24
@@ -77,7 +81,7 @@ STATIC_INLINE void list_head_copy(list_head_t *dst, const list_head_t *src) {
 }
 #endif
 
-/*
+/**
  * Insert a new entry between two known consecutive entries.
  *
  * This is only for internal list manipulation where we know
@@ -95,8 +99,8 @@ STATIC_INLINE void __list_add(list_node_t *node,
 
 /**
  * list_add - add a new entry
- * @new: new entry to be added
- * @head: list head to add it after
+ * @param new  new entry to be added
+ * @param head  list head to add it after
  *
  * Insert a new entry after the specified head.
  * This is good for implementing stacks.
@@ -109,8 +113,8 @@ STATIC_INLINE void list_add(list_node_t *node, list_head_t *head)
 
 /**
  * list_add_tail - add a new entry
- * @new: new entry to be added
- * @head: list head to add it before
+ * @param new  new entry to be added
+ * @param head  list head to add it before
  *
  * Insert a new entry before the specified head.
  * This is useful for implementing queues.
@@ -135,7 +139,7 @@ STATIC_INLINE void __list_del(list_node_t * prev, list_node_t * next)
 
 /**
  * list_del - deletes entry from list.
- * @entry: the element to delete from the list.
+ * @param entry  the element to delete from the list.
  * Note: list_empty() on entry does not return true after this, the entry is
  * in an undefined state.
  */
@@ -154,8 +158,8 @@ STATIC_INLINE void list_del(list_node_t *entry)
 
 /**
  * list_replace - replace old entry by new one
- * @old : the element to be replaced
- * @new : the new element to insert
+ * @param old the element to be replaced
+ * @param new the new element to insert
  *
  * If @old was empty, it will be overwritten.
  */
@@ -177,7 +181,7 @@ STATIC_INLINE void list_replace_init(list_node_t *old,
 
 /**
  * list_del_init - deletes entry from list and reinitialize it.
- * @entry: the element to delete from the list.
+ * @param entry  the element to delete from the list.
  */
 STATIC_INLINE void list_del_init(list_node_t *entry)
 {
@@ -187,8 +191,8 @@ STATIC_INLINE void list_del_init(list_node_t *entry)
 
 /**
  * list_move - delete from one list and add as another's head
- * @list: the entry to move
- * @head: the head that will precede our entry
+ * @param list  the entry to move
+ * @param head  the head that will precede our entry
  */
 STATIC_INLINE void list_move(list_node_t *list, list_head_t *head)
 {
@@ -198,8 +202,8 @@ STATIC_INLINE void list_move(list_node_t *list, list_head_t *head)
 
 /**
  * list_move_tail - delete from one list and add as another's tail
- * @list: the entry to move
- * @head: the head that will follow our entry
+ * @param list  the entry to move
+ * @param head  the head that will follow our entry
  */
 STATIC_INLINE void list_move_tail(list_node_t *list,
 		list_head_t *head)
@@ -210,8 +214,8 @@ STATIC_INLINE void list_move_tail(list_node_t *list,
 
 /**
  * list_is_last - tests whether @list is the last entry in list @head
- * @list: the entry to test
- * @head: the head of the list
+ * @param list  the entry to test
+ * @param head  the head of the list
  */
 STATIC_INLINE int list_is_last(const list_node_t *list,
 				const list_head_t *head)
@@ -221,7 +225,7 @@ STATIC_INLINE int list_is_last(const list_node_t *list,
 
 /**
  * list_empty - tests whether a list is empty
- * @head: the list to test.
+ * @param head  the list to test.
  */
 STATIC_INLINE int list_empty(const list_head_t *head)
 {
@@ -230,7 +234,7 @@ STATIC_INLINE int list_empty(const list_head_t *head)
 
 /**
  * list_empty_careful - tests whether a list is empty and not being modified
- * @head: the list to test
+ * @param head  the list to test
  *
  * Description:
  * tests whether a list is empty _and_ checks that no other CPU might be
@@ -249,7 +253,7 @@ STATIC_INLINE int list_empty_careful(const list_node_t *head)
 
 /**
  * list_node_alone	- tests if node is not inserted into list
- * @head: the list to test.
+ * @param head  the list to test.
  */
 STATIC_INLINE int list_node_alone(const list_node_t *node)
 {
@@ -258,7 +262,7 @@ STATIC_INLINE int list_node_alone(const list_node_t *node)
 
 /**
  * list_rotate_left - rotate the list to the left
- * @head: the head of the list
+ * @param head  the head of the list
  */
 STATIC_INLINE void list_rotate_left(list_head_t *head)
 {
@@ -272,7 +276,7 @@ STATIC_INLINE void list_rotate_left(list_head_t *head)
 
 /**
  * list_is_singular - tests whether a list has just one entry.
- * @head: the list to test.
+ * @param head  the list to test.
  */
 STATIC_INLINE int list_is_singular(const list_head_t *head)
 {
@@ -298,9 +302,9 @@ STATIC_INLINE void __list_cut_position(list_head_t *list,
 
 /**
  * list_cut_position - cut a list into two
- * @list: a new list to add all removed entries
- * @head: a list with entries
- * @entry: an entry within head, could be the head itself
+ * @param list  a new list to add all removed entries
+ * @param head  a list with entries
+ * @param entry  an entry within head, could be the head itself
  *	and if so we won't cut the list
  *
  * This helper moves the initial part of @head, up to and
@@ -342,8 +346,8 @@ STATIC_INLINE void __list_splice(const list_head_t *list,
 
 /**
  * list_splice - join two lists, this is designed for stacks
- * @list: the new list to add.
- * @head: the place to add it in the first list.
+ * @param list  the new list to add.
+ * @param head  the place to add it in the first list.
  */
 STATIC_INLINE void list_splice(const list_head_t *list,
 				list_node_t *node)
@@ -354,8 +358,8 @@ STATIC_INLINE void list_splice(const list_head_t *list,
 
 /**
  * list_splice_tail - join two lists, each list being a queue
- * @list: the new list to add.
- * @head: the place to add it in the first list.
+ * @param list  the new list to add.
+ * @param head  the place to add it in the first list.
  */
 STATIC_INLINE void list_splice_tail(list_head_t *list,
 				list_node_t *node)
@@ -366,8 +370,8 @@ STATIC_INLINE void list_splice_tail(list_head_t *list,
 
 /**
  * list_splice_init - join two lists and reinitialise the emptied list.
- * @list: the new list to add.
- * @head: the place to add it in the first list.
+ * @param list  the new list to add.
+ * @param head  the place to add it in the first list.
  *
  * The list at @list is reinitialised
  */
@@ -382,8 +386,8 @@ STATIC_INLINE void list_splice_init(list_head_t *list,
 
 /**
  * list_splice_tail_init - join two lists and reinitialise the emptied list
- * @list: the new list to add.
- * @head: the place to add it in the first list.
+ * @param list  the new list to add.
+ * @param head  the place to add it in the first list.
  *
  * Each of the lists is a queue.
  * The list at @list is reinitialised
@@ -399,18 +403,18 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_entry - get the struct for this entry
- * @ptr:	the &struct list_head pointer.
- * @type:	the type of the struct this is embedded in.
- * @member:	the name of the list_struct within the struct.
+ * @param ptr 	the &struct list_head pointer.
+ * @param type 	the type of the struct this is embedded in.
+ * @param member 	the name of the list_struct within the struct.
  */
 #define list_entry(ptr, type, member) \
 	container_of(ptr, type, member)
 
 /**
  * list_first_entry - get the first element from a list
- * @ptr:	the list head to take the element from.
- * @type:	the type of the struct this is embedded in.
- * @member:	the name of the list_struct within the struct.
+ * @param ptr 	the list head to take the element from.
+ * @param type 	the type of the struct this is embedded in.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Note, that list is expected to be not empty.
  */
@@ -419,16 +423,16 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each	-	iterate over a list
- * @pos:	the &struct list_head to use as a loop cursor.
- * @head:	the head for your list.
+ * @param pos 	the &struct list_head to use as a loop cursor.
+ * @param head 	the head for your list.
  */
 #define list_for_each(pos, head) \
 	for (pos = (head)->l_head.next; pos != &(head)->l_head; pos = pos->next)
 
 /**
  * __list_for_each	-	iterate over a list
- * @pos:	the &struct list_head to use as a loop cursor.
- * @head:	the head for your list.
+ * @param pos 	the &struct list_head to use as a loop cursor.
+ * @param head 	the head for your list.
  *
  * This variant doesn't differ from list_for_each() any more.
  * We don't do prefetching in either case.
@@ -438,17 +442,17 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_prev	-	iterate over a list backwards
- * @pos:	the &struct list_head to use as a loop cursor.
- * @head:	the head for your list.
+ * @param pos 	the &struct list_head to use as a loop cursor.
+ * @param head 	the head for your list.
  */
 #define list_for_each_prev(pos, head) \
 	for (pos = (head)->l_head.prev; pos != &(head)->l_head; pos = pos->prev)
 
 /**
  * list_for_each_safe - iterate over a list safe against removal of list entry
- * @pos:	the &struct list_head to use as a loop cursor.
- * @n:		another &struct list_head to use as temporary storage
- * @head:	the head for your list.
+ * @param pos 	the &struct list_head to use as a loop cursor.
+ * @param n 		another &struct list_head to use as temporary storage
+ * @param head 	the head for your list.
  */
 #define list_for_each_safe(pos, n, head) \
 	for (pos = (head)->l_head.next, n = pos->next; \
@@ -456,10 +460,10 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 		pos = n, n = pos->next)
 
 /**
- * list_for_each_prev_safe - iterate over a list backwards safe against removal of list entry
- * @pos:	the &struct list_head to use as a loop cursor.
- * @n:		another &struct list_head to use as temporary storage
- * @head:	the head for your list.
+ * iterate over a list backwards safe against removal of list entry
+ * @param pos 	the &struct list_head to use as a loop cursor.
+ * @param n 		another &struct list_head to use as temporary storage
+ * @param head 	the head for your list.
  */
 #define list_for_each_prev_safe(pos, n, head) \
 	for (pos = (head)->l_head.prev, n = pos->prev; \
@@ -468,9 +472,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry	-	iterate over list of given type
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  */
 #define list_for_each_entry(type, pos, head, member)				\
 	for (pos = list_entry((head)->l_head.next, type, member);	\
@@ -479,9 +483,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_reverse - iterate backwards over list of given type.
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  */
 #define list_for_each_entry_reverse(type, pos, head, member)			\
 	for (pos = list_entry((head)->l_head.prev, type, member);	\
@@ -490,9 +494,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_prepare_entry - prepare a pos entry for use in list_for_each_entry_continue()
- * @pos:	the type * to use as a start point
- * @head:	the head of the list
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a start point
+ * @param head 	the head of the list
+ * @param member 	the name of the list_struct within the struct.
  *
  * Prepares a pos entry for use as a start point in list_for_each_entry_continue().
  */
@@ -501,9 +505,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_continue - continue iteration over list of given type
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Continue to iterate over list of given type, continuing after
  * the current position.
@@ -515,9 +519,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_continue_reverse - iterate backwards from the given point
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Start to iterate over list of given type backwards, continuing after
  * the current position.
@@ -529,9 +533,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_from - iterate over list of given type from the current point
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Iterate over list of given type, continuing from current position.
  */
@@ -541,10 +545,10 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_safe - iterate over list of given type safe against removal of list entry
- * @pos:	the type * to use as a loop cursor.
- * @n:		another type * to use as temporary storage
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param n 		another type * to use as temporary storage
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  */
 #define list_for_each_entry_safe(type, pos, n, head, member)			\
 	for (pos = list_entry((head)->l_head.next, type, member),	\
@@ -554,10 +558,10 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_safe_continue - continue list iteration safe against removal
- * @pos:	the type * to use as a loop cursor.
- * @n:		another type * to use as temporary storage
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param n 		another type * to use as temporary storage
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Iterate over list of given type, continuing after current point,
  * safe against removal of list entry.
@@ -570,10 +574,10 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_safe_from - iterate over list from current point safe against removal
- * @pos:	the type * to use as a loop cursor.
- * @n:		another type * to use as temporary storage
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param n 		another type * to use as temporary storage
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Iterate over list of given type from current point, safe against
  * removal of list entry.
@@ -585,10 +589,10 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_for_each_entry_safe_reverse - iterate backwards over list safe against removal
- * @pos:	the type * to use as a loop cursor.
- * @n:		another type * to use as temporary storage
- * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the type * to use as a loop cursor.
+ * @param n 		another type * to use as temporary storage
+ * @param head 	the head for your list.
+ * @param member 	the name of the list_struct within the struct.
  *
  * Iterate backwards over list of given type, safe against removal
  * of list entry.
@@ -601,9 +605,9 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_safe_reset_next - reset a stale list_for_each_entry_safe loop
- * @pos:	the loop cursor used in the list_for_each_entry_safe loop
- * @n:		temporary storage used in list_for_each_entry_safe
- * @member:	the name of the list_struct within the struct.
+ * @param pos 	the loop cursor used in the list_for_each_entry_safe loop
+ * @param n 		temporary storage used in list_for_each_entry_safe
+ * @param member 	the name of the list_struct within the struct.
  *
  * list_safe_reset_next is not safe to use in general if the list may be
  * modified concurrently (eg. the lock is dropped in the loop body). An

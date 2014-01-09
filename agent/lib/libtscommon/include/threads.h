@@ -45,25 +45,46 @@
 #define THASHMASK		(THASHSIZE - 1)
 
 /**
- * Threads engine. Provides cross-platform interface for threads handling
- * and synchronization primitives.
+ * @module Threads and syncronization primitives
+ *
+ * Provides cross-platform interface for threads handling and synchronization primitives.
+ *
+ * Example of thread's function:
+ * ```
+ * thread_result_t worker_thread(thread_arg_t arg) {
+ *    THREAD_ENTRY(arg, workload_t, wl);
+ *
+ *    ...
+ *    if(cond)
+ *    	 THREAD_EXIT(1);
+ *    ...
+ *
+ * THREAD_END:
+ * 	  smth_destroy(...);
+ * 	  THREAD_FINISH(arg);
+ * }
+ * ```
+ *
+ * You may pass an context variable into thread in t_init(), like workload_t
+ * in this example. THREAD_ENTRY macro declares it and special variable 'thread':
+ * ```
+ *    thread_t* thread;
+ * 	  workload_t* wl;
+ * ```
+ *
+ * @note On Solaris mutex_* and cv_* function names are reserved by libc, so threads library \
+ * 	     prefixes it's names with ts.
  */
 
 /**
  * THREAD_ENTRY macro should be inserted into beginning of thread function
- *
  * declares thread_t* thread and argtype_t* arg_name (private argument passed to t_init)
- *
- * i.e.:
- * void* worker_thread(void* arg) {
- *    THREAD_ENTRY(arg, workload_t, wl)
- *    ...
  * */
 #define THREAD_ENTRY(arg, arg_type, arg_name) 			\
 	thread_t* thread = t_post_init((thread_t*) arg);	\
 	arg_type* arg_name = (arg_type*) thread->t_arg
 
-/*
+/**
  * THREAD_END and THREAD_FINISH are used as thread's epilogue:
  *
  * THREAD_END:
@@ -77,16 +98,17 @@
 	t_exit(thread);					\
 	PLAT_THREAD_FINISH(arg, thread->t_ret_code)
 
-/*
+/**
  * THREAD_EXIT - prematurely exit from thread (works only in main function of thread)
  * */
 #define THREAD_EXIT(code)			\
 	thread->t_ret_code = code;		\
 	goto _l_thread_exit
 
-/*
+/**
  * Thread states:
  *
+ * ```
  *       |
  *     t_init              +----------------------------------------------+
  *       |                 |                                              |
@@ -96,6 +118,7 @@
  *                         |
  *                         v
  *                      TS_DEAD
+ * ```
  * */
 typedef enum {
 	TS_INITIALIZED,
@@ -137,25 +160,41 @@ typedef struct {
 	char			te_name[TEVENTNAMELEN];
 } thread_event_t;
 
+/**
+ * Default object initializers */
 #define THREAD_EVENT_INITIALIZER 							\
 	{ SM_INIT(.te_impl, PLAT_THREAD_EVENT_INITIALIZER),		\
 	  SM_INIT(.te_name, "\0") }
-
 #define THREAD_MUTEX_INITIALIZER 							\
 	{ SM_INIT(.tm_impl, PLAT_THREAD_MUTEX_INITIALIZER),		\
 	  SM_INIT(.tm_name, "\0"),								\
 	  SM_INIT(.tm_is_recursive, B_FALSE) }
-
 #define THREAD_KEY_INITIALIZER 								\
 	{ SM_INIT(.tk_impl, PLAT_THREAD_KEY_INITIALIZER),		\
 	  SM_INIT(.tk_name, "\0") }
 
 typedef unsigned 	thread_id_t;
 
+/**
+ * Prototype of thread's function */
 typedef thread_result_t (*thread_start_func)(thread_arg_t arg);
 
+/**
+ * Default stack size of thread */
 #define		TSTACKSIZE		(64 * SZ_KB)
 
+/**
+ * Thread structure
+ *
+ * @member t_state 		current state of thread. May be accessed atomically
+ * @member t_id			unique thread id assigned by implementation library \
+ * 						(i.e. pthreads)
+ * @member t_local_id   local thread id assigned by user code
+ * @member t_system_id	platform-dependent thread id (optional).
+ * @member t_name		name of thread
+ * @member t_arg		argument to a thread (processed in THREAD_ENTRY)
+ * @member t_ret_code	return code of thread
+ */
 typedef struct thread {
 	plat_thread_t	t_impl;
 	plat_sched_t	t_sched_impl;
@@ -172,11 +211,11 @@ typedef struct thread {
 
 	char 			t_name[TNAMELEN];
 
-	/* When thread finishes, it notifies parent thread thru t_cv*/
+	/* When thread finishes, it notifies parent thread thru t_event
+	 * FIXME: Rewrite with cv/mutex, non-atomic t_state */
 	thread_event_t*	t_event;
 
 	void*			t_arg;
-
 	unsigned		t_ret_code;
 
 #ifdef TS_LOCK_DEBUG
@@ -190,6 +229,11 @@ typedef struct thread {
 	struct thread*	t_pool_next;	/*< Next thread in pool*/
 } thread_t;
 
+/**
+ * Mutexes
+ *
+ * @note rmutex_init() is deprecated
+ */
 LIBEXPORT void mutex_init(thread_mutex_t* mutex, const char* namefmt, ...);
 LIBEXPORT void rmutex_init(thread_mutex_t* mutex, const char* namefmt, ...);
 LIBEXPORT boolean_t mutex_try_lock(thread_mutex_t* mutex);
@@ -197,12 +241,18 @@ LIBEXPORT void mutex_lock(thread_mutex_t* mutex);
 LIBEXPORT void mutex_unlock(thread_mutex_t* mutex);
 LIBEXPORT void mutex_destroy(thread_mutex_t* mutex);
 
+/**
+ * Read-write locks
+ */
 LIBEXPORT void rwlock_init(thread_rwlock_t* rwlock, const char* namefmt, ...);
 LIBEXPORT void rwlock_lock_read(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_lock_write(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_unlock(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_destroy(thread_rwlock_t* rwlock);
 
+/**
+ * Condition variables
+ */
 LIBEXPORT void cv_init(thread_cv_t* cv, const char* namefmt, ...);
 LIBEXPORT void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex);
 LIBEXPORT void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout);
@@ -210,6 +260,11 @@ LIBEXPORT void cv_notify_one(thread_cv_t* cv);
 LIBEXPORT void cv_notify_all(thread_cv_t* cv);
 LIBEXPORT void cv_destroy(thread_cv_t* cv);
 
+/**
+ * Events
+ *
+ * @note this API is deprecated. Use condition variable + mutex pair
+ */
 LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...);
 LIBEXPORT void event_wait(thread_event_t* event);
 LIBEXPORT void event_wait_timed(thread_event_t* event, ts_time_t timeout);
@@ -217,6 +272,9 @@ LIBEXPORT void event_notify_one(thread_event_t* event);
 LIBEXPORT void event_notify_all(thread_event_t* event);
 LIBEXPORT void event_destroy(thread_event_t* event);
 
+/**
+ * Thread-local storage
+ */
 LIBEXPORT void tkey_init(thread_key_t* key,
 			   	   	   	 const char* namefmt, ...);
 LIBEXPORT void tkey_destroy(thread_key_t* key);
