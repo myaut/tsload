@@ -244,3 +244,8 @@ if 'tests' in BUILD_TARGETS:
 if 'zip' in BUILD_TARGETS:
     zip = env.Zip(env['ZIPFILE'], env['PREFIX'])
     env.Alias('zip', env['ZIPFILE'])
+    
+#------------
+# DOC (again)
+SConscript(PathJoin('doc', 'SConscript'), 'env',
+           variant_dir = PathJoin('#build', 'doc'))

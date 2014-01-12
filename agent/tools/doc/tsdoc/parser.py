@@ -118,15 +118,31 @@ class IdentifierParser:
     def __init__(self, token):
         self.token = token
         
-    def parse(self, defobj):
+    def parse(self, defobj, parse_type = False):
         ''' returns name, type'''
         token = self.token
-        rbidx = token.find('[')
+        
+        if parse_type:
+            add_token = defobj.add_type
+        else:
+            add_token = defobj.set_name
+        
+        aidx1 = token.find('*')
+        aidx2 = token.rfind('*')
+        if aidx1 > -1:
+            add_token(token[:aidx1])
+            defobj.add_type(token[aidx1:aidx2+1])
+            token = token[aidx2+1:]
+            
+        if not token:
+            return
+        
+        rbidx = token.rfind('[')
         if rbidx > 0:
-            defobj.set_name(token[:rbidx])
+            add_token(token[:rbidx])
             defobj.add_type(token[rbidx:])
         elif is_identifier(token):
-            defobj.set_name(token)
+            add_token(token)
         else:
             defobj.add_type(token)
 
@@ -184,7 +200,8 @@ class VariableParser(DefinitionParser):
                 is_type = False
             elif is_type:
                 # Aliased typedef - added as first token (type specifier) 
-                variable.add_type(token)
+                parser = IdentifierParser(token)
+                parser.parse(variable, True)
                 is_type = False
             else:
                 parser = IdentifierParser(token)
@@ -843,6 +860,8 @@ class SourceParser:
         self.groups = []
         self.defs = []
         
+        self.sources = [self.path]
+        
     def parse(self):
         lineno = 1
         group_parser = DefinitionGroupParser()
@@ -865,26 +884,35 @@ class SourceParser:
         if group is not None:
             self.groups.append(group)
     
-    def serialize(self):
-        group_list = []
-        for group in self.groups:
-            group_list.append(group.serialize())
+    def create_tsdoc(self):
+        tsdoc = TSDoc(self.module, self.groups)
+        tsdoc.set_sources(self.sources)
         
-        return group_list 
+        return tsdoc
     
     def merge(self, other):
+        self.sources.append(other.path)
+        
         for group in other.groups:
             names = group.get_names()
+            new_group = None
             
-            for my_group in self.groups:
-                my_names = group.get_names()
-                if my_names & names:
-                    my_group.merge(group)
-                    break
-            else:
-                if any(isinstance(defobj, DocText) 
-                       for defobj in group.defs):
+            if group.have_doctext():
+                for my_group in self.groups:
+                    my_names = my_group.get_names()
+                    if my_names & names:
+                        if my_group.have_doctext():
+                            new_group = my_group.split(names)
+                            new_group.merge(group)
+                        else:
+                            my_group.merge(group)
+                        break
+                else:
                     self.groups.append(group)
+                
+                if new_group is not None:
+                    index = self.groups.index(my_group)
+                    self.groups.insert(index, new_group)
         
         
 

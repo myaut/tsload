@@ -1,0 +1,31 @@
+Import('env')
+
+target = 'doc'
+
+def AppendDoc(self, doc_dir):
+    for file in Dir(doc_dir).glob('*.src.md'):
+        self.Append(TSDOC = [file])
+    
+env.AddMethod(AppendDoc)
+
+docfiles = env.DocGenerator('index.src.md')
+
+env.AppendDoc('intro')
+
+header = '%s %s documentation' % (env['TSPROJECT'], env['TSVERSION'])
+
+env.Append(ENV = {'TSDOC_HTML_TEMPLATE': 'doc/template.htm'})
+env.Append(ENV = {'TSDOC_HEADER': header})
+
+if GetOption('update_doc'):
+    env.AlwaysBuild(env['TSDOC'])
+    env.AlwaysBuild(docfiles)
+    
+for file in env['TSDOC']:
+    env.Depends(docfiles, file)
+    
+if GetOption('doc_format') == 'html':
+    for file in Dir('bootstrap/css').glob('*.css'):
+        env.Depends(docfiles, file) 
+       
+env.Alias('doc', docfiles)

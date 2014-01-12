@@ -16,10 +16,13 @@ else:
 
 env.Append(ENV = {'TSDOC_FORMAT': doc_format})
 
-DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCES > $TARGET' % (sys.executable),
+DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/build-doc.py $SOURCES > $TARGET' % (sys.executable),
                      suffix = '.tsdoc')
+DocGenerator = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCE $TSDOC' % (sys.executable))
 
-env.Append(BUILDERS = {'DocBuilder': DocBuilder})
+env.Append(BUILDERS = {'DocBuilder': DocBuilder,
+                       'DocGenerator': DocGenerator})
+env.Append(TSDOC = [])
 
 if doc_format == 'html':
     env.InstallTarget(PathJoin(env['INSTALL_SHARE'], 'doc'), 'doc/bootstrap')
