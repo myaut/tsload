@@ -1,12 +1,12 @@
 from pathutil import *
 
+tgtroot = 'tsload-core'
 tgtdir = 'bin'
 target = 'tshostinfo'
 
 Import('env')
 
 cmd = env.Clone()
-        
 
 cmd.AddDeps(('lib', 'libtscommon'), 
             ('lib', 'libjson'),
@@ -15,4 +15,4 @@ cmd.AddDeps(('lib', 'libtscommon'),
 objects = cmd.CompileProgram()
 tshostinfo = cmd.Program(target, objects)
 
-cmd.InstallTarget(cmd['INSTALL_BIN'], tshostinfo)
+cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tshostinfo)

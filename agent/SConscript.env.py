@@ -32,13 +32,14 @@ def AddDeps(self, *deps):
         self['LIBPATH'] += [self.BuildDir(lib_dir)]
         self['LIBS'] += [dep]
 
-def InstallTarget(self, tgtdir, target):
-    if 'install' in BUILD_TARGETS or 'zip' in BUILD_TARGETS:
-        tgtdir = Dir(PathJoin(env['PREFIX'], tgtdir))
-        install = self.Install(tgtdir, target)
-        self.Alias('install', install)
-        
-        return install[0]
+def InstallTarget(self, tgtroot, tgtdir, target):
+    tgtdir = Dir(PathJoin(self['PREFIX'], tgtdir))
+    install = self.Install(tgtdir, target)
+    
+    self.Alias('install', install)
+    self.Alias(tgtroot, install)
+    
+    return install
 
 # Compile and build various targets
 def CompileSharedLibrary(self, extra_sources = [], 
@@ -82,6 +83,7 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     mod['SHLIBPREFIX'] = ''
     
     etrace_files = []
+    man_files = []
     
     mod.AddDeps(('lib', 'libtscommon'),
                 ('lib', 'libhostinfo'), 
@@ -89,13 +91,18 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     modobjs = mod.CompileSharedLibrary()
     
     for src in etrace_sources:
-        etrace_files.extend(mod.PreprocessETrace([src] + modobjs, 
-                                                 mod_name + mod['SHLIBSUFFIX']))
+        etrace_src_files, man_src_files = mod.PreprocessETrace(
+                            [src] + modobjs, mod_name + mod['SHLIBSUFFIX'])
+        etrace_files.extend(etrace_src_files)
+        man_files.extend(man_src_files)
     
     module = mod.LinkSharedLibrary(mod_name, modobjs + etrace_files)
     
     mod_install_dirs = { 'load': mod['INSTALL_MOD_LOAD'] }
-    mod.InstallTarget(mod_install_dirs[mod_type], module)
+    
+    mod.InstallTarget('tsload-modules', mod_install_dirs[mod_type], module)    
+    if man_files:
+        mod.InstallTarget('tsload-modules', mod['INSTALL_SHARE'], man_files)
     
     return module
 

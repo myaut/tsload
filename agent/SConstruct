@@ -12,7 +12,6 @@ from optparse import SUPPRESS_HELP
 sys.path.append(os.path.join('tools', 'build'))
 
 from pathutil import *
-from manager import AddBuildItem, AddModule, PrepareBuild, GetBuildTargets, BuildManagerPrint
 from tstest import TestSuite
 
 # ------------------------
@@ -35,8 +34,6 @@ SConsEnvironment.Chmod = ActionFactory(os.chmod,
 # ------------------------
 # BUILD OPTIONS
 
-AddOption('--list',  dest='list', action="store_true", default=False,
-          metavar='TARGETS', help='Prints list of targets which could be built')
 AddOption('--mach',  dest='mach', action="store", default='',
           help='Machine architecture')
 
@@ -95,7 +92,7 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
                          TARGET_ARCH = GetOption('mach'))
 
 env['TSLOADPATH'] = Dir('#').abspath
-env['TSPROJECT'] = 'tsload-agent'
+env['TSPROJECT'] = 'tsload'
 env['TSVERSION'] = '0.2'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
@@ -153,81 +150,44 @@ if env.SupportedPlatform('posix') and env['CC'] == 'gcc':
 SConscript('SConscript.doc.py', 'env')
 
 # -------------------------
-# BUILD ITEMS AND DEPENDENCIES  
+# BUILD ITEMS   
 
-AddBuildItem('core', 'lib',
-             targets=['lib/libjson',
-                      'lib/libhostinfo',
-                      'lib/libtscommon'])
-AddBuildItem('core', 'agent',
-             targets = ['lib/libtsagent'],
-             deps = ['core-lib'])
+build_items = [ # tsload-core
+               ('lib', 'libjson'),
+               ('lib', 'libtscommon'),
+               ('lib', 'libhostinfo'),
+               ('lib', 'libtsfile'),
+               ('lib', 'libtsload'),               
+               ('cmd', 'tshostinfo'),
+               ('cmd', 'tsfutil'),               
+               
+               # tsload-standalone
+               ('cmd', 'run-tsload'),
+               
+               # tsload-agents
+               ('lib', 'libtsagent'),
+               ('cmd', 'tsgenuuid'),               
+               ('cmd', 'tsloadd'),
+               ]
 
+# ------------
+# BUILD
 
-AddBuildItem('swat', 'tool',
-             targets = ['cmd/swat-import'],
-             deps = ['core-lib'],
-             default = False)
-AddBuildItem('hostinfo', 'tool',
-             targets = ['cmd/tshostinfo'],
-             deps = ['core-lib'])
-
-AddBuildItem('tsfile', 'lib',
-             targets = ['lib/libtsfile'],
-             deps = ['core-lib'])
-AddBuildItem('tsfile', 'util',
-             targets = ['cmd/tsfutil'],
-             deps = ['core-lib', 
-                     'tsfile-lib'])
-
-AddBuildItem('load', 'lib',
-             targets = ['lib/libtsload'],
-             deps = ['core-lib'])          
-AddBuildItem('load', 'agent',
-             targets = ['cmd/tsloadd'],
-             deps = ['core-agent',
-                     'load-lib'])
-AddBuildItem('load', 'tool',
-             targets = ['cmd/run-tsload'],
-             deps = ['load-lib', 
-                     'tsfile-lib'])
-AddBuildItem('load', 'modules',
-             deps = ['core-lib'])
-
-AddBuildItem('jsonts', 'bench',
-             targets = ['tools/json-ts/bench'],
-             deps = ['load-lib'],
-             default = False)
-
-AddBuildItem('genuuid', 'tool',
-             targets = ['cmd/tsgenuuid'],
-             deps = ['load-agent'])
-
+for tgtdir, target in build_items:
+    path = PathJoin(tgtdir, target)
+    variant_dir = env.BuildDir(path)
+    
+    SConscript(PathJoin(path, 'SConscript'), 'env',
+               variant_dir = variant_dir)
 
 # Iterate over modules directories and add modules to build items
 for mod_type in ('load', ):
     for mod in Dir('mod').Dir(mod_type).glob('*'):
-        AddModule(mod_type, mod)
-
-# ------------
-# LIST
-if GetOption('list'):
-    # Print information about build items in Makefile-like notation
-    BuildManagerPrint()
-    Exit(0)
-
-# ------------
-# BUILD
-PrepareBuild([value
-              for key, value 
-              in ARGLIST
-              if key == 'build'])
-
-for target in GetBuildTargets():
-    variant_dir = env.BuildDir(target)
-    
-    SConscript(PathJoin(target, 'SConscript'), 'env',
-               variant_dir = variant_dir)
+        mod_path = str(mod)
+        variant_dir = env.BuildDir(mod_path)
+        
+        SConscript(PathJoin(mod_path, 'SConscript'), 'env',
+                   variant_dir = variant_dir)
 
 #------------
 # INSTALL various files
@@ -240,14 +200,32 @@ if 'tests' in BUILD_TARGETS:
         
     SConscript(PathJoin('test', 'SConscript'), 'env',
                variant_dir = PathJoin('#build', 'test'))
-
-#------------
-# ZIP
-if 'zip' in BUILD_TARGETS:
-    zip = env.Zip(env['ZIPFILE'], env['PREFIX'])
-    env.Alias('zip', env['ZIPFILE'])
     
 #------------
 # DOC (again)
 SConscript(PathJoin('doc', 'SConscript'), 'env',
            variant_dir = PathJoin('#build', 'doc'))
+
+#------------
+# ZIP
+
+packages = ['tsload-core', 
+            'tsload-agents', 
+            'tsload-standalone', 
+            'tsload-doc']
+
+# Packages dependencies
+
+env.Depends('tsload-agents', 'tsload-core')
+env.Depends('tsload-standalone', 'tsload-core')
+
+for pkg in packages:
+    aliases = env.Alias(pkg)
+    alias = aliases[0]
+    
+    zip_name = '-'.join((pkg, env['TSVERSION']))   + '.zip'
+    zip_path = PathJoin('#build', zip_name)
+    
+    zip_files = env.ZipArchive(zip_path, alias.children())
+    env.Depends('zip', pkg)
+    env.Alias('zip', zip_files)

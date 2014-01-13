@@ -1,5 +1,6 @@
 from pathutil import *
 
+tgtroot = 'tsload-agents'
 tgtdir = 'bin'
 target = 'tsloadd'
 
@@ -36,9 +37,9 @@ cmd.AddDeps(('lib', 'libtsagent'),
 objects = cmd.CompileProgram()
 tsloadd = cmd.Program(target, objects)
 
-cmd.InstallTarget(cmd['INSTALL_BIN'], tsloadd)
+cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsloadd)
 
 # Generate tsload.cfg
 cmd.Command('tsload.cfg', [], CreateConfig)
 cmd.Depends(tsloadd, 'tsload.cfg')
-cmd.InstallTarget(cmd['INSTALL_ETC'], File('tsload.cfg'))
+cmd.InstallTarget(tgtroot, cmd['INSTALL_ETC'], File('tsload.cfg'))

@@ -14,3 +14,5 @@ PathIsFile = os.path.isfile
 PathAbsolute = os.path.abspath 
 PathAccess = os.access
 PathRelative = os.path.relpath
+
+PathWalk = os.walk

@@ -1,5 +1,6 @@
 from pathutil import *
 
+tgtroot = 'tsload-core'
 tgtdir = 'bin'
 target = 'tsfutil'
 
@@ -16,4 +17,4 @@ cmd.AddDeps(('lib', 'libtscommon'),
 objects = cmd.CompileProgram()
 tsgenuuid = cmd.Program(target, objects)
 
-cmd.InstallTarget(cmd['INSTALL_BIN'], tsgenuuid)
+cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsgenuuid)

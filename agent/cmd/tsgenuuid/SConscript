@@ -1,5 +1,6 @@
 from pathutil import *
 
+tgtroot = 'tsload-agents'
 tgtdir = 'bin'
 target = 'tsgenuuid'
 
@@ -24,4 +25,4 @@ cmd.AddDeps(('lib', 'libtscommon'),
 objects = cmd.CompileProgram()
 tsgenuuid = cmd.Program(target, objects)
 
-cmd.InstallTarget(cmd['INSTALL_BIN'], tsgenuuid)
+cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsgenuuid)

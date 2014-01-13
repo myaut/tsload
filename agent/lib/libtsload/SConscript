@@ -2,6 +2,7 @@ import os
 
 PathJoin = os.path.join
 
+tgtroot = 'tsload-core'
 target = 'libtsload'
 
 Import('env')
@@ -21,9 +22,10 @@ lib.AddDeps(('lib', 'libjson'),
 
 objects = lib.CompileSharedLibrary(Glob("src/disp/*.c"))
 
-etrace_files = env.PreprocessETrace(['src/workload.c'] + objects, 
-                                    target + lib['SHLIBSUFFIX'])
+etrace_files, man_files = env.PreprocessETrace(['src/workload.c'] + objects, 
+                                                target + lib['SHLIBSUFFIX'])
 
 library = lib.LinkSharedLibrary(target, objects + etrace_files)
 
-lib.InstallTarget(lib['INSTALL_LIB'], library)
+lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
+lib.InstallTarget(tgtroot, lib['INSTALL_SHARE'], man_files)

@@ -1,10 +1,7 @@
 import sys
 import os
 
-PathJoin = os.path.join
-PathBaseName = os.path.basename
-PathDirName = os.path.dirname
-PathExists = os.path.exists
+from pathutil import *
 
 Import('env')
 
@@ -35,6 +32,7 @@ elif env.SupportedPlatform('linux') or env.SupportedPlatform('solaris') and GetO
 
 def PreprocessETrace(self, sources, target):
     etrace_files = []
+    man_files = []
     
     if self['ETRACEENABLED']:
         src_filename = sources[0]
@@ -65,9 +63,9 @@ def PreprocessETrace(self, sources, target):
             
             etrace_files.append(dtrace_file)
         
-        self.InstallTarget(self['INSTALL_SHARE'], man)
+        man_files.append(man)
             
-    return etrace_files
+    return etrace_files, man_files
 
 env.AddMethod(PreprocessETrace)
 
