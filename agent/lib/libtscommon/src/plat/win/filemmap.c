@@ -51,7 +51,7 @@ PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void**
 
 	/* Windows can't map zero-lenght files */
 	if(file_size_low == 0 && file_size_high == 0)
-		return NULL;
+		return MME_MMAP_ERROR;
 
 	if(offset == MMF_MAP_ALL) {
 		offset = 0;
@@ -61,7 +61,7 @@ PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void**
 	mmf->mmf_map = CreateFileMapping((HANDLE) mmf->mmf_file, NULL,
 								     prot, file_size_high, file_size_low, NULL);
 
-	if(mmf->mmf_map == ERROR_INVALID_HANDLE)
+	if(mmf->mmf_map == NULL)
 		return MME_MMAP_ERROR;
 
 	ptr = MapViewOfFile(mmf->mmf_map, prot, offset & 0xFFFFFFFF,
@@ -69,7 +69,7 @@ PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void**
 	if(ptr == NULL)
 		return MME_MMAP_ERROR;
 
-	*mapping_ptr = area;
+	*mapping_ptr = ptr;
 	return MME_OK;
 }
 

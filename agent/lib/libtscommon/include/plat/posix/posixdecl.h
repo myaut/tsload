@@ -8,6 +8,7 @@
 #ifndef PLAT_POSIX_POSIXDECL_H_
 #define PLAT_POSIX_POSIXDECL_H_
 
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 

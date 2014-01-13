@@ -36,6 +36,10 @@ install_dirs = [('INSTALL_BIN',      'bin',          '',
                 ('INSTALL_MOD_LOAD', 'mod/load',     'LoadModules',   
                     'loadmoddir',   'loader modules')]
 
+gen_inc_dir = Dir(env.BuildDir('include'))
+gen_install = gen_inc_dir.File('geninstall.h')
+
+conf_install = Configure(env, config_h = str(gen_install))
 
 for key, dir, win_dir, param, help in install_dirs:
     default = win_dir if env.SupportedPlatform('win') else dir    
@@ -43,5 +47,9 @@ for key, dir, win_dir, param, help in install_dirs:
     AddOption('--' + param,  dest=param, action="store", default=default,
               metavar='DIR', help=help + ' [EPREFIX/%default]')
     env[key] = GetOption(param)
+    
+    conf_install.Define(key, '"%s"' % env[key], comment = help)
+
+conf_install.Finish()
 
 Export('env')

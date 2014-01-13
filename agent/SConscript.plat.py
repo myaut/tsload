@@ -98,11 +98,9 @@ if env.SupportedPlatform('win'):
         env.Append(CCFLAGS = ['/MDd'])
     else:
         env.Append(CCFLAGS = ['/MD'])
+    env.FindMicrosoftSDK()
 elif env.SupportedPlatform('posix'):
     env.Append(LIBS = ['c'])
     env.Macroses('_GNU_SOURCE')
     
-if sys.platform == 'win32':
-    env.FindMicrosoftSDK()
-
 Export('env')

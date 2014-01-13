@@ -144,7 +144,9 @@ env['LOAD_MODPATH'] = PathJoin(env['PREFIX'], env['INSTALL_MOD_LOAD'])
 # Specify RPATH to shared libraries
 if env.SupportedPlatform('posix') and env['CC'] == 'gcc':
     env.Append(LINKFLAGS = ['-zorigin'])
-    env.Append(RPATH = env.Literal(os.path.join('\\$$ORIGIN', os.pardir, 'lib')))
+    
+    lib_rel_path = PathRelative(env['INSTALL_LIB'], env['INSTALL_BIN'])
+    env.Append(RPATH = env.Literal(os.path.join('\\$$ORIGIN', lib_rel_path)))
 
 #------------
 # DOC

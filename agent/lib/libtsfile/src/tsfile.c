@@ -15,14 +15,13 @@
 mp_cache_t	tsfile_cache;
 
 tsfile_error_msg_func tsfile_error_msg = NULL;
+int tsfile_errno;
 
 #define TSFILE_SB_GET_COUNT(header, sbi)					\
 			((header)->sb[(sbi)].count)
 #define TSFILE_SB_SET_COUNT(header, sbi, new_count)			\
 			((header)->sb[(sbi)].count = new_count);		\
 			((header)->sb[(sbi)].time = tm_get_time())
-
-int tsfile_errno;
 
 /**
  * TimeSeries File Format Library
@@ -189,7 +188,7 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 	tsfile_header_t* header = NULL;
 
 	size_t schema_size = sizeof(tsfile_shdr_t) +
-						 schema->hdr.count * sizeof(tsfile_field_t);
+			  	 	 	 schema->hdr.count * sizeof(tsfile_field_t);
 
 	if(!tsfile_check_schema(schema)) {
 		return NULL;
@@ -302,10 +301,10 @@ void tsfile_close(tsfile_t* file) {
 	tsfile_close_file(file);
 }
 
-int tsfile_add(tsfile_t* file, void* entries, int count) {
+int tsfile_add(tsfile_t* file, void* entries, unsigned count) {
 	uint32_t cur_count;
-	size_t entry_size = file->header->schema.hdr.entry_size;
-	size_t size = count * entry_size;
+	unsigned long entry_size = file->header->schema.hdr.entry_size;
+	unsigned long size = count * entry_size;
 	off_t end;
 
 	tsfile_errno = TSFILE_OK;
@@ -317,7 +316,8 @@ int tsfile_add(tsfile_t* file, void* entries, int count) {
 	end = TSFILE_HEADER_SIZE + cur_count * entry_size;
 
 	/* Write to the end of file */
-	if(pwrite(file->fd, entries, size, end) < size) {
+	if(lseek(file->fd, end, SEEK_SET) == ((off_t)-1) ||
+	   write(file->fd, entries, size) < size) {
 		tsfile_errno = TSFILE_DATA_FAIL;
 		goto end;
 	}
@@ -329,8 +329,9 @@ int tsfile_add(tsfile_t* file, void* entries, int count) {
 	TSFILE_SB_SET_COUNT(file->header, file->cur_sb, cur_count + count);
 
 	/* Rewrite header (only first 512 bytes actually) */
-	if(pwrite(file->fd, file->header,
-			  TSFILE_SB_WRITE_LEN, 0) < TSFILE_SB_WRITE_LEN) {
+	if(lseek(file->fd, 0, SEEK_SET) == ((off_t)-1) ||
+	   write(file->fd, file->header,
+			 TSFILE_SB_WRITE_LEN) < TSFILE_SB_WRITE_LEN) {
 		tsfile_errno = TSFILE_SB_FAIL;
 	}
 
@@ -350,18 +351,19 @@ uint32_t tsfile_get_count(tsfile_t* file) {
 	return cur_count;
 }
 
-int tsfile_get_entries(tsfile_t* file, void* entries, int start, int end) {
+int tsfile_get_entries(tsfile_t* file, void* entries, unsigned start, unsigned end) {
 	uint32_t cur_count;
-	tsfile_errno = TSFILE_OK;
 
-	size_t entry_size = file->header->schema.hdr.entry_size;
+	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	off_t off = TSFILE_HEADER_SIZE + start * entry_size;
-	size_t size = (end - start) * entry_size;
+	unsigned long size = (end - start) * entry_size;
 
 	if(start >= end) {
 		tsfile_errno = TSFILE_INVAL_RANGE;
 		return tsfile_errno;
 	}
+
+	tsfile_errno = TSFILE_OK;
 
 	mutex_lock(&file->mutex);
 	cur_count = TSFILE_SB_GET_COUNT(file->header, file->cur_sb);
@@ -372,7 +374,8 @@ int tsfile_get_entries(tsfile_t* file, void* entries, int start, int end) {
 		return tsfile_errno;
 	}
 
-	if(pread(file->fd, entries, size, off) < size) {
+	if(lseek(file->fd, off, SEEK_SET) != ((off_t)-1) ||
+	   read(file->fd, entries, size) < size) {
 		tsfile_errno = TSFILE_DATA_FAIL;
 	}
 
@@ -381,9 +384,9 @@ int tsfile_get_entries(tsfile_t* file, void* entries, int start, int end) {
 	return tsfile_errno;
 }
 
-JSONNODE* json_tsfile_get(tsfile_t* file, int number) {
+JSONNODE* json_tsfile_get(tsfile_t* file, unsigned number) {
 	JSONNODE** nodes = NULL;
-	size_t entry_size = file->header->schema.hdr.entry_size;
+	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entry = mp_malloc(entry_size);
 
 	JSONNODE* node = NULL;
@@ -410,7 +413,7 @@ void json_tsfile_put(tsfile_t* file, JSONNODE* node) {
 }
 
 int json_tsfile_add(tsfile_t* file, JSONNODE* node) {
-	size_t entry_size = file->header->schema.hdr.entry_size;
+	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entry = mp_malloc(entry_size);
 
 	int ret;
@@ -422,10 +425,10 @@ int json_tsfile_add(tsfile_t* file, JSONNODE* node) {
 	return ret;
 }
 
-JSONNODE* json_tsfile_get_array(tsfile_t* file, int start, int end) {
+JSONNODE* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end) {
 	JSONNODE** nodes = NULL;
 	JSONNODE* node_array = NULL;
-	size_t entry_size = file->header->schema.hdr.entry_size;
+	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entries = NULL;
 	void* entry;
 	int count = end - start;
@@ -478,7 +481,7 @@ void json_tsfile_put_array(tsfile_t* file, JSONNODE* node_array) {
 
 int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array) {
 	JSONNODE_ITERATOR i_end, i_node;
-	size_t entry_size = file->header->schema.hdr.entry_size;
+	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entries = NULL;
 	void* entry;
 	int count = json_size(node_array);

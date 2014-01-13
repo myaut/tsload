@@ -48,7 +48,7 @@ def PreprocessETrace(self, sources, target):
         
         # XXX: Does all SConscripts Clone() their environments?
         self['ETRACEEXEFILE'] = PathJoin(self['PREFIX'], target)
-        self['ETRACEDIR'] = Dir('.').path
+        self['ETRACEDIR'] = PathJoin(Dir('.').path, PathDirName(src_filename))
         
         man = self.EtraceBuilder(man_filename, src_filename)
         

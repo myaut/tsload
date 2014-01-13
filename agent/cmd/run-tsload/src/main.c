@@ -17,6 +17,8 @@
 #include <tsversion.h>
 #include <hiobject.h>
 #include <tsfile.h>
+#include <execpath.h>
+#include <geninstall.h>
 
 #include <steps.h>
 #include <commands.h>
@@ -69,6 +71,27 @@ void usage() {
 	exit(1);
 }
 
+/*
+ * Make TSLoad a bit portable - get absolute path of run-tsload,
+ * delete INSTALL_BIN from it and append INSTALL_VAR or INSTALL_MOD_PATH
+ * to find path to log and modules.
+ * */
+void deduce_paths(void) {
+	const char* cur_execpath = plat_execpath();
+	path_split_iter_t iter;
+	char root[PATHMAXLEN];
+
+	const char* cur_dirpath = path_dirname(&iter, cur_execpath);
+
+	if(path_remove(root, PATHMAXLEN, cur_dirpath, INSTALL_BIN) != NULL) {
+		path_join(log_filename, LOGFNMAXLEN, root, INSTALL_VAR, "run-tsload.log", NULL);
+		path_join(mod_search_path, MODPATHLEN, root, INSTALL_MOD_LOAD, NULL);
+
+		mod_configured = B_TRUE;
+		log_configured = B_TRUE;
+	}
+}
+
 void read_environ() {
 	char* env_mod_path = getenv("TS_MODPATH");
 	char* env_log_filename = getenv("TS_LOGFILE");
@@ -82,8 +105,6 @@ void read_environ() {
 		strncpy(log_filename, env_log_filename, LOGFNMAXLEN);
 		log_configured = B_TRUE;
 	}
-
-
 }
 
 void parse_options(int argc, const char* argv[]) {
@@ -154,6 +175,7 @@ int main(int argc, char* argv[]) {
 
 	command = CMD_NONE;
 
+	deduce_paths();
 	read_environ();
 	parse_options(argc, argv);
 

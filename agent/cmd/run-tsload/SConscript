@@ -4,44 +4,6 @@ _target = 'run-tsload'
 
 Import('env')
 
-batch_script = """
-set PATH=%%PATH%%;%(TSPATH)s
-
-set TS_LOGFILE=%(LOGFILE)s
-set TS_MODPATH=%(MODPATH)s
-
-%(RUNTSLOAD)s %%*
-"""
-
-sh_script = """#!/bin/sh
-
-PATH=$PATH:%(TSPATH)s
-TS_LOGFILE=%(LOGFILE)s
-TS_MODPATH=%(MODPATH)s
-
-export PATH TS_LOGFILE TS_MODPATH
-
-%(RUNTSLOAD)s $@
-"""
-
-def CreateScript(target, source, env):
-    script_path = str(target[0])
-    script_file = open(script_path, 'w')
-    
-    run_tsload = _target + env['PROGSUFFIX']
-    
-    if env.SupportedPlatform('posix'):
-        script = sh_script
-    elif env.SupportedPlatform('win'):
-        script = batch_script
-    
-    script_file.write(script % { 'TSPATH': PathJoin(env['PREFIX'], env['INSTALL_BIN']),
-                                 'LOGFILE': env['LOAD_LOGFILE'],
-                                 'MODPATH': env['LOAD_MODPATH'],
-                                 'RUNTSLOAD': run_tsload })
-    
-    script_file.close()
-
 def InstallExperiment(experiment_name):
     for file in Dir(experiment_name).glob('*'):
         cmd.Depends(run_tsload,  file)
@@ -68,16 +30,4 @@ InstallExperiment('busy_wait')
 request_schema = 'request-schema.json'
 cmd.Depends(run_tsload, request_schema)
 cmd.InstallTarget(cmd['INSTALL_VAR'], request_schema)
-
-# Generate run-tsload script
-if env.SupportedPlatform('posix'):
-    suffix = '.sh'
-elif env.SupportedPlatform('win'):
-    suffix = '.bat'
-
-script = cmd.Command(_target + suffix, i_run_tsload, CreateScript)
-i_script = cmd.InstallTarget(cmd['INSTALL_BIN'], script)
-
-if env.SupportedPlatform('posix'):
-    cmd.AddPostAction(i_script, cmd.Chmod(str(i_script), 0755))
     

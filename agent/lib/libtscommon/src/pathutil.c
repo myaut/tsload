@@ -13,10 +13,12 @@
 #include <stdio.h>
 
 #if defined(PLAT_WIN)
+const char* path_curdir = ".";
 const char* path_separator = "\\";
 const int psep_length = 1;
 
 #elif defined(PLAT_POSIX)
+const char* path_curdir = ".";
 const char* path_separator = "/";
 const int psep_length = 1;
 
@@ -95,22 +97,25 @@ char* path_join(char* dest, size_t len, ...) {
     return path_join_array(dest, len, i, parts);
 }
 
-static void path_split_add(path_split_iter_t* iter, const char* part, const char* end) {
+static int path_split_add(path_split_iter_t* iter, const char* part, const char* end) {
     size_t len = end - part;
 
-    if(len == 0) {
-        iter->ps_dest[0] = '\0';
-        len = 1;
+    if(len == 0 || (strncmp(part, path_curdir, len) == 0)) {
+    	/* Ignore consecutive separators or references to current path */
+		*iter->ps_dest++ = 0;
+		return 0;
     }
-    else {
-    	strncpy(iter->ps_dest, part, len);
-    }
+
+    /* FIXME: Additional checks */
+    strncpy(iter->ps_dest, part, len);
 
     iter->ps_parts[iter->ps_num_parts++] = iter->ps_dest;
     iter->ps_parts[iter->ps_num_parts] = NULL;
 
     iter->ps_dest += len;
     *iter->ps_dest++ = 0;
+
+    return 1;
 }
 
 static const char* strrchr_x(const char* s, const char* from, int c) {
@@ -133,6 +138,9 @@ static const char* strrchr_x(const char* s, const char* from, int c) {
  *
  * Uses iter as temporary storage, it is re-enterable.
  *
+ * First (or last for reverse order) component is root path item. For Windows it is
+ * drive letter, on POSIX - empty string.
+ *
  * @param iter pre-allocated split path iterator
  * @param max maximum number parts which will be processed
  *
@@ -145,16 +153,31 @@ char* path_split(path_split_iter_t* iter, int max, const char* path) {
     long max_parts = abs(max);
     size_t part_len = 0;
 
-    iter->ps_num_parts = 0;
-    iter->ps_part = 1;
-
-    iter->ps_dest = iter->ps_storage;
-
     /* Invalid max value*/
     if(max_parts == 0 || max_parts > PATHMAXPARTS)
         return NULL;
 
+    /* In Windows we always have 'root component' of path - it's drive letter
+     * In POSIX we have to simulate it (for absolute paths only).
+     * I.e. for /abc/ it is "", "abc" in straight order and "abc", "" in reverse order */
+#if defined(PLAT_POSIX)
+    if(max > 0 && *path == *path_separator) {
+    	iter->ps_parts[0] = "";
+    	iter->ps_num_parts = 1;
+    	iter->ps_last_is_root = B_FALSE;
+    }
+    else {
+    	iter->ps_parts[0] = NULL;
+		iter->ps_num_parts = 0;
+		iter->ps_last_is_root = (*path == *path_separator);
+    }
+#elif defined(PLAT_WIN)
     iter->ps_parts[0] = NULL;
+	iter->ps_num_parts = 0;
+#endif
+
+	iter->ps_part = 1;
+    iter->ps_dest = iter->ps_storage;
 
     /* for psep_length != 1 should use strstr or reverse analog */
     if(max < 0) {
@@ -163,10 +186,10 @@ char* path_split(path_split_iter_t* iter, int max, const char* path) {
     	begin = orig = path + strlen(path);
 
         while((begin = strrchr_x(path, begin, *path_separator)) != NULL) {
-            if(++max == 0)
+            if(max == -1)
                 break;
 
-            path_split_add(iter, begin + psep_length, orig);
+            max += path_split_add(iter, begin + psep_length, orig);
 
             orig = begin;
         }
@@ -186,10 +209,10 @@ char* path_split(path_split_iter_t* iter, int max, const char* path) {
     	end = orig = path;
 
         while((end = strchr(end, *path_separator)) != NULL) {
-            if(max-- == 0)
+            if(max == 1)
                 break;
 
-            path_split_add(iter, orig, end);
+            max -= path_split_add(iter, orig, end);
 
             orig = end + psep_length;
             end += psep_length;
@@ -206,8 +229,78 @@ char* path_split(path_split_iter_t* iter, int max, const char* path) {
  * walked.
  * */
 char* path_split_next(path_split_iter_t* iter) {
-    if(iter->ps_part == iter->ps_num_parts)
+    if(iter->ps_part == iter->ps_num_parts) {
+#ifdef PLAT_POSIX
+    	if(iter->ps_last_is_root) {
+    		iter->ps_last_is_root = B_FALSE;
+    		return "";
+    	}
+#endif
+
         return NULL;
+    }
 
     return iter->ps_parts[iter->ps_part++];
 }
+
+/**
+ * Resets iterator to beginning
+ * */
+char* path_split_reset(path_split_iter_t* iter) {
+	iter->ps_part = 1;
+
+	return iter->ps_parts[0];
+}
+
+/**
+ * Remove relative path element _path_ from the end of absolute path.
+ *
+ * For example:
+ * `path_remove("/opt/tsload/var/tsload", "var/tsload") -> "/opt/tsload"`
+ *
+ * @param result resulting buffer that contains all elements of abspath \
+ * 			but path
+ * @param len length of result buffer
+ * @param abspath absolute path to be filtered
+ * @param path path element
+ *
+ * @return NULL if path is not element of abspath or result
+ */
+char* path_remove(char* result, size_t len, const char* abspath, const char* path) {
+	path_split_iter_t si_abspath, si_path;
+	int count = 1;
+	char* part_abspath;
+	char* part_path;
+	char* root;
+
+	/* If path is empty - simply return abspath */
+	if(strlen(path) == 0 ||
+	   strcmp(path, path_curdir) == 0) {
+			strncpy(result, abspath, len);
+			return result;
+	}
+
+	/* 1st pass - count path parts in path */
+	part_path = path_split(&si_path, -PATHMAXPARTS, path);
+	while(part_path != NULL) {
+		part_path = path_split_next(&si_path);
+		++count;
+	}
+
+	/* 2nd pass - split cur_execpath reversely and deduce base dir */
+	part_abspath = path_split(&si_abspath, -count, abspath);
+	part_path = path_split_reset(&si_path);
+
+	while(--count > 0) {
+		if(strcmp(part_path, part_abspath) != 0) {
+			return NULL;
+		}
+
+		part_path = path_split_next(&si_path);
+		part_abspath = path_split_next(&si_abspath);
+	}
+
+	strncpy(result, part_abspath, len);
+	return result;
+}
+

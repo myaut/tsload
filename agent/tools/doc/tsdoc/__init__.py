@@ -388,7 +388,9 @@ class TSDoc:
         return obj
     
     @staticmethod
-    def deserialize(obj):
+    def deserialize(uobj):
+        obj = dict([(str(k), v) for k, v in uobj.items()])
+        
         tsdoc = TSDoc(**obj)
         groups = []
         

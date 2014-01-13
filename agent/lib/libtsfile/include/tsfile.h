@@ -128,7 +128,7 @@ LIBIMPORT	int tsfile_errno;
 #define SCHEMA_FIELD_MISSING_SIZE	4
 
 #ifndef NO_JSON
-tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset);
+LIBEXPORT tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset);
 #endif
 
 
@@ -150,16 +150,16 @@ LIBEXPORT tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema)
 LIBEXPORT tsfile_t* tsfile_open(const char* filename, tsfile_schema_t* schema);
 LIBEXPORT void tsfile_close(tsfile_t* file);
 
-LIBEXPORT int tsfile_add(tsfile_t* file, void* entries, int count);
+LIBEXPORT int tsfile_add(tsfile_t* file, void* entries, unsigned count);
 LIBEXPORT uint32_t tsfile_get_count(tsfile_t* file);
-LIBEXPORT int tsfile_get_entries(tsfile_t* file, void* entries, int start, int end);
+LIBEXPORT int tsfile_get_entries(tsfile_t* file, void* entries, unsigned start, unsigned end);
 
 #ifndef NO_JSON
-LIBEXPORT JSONNODE* json_tsfile_get(tsfile_t* file, int number);
+LIBEXPORT JSONNODE* json_tsfile_get(tsfile_t* file, unsigned number);
 LIBEXPORT void json_tsfile_put(tsfile_t* file, JSONNODE* node);
 LIBEXPORT int json_tsfile_add(tsfile_t* file, JSONNODE* node);
 
-LIBEXPORT JSONNODE* json_tsfile_get_array(tsfile_t* file, int start, int end);
+LIBEXPORT JSONNODE* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end);
 LIBEXPORT void json_tsfile_put_array(tsfile_t* file, JSONNODE* node_array);
 LIBEXPORT int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array);
 
