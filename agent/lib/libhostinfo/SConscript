@@ -1,3 +1,4 @@
+tgtroot = 'tsload-core'
 target = 'libhostinfo'
 
 Import('env')
@@ -16,4 +17,4 @@ lib.AddDeps(('lib', 'libjson'), ('lib', 'libtscommon'))
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)
 
-lib.InstallTarget(lib['INSTALL_LIB'], library)
+lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

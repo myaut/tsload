@@ -1,5 +1,6 @@
 Import('env')
 
+tgtroot = 'tsload-doc'
 target = 'doc'
 
 def AppendDoc(self, doc_dir):

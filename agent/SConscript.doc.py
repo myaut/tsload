@@ -3,6 +3,8 @@ from pathutil import *
 
 from SCons.Errors import StopError 
 
+tgtroot = 'tsload-doc'
+
 Import('env')
 
 doc_format = GetOption('doc_format')
@@ -23,8 +25,5 @@ DocGenerator = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCE $TS
 env.Append(BUILDERS = {'DocBuilder': DocBuilder,
                        'DocGenerator': DocGenerator})
 env.Append(TSDOC = [])
-
-if doc_format == 'html':
-    env.InstallTarget(PathJoin(env['INSTALL_SHARE'], 'doc'), 'doc/bootstrap')
 
 Export('env')

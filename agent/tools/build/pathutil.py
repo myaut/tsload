@@ -12,4 +12,7 @@ PathIsAbs = os.path.isabs
 PathIsFile = os.path.isfile
 
 PathAbsolute = os.path.abspath 
+PathRelative = os.path.relpath
 PathAccess = os.access
+
+PathWalk = os.walk

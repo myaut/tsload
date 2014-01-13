@@ -1,5 +1,6 @@
 from pathutil import *
 
+tgtroot = 'tsload-standalone'
 _target = 'run-tsload'
 
 Import('env')
@@ -45,7 +46,7 @@ def CreateScript(target, source, env):
 def InstallExperiment(experiment_name):
     for file in Dir(experiment_name).glob('*'):
         cmd.Depends(run_tsload,  file)
-        cmd.InstallTarget(PathJoin(cmd['INSTALL_VAR'], experiment_name), file)
+        cmd.InstallTarget(tgtroot, PathJoin(cmd['INSTALL_VAR'], experiment_name), file)
 
 cmd = env.Clone()
 
@@ -58,7 +59,7 @@ cmd.AddDeps(('lib', 'libtsagent'),
 objects = cmd.CompileProgram()
 run_tsload = cmd.Program(_target, objects)
 
-i_run_tsload = cmd.InstallTarget(cmd['INSTALL_BIN'], run_tsload)
+i_run_tsload = cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], run_tsload)
 
 # Install test experiment files
 InstallExperiment('simpleio')
@@ -67,7 +68,7 @@ InstallExperiment('busy_wait')
 # Install request schema file
 request_schema = 'request-schema.json'
 cmd.Depends(run_tsload, request_schema)
-cmd.InstallTarget(cmd['INSTALL_VAR'], request_schema)
+cmd.InstallTarget(tgtroot, cmd['INSTALL_VAR'], request_schema)
 
 # Generate run-tsload script
 if env.SupportedPlatform('posix'):
@@ -76,8 +77,8 @@ elif env.SupportedPlatform('win'):
     suffix = '.bat'
 
 script = cmd.Command(_target + suffix, i_run_tsload, CreateScript)
-i_script = cmd.InstallTarget(cmd['INSTALL_BIN'], script)
+i_script = cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], script)
 
 if env.SupportedPlatform('posix'):
-    cmd.AddPostAction(i_script, cmd.Chmod(str(i_script), 0755))
+    cmd.AddPostAction(i_script, cmd.Chmod(str(i_script[0]), 0755))
     
