@@ -13,7 +13,7 @@
 #include <string.h>
 
 LIBEXPORT int opterr = 0;
-LIBEXPORT int optind = 0;
+LIBEXPORT int optind = 1;
 LIBEXPORT int optopt = 0;
 LIBEXPORT char *optarg = NULL;
 
@@ -27,6 +27,8 @@ LIBEXPORT char *optarg = NULL;
 
 int opt_state = OPT_OK;
 
+/* TODO: Support for -- */
+
 PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
     static const char* p_opt = NULL;
 
@@ -34,11 +36,10 @@ PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
         return (EOF);
 
     if(p_opt == NULL || opt_state == OPT_OK) {
-        if(++optind >= argc) {
+        if(optind >= argc) {
             return (EOF);
         }
 
-        /* Ignore argv[0] which is executable name*/
         p_opt = argv[optind];
 
         /* -abcdef
@@ -50,6 +51,13 @@ PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
                 opt_state = OPT_FAIL;
                 return BAD_CHAR;
             }
+
+            /* -a
+			 *  ^ */
+			if(*p_opt == 0) {
+				opt_state = OPT_OK;
+				++optind;
+			}
         }
         else {
             /* Last option parsed */
@@ -61,11 +69,13 @@ PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
 
         /* -abcdef
          *       ^ */
-        if(*p_opt == 0)
+        if(*p_opt == 0) {
             opt_state = OPT_OK;
+            ++optind;
+        }
     }
 
-    if(optopt != '-') {
+    if(optopt != OPT_CHAR) {
         char* oli = strchr(options, optopt);
         optarg = NULL;
 
@@ -81,17 +91,18 @@ PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
                  *   ^       */
                 optarg = p_opt;
                 p_opt = NULL;
+                ++optind;
                 return optopt;
             }
             else {
                 /* -a ARGUMENT
                  *    ^       */
-                if(++optind >= argc) {
+                if(optind >= argc) {
                     /* No argument provided */
                     return BAD_CHAR;
                 }
 
-                optarg = argv[optind];
+                optarg = argv[optind++];
                 p_opt = NULL;
                 return optopt;
             }
@@ -105,7 +116,5 @@ PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
         return optopt;
     }
 
-    /* Reached end of options or met -- */
-    ++optind;
     return (EOF);
 }

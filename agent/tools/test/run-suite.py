@@ -60,10 +60,6 @@ class TestRunner(Thread):
         
         return test
     
-    def stop_test(self, proc):
-        proc.timed_out = True
-        proc.kill()
-    
     def analyze_result(self, test, proc):
         ''' Returns True if proc result was expected '''
         ret = proc.returncode
@@ -134,7 +130,7 @@ class TestRunner(Thread):
         timer = Timer(test.maxtime, self.stop_test, args = [proc])
         timer.start()
         
-        proc.wait()
+        (stdout, stderr) = proc.communicate()
         timer.cancel()
         
         end = time.time()
@@ -144,9 +140,6 @@ class TestRunner(Thread):
         self.wipe_test_dir()
         
         result = self.analyze_result(test, proc)
-        
-        stdout = proc.stdout.read()
-        stderr = proc.stderr.read()
         
         output = '' 
         if proc.timed_out:
@@ -165,6 +158,10 @@ class TestRunner(Thread):
         self.suite.report_test('%s/%s' % (test.group, test.name),
                                result, proc.returncode,
                                output)
+    
+    def stop_test(self, proc):
+        proc.timed_out = True
+        proc.kill()
     
     def run(self):
         while True:

@@ -331,20 +331,21 @@ double rv_variate_double_erlang(randvar_t* rv, double u) {
 	int i;
 	double x;
 	double m = 1.0;
+	int n = rve->shape;
 
 	/* u already generated once (in rv_variate_double), so use it on first step
 	 * Also, Erlang distribution doesn't uses U(0,1], so ignore zeroes.
 	 *
 	 * See http://en.wikipedia.org/wiki/Erlang_distribution */
 
-	for(i = 0; i < rve->shape; ++i) {
+	for(i = 0; i < n; ++i) {
 		if(i > 0)
 			u = rg_generate_double(rv->rv_generator);
 
 		if(likely(u > 0.0))
 			m *= u;
 		else
-			--i;
+			++n;
 	}
 
 	x = log(m) / -rve->rate;

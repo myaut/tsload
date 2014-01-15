@@ -1,5 +1,7 @@
 import os
 
+from SCons.Node.Alias import Alias
+
 from pathutil import *
 
 Import('env')
@@ -61,6 +63,9 @@ def ZipArchive(target, source, env):
     
     zf = zipfile.ZipFile(str(zip_node), 'w', compression)
     for s in source:
+        if isinstance(s, Alias):
+            continue
+        
         if s.isdir():
             for dirpath, dirnames, filenames in PathWalk(str(s)):
                 for fname in filenames:

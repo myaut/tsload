@@ -64,6 +64,18 @@ PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 	char path[PATHMAXLEN];
 
 	plat_dir_t* dir = container_of(d_entry, plat_dir_t, d_entry);
+
+	if(d_entry->d_name[0] == '.') {
+		if(d_entry->d_name[1] == 0) {
+			return DET_CURRENT_DIR;
+		}
+
+		if(d_entry->d_name[1] == '.' &&
+		   d_entry->d_name[2] == 0) {
+			return DET_PARENT_DIR;
+		}
+	}
+
 	path_join(path, PATHMAXLEN, dir->d_path, d_entry->d_name, NULL);
 
 	stat(path, &statbuf);
@@ -83,5 +95,18 @@ PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 }
 
 PLATAPI boolean_t plat_dirent_hidden(plat_dir_entry_t *d_entry) {
-	return d_entry->d_name[0] == '.';
+	if(d_entry->d_name[0] == '.') {
+		if(d_entry->d_name[1] == 0) {
+			return B_FALSE;
+		}
+
+		if(d_entry->d_name[1] == '.' &&
+		   d_entry->d_name[2] == 0) {
+			return B_FALSE;
+		}
+
+		return B_TRUE;
+	}
+
+	return B_FALSE;
 }

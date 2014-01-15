@@ -24,6 +24,17 @@ PLATAPI int plat_closedir(plat_dir_t *dirp) {
 }
 
 PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
+	if(d_entry->d_name[0] == '.') {
+		if(d_entry->d_name[1] == 0) {
+			return DET_CURRENT_DIR;
+		}
+
+		if(d_entry->d_name[1] == '.' &&
+		   d_entry->d_name[2] == 0) {
+			return DET_PARENT_DIR;
+		}
+	}
+
 	switch(d_entry->d_type) {
 		case DT_REG:	return DET_REG;
 		case DT_DIR:	return DET_DIR;

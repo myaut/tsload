@@ -16,8 +16,11 @@ int test_main() {
 		else if(strcmp(de->d_name, "file") == 0) {
 			assert(plat_dirent_type(de) == DET_REG);
 		}
-		else if(!plat_dirent_hidden(de)) {
-			abort();
+		else {
+			plat_dirent_type_t type = plat_dirent_type(de);
+
+			assert(type == DET_CURRENT_DIR || type == DET_PARENT_DIR);
+			assert(!plat_dirent_hidden(de));
 		}
 	}
 

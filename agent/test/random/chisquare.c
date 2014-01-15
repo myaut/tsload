@@ -140,7 +140,7 @@ boolean_t chisquare_test(distribution_t* d, randvar_t* rv) {
 	int i, n;
 	int below = 0, above = 0;
 	double r;
-	double error, D;
+	double error, D = 0.0;
 	double k = (double) N / (d->d_max - d->d_min);
 
 	char index_str[16];

@@ -18,7 +18,11 @@
  */
 
 typedef enum {
-	DET_UNKNOWN = -1,
+	DET_UNKNOWN = -3,
+
+	DET_PARENT_DIR,
+	DET_CURRENT_DIR,
+
 	DET_REG,
 	DET_DIR,
 
