@@ -96,7 +96,7 @@ int tsload_start_workload(const char* wl_name, ts_time_t start_time) {
 	}
 
 	if(wl->wl_status != WLS_CONFIGURED) {
-		tsload_error_msg(TSE_INVALID_STATE, "Workload %s not yet configured", wl_name);
+		tsload_error_msg(TSE_INVALID_STATE, "Workload %s not in configured status", wl_name);
 		return TSLOAD_ERROR;
 	}
 
@@ -115,11 +115,6 @@ int tsload_unconfigure_workload(const char* wl_name) {
 	if(wl->wl_status == WLS_CONFIGURING) {
 		tsload_error_msg(TSE_INVALID_STATE, "Workload %s is currently configuring", wl_name);
 		return TSLOAD_ERROR;
-	}
-
-	if(wl->wl_status == WLS_RUNNING) {
-		/* XXX: does this cause race condition if we are finish workload at the same time? */
-		tp_detach(wl->wl_tp, wl);
 	}
 
 	wl_unconfig(wl);

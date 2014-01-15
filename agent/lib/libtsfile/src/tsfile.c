@@ -374,7 +374,7 @@ int tsfile_get_entries(tsfile_t* file, void* entries, unsigned start, unsigned e
 		return tsfile_errno;
 	}
 
-	if(lseek(file->fd, off, SEEK_SET) != ((off_t)-1) ||
+	if(lseek(file->fd, off, SEEK_SET) == ((off_t)-1) ||
 	   read(file->fd, entries, size) < size) {
 		tsfile_errno = TSFILE_DATA_FAIL;
 	}

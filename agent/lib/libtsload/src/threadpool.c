@@ -380,7 +380,7 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 		}
 
 		while(num_rqs[tid] > 0) {
-			rq = wl_create_request(step->wls_workload, tid);
+			rq = wl_create_request(step->wls_workload, tid, NULL);
 
 			/* Usually there are only one workload per threadpool, so we may simple put
 			 * new request after last request. But if it is second workload, these conditions

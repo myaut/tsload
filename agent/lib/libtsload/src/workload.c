@@ -39,6 +39,15 @@ thread_t	t_wl_notify;
 mp_cache_t	wl_cache;
 mp_cache_t	wl_rq_cache;
 
+#define	WL_SET_STATUS(wl, status)					\
+	do {											\
+		(wl)->wl_status = status;					\
+		(wl)->wl_status_flags |= (1 << status);		\
+	} while(0)
+
+#define	WL_HAD_STATUS(wl, status)							\
+	TO_BOOLEAN((wl)->wl_status_flags & (1 << status))
+
 /**
  * TSLoad supports statically-defined userspace dynamic tracing (USDT) using etrace subsystem.
  * Build with --enable-usdt (Linux + SystemTap or Solaris + DTrace) or --enable-etw
@@ -95,6 +104,8 @@ DECLARE_HASH_MAP(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_hm_next,
 static atomic_t wl_count = (atomic_t) 0l;
 ts_time_t wl_poll_interval = 200 * T_MS;
 
+extern disp_class_t simple_disp;
+
 /**
  * wl_create - create new workload: allocate memory and initialize fields
  *
@@ -116,14 +127,14 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_last_step = -1;
 
 	wl->wl_hm_next = NULL;
+	wl->wl_chain_next = NULL;
 
-	list_node_init(&wl->wl_chain);
 	list_node_init(&wl->wl_tp_node);
 
 	wl->wl_params = mp_malloc(wlt->wlt_params_size);
 	wl->wl_private = NULL;
 
-	wl->wl_status = WLS_NEW;
+	WL_SET_STATUS(wl, WLS_NEW);
 
 	wl->wl_start_time = TS_TIME_MAX;
 
@@ -152,10 +163,12 @@ void wl_destroy_impl(workload_t* wl) {
 	if(wl->wl_disp_class)
 		wl->wl_disp_class->disp_fini(wl);
 
-	if(wl->wl_status != WLS_NEW)
+	if(WL_HAD_STATUS(wl, WLS_CONFIGURING))
 		t_destroy(&wl->wl_cfg_thread);
 
-	list_del(&wl->wl_chain);
+	if(wl->wl_chain_next) {
+		wl_rele(wl->wl_chain_next);
+	}
 
 	mutex_destroy(&wl->wl_rq_mutex);
 	mutex_destroy(&wl->wl_status_mutex);
@@ -171,23 +184,12 @@ void wl_destroy_impl(workload_t* wl) {
  * */
 void wl_destroy(workload_t* wl) {
 	mutex_lock(&wl->wl_status_mutex);
-	wl->wl_status = WLS_DESTROYED;
+	WL_SET_STATUS(wl, WLS_DESTROYED);
 	mutex_unlock(&wl->wl_status_mutex);
 
 	hash_map_remove(&workload_hash_map, wl);
 
 	wl_rele(wl);
-}
-
-/**
- * wl_destroy_all - free memory for chain of workload objects
- * */
-void wl_destroy_all(list_head_t* wl_head) {
-	workload_t *wl, *wl_tmp;
-
-	list_for_each_entry_safe(workload_t, wl, wl_tmp, wl_head, wl_chain) {
-		wl_destroy(wl);
-	}
 }
 
 workload_t* wl_search(const char* name) {
@@ -203,12 +205,44 @@ void wl_rele(workload_t* wl) {
 		boolean_t is_destroyed;
 
 		mutex_lock(&wl->wl_status_mutex);
-		is_destroyed = wl->wl_status == WLS_DESTROYED;
+		is_destroyed = WL_HAD_STATUS(wl, WLS_DESTROYED);
 		mutex_unlock(&wl->wl_status_mutex);
 
 		if(is_destroyed)
 			wl_destroy_impl(wl);
 	}
+}
+
+/**
+ * Finish workload - notify that it was finished
+ */
+void wl_finish(workload_t* wl) {
+	long step = wl->wl_current_step;
+
+	wl_notify(wl, WLS_FINISHED, 0, "Finished workload %s on step #%ld",
+							wl->wl_name, step);
+}
+
+/**
+ * Chain workload to backward of request chain
+ *
+ * @param parent one of workloads in chain
+ * @param wl workload that needs to be chained
+ */
+void wl_chain_back(workload_t* parent, workload_t* wl) {
+	workload_t* root;
+
+	while(parent->wl_chain_next != NULL) {
+		parent = parent->wl_chain_next;
+	}
+
+	wl_hold(wl);
+
+	parent->wl_chain_next = wl;
+
+	mutex_lock(&wl->wl_status_mutex);
+	WL_SET_STATUS(wl, WLS_CHAINED);
+	mutex_unlock(&wl->wl_status_mutex);
 }
 
 /**
@@ -258,7 +292,7 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	}
 
 	mutex_lock(&wl->wl_status_mutex);
-	wl->wl_status = status;
+	WL_SET_STATUS(wl, status);
 	mutex_unlock(&wl->wl_status_mutex);
 
 	msg = mp_malloc(sizeof(wl_notify_msg_t));
@@ -302,7 +336,7 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, workload_t, wl);
 	int ret;
 
-	logmsg(LOG_INFO, "Started configuring of workload %s", wl->wl_name);
+	wl_notify(wl, WLS_CONFIGURING, 0, "started configuring");
 
 	ret = wl->wl_type->wlt_wl_config(wl);
 
@@ -312,7 +346,9 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 		THREAD_EXIT(ret);
 	}
 
-	tp_attach(wl->wl_tp, wl);
+	if(wl->wl_tp) {
+		tp_attach(wl->wl_tp, wl);
+	}
 
 	wl_notify(wl, WLS_CONFIGURED, 100, "Successfully configured workload %s", wl->wl_name);
 
@@ -334,7 +370,7 @@ int wl_is_started(workload_t* wl) {
 	boolean_t ret = B_FALSE;
 
 	/* fastpath - not lock nutex */
-	if(wl->wl_status == WLS_STARTED || wl->wl_status == WLS_RUNNING)
+	if(WL_HAD_STATUS(wl, WLS_STARTED))
 		return B_TRUE;
 
 	mutex_lock(&wl->wl_status_mutex);
@@ -342,7 +378,7 @@ int wl_is_started(workload_t* wl) {
 	   tm_get_time() >= wl->wl_start_time) {
 		logmsg(LOG_INFO, "Starting workload %s...", wl->wl_name);
 
-		wl->wl_status = WLS_STARTED;
+		WL_SET_STATUS(wl, WLS_STARTED);
 		ret = B_TRUE;
 	}
 	mutex_unlock(&wl->wl_status_mutex);
@@ -434,15 +470,24 @@ done:
 
 /**
  * Create request structure, append it to requests queue, initialize
+ * For chained workloads inherits parent step and request id
  *
  * @param wl workload for request
  * @param thread_id id of thread that will execute thread
+ * @param parent parent request (for chained workloads) \
+ * 		For unchained workloads should be set to NULL.
  * */
-request_t* wl_create_request(workload_t* wl, int thread_id) {
+request_t* wl_create_request(workload_t* wl, int thread_id, request_t* parent) {
 	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
 
-	rq->rq_step = wl->wl_current_step;
-	rq->rq_id = wl->wl_current_rq++;
+	if(parent == NULL) {
+		rq->rq_step = wl->wl_current_step;
+		rq->rq_id = wl->wl_current_rq++;
+	}
+	else {
+		rq->rq_step = parent->rq_step;
+		rq->rq_id = parent->rq_id;
+	}
 
 	rq->rq_thread_id = thread_id;
 
@@ -459,6 +504,13 @@ request_t* wl_create_request(workload_t* wl, int thread_id) {
 	list_node_init(&rq->rq_node);
 
 	wl_hold(wl);
+
+	if(wl->wl_chain_next != NULL) {
+		rq->rq_chain_next = wl_create_request(wl->wl_chain_next, thread_id, rq);
+	}
+	else {
+		rq->rq_chain_next = NULL;
+	}
 
 	return rq;
 }
@@ -481,8 +533,7 @@ void wl_run_request(request_t* rq) {
 
 	ETRC_PROBE2(tsload__workload, request__start, workload_t*, wl, request_t*, rq);
 
-	/* Workload finished & detached */
-	if(rq->rq_workload->wl_tp == NULL)
+	if(WL_HAD_STATUS(wl, WLS_FINISHED))
 		return;
 
 	rq->rq_start_time = tm_get_clock();
@@ -499,42 +550,48 @@ void wl_run_request(request_t* rq) {
 
 	wl->wl_disp_class->disp_post_request(rq);
 
+	if(rq->rq_chain_next != NULL) {
+		rq->rq_chain_next->rq_sched_time = rq->rq_end_time;
+	}
+
 	ETRC_PROBE2(tsload__workload, request__finish, workload_t*, wl, request_t*, rq);
 }
 
-void wl_rq_chain_push(list_head_t* rq_chain) {
-	squeue_push(&wl_requests, rq_chain);
+void wl_report_requests(list_head_t* rq_list) {
+	squeue_push(&wl_requests, rq_list);
 }
 
-void wl_rq_chain_destroy(void *p_rq_chain) {
-	list_head_t* rq_chain = (list_head_t*) p_rq_chain;
-	request_t *rq, *rq_tmp;
+void wl_rq_list_destroy(void *p_rq_list) {
+	list_head_t* rq_list = (list_head_t*) p_rq_list;
+	request_t *rq_root, *rq, *rq_tmp;
 
-	list_for_each_entry_safe(request_t, rq, rq_tmp, rq_chain, rq_node) {
-		wl_request_destroy(rq);
+	list_for_each_entry_safe(request_t, rq_root, rq_tmp, rq_list, rq_node) {
+		rq = rq_root;
+		do {
+			wl_request_destroy(rq);
+			rq = rq->rq_chain_next;
+		} while(rq != NULL);
 	}
 
-	mp_free(p_rq_chain);
+	mp_free(p_rq_list);
 }
 
 thread_result_t wl_requests_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, void, unused);
-	list_head_t* rq_chain;
-
-	JSONNODE* j_rq_chain;
+	list_head_t* rq_list;
 
 	request_t *rq, *rq_tmp;
 
 	while(B_TRUE) {
-		rq_chain =  (list_head_t*) squeue_pop(&wl_requests);
+		rq_list =  (list_head_t*) squeue_pop(&wl_requests);
 
-		if(rq_chain == NULL) {
+		if(rq_list == NULL) {
 			THREAD_EXIT(0);
 		}
 
-		tsload_requests_report(rq_chain);
+		tsload_requests_report(rq_list);
 
-		wl_rq_chain_destroy(rq_chain);
+		wl_rq_list_destroy(rq_list);
 	}
 
 THREAD_END:
@@ -568,19 +625,21 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 	return j_rq_list;
 }
 
-#define JSON_GET_VALIDATE_PARAM(iter, name, req_type)	\
-	{											\
-		iter = json_find(node, name);			\
-		if(iter == i_end) {						\
-			tsload_error_msg(TSE_MESSAGE_FORMAT,	\
-					"Failed to parse workload, missing parameter %s", name);	\
-			goto fail;							\
-		}										\
-		if(json_type(*iter) != req_type) {		\
-			tsload_error_msg(TSE_MESSAGE_FORMAT,	\
+#define JSON_GET_VALIDATE_PARAM(iter, name, req_type, optional)	\
+	{													\
+		iter = json_find(node, name);					\
+		if(iter == i_end) {								\
+			if(!optional) {								\
+				tsload_error_msg(TSE_MESSAGE_FORMAT,	\
+						"Failed to parse workload, missing parameter %s", name);	\
+				goto fail;								\
+			}											\
+		}												\
+		else if(json_type(*iter) != req_type) {			\
+			tsload_error_msg(TSE_MESSAGE_FORMAT,		\
 					"Expected that " name " is " #req_type );	\
-			goto fail;							\
-		}										\
+			goto fail;									\
+		}												\
 	}
 
 #define SEARCH_OBJ(dest, iter, type, search) 				\
@@ -590,7 +649,7 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 		obj = search(name);					\
 		if(obj == NULL) {					\
 			tsload_error_msg(TSE_INVALID_DATA,				\
-					"Invalid " #type " name '%s'", name);	\
+					"Couldn't find " #type " '%s'", name);	\
 			json_free(name);								\
 			goto fail;						\
 		}									\
@@ -603,7 +662,7 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
  * Process incoming workload in format
  * {
  * 		"module": "..."
- * 		"threadpool": "...",
+ * 		"threadpool": "..." | "chain" : "...",
  * 		"params": {}
  * }
  * and create workload. Called from agent context,
@@ -612,29 +671,42 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 	JSONNODE_ITERATOR i_wlt = NULL;
 	JSONNODE_ITERATOR i_tp = NULL;
+	JSONNODE_ITERATOR i_chain = NULL;
 	JSONNODE_ITERATOR i_params = NULL;
 	JSONNODE_ITERATOR i_end = json_end(node);
 
 	workload_t* wl = NULL;
+	workload_t* parent = NULL;
 	wl_type_t* wlt = NULL;
 	thread_pool_t* tp = NULL;
 
-	int ret;
+	int ret = DISP_JSON_OK;
 
 	/* Get threadpool and module from incoming message
 	 * and find corresponding objects*/
-	JSON_GET_VALIDATE_PARAM(i_wlt, "wltype", JSON_STRING);
-	JSON_GET_VALIDATE_PARAM(i_tp, "threadpool", JSON_STRING);
-	JSON_GET_VALIDATE_PARAM(i_params, "params", JSON_NODE);
+	JSON_GET_VALIDATE_PARAM(i_wlt, "wltype", JSON_STRING, B_FALSE);
+	JSON_GET_VALIDATE_PARAM(i_tp, "threadpool", JSON_STRING, B_TRUE);
+	JSON_GET_VALIDATE_PARAM(i_chain, "chain", JSON_STRING, B_TRUE);
+	JSON_GET_VALIDATE_PARAM(i_params, "params", JSON_NODE, B_FALSE);
 
 	SEARCH_OBJ(wlt, i_wlt, wl_type_t, wl_type_search);
-	SEARCH_OBJ(tp, i_tp, thread_pool_t, tp_search);
+
+	if(i_tp != i_end) {
+		SEARCH_OBJ(tp, i_tp, thread_pool_t, tp_search);
+	}
+	else if(i_chain != i_end) {
+		SEARCH_OBJ(parent, i_chain, workload_t, wl_search);
+	}
+	else {
+		tsload_error_msg(TSE_MESSAGE_FORMAT, "Neither threadpool nor chain not set for workload");
+		goto fail;
+	}
 
 	/* Get workload's name */
 	logmsg(LOG_DEBUG, "Parsing workload %s", wl_name);
 
 	if(strlen(wl_name) == 0) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,"Failed to parse workload, no name was defined");
+		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to parse workload, no name was defined");
 		goto fail;
 	}
 
@@ -646,8 +718,14 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 	/* Create workload */
 	wl = wl_create(wl_name, wlt, tp);
 
-	/* Process request dispatcher */
-	ret = json_disp_proc(node, wl);
+	/* Process request dispatcher.
+	 * Chained workloads do not have dispatchers - use simple dispatcher */
+	if(parent == NULL) {
+		ret = json_disp_proc(node, wl);
+	}
+	else {
+		wl->wl_disp_class = &simple_disp;
+	}
 
 	if(ret != DISP_JSON_OK) {
 		goto fail;
@@ -659,6 +737,11 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 
 	if(ret != WLPARAM_JSON_OK) {
 		goto fail;
+	}
+
+	/* Chain workload */
+	if(parent != NULL) {
+		wl_chain_back(parent, wl);
 	}
 
 	return wl;
@@ -696,7 +779,7 @@ void wl_fini(void) {
 
 	squeue_push(&wl_requests, NULL);
 	t_destroy(&t_wl_requests);
-	squeue_destroy(&wl_requests, wl_rq_chain_destroy);
+	squeue_destroy(&wl_requests, wl_rq_list_destroy);
 
 	squeue_push(&wl_notifications, NULL);
 	t_destroy(&t_wl_notify);

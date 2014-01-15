@@ -104,7 +104,7 @@ int step_get_step(const char* wl_name, long* step_id, unsigned* p_num_rqs) {
 	steps_generator_t* sg = (steps_generator_t*) hash_map_find(&steps_hash_map, wl_name);
 
 	if(sg == NULL)
-		return STEP_ERROR;
+		return STEP_NO_RQS;
 
 	switch(sg->sg_type) {
 	case STEPS_FILE:

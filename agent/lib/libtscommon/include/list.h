@@ -113,7 +113,7 @@ STATIC_INLINE void list_add(list_node_t *node, list_head_t *head)
 
 /**
  * list_add_tail - add a new entry
- * @param new  new entry to be added
+ * @param node  new entry to be added
  * @param head  list head to add it before
  *
  * Insert a new entry before the specified head.
@@ -123,6 +123,17 @@ STATIC_INLINE void list_add_tail(list_node_t *node, list_head_t *head)
 {
 	__list_add(node, head->l_head.prev, &head->l_head);
 }
+
+/**
+ * list_insert - insert entry after another
+ * @param node  new entry to be added
+ * @param iter  node after which it has to be added
+ */
+STATIC_INLINE void list_insert(list_node_t *node, list_node_t *iter)
+{
+	__list_add(node, iter->prev, iter->next);
+}
+
 
 /*
  * Delete a list entry by making the prev/next entries

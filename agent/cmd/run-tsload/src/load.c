@@ -51,6 +51,7 @@ thread_mutex_t	output_lock;
 thread_event_t	workload_event;
 
 char**			wl_name_array = NULL;	/* Names of configured workloads */
+boolean_t*		wl_is_chained = NULL;
 long 			wl_count = 0;
 atomic_t		wl_cfg_count;
 atomic_t		wl_run_count;
@@ -201,6 +202,7 @@ static int load_steps(const char* wl_name, JSONNODE* steps_node) {
 
 	if( i_step == i_end ||
 		json_type(*i_step) != JSON_NODE) {
+
 			load_fprintf(stderr, "Missing steps for workload %s\n", wl_name);
 			return LOAD_ERR_CONFIGURE;
 	}
@@ -306,6 +308,7 @@ static int configure_all_wls(JSONNODE* steps_node, JSONNODE* wl_node) {
 	load_fprintf(stdout, "\n\n==== CONFIGURING WORKLOADS ====\n");
 
 	wl_name_array = mp_malloc(num * sizeof(char*));
+	wl_is_chained = mp_malloc(num * sizeof(boolean_t));
 
 	if(json_type(steps_node) != JSON_NODE) {
 		load_fprintf(stderr, "Cannot process steps: not a JSON node\n");
@@ -315,23 +318,34 @@ static int configure_all_wls(JSONNODE* steps_node, JSONNODE* wl_node) {
 	while(iter != end) {
 		wl_name = json_name(*iter);
 
-		steps_err = load_steps(wl_name, steps_node);
-		if(steps_err != LOAD_OK) {
-			/* Error encountered during configuration - do not configure other workloads */
-			return LOAD_ERR_CONFIGURE;
-		}
-
 		tsload_configure_workload(wl_name, *iter);
+		atomic_inc(&wl_cfg_count);
 
-		load_fprintf(stdout, "Initialized workload %s\n", wl_name);
-		wl_name_array[wl_count++] = wl_name;
+		wl_name_array[wl_count] = wl_name;
 
 		if(load_error) {
 			return LOAD_ERR_CONFIGURE;
 		}
 
-		atomic_inc(&wl_cfg_count);
+		if(json_find(*iter, "chain") != json_end(*iter)) {
+			load_fprintf(stdout, "Chained workload %s\n", wl_name);
 
+			wl_is_chained[wl_count] = B_TRUE;
+		}
+		else {
+
+			steps_err = load_steps(wl_name, steps_node);
+			if(steps_err != LOAD_OK) {
+				/* Error encountered during configuration - do not configure other workloads */
+				return LOAD_ERR_CONFIGURE;
+			}
+
+			load_fprintf(stdout, "Initialized workload %s\n", wl_name);
+
+			wl_is_chained[wl_count] = B_FALSE;
+		}
+
+		++wl_count;
 		++iter;
 	}
 
@@ -346,6 +360,7 @@ static void unconfigure_all_wls(void) {
 		json_free(wl_name_array[i]);
 	}
 
+	mp_free(wl_is_chained);
 	mp_free(wl_name_array);
 }
 
@@ -366,6 +381,9 @@ static void start_all_wls(void) {
 	load_fprintf(stdout, "\n\n=== RUNNING EXPERIMENT '%s' === \n", experiment_name);
 
 	for(i = 0; i < wl_count; ++i) {
+		if(wl_is_chained[i])
+			continue;
+
 		for(j = 0; j < WLSTEPQSIZE; ++j) {
 			ret = load_provide_step(wl_name_array[i]);
 
@@ -558,7 +576,7 @@ void do_workload_status(const char* wl_name,
 }
 
 void do_requests_report(list_head_t* rq_list) {
-	request_t* rq;
+	request_t *rq_root, *rq;
 	size_t rqe_size = sizeof(struct request_entry);
 	struct request_entry* rqe_array = NULL;
 	struct request_entry* rqe;
@@ -570,26 +588,31 @@ void do_requests_report(list_head_t* rq_list) {
 	assert(rqe_size == REQUEST_ENTRY_SIZE);
 	rqe_array = mp_malloc(rqe_size * rqe_array_length);
 
-	list_for_each_entry(request_t, rq, rq_list, rq_node) {
-		rqe = rqe_array + count;
+	list_for_each_entry(request_t, rq_root, rq_list, rq_node) {
+		rq = rq_root;
+		do {
+			rqe = rqe_array + count;
 
-		strcpy(rqe->workload_name, rq->rq_workload->wl_name);
-		rqe->step = rq->rq_step;
-		rqe->request = rq->rq_id;
-		rqe->thread = rq->rq_thread_id;
+			strcpy(rqe->workload_name, rq->rq_workload->wl_name);
+			rqe->step = rq->rq_step;
+			rqe->request = rq->rq_id;
+			rqe->thread = rq->rq_thread_id;
 
-		rqe->sched_time = rq->rq_sched_time;
-		rqe->start_time = rq->rq_start_time;
-		rqe->end_time = rq->rq_end_time;
+			rqe->sched_time = rq->rq_sched_time;
+			rqe->start_time = rq->rq_start_time;
+			rqe->end_time = rq->rq_end_time;
 
-		rqe->flags = rq->rq_flags;
+			rqe->flags = rq->rq_flags;
 
-		++count;
+			++count;
 
-		if(count == rqe_array_length) {
-			tsfile_add(rqreport_file, rqe_array, count);
-			count = 0;
-		}
+			if(count == rqe_array_length) {
+				tsfile_add(rqreport_file, rqe_array, count);
+				count = 0;
+			}
+
+			rq = rq->rq_chain_next;
+		} while(rq != NULL);
 	}
 
 	if(count > 0) {
@@ -620,7 +643,7 @@ void generate_rqreport_filename(void) {
 /**
  * Load system with requests
  */
-int do_load() {
+int do_load(void) {
 	int err = LOAD_OK;
 	workload_t* wl = NULL;
 
