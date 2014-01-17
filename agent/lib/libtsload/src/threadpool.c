@@ -102,14 +102,15 @@ end:
 	return str;
 }
 
+
 static void tp_create_worker(thread_pool_t* tp, int tid) {
 	tp_worker_t* worker = tp->tp_workers + tid;
 
-	mutex_init(&worker->w_rq_mutex, "work-%s-%d", tp->tp_name, tid);
-
-	list_head_init(&worker->w_requests, "rqs-%s-%d", tp->tp_name, tid);
-
 	worker->w_tp = tp;
+
+	mutex_init(&worker->w_rq_mutex, "work-%s-%d", tp->tp_name, tid);
+	cv_init(&worker->w_rq_cv, "work-%s-%d", tp->tp_name, tid);
+	worker->w_rq_mailbox = NULL;
 
 	t_init(&worker->w_thread, (void*) worker, worker_thread,
 			"work-%s-%d", tp->tp_name, tid);
@@ -121,6 +122,7 @@ static void tp_destroy_worker(thread_pool_t* tp, int tid) {
 
 	t_destroy(&worker->w_thread);
 
+	cv_destroy(&worker->w_rq_cv);
 	mutex_destroy(&worker->w_rq_mutex);
 }
 
@@ -152,8 +154,10 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	strncpy(tp->tp_name, name, TPNAMELEN);
 
 	tp->tp_num_threads = num_threads;
-	tp->tp_ready_workers = num_threads;
+	tp->tp_last_worker = 0;
 	tp->tp_workers = (tp_worker_t*) mp_cache_alloc_array(&tp_worker_cache, num_threads);
+
+	tp->tp_master = NULL;
 
 	tp->tp_time	   = 0ll;	   /*Time is set by control thread*/
 	tp->tp_quantum = quantum;
@@ -170,9 +174,10 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 
 	/*Initialize objects*/
 	list_head_init(&tp->tp_wl_head, "tp-%s", name);
+	list_head_init(&tp->tp_rq_head, "tp-rq-%s", name);
+
     mutex_init(&tp->tp_mutex, "tp-%s", name);
-    cv_init(&tp->tp_cv_control, "tp-%s-cv-ctl", name);
-    cv_init(&tp->tp_cv_worker, "tp-%s-cv-w", name);
+    cv_init(&tp->tp_cv_worker, "tp-%s-cv", name);
 
 	/*Create threads*/
 	t_init(&tp->tp_ctl_thread, (void*) tp, control_thread,
@@ -199,17 +204,6 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 	if(may_remove)
 		hash_map_remove(&tp_hash_map, tp);
 
-#if 0
-	/* Destroy all workloads. No need to detach them,
-	 * because we destroy entire threadpool */
-	mutex_lock(&tp->tp_mutex);
-	list_for_each_entry_safe(workload_t, wl, tmp, &tp->tp_wl_head, wl_tp_node) {
-		wl_unconfig(wl);
-		tp_detach_nolock(tp, wl);
-	}
-	mutex_unlock(&tp->tp_mutex);
-#endif
-
 	assert(list_empty(&tp->tp_wl_head));
 
 	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
@@ -219,7 +213,6 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 	t_destroy(&tp->tp_ctl_thread);
 
 	cv_destroy(&tp->tp_cv_worker);
-	cv_destroy(&tp->tp_cv_control);
 	mutex_destroy(&tp->tp_mutex);
 
 	mp_cache_free_array(&tp_worker_cache, tp->tp_workers, tp->tp_num_threads);
@@ -229,12 +222,21 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 }
 
 void tp_destroy(thread_pool_t* tp) {
-	/* Notify workers that we are done */
+	int tid;
+	tp_worker_t* worker;
 
 	mutex_lock(&tp->tp_mutex);
 	tp->tp_is_dead = B_TRUE;
 	cv_notify_all(&tp->tp_cv_worker);
 	mutex_unlock(&tp->tp_mutex);
+
+	/* Notify workers that we are done */
+	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
+		worker = tp->tp_workers + tid;
+		mutex_lock(&worker->w_rq_mutex);
+		cv_notify_one(&worker->w_rq_cv);
+		mutex_unlock(&worker->w_rq_mutex);
+	}
 
 	tp_rele(tp, B_TRUE);
 }
@@ -305,42 +307,6 @@ void tp_detach(thread_pool_t* tp, struct workload* wl) {
 }
 
 /**
- * Helper for tp_distribute_requests
- *
- * Distributes num requests across array elements randomly
- *
- * @param def default number of requests per array item
- * @param num extra number of requests
- * @param len length of array
- * @param array pointer to array
- * */
-static void distribute_requests(int def, int num, int len, int* array) {
-	int i = 0, bit = 0;
-	long rand_value = rand();
-
-	/*Initialize array*/
-	for(i = 0; i < len; ++i) {
-		array[i] = def;
-	}
-
-	while(num > 0) {
-		if(rand_value && (1 << bit)) {
-			/* We found one, attach request*/
-			--num;
-			array[bit % len]++;
-		}
-
-		/* We exhausted rand_value, regenerate it*/
-		if((1 << bit) >= RAND_MAX) {
-			bit = 0;
-			rand_value = rand();
-		}
-
-		bit++;
-	}
-}
-
-/**
  * Distribute requests across threadpool's workers
  *
  * I.e. we have to distribute 11 requests across 4 workers
@@ -349,94 +315,83 @@ static void distribute_requests(int def, int num, int len, int* array) {
  *
  * @note Called with w_rq_mutex held for all workers*/
 void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
-	unsigned rq_per_worker = step->wls_rq_count / tp->tp_num_threads;
-	unsigned extra_rqs = step->wls_rq_count % tp->tp_num_threads;
+	unsigned rq_count = step->wls_rq_count;
 
-	int* num_rqs = NULL;
 	request_t* rq;
 	request_t* last_rq;
 	request_t* next_rq;
 
-	list_head_t* rq_list;
+	list_head_t* rq_list = &tp->tp_rq_head;
 
 	int tid;
 
 	if(step->wls_rq_count == 0)
 		return;
 
-	num_rqs = (int*) mp_malloc(tp->tp_num_threads * sizeof(int));
-
-	distribute_requests(rq_per_worker, extra_rqs, tp->tp_num_threads, num_rqs);
-
 	/* Create sorted list of requests */
-	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
-		rq_list = &tp->tp_workers[tid].w_requests;
-
-		if(list_empty(rq_list)) {
-			last_rq = NULL;
-		}
-		else {
-			last_rq = list_entry(list_head_node(rq_list), request_t, rq_node);
-		}
-
-		while(num_rqs[tid] > 0) {
-			rq = wl_create_request(step->wls_workload, tid, NULL);
-
-			/* Usually there are only one workload per threadpool, so we may simple put
-			 * new request after last request. But if it is second workload, these conditions
-			 * would not be satisfied (there would be requests after current request, and
-			 * we have to find appropriate place for it. */
-			if(!last_rq ||
-			    (list_is_last(&last_rq->rq_node, rq_list) && rq->rq_sched_time >= last_rq->rq_sched_time) ) {
-					list_add_tail(&rq->rq_node, rq_list);
-					last_rq = rq;
-			}
-			else {
-				boolean_t middle = B_FALSE;
-
-				next_rq = last_rq;
-
-				if(rq->rq_sched_time >= last_rq->rq_sched_time) {
-					/* Search forward */
-					list_for_each_entry_continue(request_t, next_rq, rq_list, rq_node) {
-						if(rq->rq_sched_time < next_rq->rq_sched_time) {
-							middle = B_TRUE;
-							break;
-						}
-						last_rq = next_rq;
-					}
-
-					if(!middle) {
-						list_add_tail(&rq->rq_node, rq_list);
-					}
-				}
-				else {
-					/* Search backward */
-					list_for_each_entry_continue_reverse(request_t, last_rq, rq_list, rq_node) {
-						if(rq->rq_sched_time >= last_rq->rq_sched_time) {
-							middle = B_TRUE;
-							break;
-						}
-
-						next_rq = last_rq;
-					}
-
-					if(!middle) {
-						list_add(&rq->rq_node, rq_list);
-					}
-				}
-
-				if(middle) {
-					/* Insert new request between next_rq and last_rq */
-					__list_add(&rq->rq_node, &last_rq->rq_node, &next_rq->rq_node);
-				}
-			}
-
-			--num_rqs[tid];
-		}
+	if(list_empty(rq_list)) {
+		last_rq = NULL;
+	}
+	else {
+		last_rq = list_last_entry(request_t, rq_list, rq_node);
 	}
 
-	mp_free(num_rqs);
+	while(rq_count != 0) {
+		rq = wl_create_request(step->wls_workload, NULL);
+
+		/* Usually there are only one workload per threadpool, so we may simple put
+		 * new request after last request. But if it is second workload, these conditions
+		 * would not be satisfied (there would be requests after current request, and
+		 * we have to find appropriate place for it. */
+		if(!last_rq ||
+				(list_is_last(&last_rq->rq_node, rq_list) &&
+				 rq->rq_sched_time >= last_rq->rq_sched_time) ) {
+			list_add_tail(&rq->rq_node, rq_list);
+			last_rq = rq;
+		}
+		else {
+			boolean_t middle = B_FALSE;
+
+			next_rq = last_rq;
+
+			if(rq->rq_sched_time >= last_rq->rq_sched_time) {
+				/* Search forward */
+				list_for_each_entry_continue(request_t, next_rq, rq_list, rq_node) {
+					if(rq->rq_sched_time < next_rq->rq_sched_time) {
+						middle = B_TRUE;
+						break;
+					}
+					last_rq = next_rq;
+				}
+
+				if(!middle) {
+					list_add_tail(&rq->rq_node, rq_list);
+				}
+			}
+			else {
+				/* Search backward */
+				list_for_each_entry_continue_reverse(request_t, last_rq, rq_list, rq_node) {
+					if(rq->rq_sched_time >= last_rq->rq_sched_time) {
+						middle = B_TRUE;
+						break;
+					}
+
+					next_rq = last_rq;
+				}
+
+				if(!middle) {
+					list_add(&rq->rq_node, rq_list);
+				}
+			}
+
+			if(middle) {
+				/* Insert new request between next_rq and last_rq */
+				__list_add(&rq->rq_node, &last_rq->rq_node, &next_rq->rq_node);
+			}
+		}
+
+		--rq_count;
+	}
 }
 
 JSONNODE* json_tp_format(hm_item_t* object) {

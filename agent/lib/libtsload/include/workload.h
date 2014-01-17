@@ -158,8 +158,8 @@ int wl_is_started(workload_t* wl);
 int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs);
 int wl_advance_step(workload_step_t* step);
 
-request_t* wl_create_request(workload_t* wl, int thread_id, request_t* parent);
-void wl_run_request(request_t* rq);
+request_t* wl_create_request(workload_t* wl, request_t* parent);
+void wl_run_request(request_t* rq, int thread_id);
 void wl_request_free(request_t* rq);
 void wl_report_requests(list_head_t* rq_list);
 

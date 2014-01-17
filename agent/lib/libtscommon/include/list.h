@@ -131,7 +131,7 @@ STATIC_INLINE void list_add_tail(list_node_t *node, list_head_t *head)
  */
 STATIC_INLINE void list_insert(list_node_t *node, list_node_t *iter)
 {
-	__list_add(node, iter->prev, iter->next);
+	__list_add(node, iter, iter->next);
 }
 
 
@@ -423,7 +423,7 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 
 /**
  * list_first_entry - get the first element from a list
- * @param ptr 	the list head to take the element from.
+ * @param head 	the list head to take the element from.
  * @param type 	the type of the struct this is embedded in.
  * @param member 	the name of the list_struct within the struct.
  *
@@ -431,6 +431,28 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
  */
 #define list_first_entry(type, head, member) \
 	list_entry((head)->l_head.next, type, member)
+
+/**
+ * list_last_entry - get the last element from a list
+ * @param head 	the list head to take the element from.
+ * @param type 	the type of the struct this is embedded in.
+ * @param member 	the name of the list_struct within the struct.
+ *
+ * Note, that list is expected to be not empty.
+ */
+#define list_last_entry(type, head, member) \
+	list_entry((head)->l_head.prev, type, member)
+
+/**
+ * list_next_entry - get the element from a list after node
+ * @param ptr 	pointer to current entry
+ * @param type 	the type of the struct this is embedded in.
+ * @param member 	the name of the list_struct within the struct.
+ *
+ * Note, that node is expected not tot be last.
+ */
+#define list_next_entry(type, ptr, member) \
+	list_entry((ptr)->member.next, type, member)
 
 /**
  * list_for_each	-	iterate over a list

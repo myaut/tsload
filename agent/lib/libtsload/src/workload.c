@@ -134,6 +134,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_params = mp_malloc(wlt->wlt_params_size);
 	wl->wl_private = NULL;
 
+	wl->wl_status_flags = 0;
 	WL_SET_STATUS(wl, WLS_NEW);
 
 	wl->wl_start_time = TS_TIME_MAX;
@@ -477,7 +478,7 @@ done:
  * @param parent parent request (for chained workloads) \
  * 		For unchained workloads should be set to NULL.
  * */
-request_t* wl_create_request(workload_t* wl, int thread_id, request_t* parent) {
+request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
 
 	if(parent == NULL) {
@@ -489,7 +490,7 @@ request_t* wl_create_request(workload_t* wl, int thread_id, request_t* parent) {
 		rq->rq_id = parent->rq_id;
 	}
 
-	rq->rq_thread_id = thread_id;
+	rq->rq_thread_id = -1;
 
 	rq->rq_flags = 0;
 
@@ -506,11 +507,14 @@ request_t* wl_create_request(workload_t* wl, int thread_id, request_t* parent) {
 	wl_hold(wl);
 
 	if(wl->wl_chain_next != NULL) {
-		rq->rq_chain_next = wl_create_request(wl->wl_chain_next, thread_id, rq);
+		rq->rq_chain_next = wl_create_request(wl->wl_chain_next, rq);
 	}
 	else {
 		rq->rq_chain_next = NULL;
 	}
+
+	logmsg(LOG_TRACE, "Created request %s/%d step: %d", wl->wl_name,
+			rq->rq_id, rq->rq_step);
 
 	return rq;
 }
@@ -518,14 +522,16 @@ request_t* wl_create_request(workload_t* wl, int thread_id, request_t* parent) {
 /**
  * Free request's memory */
 void wl_request_destroy(request_t* rq) {
-	wl_rele(rq->rq_workload);
+	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %d", rq->rq_workload->wl_name,
+			rq->rq_id, rq->rq_step);
 
+	wl_rele(rq->rq_workload);
 	mp_cache_free(&wl_rq_cache, rq);
 }
 
 /**
  * Run request for execution */
-void wl_run_request(request_t* rq) {
+void wl_run_request(request_t* rq, int thread_id) {
 	int ret;
 	workload_t* wl = rq->rq_workload;
 
@@ -536,6 +542,10 @@ void wl_run_request(request_t* rq) {
 	if(WL_HAD_STATUS(wl, WLS_FINISHED))
 		return;
 
+	logmsg(LOG_TRACE, "Running request %s/%d step: %d worker: #%d",
+			rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, thread_id);
+
+	rq->rq_thread_id = thread_id;
 	rq->rq_start_time = tm_get_clock();
 	ret = wl->wl_type->wlt_run_request(rq);
 	rq->rq_end_time = tm_get_clock();

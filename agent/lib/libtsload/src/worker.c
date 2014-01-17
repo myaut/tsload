@@ -15,17 +15,17 @@
 #include <tstime.h>
 #include <threads.h>
 #include <threadpool.h>
+#include <schedutil.h>
 
 #include <assert.h>
 
 void tp_detach_nolock(thread_pool_t* tp, struct workload* wl);
 
-static void control_reset_workers(thread_pool_t* tp);
+static void control_report_step(thread_pool_t* tp);
 static void control_prepare_step(thread_pool_t* tp, workload_step_t* step);
 
-static void worker_awake(tp_worker_t* worker);
-static void worker_sleep(tp_worker_t* worker);
-static void worker_run_request(tp_worker_t* worker, request_t* rq, ts_time_t cur_time);
+static request_t* worker_pick_request(thread_pool_t* tp, tp_worker_t* worker);
+static request_t* worker_master_dispatch(thread_pool_t* tp, tp_worker_t* worker);
 
 /**
  * Control thread
@@ -38,7 +38,7 @@ thread_result_t control_thread(thread_arg_t arg) {
 	ts_time_t tm = tm_get_time();
 	workload_t *wl;
 	int wl_count = 0, wl_count_prev = 0, wli = 0;
-	int tid = 0;
+	int wid = 0;
 
 	workload_step_t* step = mp_malloc(1 * sizeof(workload_step_t));
 
@@ -57,13 +57,11 @@ thread_result_t control_thread(thread_arg_t arg) {
 	while(!tp->tp_is_dead) {
 		tp->tp_time = tm_get_clock();
 
-		logmsg(LOG_TRACE, "Control thread %s is running (tm: %lld)",
+		logmsg(LOG_TRACE, "Threadpool '%s': control thread is running (tm: %lld)",
 					tp->tp_name, tp->tp_time);
 
 		mutex_lock(&tp->tp_mutex);
 		wl_count = tp->tp_wl_count;
-
-		control_reset_workers(tp);
 
 		/* = INITIALIZE STEP ARRAY = */
 		if(unlikely(tp->tp_wl_changed)) {
@@ -88,13 +86,11 @@ thread_result_t control_thread(thread_arg_t arg) {
 
 		wl_count_prev = wl_count;
 
+		control_report_step(tp);
+
 		/*No workloads attached to thread pool, go to bed!*/
 		if(wl_count == 0)
 			goto quantum_sleep;
-
-		/* = ADVANCE STEP = */
-		for(tid = 0; tid < tp->tp_num_threads; ++tid)
-				mutex_lock(&tp->tp_workers[tid].w_rq_mutex);
 
 		/* Advance step for each workload, then
 		 * distribute requests across workers*/
@@ -102,9 +98,11 @@ thread_result_t control_thread(thread_arg_t arg) {
 			control_prepare_step(tp, &step[wli]);
 		}
 
-		/* Unlock mutexes and notify worker thread that we are ready*/
-		for(tid = 0; tid < tp->tp_num_threads; ++tid)
-			mutex_unlock(&tp->tp_workers[tid].w_rq_mutex);
+		if(!list_empty(&tp->tp_rq_head)) {
+			tp->tp_current_rq = list_first_entry(request_t, &tp->tp_rq_head, rq_node);
+		}
+
+		logmsg(LOG_TRACE, "Threadpool '%s': waking up workers", tp->tp_name);
 
 		cv_notify_all(&tp->tp_cv_worker);
 
@@ -118,17 +116,6 @@ THREAD_END:
 	mp_free(step);
 	tp_rele(tp, B_FALSE);
 	THREAD_FINISH(arg);
-}
-
-static void control_reset_workers(thread_pool_t* tp) {
-	int wi;
-
-	for(wi = 0; wi < tp->tp_num_threads; ++wi) {
-		atomic_set(&tp->tp_workers[wi].w_state, INTERRUPT);
-	}
-
-	while(tp->tp_ready_workers < tp->tp_num_threads)
-		cv_wait(&tp->tp_cv_control, &tp->tp_mutex);
 }
 
 static void control_prepare_step(thread_pool_t* tp, workload_step_t* step) {
@@ -163,19 +150,31 @@ static void control_prepare_step(thread_pool_t* tp, workload_step_t* step) {
 		tp_distribute_requests(step, tp);
 	}
 
-	logmsg(LOG_TRACE, "Workload %s step #%ld",
-			wl->wl_name, wl->wl_current_step);
+	logmsg(LOG_TRACE, "Workload %s step #%ld", wl->wl_name, wl->wl_current_step);
+}
+
+static void control_report_step(thread_pool_t* tp) {
+	list_head_t* rq_list = NULL;
+
+	if(!list_empty(&tp->tp_rq_head)) {
+		rq_list = (list_head_t*) mp_malloc(sizeof(list_head_t));
+
+		list_head_init(rq_list, "rqs-%s-out", tp->tp_name);
+		list_splice_init(&tp->tp_rq_head, list_head_node(rq_list));
+
+		tp->tp_current_rq = NULL;
+
+		wl_report_requests(rq_list);
+	}
 }
 
 thread_result_t worker_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, tp_worker_t, worker);
-	list_head_t* rq_list;
+
 	request_t* rq;
 	request_t* rq_root;
 
 	thread_pool_t* tp = worker->w_tp;
-
-	ts_time_t cur_time;
 
 	long worker_step = 0;
 
@@ -185,89 +184,144 @@ thread_result_t worker_thread(thread_arg_t arg) {
 			thread->t_local_id, tp->tp_name);
 
 	while(!worker->w_tp->tp_is_dead) {
-		worker_awake(worker);
+		rq_root = worker_pick_request(tp, worker);
+		if(rq_root == NULL)
+			continue;
 
-		if(!list_empty(&worker->w_requests)) {
-			/*There are new requests on queue*/
-			cur_time = tm_get_clock();
+		rq = rq_root;
+		do {
+			wl_run_request(rq, worker->w_thread.t_local_id);
 
-			rq_list = (list_head_t*) mp_malloc(sizeof(list_head_t));
-			list_head_init(rq_list, "rqs-%s-%d", tp->tp_name, thread->t_local_id);
-
-			/* Extract requests from queue */
-			list_splice_init(&worker->w_requests, list_head_node(rq_list));
-			mutex_unlock(&worker->w_rq_mutex);
-
-			list_for_each_entry(request_t, rq_root, rq_list, rq_node)  {
-				rq = rq_root;
-				do {
-					worker_run_request(worker, rq, cur_time);
-
-					/* Do not bother OS, if we recently asked what's time it? */
-					cur_time = (rq->rq_end_time != 0)
-							? rq->rq_end_time
-							: tm_get_clock();
-
-					if(atomic_read(&worker->w_state) == INTERRUPT) {
-						break;
-					}
-
-					rq = rq->rq_chain_next;
-				} while(rq != NULL);
-			}
-
-			/*Push chain of requests to global chain*/
-			wl_report_requests(rq_list);
-		}
-		else {
-			/* No requests, sweet dreams, worker */
-			mutex_unlock(&worker->w_rq_mutex);
-		}
-
-		worker_sleep(worker);
+			rq = rq->rq_chain_next;
+		} while(rq != NULL);
 	}
 
 THREAD_END:
-	assert(list_empty(&worker->w_requests));
 	tp_rele(tp, B_FALSE);
 	THREAD_FINISH(arg);
 }
 
-static void worker_awake(tp_worker_t* worker) {
-	thread_pool_t* tp = worker->w_tp;
+/* TSLoad doesn't simulate request arrivals, because it imposes extra
+ * context switches. Instead of doing that, first worker to enter tp_mutex
+ * becomes master and dispatches next request to one of slaves (or itself).
+ * */
+static request_t* worker_pick_request(thread_pool_t* tp, tp_worker_t* worker) {
+	request_t* rq = NULL;
 
-	mutex_lock(&worker->w_rq_mutex);
+	boolean_t is_master = tp->tp_master == worker;
 
-	atomic_set(&worker->w_state, WORKING);
-
-	mutex_lock(&tp->tp_mutex);
-	--tp->tp_ready_workers;
-	mutex_unlock(&tp->tp_mutex);
-}
-
-static void worker_sleep(tp_worker_t* worker) {
-	thread_pool_t* tp = worker->w_tp;
-
-	mutex_lock(&tp->tp_mutex);
-	if(!worker->w_tp->tp_is_dead) {
-		++tp->tp_ready_workers;
-		cv_notify_one(&tp->tp_cv_control);
-		atomic_set(&worker->w_state, SLEEPING);
-		cv_wait(&tp->tp_cv_worker, &tp->tp_mutex);
+	if(is_master) {
+		/* Was chosen by prevous master - wait until it release mutex */
+		mutex_lock(&tp->tp_mutex);
 	}
-	mutex_unlock(&tp->tp_mutex);
+	else {
+		/* Try to became master */
+		is_master = mutex_try_lock(&tp->tp_mutex);
+	}
+
+	if(is_master) {
+		tp->tp_master = worker;
+
+		if(tp->tp_current_rq != NULL) {
+			rq = worker_master_dispatch(tp, worker);
+		}
+		else {
+			logmsg(LOG_TRACE, "Threadpool '%s': worker %d is waiting for requests",
+						tp->tp_name, worker->w_thread.t_local_id);
+
+			tp->tp_master = NULL;
+			cv_wait(&tp->tp_cv_worker, &tp->tp_mutex);
+		}
+
+		mutex_unlock(&tp->tp_mutex);
+	}
+	else {
+		/* Slave */
+		logmsg(LOG_TRACE, "Threadpool '%s': worker %d is slave", tp->tp_name,
+						worker->w_thread.t_local_id);
+
+		mutex_lock(&worker->w_rq_mutex);
+		worker->w_rq_mailbox = NULL;
+		cv_wait(&worker->w_rq_cv, &worker->w_rq_mutex);
+		rq = worker->w_rq_mailbox;
+		mutex_unlock(&worker->w_rq_mutex);
+	}
+
+	return rq;
 }
 
-static void worker_run_request(tp_worker_t* worker, request_t* rq, ts_time_t cur_time) {
+static request_t* worker_master_dispatch(thread_pool_t* tp, tp_worker_t* self) {
+	request_t* master_rq = tp->tp_current_rq;
+	int wid = tp->tp_last_worker + 1, i;
+
+	tp_worker_t* worker;
+
+	ts_time_t cur_time = tm_get_clock();
 	ts_time_t next_time;
 	ts_time_t delta;
 
-	next_time = rq->rq_sched_time;
+	boolean_t dispatched = B_FALSE;
+
+	logmsg(LOG_TRACE, "Threadpool '%s': worker %d is elected as master",
+						tp->tp_name, self->w_thread.t_local_id);
+
+	if(list_is_last(&master_rq->rq_node, &tp->tp_rq_head))
+		tp->tp_current_rq = NULL;
+	else
+		tp->tp_current_rq = list_next_entry(request_t, master_rq, rq_node);
+
+	self->w_rq_mailbox = NULL;
+
+	/* Sleep till request time come */
+	next_time = master_rq->rq_sched_time;
 	delta = tm_diff(cur_time, next_time);
 
 	if(cur_time < next_time && delta > TP_WORKER_MIN_SLEEP) {
 		tm_sleep_nano(delta - TP_WORKER_OVERHEAD);
 	}
 
-	wl_run_request(rq);
+	/* Dispatch master rq to first worker
+	 * TODO: request balancing */
+	for(i = 0; i < tp->tp_num_threads; ++i) {
+		if(wid >= tp->tp_num_threads)
+			wid = 0;
+		worker = tp->tp_workers + wid++;
+
+		if(worker->w_rq_mailbox != NULL)
+			continue;
+
+		if(worker == self) {
+			/* Dispatch request to master itself.
+			 * If there are at least one sleeping worker, wakeup
+			 * it so it can be re-elected as master */
+			self->w_rq_mailbox = master_rq;
+			tp->tp_last_worker = wid;
+			dispatched = B_TRUE;
+		}
+		else {
+			mutex_lock(&worker->w_rq_mutex);
+
+			if(!dispatched) {
+				worker->w_rq_mailbox = master_rq;
+				tp->tp_last_worker = wid;
+				dispatched = B_TRUE;
+			}
+			else {
+				tp->tp_master = worker;
+			}
+
+			cv_notify_one(&worker->w_rq_cv);
+			mutex_unlock(&worker->w_rq_mutex);
+
+			break;
+		}
+	}
+
+	if(dispatched) {
+		logmsg(LOG_TRACE, "Threadpool '%s': dispatched request %s/%d to worker %d",
+					tp->tp_name, master_rq->rq_workload->wl_name,
+					master_rq->rq_id, tp->tp_last_worker);
+	}
+
+	return self->w_rq_mailbox;
 }
