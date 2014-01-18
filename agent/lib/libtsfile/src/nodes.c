@@ -161,16 +161,16 @@ void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
 		{
 			switch(schema->fields[fi].size) {
 			case 1:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint8_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(int8_t, value));
 			break;
 			case 2:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint16_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(int16_t, value));
 			break;
 			case 4:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint32_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(int32_t, value));
 			break;
 			case 8:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint64_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(int64_t, value));
 			break;
 			}
 		}
@@ -218,7 +218,7 @@ int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry) {
 			return -1;
 		}
 
-		switch(schema->fields[fi].type) {
+		switch(field->type) {
 		case TSFILE_FIELD_BOOLEAN:
 			FIELD_PUT_VALUE(boolean_t, value, json_as_bool(*i_field));
 		break;

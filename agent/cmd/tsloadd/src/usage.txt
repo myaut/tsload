@@ -1,0 +1,4 @@
+tsloadd - TSLoad agent daemon
+
+command line: 
+    tsloadd -f <config-file> [-d|-t]

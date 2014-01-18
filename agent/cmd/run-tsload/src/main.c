@@ -58,18 +58,7 @@ enum {
 	CMD_LOAD
 } command;
 
-void usage() {
-	fprintf(stderr, "environment options: \n"
-					"\tTS_MODPATH - path to loadable modules\n"
-					"\tTS_LOGFILE - log destination ('-' for stdout)\n"
-					"command line: \n"
-					"\trun-tsload [-d|-t] -e <experiment directory> \n\t\truns loader\n"
-					"\trun-tsload [-d|-t] -m \n\t\tget information on modules (in JSON)\n"
-					"\trun-tsload [-d|-t] -h \n\t\thelp\n"
-					"\trun-tsload -v \n\t\tversion information\n");
-
-	exit(1);
-}
+void usage(int ret, const char* reason, ...);
 
 /*
  * Make TSLoad a bit portable - get absolute path of run-tsload,
@@ -120,7 +109,7 @@ void parse_options(int argc, const char* argv[]) {
 	while((c = plat_getopt(argc, argv, "e:r:dtmhv")) != -1) {
 		switch(c) {
 		case 'h':
-			usage();
+			usage(0, "");
 			break;
 		case 'e':
 			eflag = B_TRUE;
@@ -149,25 +138,17 @@ void parse_options(int argc, const char* argv[]) {
 			break;
 		case '?':
 			if(optopt == 'e' || optopt == 'r')
-				fprintf(stderr, "-%c option requires an argument\n", optopt);
+				usage(1, "-%c option requires an argument\n", optopt);
 			else
-				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-			ok = B_FALSE;
+				usage(1, "Unknown option `-%c'.\n", optopt);
 			break;
 		}
-
-		if(!ok)
-			break;
 	}
 
 	if(!eflag && !log_configured) {
-		fprintf(stderr, "Missing TS_LOGFILE environment variable, and not configured in experiment mode\n");
-		usage();
+		usage(1, "Missing TS_LOGFILE environment variable, and not configured in experiment mode\n");
 	}
 
-	if(!ok) {
-		usage();
-	}
 }
 
 int main(int argc, char* argv[]) {
@@ -180,8 +161,7 @@ int main(int argc, char* argv[]) {
 	parse_options(argc, argv);
 
 	if(!mod_configured) {
-		fprintf(stderr, "Missing TS_MODPATH environment variable\n");
-		usage();
+		usage(1, "Missing TS_MODPATH environment variable\n");
 	}
 
 	mod_type = MOD_TSLOAD;
@@ -199,7 +179,7 @@ int main(int argc, char* argv[]) {
 		err = do_load();
 	}
 	else {
-		usage();
+		usage(1, "Command not specified");
 	}
 
 	if(err != 0) {

@@ -1,0 +1,17 @@
+run-tsload - Standalone loader agent
+
+Usage:
+$ run-tsload [-d|-t] options
+
+Environment options: 
+    TS_MODPATH - path to loadable modules
+    TS_LOGFILE - log destination ('-' for stderr)
+
+Command options:
+    -m 
+    	Prints information about loader modules
+    -e <experiment directory>
+    	Starts new experiment
+    -d|-t 
+    	Enables debug/trace mode
+        

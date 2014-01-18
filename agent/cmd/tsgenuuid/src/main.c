@@ -22,14 +22,7 @@
 char loadcfg_path[PATHMAXLEN];
 char moncfg_path[PATHMAXLEN];
 
-void usage() {
-	fprintf(stderr, "command line: \n"
-					"\ttsgenuuid [-l /path/to/tsload.cfg] [-m /path/to/tsmonitor.cfg] \n"
-					"\ttsgenuuid -v - ts engine version\n"
-					"\ttsgenuuid -h - this help\n");
-
-	exit(1);
-}
+void usage(int err, const char* reason, ...);
 
 void parse_options(int argc, char* argv[]) {
 	int ok = 1;
@@ -54,22 +47,16 @@ void parse_options(int argc, char* argv[]) {
 			mflag = B_TRUE;
 			break;
 		case 'h':
-			usage();
-			exit(0);
+			usage(0, "");
 			break;
 		case '?':
-			fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-			ok = 0;
+			usage(1, "Unknown option `-%c'.\n", optopt);
 			break;
 		}
-
-		if(!ok)
-			break;
 	}
 
-	if(!ok || !lflag /* || !mflag */) {
-		usage();
-		exit(1);
+	if(!lflag /* || !mflag */) {
+		usage(1, "Config paths are not specified");
 	}
 }
 

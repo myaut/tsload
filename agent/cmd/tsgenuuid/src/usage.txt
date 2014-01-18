@@ -1,0 +1,4 @@
+tsgenuuid - Generate loader/monitor agent UUIDs
+
+command line: 
+    tsgenuuid [-l /path/to/tsload.cfg] [-m /path/to/tsmonitor.cfg]

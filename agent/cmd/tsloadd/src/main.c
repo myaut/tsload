@@ -35,17 +35,10 @@ LIBEXPORT struct subsystem xsubsys[XSUBSYS_COUNT] = {
 };
 
 
-void usage() {
-	fprintf(stderr, "command line: \n"
-					"\ttsloadd -f <config-file> [-d|-t]\n"
-					"\ttsloadd -v - tsload version\n");
-
-	exit(1);
-}
+void usage(int err, const char* reason, ...);
 
 void parse_options(int argc, char* argv[]) {
 	int fflag = 0;
-	int ok = 1;
 
 	int c;
 
@@ -67,20 +60,15 @@ void parse_options(int argc, char* argv[]) {
 			break;
 		case '?':
 			if(optopt == 'l' || optopt == 'm')
-				fprintf(stderr, "-%c option requires an argument\n", optopt);
+				usage(1, "-%c option requires an argument\n", optopt);
 			else
-				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-			ok = 0;
+				usage(1,"Unknown option `-%c'.\n", optopt);
 			break;
 		}
-
-		if(!ok)
-			break;
 	}
 
-	if(!ok || !fflag) {
-		usage();
-		exit(1);
+	if(!fflag) {
+		usage(1, "Config path is not specified!");
 	}
 }
 

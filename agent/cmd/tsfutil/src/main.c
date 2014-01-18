@@ -33,6 +33,8 @@ char schema_path[PATHMAXLEN];
 int start = 0;
 int end = -1;
 
+extern boolean_t tsfutil_json_print_one;
+
 char file_path[PATHMAXLEN];
 boolean_t use_std_streams = B_FALSE;
 
@@ -43,24 +45,20 @@ LIBEXPORT struct subsystem subsys[] = {
 	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini)
 };
 
-void usage() {
-	fprintf(stderr, "command line: \n"
-					"\ttsgenuuid -s <schema.json> [-F <csv|json|jsonraw>] [action] <tsf-file> [<file>] \n"
-					"\t\tWhere action is one of:\n"
-					"\t\t  (no option) - create new TSF\n"
-					"\t\t  -a - add entries from <file>\n"
-					"\t\t  -c - get entries count \n"
-					"\t\t  -g 0:$ - get entries range. $ means last entry. \n"
-					"\t\tIf file is omitted, then stdin/stdout is used \n"
-					"\ttsgenuuid -v - ts engine version\n"
-					"\ttsgenuuid -h - this help\n");
-
-}
+void usage(int ret, const char* reason, ...);
 
 int parse_get_range(const char* range) {
 	char* ptr;
 
 	start = strtol(range, &ptr, 10);
+
+	if(*ptr == '\0') {
+		/* Special case for JSON - get one entry */
+		end = start + 1;
+		tsfutil_json_print_one = B_TRUE;
+		return 0;
+	}
+
 	if(*ptr != ':' || start == -1)
 		return 1;
 
@@ -84,7 +82,7 @@ void parse_options_args(int argc, const char* argv[]) {
 
 	boolean_t s_flag = B_FALSE;
 
-	while((c = plat_getopt(argc, argv, "hvs:F:acg:")) != -1) {
+	while((c = plat_getopt(argc, argv, "+hvs:F:")) != -1) {
 		switch(c) {
 		case 'v':
 			print_ts_version("TS File utility");
@@ -96,8 +94,7 @@ void parse_options_args(int argc, const char* argv[]) {
 			break;
 		case 'F':
 			if(strcmp(optarg, "csv") == 0) {
-				fputs("CSV is not supported. Sorry.\n", stderr);
-				ok = 0;
+				backend = &csv_backend;
 			}
 			else if(strcmp(optarg, "json") == 0) {
 				backend = &json_backend;
@@ -106,45 +103,62 @@ void parse_options_args(int argc, const char* argv[]) {
 				backend = &jsonraw_backend;
 			}
 			else {
-				ok = 0;
+				usage(1, "Invalid backend '%s'\n", optarg);
 			}
 			break;
-		case 'a':
-			command = COMMAND_ADD;
+		case 'h':
+			usage(0, "");
 			break;
-		case 'c':
-			command = COMMAND_GET_COUNT;
+		case '?':
+			usage(1, "Unknown option `-%c'.\n", optopt);
 			break;
+		}
+	}
+
+	if(!s_flag) {
+		usage(1, "Missing schema file\n");
+	}
+
+	argi = optind;
+	if(argi == argc) {
+		usage(1, "Missing subcommand\n");
+	}
+
+	if(strcmp(argv[argi], "get") == 0) {
+		command = COMMAND_GET_ENTRIES;
+	}
+	else if(strcmp(argv[argi], "add") == 0) {
+		command = COMMAND_ADD;
+	}
+	else if(strcmp(argv[argi], "count") == 0) {
+		command = COMMAND_GET_COUNT;
+	}
+	else if(strcmp(argv[argi], "create") == 0) {
+		command = COMMAND_CREATE;
+	}
+	else {
+		usage(1, "Unknown subcommand '%s'\n", argv[argi]);
+	}
+	++optind;
+
+	while((c = plat_getopt(argc, argv, "g:o:")) != -1) {
+		switch(c) {
 		case 'g':
-			command = COMMAND_GET_ENTRIES;
 			if(parse_get_range(optarg) != 0) {
 				fprintf(stderr, "Failed to parse get range '%s'\n", optarg);
 				ok = 0;
 			}
 			break;
-		case 'h':
-			usage();
-			exit(0);
+		case 'o':
+			ok = backend->set(optarg);
+			if(!ok) {
+				usage(1, "Unknown backend option '%s'\n", optarg);
+			}
 			break;
 		case '?':
-			fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-			ok = 0;
+			usage(1, "Unknown option `-%c'.\n", optopt);
 			break;
 		}
-
-		if(!ok)
-			break;
-	}
-
-	if(!s_flag) {
-		fputs("Missing schema file\n", stderr);
-		usage();
-		exit(1);
-	}
-
-	if(!ok) {
-		usage();
-		exit(1);
 	}
 
 	argi = optind;
@@ -152,9 +166,7 @@ void parse_options_args(int argc, const char* argv[]) {
 		strncpy(tsf_path, argv[argi], PATHMAXLEN);
 	}
 	else {
-		fputs("Missing tsf-file\n", stderr);
-		usage();
-		exit(1);
+		usage(1, "Missing tsf-file\n");
 	}
 
 	++argi;

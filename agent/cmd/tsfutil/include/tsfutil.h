@@ -21,11 +21,16 @@ tsfile_schema_t* schema_read(const char* filename);
 typedef int (*tsfutil_get_func)(FILE* file, tsfile_t* ts_file, int start, int end);
 typedef int (*tsfutil_add_func)(FILE* file, tsfile_t* ts_file);
 
+typedef int (*tsfutil_set_func)(const char* option);
+
 typedef struct {
+	tsfutil_set_func set;
+
 	tsfutil_get_func get;
 	tsfutil_add_func add;
 } tsfutil_backend_t;
 
+extern tsfutil_backend_t csv_backend;
 extern tsfutil_backend_t json_backend;
 extern tsfutil_backend_t jsonraw_backend;
 

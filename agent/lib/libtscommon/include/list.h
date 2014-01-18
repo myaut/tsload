@@ -433,6 +433,17 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 	list_entry((head)->l_head.next, type, member)
 
 /**
+* list_last_entry - get the last element from a list
+* @param head         the list head to take the element from.
+* @param type         the type of the struct this is embedded in.
+* @param member         the name of the list_struct within the struct.
+*
+* Note, that list is expected to be not empty.
+*/
+#define list_last_entry(type, head, member) \
+        list_entry((head)->l_head.prev, type, member)
+
+/**
  * list_for_each	-	iterate over a list
  * @param pos 	the &struct list_head to use as a loop cursor.
  * @param head 	the head for your list.

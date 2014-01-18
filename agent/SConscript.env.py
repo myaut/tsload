@@ -55,7 +55,10 @@ def CompileSharedLibrary(self, extra_sources = [],
     return objects
     
 def CompileProgram(self, extra_sources = []):
-    objects = self.Object(Glob("src/*.c") + Glob("plat/*/*.c") + extra_sources)
+    usage = self.UsageBuilder('src/usage.txt')
+    
+    objects = self.Object(Glob("src/*.c") + Glob("plat/*/*.c") + \
+                          extra_sources)
     return objects
 
 def LinkSharedLibrary(self, target, objects, 
@@ -147,6 +150,12 @@ env.Append(CPPPATH = [PathJoin(env['TSLOADPATH'], 'include'),   # TSLoad include
 env.Append(LIBPATH = [])
 env.Append(LIBS = [])
 env.Append(WINRESOURCES = [])
+
+# Usage Builder
+UsageBuilder = Builder(action = '%s $TSLOADPATH/tools/genusage.py $SOURCE > $TARGET' % (sys.executable),
+                       src_suffix = '.txt',
+                       suffix = '.c')
+env.Append(BUILDERS = {'UsageBuilder': UsageBuilder})
 
 # TESTLIBS maps library under test name to path to it
 env.Append(TESTLIBS = {})
