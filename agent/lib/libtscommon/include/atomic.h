@@ -12,42 +12,46 @@
 
 #if defined(HAVE_ATOMIC_BUILTINS)
 
+#define ATOMIC_MEMMODEL __ATOMIC_SEQ_CST
+
 typedef volatile long atomic_t;
 
 STATIC_INLINE long atomic_read(atomic_t* atom) {
-	return __sync_fetch_and_add(atom, 0);
-}
-
-STATIC_INLINE void atomic_set(atomic_t* atom, long value) {
-	 (void) __sync_lock_test_and_set(atom, value);
+	long value;
+	__atomic_load(atom, &value, ATOMIC_MEMMODEL);
+	return value;
 }
 
 STATIC_INLINE long atomic_exchange(atomic_t* atom, long value) {
-	 return __sync_lock_test_and_set(atom, value);
+	 return  __atomic_exchange_n(atom, value, ATOMIC_MEMMODEL);
+}
+
+STATIC_INLINE void atomic_set(atomic_t* atom, long value) {
+	__atomic_store(atom, &value, ATOMIC_MEMMODEL);
 }
 
 STATIC_INLINE long atomic_inc(atomic_t* atom) {
-	return __sync_fetch_and_add(atom, 1);
+	return __atomic_add_fetch(atom, 1, ATOMIC_MEMMODEL) - 1;
 }
 
 STATIC_INLINE long atomic_dec(atomic_t* atom) {
-	return __sync_fetch_and_sub(atom, 1);
+	return __atomic_sub_fetch(atom, 1, ATOMIC_MEMMODEL) + 1;
 }
 
 STATIC_INLINE long atomic_add(atomic_t* atom, long value) {
-	return __sync_fetch_and_add(atom, value);
+	return  __atomic_add_fetch(atom, value, ATOMIC_MEMMODEL) - value;
 }
 
 STATIC_INLINE long atomic_sub(atomic_t* atom, long value) {
-	return __sync_fetch_and_sub(atom, value);
+	return  __atomic_sub_fetch(atom, value, ATOMIC_MEMMODEL) + value;
 }
 
 STATIC_INLINE long atomic_or(atomic_t* atom, long value) {
-	return __sync_fetch_and_or(atom, value);
+	return  __atomic_fetch_or(atom, value, ATOMIC_MEMMODEL);
 }
 
 STATIC_INLINE long atomic_and(atomic_t* atom, long value) {
-	return __sync_fetch_and_and(atom, value);
+	return  __atomic_fetch_and(atom, value, ATOMIC_MEMMODEL);
 }
 
 

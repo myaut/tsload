@@ -1,8 +1,12 @@
 from pathutil import *
 from buildstr import GenerateBuildFile
 from SCons.Errors import StopError
+import SCons.SConf
 
 Import('env')
+
+if 'configure' in BUILD_TARGETS:
+    SCons.SConf.SetCacheMode('force')
 
 gen_inc_dir = Dir(env.BuildDir('include'))
 gen_config = gen_inc_dir.File('genconfig.h')
@@ -55,11 +59,11 @@ def CheckGCCAtomicBuiltins(context):
     test_source = """
     int main() {
         long value;
-        __sync_fetch_and_add(&value, 187);
+         __atomic_fetch_add(&value, 187, __ATOMIC_ACQ_REL);
     }
     """
     
-    context.Message('Checking for GCC supports atomic builtins...')
+    context.Message('Checking if GCC supports atomic builtins...')
     ret = context.sconf.TryCompile(test_source, '.c')
     
     if ret:
@@ -70,9 +74,29 @@ def CheckGCCAtomicBuiltins(context):
     
     return ret
 
+def CheckAtomicSize(context):
+    test_source = """
+    #include "../lib/libtscommon/include/atomic.h"
+    #include <assert.h>
+    
+    int main() {
+        assert(sizeof(atomic_t) >= sizeof(void*));
+        
+        return 0;
+    }
+    """
+    
+    context.Message('Checking if atomic_t can hold pointers...')
+    ret, _ = context.sconf.TryRun(test_source, '.c')
+    
+    context.Result(ret)
+    
+    return ret
+
 conf.AddTests({'CheckBinary': CheckBinary,
                'CheckDesignatedInitializers': CheckDesignatedInitializers,
-               'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins})
+               'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins,
+               'CheckAtomicSize': CheckAtomicSize})
 
 #-------------------------------------------
 # C compiler and standard library checks
@@ -90,6 +114,9 @@ if not conf.CheckType('int64_t', '#include <stdint.h>\n'):
 
 conf.CheckDesignatedInitializers()
 
+if conf.CheckAtomicSize() != 1:
+    raise StopError('Invalid atomic_t size!')
+
 conf.CheckDeclaration('min', '#include <stdlib.h>')
 conf.CheckDeclaration('max', '#include <stdlib.h>')
 
@@ -102,7 +129,7 @@ if not conf.CheckDeclaration('snprintf', '#include <stdio.h>'):
 if env['CC'] == 'gcc':
     if not conf.CheckGCCAtomicBuiltins():
         raise StopError("GCC doesn't support atomic builtins")
-    
+
 # ------------------------------------------
 # Global platform checks    
 

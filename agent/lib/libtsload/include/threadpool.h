@@ -53,10 +53,8 @@ typedef struct tp_worker {
 	thread_t w_thread;
 
 	thread_mutex_t w_rq_mutex;
-
-	list_head_t w_requests;
-
-	atomic_t 	w_state;
+	thread_cv_t w_rq_cv;
+	struct request* w_rq_mailbox;
 } tp_worker_t;
 
 typedef struct thread_pool {
@@ -70,14 +68,16 @@ typedef struct thread_pool {
 
 	thread_t  tp_ctl_thread;		/**< Dispatcher thread*/
 	tp_worker_t* tp_workers;		/**< Worker threads*/
+	tp_worker_t* tp_master;
+	unsigned tp_last_worker;
 
 	thread_mutex_t tp_mutex;				/**< Protects workload list and tp_cv*/
-	thread_cv_t	   tp_cv_control;			/**< Notification worker->control */
 	thread_cv_t	   tp_cv_worker;			/**< Notification control->worker */
 
 	atomic_t	   tp_ref_count;
 
-	int tp_ready_workers;
+	list_head_t	   tp_rq_head;
+	struct request* tp_current_rq;
 
 	list_head_t	   tp_wl_head;
 	int tp_wl_count;
@@ -85,6 +85,8 @@ typedef struct thread_pool {
 
 	struct thread_pool* tp_next;
 } thread_pool_t;
+
+list_head_t* tp_create_worker_list(tp_worker_t* worker);
 
 LIBEXPORT thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quantum, const char* disp_name);
 LIBEXPORT void tp_destroy(thread_pool_t* tp);
