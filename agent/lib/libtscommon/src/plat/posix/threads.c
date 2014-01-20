@@ -42,3 +42,6 @@ PLATAPI void t_eternal_wait(void) {
 	select(0, NULL, NULL, NULL, NULL);
 }
 
+PLATAPI long t_get_pid(void) {
+	return getpid();
+}

@@ -19,6 +19,7 @@
 #include <pathutil.h>
 #include <plat/posixdecl.h>
 #include <tsfile.h>
+#include <tsdirent.h>
 
 #include <tsload.h>
 
@@ -47,29 +48,41 @@ JSONNODE* experiment = NULL;
 char experiment_name[EXPNAMELEN];
 
 /* Wait until experiment finishes or fails */
-thread_mutex_t	output_lock;
-thread_event_t	workload_event;
+static thread_mutex_t	output_lock;
+static thread_event_t	workload_event;
+static thread_event_t	request_event;
 
-char**			wl_name_array = NULL;	/* Names of configured workloads */
-boolean_t*		wl_is_chained = NULL;
-long 			wl_count = 0;
-atomic_t		wl_cfg_count;
-atomic_t		wl_run_count;
+typedef struct agent_workload {
+	char wl_name[WLNAMELEN];
 
-char**			tp_name_array = NULL;	/* Names of configured threadpools */
-int				tp_count = 0;
+	steps_generator_t* wl_steps;
+	boolean_t 		   wl_is_chained;
+	tsfile_t* 		   wl_rqreport_file;
+	tsfile_schema_t*   wl_schema;
 
-boolean_t		load_error = B_FALSE;
+	struct agent_workload* wl_hm_next;
+} agent_workload_t;
 
-tsfile_t* 		rqreport_file = NULL;
+DECLARE_HASH_MAP(agent_wl_hash_map, agent_workload_t, WLHASHSIZE, wl_name, wl_hm_next,
+	{
+		return hm_string_hash(key, WLHASHMASK);
+	},
+	{
+		return strcmp((char*) key1, (char*) key2) == 0;
+	}
+)
 
-#define REQUEST_ENTRY_SIZE		128
+static atomic_t	wl_cfg_count;
+static atomic_t	wl_run_count;
+static atomic_t	rq_count;
 
-int rqe_array_length = 12;
+static char**	tp_name_array = NULL;	/* Names of configured threadpools */
+static int		tp_count = 0;
+
+static boolean_t load_error = B_FALSE;
 
 #pragma pack(push, 1)
 struct request_entry {
-	char		workload_name[WLNAMELEN];
 	uint32_t	step;
 	uint32_t	request;
 	uint32_t	thread;
@@ -83,9 +96,8 @@ struct request_entry {
 #pragma pack(pop)
 
 tsfile_schema_t request_schema = {
-	TSFILE_SCHEMA_HEADER(128, 8),
+	TSFILE_SCHEMA_HEADER(64, 7),
 	{
-		TSFILE_SCHEMA_FIELD_REF(struct request_entry, workload_name, TSFILE_FIELD_STRING),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, step, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, request, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, thread, TSFILE_FIELD_INT),
@@ -187,7 +199,7 @@ static void unconfigure_all_wls(void);
  * steps file or creates const generator.
  * If open encounters an error or invalid description provided,
  * returns LOAD_ERR_CONFIGURE otherwise returns LOAD_OK */
-static int load_steps(const char* wl_name, JSONNODE* steps_node) {
+static steps_generator_t* load_steps(const char* wl_name, JSONNODE* steps_node) {
 	int ret = LOAD_OK;
 
 	JSONNODE_ITERATOR	i_step, i_end, i_file, i_const_rqs, i_const_steps;
@@ -197,6 +209,8 @@ static int load_steps(const char* wl_name, JSONNODE* steps_node) {
 	long num_steps;
 	unsigned num_requests;
 
+	steps_generator_t* sg = NULL;
+
 	i_end = json_end(steps_node);
 	i_step = json_find(steps_node, wl_name);
 
@@ -204,7 +218,7 @@ static int load_steps(const char* wl_name, JSONNODE* steps_node) {
 		json_type(*i_step) != JSON_NODE) {
 
 			load_fprintf(stderr, "Missing steps for workload %s\n", wl_name);
-			return LOAD_ERR_CONFIGURE;
+			return NULL;
 	}
 
 	i_end = json_end(*i_step);
@@ -213,18 +227,20 @@ static int load_steps(const char* wl_name, JSONNODE* steps_node) {
 	if(i_file != i_end) {
 		if(json_type(*i_file) != JSON_STRING) {
 			load_fprintf(stderr, "Invalid steps description for workload %s: 'file' should be a string\n", wl_name);
-			return LOAD_ERR_CONFIGURE;
+			return NULL;
 		}
 
 		step_fn = json_as_string(*i_file);
 		path_join(step_filename, PATHMAXLEN, experiment_dir, step_fn, NULL);
 
-		if(step_create_file(wl_name, step_filename) != STEP_OK) {
-			load_fprintf(stderr, "Couldn't open steps file for workload %s\n", step_filename, wl_name);
-			ret = LOAD_ERR_CONFIGURE;
-		}
+		sg = step_create_file(step_filename);
 
-		load_fprintf(stderr, "Loaded steps file %s for workload %s\n", step_filename, wl_name);
+		if(sg != NULL) {
+			load_fprintf(stderr, "Loaded steps file %s for workload %s\n", step_filename, wl_name);
+		}
+		else {
+			load_fprintf(stderr, "Couldn't open steps file for workload %s\n", step_filename, wl_name);
+		}
 
 		json_free(step_fn);
 	}
@@ -237,24 +253,24 @@ static int load_steps(const char* wl_name, JSONNODE* steps_node) {
 			   json_type(*i_const_steps) != JSON_NUMBER) {
 				load_fprintf(stderr, "Invalid steps description for workload %s:"
 									 "'num_requests' and 'num_steps' should be numbers\n", wl_name);
-							return LOAD_ERR_CONFIGURE;
+							return NULL;
 			}
 
 			num_steps = json_as_int(*i_const_steps);
 			num_requests = json_as_int(*i_const_rqs);
 
-			step_create_const(wl_name, num_steps, num_requests);
+			sg = step_create_const(num_steps, num_requests);
 
 			load_fprintf(stderr, "Created constant steps generator for workload %s with N=%d R=%d\n",
 					wl_name, num_steps, num_requests);
 		}
 		else {
 			load_fprintf(stderr, "Not found steps parameters for workload %s\n", wl_name);
-			return LOAD_ERR_CONFIGURE;
+			return NULL;
 		}
 	}
 
-	return ret;
+	return sg;
 }
 
 /**
@@ -262,11 +278,16 @@ static int load_steps(const char* wl_name, JSONNODE* steps_node) {
  * If it encounters parse error, set load_error flag
  *
  * @return result of step_get_step*/
-int load_provide_step(const char* wl_name) {
+int load_provide_step(agent_workload_t* awl) {
 	unsigned num_rqs = 0;
 	long step_id = -1;
 	int status;
-	int ret = step_get_step(wl_name, &step_id, &num_rqs);
+	int ret;
+
+	if(awl->wl_is_chained)
+		return STEP_NO_RQS;
+
+	ret = step_get_step(awl->wl_steps, &step_id, &num_rqs);
 
 	if(ret == STEP_ERROR) {
 		load_fprintf(stderr, "Cannot process step %ld: cannot parse or internal error!\n", step_id);
@@ -276,9 +297,38 @@ int load_provide_step(const char* wl_name) {
 	}
 
 	if(ret == STEP_OK)
-		tsload_provide_step(wl_name, step_id, num_rqs, &status);
+		tsload_provide_step(awl->wl_name, step_id, num_rqs, &status);
+
+	atomic_add(&rq_count, num_rqs);
 
 	return ret;
+}
+
+static agent_workload_t* awl_create(const char* wl_name) {
+	agent_workload_t* awl = mp_malloc(sizeof(agent_workload_t));
+
+	strncpy(awl->wl_name, wl_name, WLNAMELEN);
+	awl->wl_hm_next = NULL;
+	awl->wl_steps = NULL;
+	awl->wl_is_chained = B_FALSE;
+	awl->wl_rqreport_file = NULL;
+
+	/* Should be initialized here */
+	awl->wl_schema = &request_schema;
+
+	hash_map_insert(&agent_wl_hash_map, awl);
+
+	return awl;
+}
+
+static void awl_destroy(agent_workload_t* awl) {
+	if(awl->wl_steps != NULL)
+		step_destroy(awl->wl_steps);
+
+	if(awl->wl_rqreport_file != NULL)
+		tsfile_close(awl->wl_rqreport_file);
+
+	mp_free(awl);
 }
 
 /**
@@ -300,15 +350,13 @@ static int configure_all_wls(JSONNODE* steps_node, JSONNODE* wl_node) {
 					  end = json_end(wl_node);
 	workload_t* wl;
 	char* wl_name;
+	agent_workload_t* awl;
 
 	int num = json_size(wl_node);
 	int steps_err;
 	int tsload_ret;
 
 	load_fprintf(stdout, "\n\n==== CONFIGURING WORKLOADS ====\n");
-
-	wl_name_array = mp_malloc(num * sizeof(char*));
-	wl_is_chained = mp_malloc(num * sizeof(boolean_t));
 
 	if(json_type(steps_node) != JSON_NODE) {
 		load_fprintf(stderr, "Cannot process steps: not a JSON node\n");
@@ -321,89 +369,101 @@ static int configure_all_wls(JSONNODE* steps_node, JSONNODE* wl_node) {
 		tsload_configure_workload(wl_name, *iter);
 		atomic_inc(&wl_cfg_count);
 
-		wl_name_array[wl_count] = wl_name;
-
 		if(load_error) {
 			return LOAD_ERR_CONFIGURE;
 		}
 
-		if(json_find(*iter, "chain") != json_end(*iter)) {
-			load_fprintf(stdout, "Chained workload %s\n", wl_name);
+		awl = awl_create(wl_name);
+		json_free(wl_name);
 
-			wl_is_chained[wl_count] = B_TRUE;
+		if(json_find(*iter, "chain") != json_end(*iter)) {
+			load_fprintf(stdout, "Chained workload %s\n", awl->wl_name);
+			awl->wl_is_chained = B_TRUE;
 		}
 		else {
-
-			steps_err = load_steps(wl_name, steps_node);
-			if(steps_err != LOAD_OK) {
+			awl->wl_steps = load_steps(awl->wl_name, steps_node);
+			if(awl->wl_steps == NULL) {
 				/* Error encountered during configuration - do not configure other workloads */
+				hash_map_remove(&agent_wl_hash_map, awl);
+				awl_destroy(awl);
 				return LOAD_ERR_CONFIGURE;
 			}
 
-			load_fprintf(stdout, "Initialized workload %s\n", wl_name);
-
-			wl_is_chained[wl_count] = B_FALSE;
+			load_fprintf(stdout, "Initialized workload %s\n", awl->wl_name);
 		}
 
-		++wl_count;
+		hash_map_insert(&agent_wl_hash_map, awl);
+
 		++iter;
 	}
 
 	return LOAD_OK;
 }
 
-static void unconfigure_all_wls(void) {
-	int i;
+static int awl_unconfigure_walker(hm_item_t* obj, void* ctx) {
+	agent_workload_t* awl = (agent_workload_t*) obj;
 
-	for(i = 0; i < wl_count; ++i) {
-		tsload_unconfigure_workload(wl_name_array[i]);
-		json_free(wl_name_array[i]);
+	tsload_unconfigure_workload(awl->wl_name);
+	awl_destroy(awl);
+
+	return HM_WALKER_REMOVE | HM_WALKER_CONTINUE;
+}
+
+static void unconfigure_all_wls(void) {
+	hash_map_walk(&agent_wl_hash_map, awl_unconfigure_walker, NULL);
+}
+
+typedef struct awl_start_context {
+	char start_time_str[32];
+	ts_time_t start_time;
+} awl_start_context_t;
+
+static int awl_start_walker(hm_item_t* obj, void* ctx) {
+	agent_workload_t* awl = (agent_workload_t*) obj;
+	awl_start_context_t* actx = (awl_start_context_t*) ctx;
+	int step;
+	int ret;
+
+	for(step = 0; step < WLSTEPQSIZE; ++step) {
+		ret = load_provide_step(awl);
+
+		if(ret == STEP_ERROR) {
+			load_error = LOAD_ERR_CONFIGURE;
+			return HM_WALKER_STOP;
+		}
+
+		if(ret == STEP_NO_RQS)
+			break;
 	}
 
-	mp_free(wl_is_chained);
-	mp_free(wl_name_array);
+	tsload_start_workload(awl->wl_name, actx->start_time);
+
+	load_fprintf(stdout, "Scheduling workload %s at %s,%03ld (provided %d steps)\n", awl->wl_name,
+			actx->start_time_str, TS_TIME_MS(actx->start_time), step);
+
+	if(!awl->wl_is_chained)
+		atomic_inc(&wl_run_count);
+
+	if(load_error != LOAD_OK)
+		return HM_WALKER_STOP;
+
+	return HM_WALKER_CONTINUE;
 }
 
 /**
  * Feeds workloads with first WLSTEPQSIZE steps and schedules workloads to start
  * Workloads are starting at the same time, but  */
 static void start_all_wls(void) {
-	int i, j;
-	int ret;
+	awl_start_context_t actx;
+	time_t unix_start_time;
 
-	char start_time_str[32];
-
-	ts_time_t start_time = tm_get_time() + WL_START_DELAY;
-	time_t unix_start_time = TS_TIME_TO_UNIX(start_time);
-
-	strftime(start_time_str, 32, "%H:%M:%S %d.%m.%Y", localtime(&unix_start_time));
+	actx.start_time  = tm_get_time() + WL_START_DELAY;
+	unix_start_time = TS_TIME_TO_UNIX(actx.start_time);
+	strftime(actx.start_time_str, 32, "%H:%M:%S %d.%m.%Y", localtime(&unix_start_time));
 
 	load_fprintf(stdout, "\n\n=== RUNNING EXPERIMENT '%s' === \n", experiment_name);
 
-	for(i = 0; i < wl_count; ++i) {
-		if(wl_is_chained[i])
-			continue;
-
-		for(j = 0; j < WLSTEPQSIZE; ++j) {
-			ret = load_provide_step(wl_name_array[i]);
-
-			if(ret == STEP_ERROR)
-				return;
-
-			if(ret == STEP_NO_RQS)
-				break;
-		}
-
-		tsload_start_workload(wl_name_array[i], start_time);
-
-		load_fprintf(stdout, "Scheduling workload %s at %s,%03ld (provided %d steps)\n", wl_name_array[i],
-				start_time_str, TS_TIME_MS(start_time), j);
-
-		atomic_inc(&wl_run_count);
-
-		if(load_error)
-			return;
-	}
+	hash_map_walk(&agent_wl_hash_map, awl_start_walker, &actx);
 }
 
 #define CONFIGURE_TP_PARAM(i_node, name, type) 											\
@@ -479,6 +539,178 @@ static void unconfigure_threadpools(void) {
 	mp_free(tp_name_array);
 }
 
+static long find_experiment_id(void) {
+	plat_dir_t* dir = plat_opendir(experiment_dir);
+	plat_dir_entry_t* de = NULL;
+
+	size_t exp_name_len = strlen(experiment_name);
+	char* ptr = NULL;
+	long max_exp_id = 0, exp_id;
+
+	while((de = plat_readdir(dir)) != NULL) {
+		if(plat_dirent_hidden(de) || plat_dirent_type(de) != DET_DIR)
+			continue;
+
+		if(strncmp(de->d_name, experiment_name, exp_name_len) != 0)
+			continue;
+
+		ptr = strchr(de->d_name, '-');
+		if(ptr == NULL)
+			continue;
+
+		++ptr;
+		exp_id = strtol(ptr, NULL, 10);
+
+		if(exp_id > max_exp_id)
+			max_exp_id = exp_id;
+	}
+
+	return max_exp_id;
+}
+
+/**
+ * Generating experiment id. It is cached in file experiment.id.
+ * If cache-file found, simply read value from that. If no such file
+ * exists, walk over entire experiment directory and find latest
+ * experiment id. Rewrite "experiment.id" in any case.
+ */
+static long generate_experiment_id(void) {
+	FILE* exp_id_file;
+	long exp_id = -1;
+
+	char exp_id_path[PATHMAXLEN];
+	char exp_id_str[32];
+
+	path_join(exp_id_path, PATHMAXLEN, experiment_dir, DEFAULT_EXPID_FILENAME, NULL);
+
+	exp_id_file = fopen(exp_id_path, "r");
+
+	if(exp_id_file != NULL) {
+		fgets(exp_id_str, 32, exp_id_file);
+		exp_id = strtol(exp_id_str, NULL, 10);
+		fclose(exp_id_file);
+	}
+
+	if(exp_id == -1) {
+		exp_id = find_experiment_id();
+	}
+
+	++exp_id;
+
+	exp_id_file = fopen(exp_id_path, "w");
+	fprintf(exp_id_file, "%ld\n", exp_id);
+	fclose(exp_id_file);
+
+	return exp_id;
+}
+
+static void experiment_write(JSONNODE* experiment) {
+	time_t now;
+	char datetime[32];
+
+	JSONNODE_ITERATOR i_name;
+	JSONNODE* j_datetime;
+
+	FILE* exp_file;
+	char exp_path[PATHMAXLEN];
+	char* data;
+
+	now = time(NULL);
+	strftime(datetime, 32, "%H:%M:%S %d.%m.%Y", localtime(&now));
+
+	/* Generate copy of experiment.json */
+	i_name = json_find(experiment, "name");
+	j_datetime = json_new(JSON_STRING);
+
+	json_set_a(j_datetime, datetime);
+	json_set_name(j_datetime, "datetime");
+	json_insert(experiment, i_name, j_datetime);
+
+	path_join(exp_path, PATHMAXLEN, experiment_dir, DEFAULT_EXPERIMENT_FILENAME, NULL);
+
+	exp_file = fopen(exp_path, "w");
+	if(exp_file == NULL)
+		return;
+
+	data = json_write_formatted(experiment);
+
+	fputs(data, exp_file);
+
+	json_free(data);
+	fclose(exp_file);
+}
+
+static int generate_tsfile_walker(hm_item_t* obj, void* ctx) {
+	agent_workload_t* awl = (agent_workload_t*) obj;
+	char path[PATHMAXLEN];
+	char name[128];
+
+	tsfile_schema_t* schema = awl->wl_schema;
+	JSONNODE* schema_node;
+	char* schema_str;
+	FILE* schema_file;
+
+	/* Create TSF schema */
+	snprintf(name, 128, "%s-schema.json", awl->wl_name);
+	path_join(path, PATHMAXLEN, experiment_dir, name, NULL);
+
+	schema_file = fopen(path, "w");
+
+	if(schema_file == NULL) {
+		load_fprintf(stdout, "Failed to create TSF schema file '%s'\n", path);
+
+		load_error = B_TRUE;
+		return HM_WALKER_STOP;
+	}
+
+	schema_node = json_tsfile_schema_format(schema);
+	schema_str = json_write_formatted(schema_node);
+	fputs(schema_str, schema_file);
+	json_free(schema_str);
+
+	fclose(schema_file);
+
+	/* Create TSF file */
+	snprintf(name, 128, "%s.tsf", awl->wl_name);
+	path_join(path, PATHMAXLEN, experiment_dir, name, NULL);
+
+	awl->wl_rqreport_file = tsfile_create(path, schema);
+
+	if(awl->wl_rqreport_file == NULL) {
+		load_fprintf(stdout, "Failed to create TSF file '%s'\n", path);
+
+		load_error = B_TRUE;
+		return HM_WALKER_STOP;
+	}
+
+	load_fprintf(stdout, "Created output TSF file '%s'\n", path);
+
+	return HM_WALKER_CONTINUE;
+}
+
+static int generate_output_files(JSONNODE* experiment) {
+	char experiment_dir_name[128];
+	char experiment_root[PATHMAXLEN];
+
+	snprintf(experiment_dir_name, 128, "%s-%ld-%ld",
+				experiment_name, generate_experiment_id(), t_get_pid());
+
+	strcpy(experiment_root, experiment_dir);
+	path_join(experiment_dir, PATHMAXLEN, experiment_root, experiment_dir_name, NULL);
+
+	if(mkdir(experiment_dir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0)
+		return LOAD_ERR_CONFIGURE;
+
+	experiment_write(experiment);
+
+	hash_map_walk(&agent_wl_hash_map, generate_tsfile_walker, NULL);
+	if(load_error) {
+		return LOAD_ERR_CONFIGURE;
+	}
+
+	return LOAD_OK;
+}
+
 #define CONFIGURE_EXPERIMENT_PARAM(iter, name)													\
 	iter = json_find(experiment, name);												\
 	if(iter == i_end) {																\
@@ -491,11 +723,6 @@ static int prepare_experiment(void) {
 
 	int err = LOAD_OK;
 	char* name;
-
-	rqreport_file = tsfile_create(rqreport_filename, &request_schema);
-
-	if(!rqreport_file)
-		return LOAD_ERR_CONFIGURE;
 
 	i_end = json_end(experiment);
 
@@ -523,6 +750,9 @@ static int prepare_experiment(void) {
 	if(err == LOAD_OK)
 		err = configure_all_wls(*i_steps, *i_workloads);
 
+	if(err == LOAD_OK)
+		err = generate_output_files(experiment);
+
 	return err;
 }
 
@@ -545,6 +775,10 @@ void do_workload_status(const char* wl_name,
 					 			 int status,
 								 long progress,
 								 const char* config_msg) {
+	agent_workload_t* awl = hash_map_find(&agent_wl_hash_map, wl_name);
+
+	assert(awl != NULL);
+
 	if(status == WLS_CFG_FAIL ||
 	   status == WLS_CONFIGURED) {
 		/* Workload ended it's configuration, may go further */
@@ -558,7 +792,7 @@ void do_workload_status(const char* wl_name,
 
 	if(status == WLS_RUNNING) {
 		/* Feed workload with one step */
-		if(load_provide_step(wl_name) == STEP_ERROR) {
+		if(load_provide_step(awl) == STEP_ERROR) {
 			load_error = B_TRUE;
 
 			/* Stop running experiment by setting wl_run_count to zero */
@@ -575,69 +809,49 @@ void do_workload_status(const char* wl_name,
 	event_notify_all(&workload_event);
 }
 
+static void report_request(request_t* rq) {
+	agent_workload_t* awl = hash_map_find(&agent_wl_hash_map,
+										  rq->rq_workload->wl_name);
+
+	size_t rqe_size;
+	struct request_entry* rqe;
+
+	assert(awl != NULL);
+
+	rqe_size = awl->wl_schema->hdr.entry_size;
+	rqe = mp_malloc(rqe_size);
+
+	rqe->step = rq->rq_step;
+	rqe->request = rq->rq_id;
+	rqe->thread = rq->rq_thread_id;
+
+	rqe->sched_time = rq->rq_sched_time;
+	rqe->start_time = rq->rq_start_time;
+	rqe->end_time = rq->rq_end_time;
+
+	rqe->flags = rq->rq_flags;
+
+	tsfile_add(awl->wl_rqreport_file, rqe, 1);
+
+	mp_free(rqe);
+
+	if(!awl->wl_is_chained)
+		atomic_dec(&rq_count);
+}
+
 void do_requests_report(list_head_t* rq_list) {
 	request_t *rq_root, *rq;
-	size_t rqe_size = sizeof(struct request_entry);
-	struct request_entry* rqe_array = NULL;
-	struct request_entry* rqe;
-	int count = 0;
-
-	if(!rqreport_file)
-		return;
-
-	assert(rqe_size == REQUEST_ENTRY_SIZE);
-	rqe_array = mp_malloc(rqe_size * rqe_array_length);
 
 	list_for_each_entry(request_t, rq_root, rq_list, rq_node) {
 		rq = rq_root;
 		do {
-			rqe = rqe_array + count;
-
-			strcpy(rqe->workload_name, rq->rq_workload->wl_name);
-			rqe->step = rq->rq_step;
-			rqe->request = rq->rq_id;
-			rqe->thread = rq->rq_thread_id;
-
-			rqe->sched_time = rq->rq_sched_time;
-			rqe->start_time = rq->rq_start_time;
-			rqe->end_time = rq->rq_end_time;
-
-			rqe->flags = rq->rq_flags;
-
-			++count;
-
-			if(count == rqe_array_length) {
-				tsfile_add(rqreport_file, rqe_array, count);
-				count = 0;
-			}
+			report_request(rq);
 
 			rq = rq->rq_chain_next;
 		} while(rq != NULL);
 	}
 
-	if(count > 0) {
-		tsfile_add(rqreport_file, rqe_array, count);
-	}
-}
-
-void generate_rqreport_filename(void) {
-	time_t now;
-	int i = 0;
-
-	char rqreport_fn[32];
-	char rqreport_filename_temp[PATHMAXLEN];
-
-	/* Generate request-report filename. If file already exists, choose next name with suffix .1 */
-	now = time(NULL);
-
-	strftime(rqreport_fn, 32, "rq-%Y-%m-%d-%H_%M_%S.tsf", localtime(&now));
-	path_join(rqreport_filename_temp, PATHMAXLEN, experiment_dir, rqreport_fn, NULL);
-
-	do {
-		snprintf(rqreport_filename, PATHMAXLEN, "%s.%d", rqreport_filename_temp, i);
-
-		++i;
-	} while(access(rqreport_filename, F_OK) != -1);
+	event_notify_all(&request_event);
 }
 
 /**
@@ -648,10 +862,10 @@ int do_load(void) {
 	workload_t* wl = NULL;
 
 	path_join(experiment_filename, PATHMAXLEN, experiment_dir, DEFAULT_EXPERIMENT_FILENAME, NULL);
-	generate_rqreport_filename();
 
 	wl_cfg_count = (atomic_t) 0l;
 	wl_run_count = (atomic_t) 0l;
+	rq_count = (atomic_t) 0l;
 
 	/* Install tsload/tsfile handlers */
 	tsload_error_msg = do_error_msg;
@@ -684,6 +898,10 @@ int do_load(void) {
 
 	load_fprintf(stdout, "\n\n=== FINISHING EXPERIMENT '%s' === \n", experiment_name);
 
+	while(atomic_read(&rq_count) != 0) {
+		event_wait(&request_event);
+	}
+
 	unconfigure_all_wls();
 	unconfigure_threadpools();
 
@@ -693,20 +911,19 @@ int do_load(void) {
 }
 
 int load_init(void) {
+	hash_map_init(&agent_wl_hash_map, "agent_wl_hash_map");
+
 	event_init(&workload_event, "workload_event");
+	event_init(&request_event, "request_event");
 	mutex_init(&output_lock, "output_lock");
 
 	return 0;
 }
 
 void load_fini(void) {
+	event_destroy(&request_event);
 	event_destroy(&workload_event);
 	mutex_destroy(&output_lock);
 
-	/* Could not close it during do_load() cause writing is done in separate thread.
-	 * May implement CV, but load_fini() is called when we already reported all requests
-	 * in wl_fini() of libtsload. */
-	if(rqreport_file) {
-		tsfile_close(rqreport_file);
-	}
+	hash_map_destroy(&agent_wl_hash_map);
 }

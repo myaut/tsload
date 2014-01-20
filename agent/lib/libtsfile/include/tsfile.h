@@ -128,7 +128,8 @@ LIBIMPORT	int tsfile_errno;
 #define SCHEMA_FIELD_MISSING_SIZE	4
 
 #ifndef NO_JSON
-LIBEXPORT tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset);
+LIBEXPORT tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset);
+LIBEXPORT JSONNODE* json_tsfile_schema_format(tsfile_schema_t* schema);
 #endif
 
 

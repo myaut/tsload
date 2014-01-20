@@ -49,7 +49,7 @@ tsfile_schema_t* schema_read(const char* filename) {
 		return NULL;
 	}
 
-	schema = tsfile_schema_parse(root, B_FALSE);
+	schema = json_tsfile_schema_proc(root, B_FALSE);
 
 	json_delete(root);
 	return schema;

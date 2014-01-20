@@ -40,3 +40,7 @@ PLATAPI unsigned long plat_gettid() {
 PLATAPI void t_eternal_wait(void) {
 	Sleep(INFINITE);
 }
+
+PLATAPI long t_get_pid(void) {
+	return GetCurrentProcessId();
+}

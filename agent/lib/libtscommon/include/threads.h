@@ -297,6 +297,8 @@ LIBEXPORT void threads_fini(void);
 
 LIBEXPORT PLATAPI void t_eternal_wait(void);
 
+LIBEXPORT PLATAPI long t_get_pid(void);
+
 /* Platform-dependent functions */
 
 PLATAPI void plat_thread_init(plat_thread_t* thread, void* arg,

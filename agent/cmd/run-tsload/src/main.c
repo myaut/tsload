@@ -47,10 +47,8 @@ LIBEXPORT struct subsystem pre_subsys[] = {
 
 LIBEXPORT struct subsystem post_subsys[] = {
 	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini),
-	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
-	SUBSYSTEM("steps", steps_init, steps_fini)
+	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini)
 };
-
 
 enum {
 	CMD_NONE,

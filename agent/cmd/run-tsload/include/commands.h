@@ -25,6 +25,7 @@
 #define WL_START_DELAY		(3 * T_SEC)
 
 #define DEFAULT_EXPERIMENT_FILENAME		"experiment.json"
+#define DEFAULT_EXPID_FILENAME			"experiment.id"
 
 int do_info();
 int do_load();

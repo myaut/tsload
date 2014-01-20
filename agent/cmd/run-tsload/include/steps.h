@@ -8,8 +8,7 @@
 #ifndef STEPS_H_
 #define STEPS_H_
 
-#include <workload.h>
-
+#include <defs.h>
 #include <stdio.h>
 
 #define STEP_OK			0
@@ -38,7 +37,6 @@ typedef struct steps_const {
 typedef struct steps_generator {
 	steps_generator_type_t sg_type;
 
-	char	sg_wl_name[WLNAMELEN];
 	struct  steps_generator* sg_next;
 
 	union {
@@ -47,11 +45,11 @@ typedef struct steps_generator {
 	};
 } steps_generator_t;
 
-int step_create_file(const char* wl_name, const char* file_name);
-int step_create_const(const char* wl_name, long num_steps, unsigned num_requests);
-int step_get_step(const char* wl_name, long* step_id, unsigned* p_num_rqs);
+steps_generator_t* step_create_file(const char* file_name);
+steps_generator_t* step_create_const(long num_steps, unsigned num_requests);
 
-int steps_init(void);
-void steps_fini(void);
+int step_get_step(steps_generator_t* sg, long* step_id, unsigned* p_num_rqs);
+
+void step_destroy(steps_generator_t* sg);
 
 #endif /* STEPS_H_ */

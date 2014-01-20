@@ -26,9 +26,9 @@
 		return error; 													\
 	}
 
-static int schema_parse_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset);
+static int json_tsfile_schema_proc_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset);
 
-tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset) {
+tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset) {
 	JSONNODE_ITERATOR i_size, i_fields, i_end;
 	JSONNODE_ITERATOR i_fields_end, i_field;
 
@@ -70,7 +70,7 @@ tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset) {
 
 		field = &schema->fields[fi];
 
-		err = schema_parse_field(field, *i_field, offset);
+		err = json_tsfile_schema_proc_field(field, *i_field, offset);
 		if(err != SCHEMA_FIELD_OK) {
 			tsfile_error_msg(TSE_MESSAGE_FORMAT,
 							 "Failed to parse field '%s': error %d", field->name, err);
@@ -89,7 +89,7 @@ tsfile_schema_t* tsfile_schema_parse(JSONNODE* root, boolean_t auto_offset) {
 	return schema;
 }
 
-static int schema_parse_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset) {
+static int json_tsfile_schema_proc_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset) {
 	JSONNODE_ITERATOR i_type, i_size, i_offset, i_end;
 	char* field_name;
 	char* field_type;
@@ -141,4 +141,51 @@ static int schema_parse_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t o
 	}
 
 	return SCHEMA_FIELD_OK;
+}
+
+JSONNODE* json_tsfile_schema_format(tsfile_schema_t* schema) {
+	JSONNODE* node = json_new(JSON_NODE);
+	JSONNODE* fields = json_new(JSON_NODE);
+
+	JSONNODE* field_node = NULL;
+	tsfile_field_t* field;
+
+	int fi;
+
+	json_set_name(fields, "fields");
+	json_push_back(node, fields);
+
+	json_push_back(node, json_new_i("entry_size", schema->hdr.entry_size));
+
+	for(fi = 0; fi < schema->hdr.count; ++fi) {
+		field_node = json_new(JSON_NODE);
+		field = &schema->fields[fi];
+
+		json_set_name(field_node, field->name);
+
+		if(field->type == TSFILE_FIELD_BOOLEAN) {
+			json_push_back(field_node, json_new_a("type", "bool"));
+		}
+		else {
+			switch(field->type) {
+			case TSFILE_FIELD_INT:
+				json_push_back(field_node, json_new_a("type", "int"));
+				break;
+			case TSFILE_FIELD_FLOAT:
+				json_push_back(field_node, json_new_a("type", "float"));
+				break;
+			case TSFILE_FIELD_STRING:
+				json_push_back(field_node, json_new_a("type", "string"));
+				break;
+			}
+
+			json_push_back(field_node, json_new_i("size", field->size));
+		}
+
+		json_push_back(field_node, json_new_i("offset", field->offset));
+
+		json_push_back(fields, field_node);
+	}
+
+	return node;
 }
