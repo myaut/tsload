@@ -55,6 +55,25 @@ def CheckDesignatedInitializers(context):
     
     context.Result(ret)
 
+def CheckGCCSyncBuiltins(context):
+    test_source = """
+    int main() {
+        long value;
+         __sync_fetch_and_add(&value, 187);
+    }
+    """
+    
+    context.Message('Checking if GCC supports __sync builtins...')
+    ret = context.sconf.TryCompile(test_source, '.c')
+    
+    if ret:
+        context.sconf.Define('HAVE_SYNC_BUILTINS', 
+                       comment='GCC compiler supports sync builtins')
+    
+    context.Result(ret)
+    
+    return ret
+
 def CheckGCCAtomicBuiltins(context):
     test_source = """
     int main() {
@@ -63,7 +82,7 @@ def CheckGCCAtomicBuiltins(context):
     }
     """
     
-    context.Message('Checking if GCC supports atomic builtins...')
+    context.Message('Checking if GCC supports __atomic builtins...')
     ret = context.sconf.TryCompile(test_source, '.c')
     
     if ret:
@@ -74,29 +93,10 @@ def CheckGCCAtomicBuiltins(context):
     
     return ret
 
-def CheckAtomicSize(context):
-    test_source = """
-    #include "../lib/libtscommon/include/atomic.h"
-    #include <assert.h>
-    
-    int main() {
-        assert(sizeof(atomic_t) >= sizeof(void*));
-        
-        return 0;
-    }
-    """
-    
-    context.Message('Checking if atomic_t can hold pointers...')
-    ret, _ = context.sconf.TryRun(test_source, '.c')
-    
-    context.Result(ret)
-    
-    return ret
-
 conf.AddTests({'CheckBinary': CheckBinary,
                'CheckDesignatedInitializers': CheckDesignatedInitializers,
-               'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins,
-               'CheckAtomicSize': CheckAtomicSize})
+               'CheckGCCSyncBuiltins': CheckGCCSyncBuiltins,
+               'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins})
 
 #-------------------------------------------
 # C compiler and standard library checks
@@ -114,9 +114,6 @@ if not conf.CheckType('int64_t', '#include <stdint.h>\n'):
 
 conf.CheckDesignatedInitializers()
 
-if conf.CheckAtomicSize() != 1:
-    raise StopError('Invalid atomic_t size!')
-
 conf.CheckDeclaration('min', '#include <stdlib.h>')
 conf.CheckDeclaration('max', '#include <stdlib.h>')
 
@@ -127,8 +124,8 @@ if not conf.CheckDeclaration('snprintf', '#include <stdio.h>'):
     conf.Define('snprintf', '_snprintf', 'Redefine sprintf')
     
 if env['CC'] == 'gcc':
-    if not conf.CheckGCCAtomicBuiltins():
-        raise StopError("GCC doesn't support atomic builtins")
+    if not conf.CheckGCCAtomicBuiltins() and not conf.CheckGCCSyncBuiltins():
+        raise StopError("GCC doesn't support neither atomic nor __sync builtins")
 
 # ------------------------------------------
 # Global platform checks    

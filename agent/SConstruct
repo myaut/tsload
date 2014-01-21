@@ -224,7 +224,7 @@ for pkg in packages:
     alias = aliases[0]
     
     zip_name = '-'.join((pkg, env['TSVERSION']))   + '.zip'
-    zip_path = PathJoin('#build', zip_name)
+    zip_path = PathJoin('#build', 'pkg', zip_name)
     
     zip_files = env.ZipArchive(zip_path, alias.children())
     env.Depends('zip', pkg)

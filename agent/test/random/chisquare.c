@@ -50,7 +50,7 @@
 #define N 20
 
 float chi = 31.410;
-int number = 10000;
+int number = 25000;
 
 randgen_t* rg;
 

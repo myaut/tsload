@@ -54,6 +54,48 @@ STATIC_INLINE long atomic_and(atomic_t* atom, long value) {
 	return  __atomic_fetch_and(atom, value, ATOMIC_MEMMODEL);
 }
 
+#elif defined(HAVE_SYNC_BUILTINS)
+
+typedef volatile long atomic_t;
+
+STATIC_INLINE long atomic_read(atomic_t* atom) {
+        return __sync_fetch_and_add(atom, 0);
+}
+
+STATIC_INLINE void atomic_set(atomic_t* atom, long value) {
+         (void) __sync_lock_test_and_set(atom, value);
+}
+
+STATIC_INLINE long atomic_exchange(atomic_t* atom, long value) {
+         return __sync_lock_test_and_set(atom, value);
+}
+
+STATIC_INLINE long atomic_inc(atomic_t* atom) {
+        return __sync_fetch_and_add(atom, 1);
+}
+
+STATIC_INLINE long atomic_dec(atomic_t* atom) {
+        return __sync_fetch_and_sub(atom, 1);
+}
+
+STATIC_INLINE long atomic_add(atomic_t* atom, long value) {
+        return __sync_fetch_and_add(atom, value);
+}
+
+STATIC_INLINE long atomic_sub(atomic_t* atom, long value) {
+        return __sync_fetch_and_sub(atom, value);
+}
+
+STATIC_INLINE long atomic_or(atomic_t* atom, long value) {
+        return __sync_fetch_and_or(atom, value);
+}
+
+STATIC_INLINE long atomic_and(atomic_t* atom, long value) {
+        return __sync_fetch_and_and(atom, value);
+}
+
+
+
 
 #elif defined(PLAT_WIN) && defined(_MSC_VER)
 

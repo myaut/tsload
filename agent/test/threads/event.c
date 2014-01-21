@@ -12,10 +12,10 @@
 
 #include <assert.h>
 
-#define TESTS			8
+#define TESTS			4
 
 #define NUM_THREADS		4
-#define AWAKE_DELAY 	(10 * T_MS)
+#define AWAKE_DELAY 	(50 * T_MS)
 
 /**
  * Number of awaken threads

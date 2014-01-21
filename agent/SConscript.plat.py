@@ -103,4 +103,7 @@ elif env.SupportedPlatform('posix'):
     env.Append(LIBS = ['c'])
     env.Macroses('_GNU_SOURCE')
     
+    if env.SupportedPlatform('solaris'):
+        env.Macroses('_REENTRANT')
+    
 Export('env')
