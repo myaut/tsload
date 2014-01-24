@@ -4,21 +4,15 @@
 		"test1": {
 			"num_steps":	20,
  			"num_requests": 20
-		},
-		"test2": {
-			"num_steps":	20,
- 			"num_requests": 20
-		},
-		"test3": {
-			"num_steps":	20,
- 			"num_requests": 20
 		}
 	},
 	"threadpools": {
 		"test_tp" : {
             "num_threads": 4,
             "quantum": 1000000000,
-            "disp_name": "simple",
+            "disp": {
+            	"type": "first-free"
+            },
             "bindings": [
             	{ "tid": 0,
             	  "objects": ["strand:0:0:0"] },
@@ -40,31 +34,6 @@
 				"distribution": "exponential"
 			},
 			"params": { "num_cycles": 40000 }
-		},
-		"test2" : {
-			"wltype": "busy_wait",
-			"threadpool": "test_tp",
-			"disp": "iat",
-			"disp_params": {
-				"distribution": "uniform",
-				"scope": 0.5
-			},
-			"params": { "num_cycles": 20000 }
-		},
-		"test3" : {
-			"wltype": "busy_wait",
-			"threadpool": "test_tp",
-			"disp": "iat",
-			"disp_params": {
-				"distribution": "erlang",
-				"shape": 3
-			},
-			"params": { "num_cycles": 30000 }
-		},
-		"test4" : {
-			"wltype": "busy_wait",
-			"chain": "test1",
-			"params": { "num_cycles": 10000 }
 		}
 	}
 }

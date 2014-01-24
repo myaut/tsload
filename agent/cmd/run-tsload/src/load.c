@@ -20,6 +20,8 @@
 #include <plat/posixdecl.h>
 #include <tsfile.h>
 #include <tsdirent.h>
+#include <threadpool.h>
+#include <tpdisp.h>
 
 #include <tsload.h>
 
@@ -478,10 +480,12 @@ static void start_all_wls(void) {
 static int configure_threadpools(JSONNODE* tp_node) {
 	JSONNODE_ITERATOR iter = json_begin(tp_node),
 				      end = json_end(tp_node);
-	JSONNODE_ITERATOR i_num_threads, i_quantum, i_disp_name, i_bindings;
+	JSONNODE_ITERATOR i_num_threads, i_quantum, i_disp, i_bindings, i_discard;
 	JSONNODE_ITERATOR i_end;
+
 	unsigned num_threads;
 	ts_time_t quantum;
+	boolean_t discard = B_FALSE;
 
 	char* tp_name;
 	char* disp_name;
@@ -499,14 +503,18 @@ static int configure_threadpools(JSONNODE* tp_node) {
 
 		CONFIGURE_TP_PARAM(i_num_threads, "num_threads", JSON_NUMBER);
 		CONFIGURE_TP_PARAM(i_quantum, "quantum", JSON_NUMBER);
-		CONFIGURE_TP_PARAM(i_disp_name, "disp_name", JSON_STRING);
+		CONFIGURE_TP_PARAM(i_disp, "disp", JSON_NODE);
 		i_bindings = json_find(*iter, "bindings");
+		i_discard = json_find(*iter, "discard");
 
 		num_threads = json_as_int(*i_num_threads);
 		quantum = json_as_int(*i_quantum);
-		disp_name = json_as_string(*i_disp_name);
 
-		tsload_ret = tsload_create_threadpool(tp_name, num_threads, quantum, disp_name);
+		if(i_discard != i_end) {
+			discard = json_as_bool(*i_discard);
+		}
+
+		tsload_ret = tsload_create_threadpool(tp_name, num_threads, quantum, discard, *i_disp);
 
 		if(tsload_ret != TSLOAD_OK) {
 			return LOAD_ERR_CONFIGURE;

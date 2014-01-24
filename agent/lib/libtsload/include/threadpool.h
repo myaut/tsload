@@ -38,6 +38,7 @@ struct request;
 struct workload;
 struct thread_pool;
 struct workload_step;
+struct tp_disp;
 
 /**
  * Thread pools are set of threads for executing load requests.
@@ -49,12 +50,13 @@ struct workload_step;
 
 typedef struct tp_worker {
 	struct thread_pool* w_tp;
-
 	thread_t w_thread;
 
-	thread_mutex_t w_rq_mutex;
-	thread_cv_t w_rq_cv;
-	struct request* w_rq_mailbox;
+    thread_mutex_t w_rq_mutex;
+    thread_cv_t w_rq_cv;
+    list_head_t	w_rq_head;
+
+	void* w_tpd_data;
 } tp_worker_t;
 
 typedef struct thread_pool {
@@ -62,22 +64,21 @@ typedef struct thread_pool {
 	char tp_name[TPNAMELEN];
 
 	boolean_t tp_is_dead;
+	boolean_t tp_started;
 
 	ts_time_t tp_quantum;			/**< Dispatcher's quantum duration (in ns)*/
 	ts_time_t tp_time;				/**< Last time dispatcher had woken up (in ns)*/
 
 	thread_t  tp_ctl_thread;		/**< Dispatcher thread*/
 	tp_worker_t* tp_workers;		/**< Worker threads*/
-	tp_worker_t* tp_master;
-	unsigned tp_last_worker;
 
 	thread_mutex_t tp_mutex;				/**< Protects workload list and tp_cv*/
-	thread_cv_t	   tp_cv_worker;			/**< Notification control->worker */
-
 	atomic_t	   tp_ref_count;
 
+	struct tp_disp* tp_disp;
+	boolean_t tp_discard;
+
 	list_head_t	   tp_rq_head;
-	struct request* tp_current_rq;
 
 	list_head_t	   tp_wl_head;
 	int tp_wl_count;
@@ -88,7 +89,9 @@ typedef struct thread_pool {
 
 list_head_t* tp_create_worker_list(tp_worker_t* worker);
 
-LIBEXPORT thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quantum, const char* disp_name);
+LIBEXPORT thread_pool_t* tp_create(const char* name, unsigned num_threads,
+								   ts_time_t quantum, boolean_t discard,
+								   struct tp_disp* disp);
 LIBEXPORT void tp_destroy(thread_pool_t* tp);
 
 LIBEXPORT thread_pool_t* tp_search(const char* name);

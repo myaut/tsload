@@ -503,6 +503,7 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	wl->wl_disp_class->disp_pre_request(rq);
 
 	list_node_init(&rq->rq_node);
+	list_node_init(&rq->rq_w_node);
 
 	wl_hold(wl);
 

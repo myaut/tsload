@@ -63,6 +63,10 @@ STATIC_INLINE void list_head_init(list_head_t *list, const char* namefmt, ...)
 	}
 }
 
+STATIC_INLINE void list_head_reset(list_head_t *list) {
+	list_node_init(&list->l_head);
+}
+
 STATIC_INLINE list_node_t* list_head_node(list_head_t* head) {
 	return &head->l_head;
 }

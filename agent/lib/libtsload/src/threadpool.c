@@ -20,6 +20,7 @@
 #include <schedutil.h>
 #include <tsload.h>
 #include <list.h>
+#include <tpdisp.h>
 
 #include <assert.h>
 #include <string.h>
@@ -28,8 +29,6 @@
 
 mp_cache_t	   tp_cache;
 mp_cache_t	   tp_worker_cache;
-
-thread_pool_t* default_pool = NULL;
 
 DECLARE_HASH_MAP(tp_hash_map, thread_pool_t, TPHASHSIZE, tp_name, tp_next,
 	{
@@ -52,6 +51,9 @@ static atomic_t tp_count = (atomic_t) 0l;
 
 void* worker_thread(void* arg);
 void* control_thread(void* arg);
+
+static void tp_start_threads(thread_pool_t* tp);
+static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove);
 
 static char* worker_affinity_print(thread_pool_t* tp, int tid) {
 	tp_worker_t* worker = tp->tp_workers + tid;
@@ -106,25 +108,24 @@ end:
 static void tp_create_worker(thread_pool_t* tp, int tid) {
 	tp_worker_t* worker = tp->tp_workers + tid;
 
+	mutex_init(&worker->w_rq_mutex, "worker-%s-%d", tp->tp_name, tid);
+	cv_init(&worker->w_rq_cv, "worker-%s-%d", tp->tp_name, tid);
+	list_head_init(&worker->w_rq_head, "worker-%s-%d", tp->tp_name, tid);
+
 	worker->w_tp = tp;
-
-	mutex_init(&worker->w_rq_mutex, "work-%s-%d", tp->tp_name, tid);
-	cv_init(&worker->w_rq_cv, "work-%s-%d", tp->tp_name, tid);
-	worker->w_rq_mailbox = NULL;
-
-	t_init(&worker->w_thread, (void*) worker, worker_thread,
-			"work-%s-%d", tp->tp_name, tid);
-	worker->w_thread.t_local_id = WORKER_TID + tid;
+	worker->w_tpd_data = NULL;
 }
 
 static void tp_destroy_worker(thread_pool_t* tp, int tid) {
 	tp_worker_t* worker = tp->tp_workers + tid;
 
-	t_destroy(&worker->w_thread);
+	if(tp->tp_started)
+		t_destroy(&worker->w_thread);
 
-	cv_destroy(&worker->w_rq_cv);
-	mutex_destroy(&worker->w_rq_mutex);
+    cv_destroy(&worker->w_rq_cv);
+    mutex_destroy(&worker->w_rq_mutex);
 }
+
 
 /**
  * Create new thread pool
@@ -133,9 +134,11 @@ static void tp_destroy_worker(thread_pool_t* tp, int tid) {
  * @param name Name of thread pool
  * @param quantum Worker's quantum
  * */
-thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quantum, const char* disp_name) {
+thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quantum,
+					     boolean_t discard, struct tp_disp* disp) {
 	thread_pool_t* tp = NULL;
 	int tid;
+	int ret;
 
 	if(num_threads > TPMAXTHREADS || num_threads == 0) {
 		logmsg(LOG_WARN, "Failed to create thread_pool %s: maximum %d threads allowed (%d requested)",
@@ -154,16 +157,14 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	strncpy(tp->tp_name, name, TPNAMELEN);
 
 	tp->tp_num_threads = num_threads;
-	tp->tp_last_worker = 0;
 	tp->tp_workers = (tp_worker_t*) mp_cache_alloc_array(&tp_worker_cache, num_threads);
-
-	tp->tp_master = NULL;
 
 	tp->tp_time	   = 0ll;	   /*Time is set by control thread*/
 	tp->tp_quantum = quantum;
 
 	tp->tp_is_dead = B_FALSE;
 	tp->tp_wl_changed = B_FALSE;
+	tp->tp_started = B_FALSE;
 
 	tp->tp_wl_count = 0;
 
@@ -177,18 +178,24 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	list_head_init(&tp->tp_rq_head, "tp-rq-%s", name);
 
     mutex_init(&tp->tp_mutex, "tp-%s", name);
-    cv_init(&tp->tp_cv_worker, "tp-%s-cv", name);
 
-	/*Create threads*/
-	t_init(&tp->tp_ctl_thread, (void*) tp, control_thread,
-			"tp-ctl-%s", name);
-	tp->tp_ctl_thread.t_local_id = CONTROL_TID;
+    tp->tp_discard = discard;
 
 	for(tid = 0; tid < num_threads; ++tid) {
 		tp_create_worker(tp, tid);
 	}
 
+	tp->tp_disp = disp;
+	disp->tpd_tp = tp;
+	ret = disp->tpd_class->init(tp);
+
+	if(ret != TPD_OK) {
+		tp_destroy_impl(tp, B_FALSE);
+		return NULL;
+	}
+
 	atomic_inc(&tp_count);
+	tp_start_threads(tp);
 
 	hash_map_insert(&tp_hash_map, tp);
 
@@ -196,6 +203,26 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 
 	return tp;
 }
+
+static void tp_start_threads(thread_pool_t* tp) {
+	tp_worker_t* worker;
+	int wid;
+
+	for(wid = 0; wid < tp->tp_num_threads; ++wid) {
+		worker = tp->tp_workers + wid;
+
+		t_init(&worker->w_thread, (void*) worker, worker_thread,
+					"work-%s-%d", tp->tp_name, wid);
+		worker->w_thread.t_local_id = WORKER_TID + wid;
+	}
+
+	t_init(&tp->tp_ctl_thread, (void*) tp, control_thread,
+			"tp-ctl-%s", tp->tp_name);
+	tp->tp_ctl_thread.t_local_id = CONTROL_TID;
+
+	tp->tp_started = B_TRUE;
+}
+
 
 static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 	int tid;
@@ -210,9 +237,11 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 		tp_destroy_worker(tp, tid);
 	}
 
-	t_destroy(&tp->tp_ctl_thread);
+	tpd_destroy(tp->tp_disp);
 
-	cv_destroy(&tp->tp_cv_worker);
+	if(tp->tp_started)
+		t_destroy(&tp->tp_ctl_thread);
+
 	mutex_destroy(&tp->tp_mutex);
 
 	mp_cache_free_array(&tp_worker_cache, tp->tp_workers, tp->tp_num_threads);
@@ -227,15 +256,11 @@ void tp_destroy(thread_pool_t* tp) {
 
 	mutex_lock(&tp->tp_mutex);
 	tp->tp_is_dead = B_TRUE;
-	cv_notify_all(&tp->tp_cv_worker);
 	mutex_unlock(&tp->tp_mutex);
 
 	/* Notify workers that we are done */
 	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
-		worker = tp->tp_workers + tid;
-		mutex_lock(&worker->w_rq_mutex);
-		cv_notify_one(&worker->w_rq_cv);
-		mutex_unlock(&worker->w_rq_mutex);
+		tp->tp_disp->tpd_class->worker_signal(tp, tid);
 	}
 
 	tp_rele(tp, B_TRUE);
@@ -597,14 +622,10 @@ int tp_init(void) {
 		t_init(&t_tp_collector, NULL, tp_collector_thread, "tp_collector");
 	}
 
-	default_pool = tp_create(DEFAULT_TP_NAME, 4, T_SEC, "simple");
-
 	return 0;
 }
 
 void tp_fini(void) {
-	tp_destroy(default_pool);
-
 	if(tp_collector_enabled) {
 		tp_collector_enabled = B_FALSE;
 

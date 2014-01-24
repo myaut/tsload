@@ -15,23 +15,6 @@
 
 #define DISPNAMELEN		16
 
-/**
- * Miss policy defines dispatcher policy
- * when worker cannot execute all requests in time
- *
- * DMP_CONFIGURED - configured externally (by user)
- * DMP_DISCARD - discard requests
- * DMP_TRANSFER - execute requests during next quantum
- * DMP_ENLARGE_QUANTUM	- hold quantum until every request is executed
- * */
-typedef enum {
-	DMP_CONFIGURED,
-
-	DMP_DISCARD,
-	DMP_TRANSFER,
-	DMP_ENLARGE_QUANTUM
-} disp_miss_policy_t;
-
 #define DISP_NAME(name)		SM_INIT(.disp_name, name)
 
 typedef struct disp_class {

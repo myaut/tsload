@@ -55,6 +55,7 @@ typedef struct request {
 	struct workload* rq_workload;
 
 	list_node_t rq_node;		/* Next request in chain */
+	list_node_t rq_w_node;
 	struct request* rq_chain_next;	/* Next request in workload chain */
 } request_t;
 

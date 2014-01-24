@@ -40,7 +40,8 @@ LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned nu
 LIBEXPORT int tsload_start_workload(const char* wl_name, ts_time_t start_time);
 LIBEXPORT int tsload_unconfigure_workload(const char* wl_name);
 
-LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum, const char* disp_name);
+LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,
+		 	 	 	 	 	 	 	   boolean_t discard, JSONNODE* disp);
 LIBEXPORT int tsload_bind_threadpool(const char* tp_name, JSONNODE* bindings);
 LIBEXPORT JSONNODE* tsload_get_threadpools(void);
 LIBEXPORT JSONNODE* tsload_get_dispatchers(void);

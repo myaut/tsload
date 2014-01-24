@@ -113,14 +113,15 @@ void agent_create_threadpool(JSONNODE* argv[]) {
 	char* tp_name = json_as_string(argv[0]);
 	unsigned num_threads = json_as_int(argv[1]);
 	ts_time_t quantum = json_as_int(argv[2]);
-	char* disp_name = json_as_string(argv[3]);
+	boolean_t discard = json_as_bool(argv[3]);
+	JSONNODE* disp = argv[4];
 
 	int ret = 0;
 
-	ret = tsload_create_threadpool(tp_name, num_threads, quantum, disp_name);
+	ret = tsload_create_threadpool(tp_name, num_threads, quantum,
+								   discard, disp);
 
 	json_free(tp_name);
-	json_free(disp_name);
 
 	if(ret == TSLOAD_OK) {
 		agent_response_msg(json_new(JSON_NODE));
@@ -220,7 +221,8 @@ static agent_dispatch_t loadagent_table[] = {
 			ADT_ARGUMENT("tp_name", JSON_STRING),
 			ADT_ARGUMENT("num_threads", JSON_NUMBER),
 			ADT_ARGUMENT("quantum", JSON_NUMBER),
-			ADT_ARGUMENT("disp_name", JSON_STRING),
+			ADT_ARGUMENT("discard", JSON_BOOL),
+			ADT_ARGUMENT("disp", JSON_NODE),
 		),
 		agent_create_threadpool),
 	AGENT_METHOD("get_threadpools",

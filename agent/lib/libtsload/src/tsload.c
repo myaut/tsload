@@ -15,6 +15,7 @@
 #include <modules.h>
 #include <wltype.h>
 #include <threadpool.h>
+#include <tpdisp.h>
 #include <tstime.h>
 #include <uname.h>
 #include <hiobject.h>
@@ -122,8 +123,10 @@ int tsload_unconfigure_workload(const char* wl_name) {
 	return TSLOAD_OK;
 }
 
-int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum, const char* disp_name) {
+int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,
+							 boolean_t discard, JSONNODE* disp) {
 	thread_pool_t* tp = NULL;
+	tp_disp_t* tpd = NULL;
 
 	if(num_threads > TPMAXTHREADS || num_threads == 0) {
 		tsload_error_msg(TSE_INVALID_DATA, "Too much or zero threads requested (%u, max: %u)", num_threads,
@@ -144,7 +147,13 @@ int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_
 		return TSLOAD_ERROR;
 	}
 
-	tp = tp_create(tp_name, num_threads, quantum, disp_name);
+	tpd = json_tp_disp_proc(disp);
+
+	if(tpd == NULL) {
+		return TSLOAD_ERROR;
+	}
+
+	tp = tp_create(tp_name, num_threads, quantum, discard, tpd);
 
 	if(tp == NULL) {
 		tsload_error_msg(TSE_INTERNAL_ERROR, "Internal error occured while creating threadpool");
