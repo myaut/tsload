@@ -20,7 +20,8 @@ lib.AddDeps(('lib', 'libjson'),
             ('lib', 'libtscommon'), 
             ('lib', 'libhostinfo'))
 
-objects = lib.CompileSharedLibrary(Glob("src/disp/*.c"))
+objects = lib.CompileSharedLibrary(Glob("src/disp/*.c") + Glob("src/randgen/*.c") + \
+                                   Glob("src/tpdisp/*.c"))
 
 etrace_files, man_files = env.PreprocessETrace(['src/workload.c'] + objects, 
                                                 target + lib['SHLIBSUFFIX'])

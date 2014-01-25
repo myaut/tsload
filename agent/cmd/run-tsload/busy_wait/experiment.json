@@ -13,6 +13,7 @@
             "disp": {
             	"type": "first-free"
             },
+            "discard": true,
             "bindings": [
             	{ "tid": 0,
             	  "objects": ["strand:0:0:0"] },

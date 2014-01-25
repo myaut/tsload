@@ -340,7 +340,7 @@ STATIC_INLINE void list_cut_position(list_head_t *list,
 		return;
 
 	if (entry == &head->l_head)
-		list_head_init(list, head->l_name);
+		list_head_reset(list);
 	else
 		__list_cut_position(list, head, entry);
 }
@@ -386,7 +386,7 @@ STATIC_INLINE void list_splice_tail(list_head_t *list,
 /**
  * list_splice_init - join two lists and reinitialise the emptied list.
  * @param list  the new list to add.
- * @param head  the place to add it in the first list.
+ * @param node  the place to add it in the first list.
  *
  * The list at @list is reinitialised
  */
@@ -395,14 +395,14 @@ STATIC_INLINE void list_splice_init(list_head_t *list,
 {
 	if (!list_empty(list)) {
 		__list_splice(list, node, node->next);
-		list_head_init(list, NULL);
+		list_head_reset(list);
 	}
 }
 
 /**
  * list_splice_tail_init - join two lists and reinitialise the emptied list
  * @param list  the new list to add.
- * @param head  the place to add it in the first list.
+ * @param node  the place to add it in the first list.
  *
  * Each of the lists is a queue.
  * The list at @list is reinitialised
@@ -413,6 +413,55 @@ STATIC_INLINE void list_splice_tail_init(list_head_t *list,
 	if (!list_empty(list)) {
 		__list_splice(list, node->prev, node);
 		list_head_init(list, NULL);
+	}
+}
+
+STATIC_INLINE void list_merge_impl(list_head_t *head, list_head_t *list1,
+		list_head_t *list2) {
+	/* X--O--O--O--O  + X--O--O
+	 *    f        m1      m2 l
+	 * to
+	 * X--O--O--O--O--O--O
+	 *    f        m1 m2 l
+	 *  */
+
+	list_node_t *root = &head->l_head;
+	list_node_t *first = list1->l_head.next;
+	list_node_t *m1 = list1->l_head.prev;
+	list_node_t *m2 = list2->l_head.next;
+	list_node_t *last = list2->l_head.prev;
+
+	first->prev = root;
+	root->next = first;
+
+	root->prev = last;
+	last->next = root;
+
+	m1->next = m2;
+	m2->prev = m1;
+}
+
+/**
+ * Merge lists into new list - reinitializes lists 1 and 2 and
+ * adds them to new list sequentally because consequent calls of
+ * list_splice will provide inconsistent list.
+ *
+ * @param head	 destination list
+ * @param list1  first list to add
+ * @param list2  second list to add
+ */
+STATIC_INLINE void list_merge(list_head_t *head, list_head_t *list1,
+		list_head_t *list2) {
+	if(list_empty(list1)) {
+		list_splice_init(list2, list_head_node(head));
+	}
+	else if(list_empty(list2)) {
+		list_splice_init(list1, list_head_node(head));
+	}
+	else {
+		list_merge_impl(head, list1, list2);
+		list_head_reset(list1);
+		list_head_reset(list2);
 	}
 }
 

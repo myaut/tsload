@@ -9,9 +9,9 @@
 #define RANDGEN_H_
 
 /**
- * randgen.h
+ * @name Random generators and variators
  *
- * API for creating - random generators and variators
+ * API for creating random generators and variators
  */
 
 #include <defs.h>
@@ -59,8 +59,8 @@ static uint64_t rg_generate_int(randgen_t* rg) {
 
 LIBEXPORT double rg_generate_double(randgen_t* rg);
 
-LIBEXPORT int  rg_init_dummy(randgen_t* rg);
-LIBEXPORT void rg_destroy_dummy(randgen_t* rg);
+int  rg_init_dummy(randgen_t* rg);
+void rg_destroy_dummy(randgen_t* rg);
 
 /**
  * Default random generator provided by standard library:
@@ -106,6 +106,11 @@ STATIC_INLINE double rv_variate_double(randvar_t* rv) {
 
 	return rv->rv_class->rv_variate_double(rv, u);
 }
+
+int rv_init_dummy(randvar_t* rv);
+void rv_destroy_dummy(randvar_t* rv);
+int rv_set_int_dummy(randvar_t* rv, const char* name, long value);
+int rv_set_double_dummy(randvar_t* rv, const char* name, double value);
 
 LIBIMPORT randvar_class_t rv_uniform_class;
 LIBIMPORT randvar_class_t rv_exponential_class;

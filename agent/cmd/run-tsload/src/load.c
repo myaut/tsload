@@ -849,6 +849,7 @@ static void report_request(request_t* rq) {
 
 void do_requests_report(list_head_t* rq_list) {
 	request_t *rq_root, *rq;
+	int count = 0;
 
 	list_for_each_entry(request_t, rq_root, rq_list, rq_node) {
 		rq = rq_root;
@@ -856,10 +857,14 @@ void do_requests_report(list_head_t* rq_list) {
 			report_request(rq);
 
 			rq = rq->rq_chain_next;
+			++count;
 		} while(rq != NULL);
 	}
 
 	event_notify_all(&request_event);
+
+	if(count > 0)
+		load_fprintf(stdout, "Reported %d requests\n", count);
 }
 
 /**
