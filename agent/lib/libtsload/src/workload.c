@@ -148,6 +148,8 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	mutex_init(&wl->wl_status_mutex, "wl-%s-st", name);
 	wl->wl_ref_count = (atomic_t) 0ul;
 
+	list_head_init(&wl->wl_wlpgen_head, "wl-%s-wlpgen", name);
+
 	hash_map_insert(&workload_hash_map, wl);
 	atomic_inc(&wl_count);
 
@@ -170,6 +172,8 @@ void wl_destroy_impl(workload_t* wl) {
 	if(wl->wl_chain_next) {
 		wl_rele(wl->wl_chain_next);
 	}
+
+	wlpgen_destroy_all(wl);
 
 	mutex_destroy(&wl->wl_rq_mutex);
 	mutex_destroy(&wl->wl_status_mutex);
@@ -500,6 +504,8 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	rq->rq_start_time = 0;
 	rq->rq_end_time = 0;
 
+	rq->rq_params = wlpgen_generate(wl);
+
 	wl->wl_disp_class->disp_pre_request(rq);
 
 	list_node_init(&rq->rq_node);
@@ -521,10 +527,14 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 }
 
 /**
- * Free request's memory */
+ * Destroy request memory */
 void wl_request_destroy(request_t* rq) {
 	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %d", rq->rq_workload->wl_name,
 			rq->rq_id, rq->rq_step);
+
+	if(rq->rq_params != NULL) {
+		mp_free(rq->rq_params);
+	}
 
 	wl_rele(rq->rq_workload);
 	mp_cache_free(&wl_rq_cache, rq);
@@ -744,7 +754,7 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 
 	/* Process params from i_params to wl_params, where mod_params contains
 	 * parameters descriptions (see wlparam) */
-	ret = json_wlparam_proc_all(*i_params, wlt->wlt_params, wl->wl_params);
+	ret = json_wlparam_proc_all(*i_params, wlt->wlt_params, wl);
 
 	if(ret != WLPARAM_JSON_OK) {
 		goto fail;

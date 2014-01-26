@@ -54,6 +54,8 @@ typedef struct request {
 
 	struct workload* rq_workload;
 
+	void* rq_params;
+
 	list_node_t rq_node;		/* Next request in chain */
 	list_node_t rq_w_node;
 	struct request* rq_chain_next;	/* Next request in workload chain */
@@ -117,15 +119,12 @@ typedef struct workload {
 	int				 wl_current_rq;
 
 	ts_time_t		 wl_start_time;
-
 	ts_time_t		 wl_notify_time;
 
 	/* Requests queue */
 	thread_mutex_t	 wl_rq_mutex;		/**< Mutex that protects wl_requests*/
-
 	long			 wl_current_step;	/**< Id of current step iteration*/
 	long			 wl_last_step;		/**< Latest defined step*/
-
 	unsigned		 wl_rqs_per_step[WLSTEPQSIZE];	/**< Contains number of requests per step*/
 	/* End of requests queue*/
 
@@ -136,6 +135,8 @@ typedef struct workload {
 	struct workload* wl_chain_next;		/**< next in workload chain*/
 
 	list_node_t		 wl_tp_node;		/**< thread pool wl list*/
+
+	list_head_t		 wl_wlpgen_head;	/**< per-request params*/
 } workload_t;
 
 typedef struct {

@@ -43,6 +43,8 @@ static int json_disp_proc_common(JSONNODE* node, workload_t* wl, disp_common_t* 
 	disp->disp_randgen = NULL;
 	disp->disp_randvar = NULL;
 
+	/* FIXME: Should use randgen own factories */
+
 	if(i_randgen != i_end) {
 		randgen = json_as_string(*i_randgen);
 

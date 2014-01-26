@@ -11,6 +11,7 @@
 #include <modules.h>
 #include <wlparam.h>
 #include <tsload.h>
+#include <workload.h>
 
 #include <cpuinfo.h>
 #include <diskinfo.h>
@@ -22,7 +23,7 @@
 
 #define STRSETCHUNK		256
 
-const char* wlt_type_names[] = {
+const char* wlt_type_names[WLP_TYPE_MAX] = {
 	"null",
 	"bool",
 	"integer",
@@ -36,6 +37,23 @@ const char* wlt_type_names[] = {
 	"cpuobject",
 	"disk"
 };
+
+static wlp_type_t wlp_base_types[WLP_TYPE_MAX] = {
+	WLP_NULL,
+	WLP_INTEGER,
+	WLP_FLOAT,
+	WLP_RAW_STRING,
+	WLP_STRING_SET,
+	WLP_INTEGER,		/* WLP_SIZE */
+	WLP_INTEGER,		/* WLP_SIZE */
+	WLP_RAW_STRING,     /* WLP_FILE_PATH */
+	WLP_HI_OBJECT, 		/* WLP_CPU_OBJECT */
+	WLP_HI_OBJECT, 		/* WLP_DISK */
+};
+
+wlp_type_t wlp_get_base_type(wlp_descr_t* wlp) {
+	return wlp_base_types[wlp->type];
+}
 
 static JSONNODE* json_wlparam_strset_format(wlp_descr_t* wlp) {
 	JSONNODE* node = json_new(JSON_ARRAY);
@@ -145,8 +163,7 @@ int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 	return ret;
 }
 
-
-int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
+static int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 	int i;
 	wlp_strset_t* ss = (wlp_strset_t*) param;
 	char* js = NULL;
@@ -173,7 +190,7 @@ int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 	return WLPARAM_JSON_OUTSIDE_RANGE;
 }
 
-int json_wlparam_hiobj_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
+static int json_wlparam_hiobj_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 	hi_object_t** pobj = (hi_object_t**) param;
 	int ret = WLPARAM_JSON_OUTSIDE_RANGE;
 	char* js = NULL;
@@ -274,19 +291,34 @@ int wlparam_set_default(wlp_descr_t* wlp, void* param) {
 	return WLPARAM_DEFAULT_OK;
 }
 
-int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, void* params) {
+int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) {
 	int ret;
 	void* param;
+	char* params = wl->wl_params;
 
 	while(wlp->type != WLP_NULL) {
 		JSONNODE_ITERATOR i_param = json_find(node, wlp->name),
 						  i_end = json_end(node);
 		param = ((char*) params) + wlp->off;
 
+		if((wlp->flags & WLPF_OUTPUT) == WLPF_OUTPUT) {
+			if(i_param != i_end) {
+				tsload_error_msg(TSE_INTERNAL_ERROR, "Couldn't set output param %s", wlp->name);
+				return WLPARAM_INVALID_PARAM;
+			}
+
+			continue;
+		}
+
 		if(i_param == i_end) {
 			/* If parameter is optional, try to assign it to default value */
 			if(wlp->flags & WLPF_OPTIONAL) {
-				ret = wlparam_set_default(wlp, param);
+				if(wlp->flags & WLPF_REQUEST) {
+					ret = wlpgen_create_default(wlp, wl);
+				}
+				else {
+					ret = wlparam_set_default(wlp, param);
+				}
 
 				if(ret == WLPARAM_NO_DEFAULT) {
 					tsload_error_msg(TSE_INTERNAL_ERROR, "Missing default value for %s", wlp->name);
@@ -297,19 +329,27 @@ int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, void* params) {
 				continue;
 			}
 
-			tsload_error_msg(TSE_INVALID_DATA, "Workload parameter %s not specified", wlp->name);
+			tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX " not specified", wlp->name);
 			return WLPARAM_JSON_NOT_FOUND;
 		}
 
-		ret = json_wlparam_proc(*i_param, wlp, param);
-
-		if(ret == WLPARAM_JSON_WRONG_TYPE) {
-			tsload_error_msg(TSE_INVALID_DATA, "Workload parameter %s has wrong type", wlp->name);
-			return ret;
+		if(wlp->flags & WLPF_REQUEST) {
+			ret = json_wlpgen_proc(*i_param, wlp, wl);
+		}
+		else {
+			ret = json_wlparam_proc(*i_param, wlp, param);
 		}
 
-		if(ret == WLPARAM_JSON_OUTSIDE_RANGE) {
-			tsload_error_msg(TSE_INVALID_DATA, "Workload parameter %s outside defined range", wlp->name);
+		if(ret == WLPARAM_JSON_WRONG_TYPE) {
+			tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX " has wrong type", wlp->name);
+			return ret;
+		}
+		else if(ret == WLPARAM_JSON_OUTSIDE_RANGE) {
+			tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX " outside defined range", wlp->name);
+			return ret;
+		}
+		else if(ret != WLPARAM_JSON_OK) {
+			tsload_error_msg(TSE_INTERNAL_ERROR, WLP_ERROR_PREFIX ": internal error", wlp->name);
 			return ret;
 		}
 

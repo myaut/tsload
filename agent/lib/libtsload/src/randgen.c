@@ -8,6 +8,9 @@
 #include <defs.h>
 #include <randgen.h>
 #include <mempool.h>
+#include <tstime.h>
+#include <tsload.h>
+#include <errcode.h>
 
 #include <string.h>
 
@@ -131,5 +134,142 @@ int rv_set_int_dummy(randvar_t* rv, const char* name, long value) {
 
 int rv_set_double_dummy(randvar_t* rv, const char* name, double value) {
 	return RV_INVALID_PARAM_NAME;
+}
+
+randgen_t* json_randgen_proc(JSONNODE* node) {
+	randgen_class_t* rg_class = NULL;
+	char* rg_class_str;
+
+	JSONNODE_ITERATOR i_class = json_find(node, "class"),
+						  i_seed = json_find(node, "seed"),
+						  i_end = json_end(node);
+
+	uint64_t seed = (i_seed != i_end)
+						? json_as_int(*i_seed)
+						: tm_get_clock();
+
+	if(i_class != i_end) {
+		rg_class_str = json_as_string(*i_class);
+
+		if(strcmp(rg_class_str, "libc") == 0) {
+			rg_class = &rg_libc;
+		}
+		else {
+			tsload_error_msg(TSE_INVALID_DATA, "Invalid random generator class '%s'", rg_class_str);
+			json_free(rg_class_str);
+			return NULL;
+		}
+
+		json_free(rg_class_str);
+	}
+	else {
+		tsload_error_msg(TSE_INVALID_DATA, "Missing random generator class");
+		return NULL;
+	}
+
+	return rg_create(rg_class, seed);
+}
+
+static json_randvar_proc_error(int ret, randvar_t* rv, const char* name) {
+	if(ret == RV_INVALID_PARAM_NAME) {
+		tsload_error_msg(TSE_INTERNAL_ERROR,
+						 RV_ERROR_PREFIX ", parameter '%' not acceptable", name);
+		rv_destroy(rv);
+		return NULL;
+	}
+	if(ret == RV_INVALID_PARAM_VALUE) {
+		tsload_error_msg(TSE_INVALID_DATA,
+						 RV_ERROR_PREFIX", parameter '%' value is invalid", name);
+		rv_destroy(rv);
+		return NULL;
+	}
+
+	return rv;
+}
+
+#define RANDVAR_GET_PARAM_VALUE(iter, name, value, conv)\
+	{													\
+		iter = json_find(node, name);					\
+		if(iter == i_end) {								\
+			tsload_error_msg(TSE_MESSAGE_FORMAT,		\
+					RV_ERROR_PREFIX ", missing parameter '%s'", name);	\
+			return NULL;								\
+														\
+		}												\
+		else if(json_type(*iter) != JSON_NUMBER) {		\
+			tsload_error_msg(TSE_MESSAGE_FORMAT,		\
+					RV_ERROR_PREFIX ", parameter '%' is not number");	\
+			return NULL;								\
+		}												\
+		value = conv(*iter);							\
+	}
+
+#define RANDVAR_SET_PARAM_VALUE(rv, name, value, type)	\
+	if(rv != NULL) {									\
+		ret = rv_set_ ## type (rv, name, value);		\
+		rv = json_randvar_proc_error(ret, rv, name);	\
+	}
+
+randvar_t* json_randvar_proc(JSONNODE* node, randgen_t* rg) {
+	randvar_t* rv = NULL;
+	char* rv_class_str;
+	int ret;
+
+	JSONNODE_ITERATOR i_class = json_find(node, "class"),
+						  i_end = json_end(node);
+	JSONNODE_ITERATOR i_param;
+
+	if(i_class != i_end) {
+		rv_class_str = json_as_string(*i_class);
+
+		if(strcmp(rv_class_str, "exponential") == 0) {
+			double rate;
+
+			RANDVAR_GET_PARAM_VALUE(i_param, "rate", rate, json_as_float);
+
+			rv = rv_create(&rv_exponential_class, rg);
+			RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double);
+		}
+		else if(strcmp(rv_class_str, "uniform") == 0) {
+			double min, max;
+
+			RANDVAR_GET_PARAM_VALUE(i_param, "min", min, json_as_float);
+			RANDVAR_GET_PARAM_VALUE(i_param, "max", max, json_as_float);
+
+			rv = rv_create(&rv_uniform_class, rg);
+			RANDVAR_SET_PARAM_VALUE(rv, "min", min, double);
+			RANDVAR_SET_PARAM_VALUE(rv, "max", max, double);
+		}
+		else if(strcmp(rv_class_str, "erlang") == 0) {
+			double rate;
+			int shape;
+
+			RANDVAR_GET_PARAM_VALUE(i_param, "rate", rate, json_as_float);
+			RANDVAR_GET_PARAM_VALUE(i_param, "shape", rate, json_as_int);
+
+			rv = rv_create(&rv_erlang_class, rg);
+			RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double);
+			RANDVAR_SET_PARAM_VALUE(rv, "shape", shape, int);
+		}
+		else if(strcmp(rv_class_str, "normal") == 0) {
+			double mean, stddev;
+
+			RANDVAR_GET_PARAM_VALUE(i_param, "mean", mean, json_as_float);
+			RANDVAR_GET_PARAM_VALUE(i_param, "stddev", stddev, json_as_float);
+
+			rv = rv_create(&rv_normal_class, rg);
+			RANDVAR_SET_PARAM_VALUE(rv, "mean", mean, double);
+			RANDVAR_SET_PARAM_VALUE(rv, "stddev", stddev, double);
+		}
+		else {
+			tsload_error_msg(TSE_INVALID_DATA, "Invalid random variator class '%s'", rv_class_str);
+			json_free(rv_class_str);
+			return NULL;
+		}
+
+		json_free(rv_class_str);
+	}
+
+	return rv;
 }
 

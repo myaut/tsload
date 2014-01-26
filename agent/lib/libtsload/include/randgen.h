@@ -72,6 +72,8 @@ LIBIMPORT randgen_class_t rg_libc;
 #define RV_INVALID_PARAM_NAME	-1
 #define RV_INVALID_PARAM_VALUE	-2
 
+#define RV_ERROR_PREFIX 	"Failed to parse random variator"
+
 struct randvar_class;
 
 typedef struct randvar {
@@ -116,5 +118,12 @@ LIBIMPORT randvar_class_t rv_uniform_class;
 LIBIMPORT randvar_class_t rv_exponential_class;
 LIBIMPORT randvar_class_t rv_erlang_class;
 LIBIMPORT randvar_class_t rv_normal_class;
+
+#ifndef NO_JSON
+#include <libjson.h>
+
+LIBEXPORT randgen_t* json_randgen_proc(JSONNODE* node);
+LIBEXPORT randvar_t* json_randvar_proc(JSONNODE* node, randgen_t* rg);
+#endif
 
 #endif /* RANDGEN_H_ */

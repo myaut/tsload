@@ -50,6 +50,7 @@ typedef struct wl_type {
 
 	wlp_descr_t* wlt_params;
 	size_t 		 wlt_params_size;			/**< sizeof structure where parameter values are stored*/
+	size_t		 wlt_rqparams_size;
 
 	wlt_wl_config_func   wlt_wl_config;
 	wlt_wl_config_func   wlt_wl_unconfig;

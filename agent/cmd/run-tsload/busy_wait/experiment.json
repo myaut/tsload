@@ -34,7 +34,21 @@
 			"disp_params": {
 				"distribution": "exponential"
 			},
-			"params": { "num_cycles": 40000 }
+			"params": { 
+				"num_cycles": {
+					"randgen": {
+						"class": "libc"
+					},
+					"pmap": [
+						{ "probability": 0.2,
+						  "value": 30000 },
+						{ "probability": 0.65,
+						  "value": 40000 },
+						{ "probability": 0.15,
+						  "value": 50000 }
+					]
+				} 
+			}
 		}
 	}
 }

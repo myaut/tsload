@@ -11,7 +11,11 @@
 #include <wlparam.h>
 
 struct busy_wait_workload {
+};
+
+struct busy_wait_request {
 	wlp_integer_t num_cycles;
 };
+
 
 #endif /* BUSY_WAIT_H_ */

@@ -25,12 +25,12 @@ DECLARE_MOD_NAME("busy_wait");
 DECLARE_MOD_TYPE(MOD_TSLOAD);
 
 MODEXPORT wlp_descr_t busy_wait_params[] = {
-	{ WLP_INTEGER, WLPF_NO_FLAGS,
+	{ WLP_INTEGER, WLPF_REQUEST,
 		WLP_NO_RANGE(),
 		WLP_NO_DEFAULT(),
 		"num_cycles",
 		"Number of cycles to be waited (not CPU cycles)",
-		offsetof(struct busy_wait_workload, num_cycles) },
+		offsetof(struct busy_wait_request, num_cycles) },
 	{ WLP_NULL }
 };
 
@@ -45,8 +45,8 @@ MODEXPORT int busy_wait_wl_unconfig(workload_t* wl) {
 }
 
 MODEXPORT int busy_wait_run_request(request_t* rq) {
-	struct busy_wait_workload* bww =
-			(struct busy_wait_workload*) rq->rq_workload->wl_params;
+	struct busy_wait_request* bww =
+			(struct busy_wait_request*) rq->rq_params;
 
 	volatile wlp_integer_t i;
 
@@ -62,6 +62,7 @@ wl_type_t busy_wait_wlt = {
 
 	busy_wait_params,					/* wlt_params */
 	sizeof(struct busy_wait_workload),	/* wlt_params_size*/
+	sizeof(struct busy_wait_request), 	/* wlt_rqparams_size*/
 
 	busy_wait_wl_config,				/* wlt_wl_config */
 	busy_wait_wl_unconfig,				/* wlt_wl_unconfig */

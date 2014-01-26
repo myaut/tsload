@@ -160,10 +160,11 @@ env.Append(BUILDERS = {'UsageBuilder': UsageBuilder})
 # TESTLIBS maps library under test name to path to it
 env.Append(TESTLIBS = {})
 
-# Add verbosity of warnings
+# Add verbosity of warnings but disable unnecessary warnings
 if env['CC'] == 'gcc': 
     env.Append(CCFLAGS = ['-Wall'])
-    env.Append(CCFLAGS = ['-Wno-unused-label', '-Wno-unused-variable', '-Wno-unused-function'])
+    env.Append(CCFLAGS = ['-Wno-unused-label', '-Wno-unused-variable', 
+                          '-Wno-unused-function', '-Wno-switch'])
 elif env['CC'] == 'cl':
     env.Append(CCFLAGS = ['/W3'])
 

@@ -892,7 +892,9 @@ int do_load(void) {
 	}
 
 	/* Prepare experiment: process configuration and configure workloads */
-	err = prepare_experiment();
+	if((err = prepare_experiment()) != LOAD_OK) {
+		goto end;
+	}
 
 	/* Wait until workload configuration is complete*/
 	while(atomic_read(&wl_cfg_count) != 0) {
@@ -915,6 +917,7 @@ int do_load(void) {
 		event_wait(&request_event);
 	}
 
+end:
 	unconfigure_all_wls();
 	unconfigure_threadpools();
 

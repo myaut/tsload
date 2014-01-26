@@ -8,11 +8,15 @@
 #ifndef WLPARAM_H_
 #define WLPARAM_H_
 
+#include <defs.h>
+#include <list.h>
+#include <randgen.h>
+
 #include <stddef.h>
 #include <stdint.h>
-#include <defs.h>
 
-/* Workload parameter declaration
+/**
+ * Workload parameters
  *
  * These declarations used to provide module description to server
  * and simply parse workload parameters in JSON format.
@@ -26,36 +30,54 @@
  * Parameter declaration are saved as array of wlp_descr_t structures with "NULL-terminator" with type WLP_NULL.
  * */
 
+struct workload;
+
 typedef long	wlp_integer_t;
 typedef double	wlp_float_t;
 typedef char	wlp_string_t;
 typedef int  	wlp_bool_t;
 typedef int  	wlp_strset_t;
+typedef void*	wlp_hiobject_t;
 
+/**
+ * Workload paramter type
+ * [wlparam-type]
+ *
+ * @value WLP_NULL	Used to mark end of param list
+ * @value WLP_BOOL  Boolean type
+ * @value WLP_INTEGER Integer type
+ * @value WLP_FLOAT Floating point type
+ * @value WLP_RAW_STRING String. Use range to define maximum length
+ * @value WLP_STRING_SET Depending on input strings, selects one of possible outcomes.
+ */
 typedef enum {
-	/*NULL-term*/	WLP_NULL,		/*Used to mark end of param list*/
+	WLP_NULL,
 
-	/*int*/			WLP_BOOL,
-	/*long*/		WLP_INTEGER,
-	/*double*/		WLP_FLOAT,
-	/*char[]*/ 		WLP_RAW_STRING, /*Any string*/
+	WLP_BOOL,
+	WLP_INTEGER,
+	WLP_FLOAT,
+	WLP_RAW_STRING, /*Any string*/
 
-	/*char[]*/		WLP_STRING_SET,  /*string - one of possible values*/
+	WLP_STRING_SET,  /*string - one of possible values*/
 
 	/* metatypes - using primitive types in serialization
 	 * but have different meanings */
-	/* INT */		WLP_SIZE,		/* size - in Kb, etc. */
-	/* INT */		WLP_TIME,
+	WLP_SIZE,		/* size - in Kb, etc. */
+	WLP_TIME,
 
-	/* STR */		WLP_FILE_PATH,
-	/* STR */		WLP_CPU_OBJECT,
-	/* STR */		WLP_DISK,
+	WLP_FILE_PATH,
+	WLP_CPU_OBJECT,
+	WLP_DISK,
+
+	WLP_TYPE_MAX,
+
+	WLP_HI_OBJECT		/* Base type - not really used */
 } wlp_type_t;
 
 typedef struct {
 	boolean_t range;		/*enabled flag*/
 
-	/* Here should be union, but because of some smart people, who desided that
+	/* Here should be union, but because of some smart people, who decided that
 	 * | ISO C++03 8.5.1[dcl.init.aggr]/15:
 	 * | When a union is initialized with a brace-enclosed initializer,
 	 * | the braces shall only contain an initializer for the first member of the union.
@@ -91,32 +113,47 @@ typedef struct {
 	wlp_bool_t b;
 	wlp_integer_t i;
 	wlp_float_t f;
-	const char* s;
+	char* s;
 	wlp_strset_t ssi;
 } wlp_default_t;
 
+/**
+ * Range declaration
+ * [wlparam-range]
+ */
 #define WLP_NO_RANGE()				{ B_FALSE, { {0} } }
-
 #define WLP_STRING_LENGTH(length) 	{ B_TRUE, { {length}, {0, 0}, {0.0, 0.0}, {0, NULL} } }
-
 #define WLP_INT_RANGE(min, max)  	{ B_TRUE, { {0}, {min, max} } }
 #define WLP_FLOAT_RANGE(min, max) 	{ B_TRUE, { {0}, {0, 0}, {min, max} } }
-
 #define WLP_STRING_SET_RANGE(set) 	{ B_TRUE, { {0}, {0, 0}, {0.0, 0.0},  		\
 									    {sizeof((set)) / sizeof(char*), (set) } } }
 
+/**
+ * Default wl parameter value
+ * [wlparam-default]
+ */
 #define WLP_NO_DEFAULT()				{ B_FALSE, B_FALSE }
-
 #define WLP_BOOLEAN_DEFAULT(b)			{ B_TRUE, b }
 #define WLP_INT_DEFAULT(i)				{ B_TRUE, B_FALSE, i }
 #define WLP_FLOAT_DEFAULT(f)			{ B_TRUE, B_FALSE, 0, f }
 #define WLP_STRING_DEFAULT(s)			{ B_TRUE, B_FALSE, 0, 0.0, s }
 #define WLP_STRING_SET_DEFAULT(ssi)		{ B_TRUE, B_FALSE, 0, 0.0, NULL, ssi }
 
+/**
+ * Workload parameter flags
+ * [wlparam-flags]
+ */
 #define WLPF_NO_FLAGS				0x00
 #define WLPF_OPTIONAL				0x01
+#define WLPF_REQUEST				0x02
+#define WLPF_OUTPUT					(WLPF_REQUEST | 0x04)
 
-/*Description of param*/
+/**
+ * Workload parameter descriptor
+ *
+ * @member type Parameter type
+ * @member flags
+ * @member off Offset in data structure where param value would be written */
 typedef struct {
 	wlp_type_t type;
 	unsigned long flags;
@@ -127,12 +164,8 @@ typedef struct {
 	char* name;
 	char* description;
 
-	/*Offset in data structure where param value would be written*/
 	size_t off;
 } wlp_descr_t;
-
-#ifndef NO_JSON
-#include <libjson.h>
 
 #define WLPARAM_DEFAULT_OK			0
 #define WLPARAM_JSON_OK				0
@@ -140,11 +173,72 @@ typedef struct {
 #define WLPARAM_JSON_OUTSIDE_RANGE	-2
 #define WLPARAM_JSON_NOT_FOUND		-3
 #define WLPARAM_NO_DEFAULT			-4
+#define WLPARAM_INVALID_PARAM		-5
+#define WLPARAM_INVALID_TYPE		-6
+#define WLPARAM_MISSING_RANDSPEC	-7
+#define WLPARAM_INVALID_RANDSPEC	-8
+#define WLPARAM_MISSING_PMAP		-9
+#define WLPARAM_INVALID_PMAP		-10
 
+#define WLP_ERROR_PREFIX 			"Workload parameter %s"
+
+typedef enum wlpgen_type {
+	WLPG_VALUE,
+	WLPG_RANDOM
+} wlpgen_type_t;
+
+typedef union wlpgen_value {
+	char value[16];
+	char* string;
+} wlpgen_value_t;
+
+typedef struct {
+	wlpgen_value_t  value;
+	double probability;
+} wlpgen_probability_t;
+
+typedef struct wlpgen_randgen {
+	randgen_t*	rg;
+	randvar_t* 	rv;
+
+	/* For boolean/stringset - probability map */
+	int pcount;
+	wlpgen_probability_t* pmap;
+} wlpgen_randgen_t;
+
+/* Generator for per-request params */
+typedef struct wlp_generator {
+	wlpgen_type_t type;
+	wlp_descr_t* wlp;
+
+	union {
+		wlpgen_value_t value;
+		wlpgen_randgen_t randgen;
+	} generator;
+
+	list_node_t	node;
+} wlp_generator_t;
+
+wlp_type_t wlp_get_base_type(wlp_descr_t* wlp);
+
+int wlparam_set_default(wlp_descr_t* wlp, void* param);
+
+int wlpgen_create_default(wlp_descr_t* wlp, struct workload* wl);
+void wlpgen_destroy_all(struct workload* wl);
+void* wlpgen_generate(struct workload* wl);
+
+#ifndef NO_JSON
+#include <libjson.h>
+
+int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param);
+int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param);
+
+int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl);
 
 JSONNODE* json_wlparam_format(wlp_descr_t* wlp);
 JSONNODE* json_wlparam_format_all(wlp_descr_t* wlp);
-int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, void* params);
+int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param);
+int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl);
 #endif
 
 #endif /* WLPARAM_H_ */
