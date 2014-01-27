@@ -152,8 +152,19 @@ randgen_t* json_randgen_proc(JSONNODE* node) {
 		rg_class_str = json_as_string(*i_class);
 
 		if(strcmp(rg_class_str, "libc") == 0) {
-			rg_class = &rg_libc;
+			rg_class = &rg_libc_class;
 		}
+		else if(strcmp(rg_class_str, "seq") == 0) {
+			rg_class = &rg_seq_class;
+		}
+		else if(strcmp(rg_class_str, "lcg") == 0) {
+			rg_class = &rg_lcg_class;
+		}
+#ifdef PLAT_POSIX
+		else if(strcmp(rg_class_str, "devrandom") == 0) {
+			rg_class = &rg_devrandom_class;
+		}
+#endif
 		else {
 			tsload_error_msg(TSE_INVALID_DATA, "Invalid random generator class '%s'", rg_class_str);
 			json_free(rg_class_str);

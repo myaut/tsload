@@ -9,7 +9,6 @@ Import('env')
 
 lib = env.Clone()
 
-
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['advapi32']) 
 
@@ -20,6 +19,7 @@ lib.AddDeps(('lib', 'libjson'),
             ('lib', 'libtscommon'), 
             ('lib', 'libhostinfo'))
 
+lib.PreparePlatform()
 objects = lib.CompileSharedLibrary(Glob("src/disp/*.c") + Glob("src/randgen/*.c") + \
                                    Glob("src/tpdisp/*.c"))
 

@@ -49,7 +49,7 @@ static int json_disp_proc_common(JSONNODE* node, workload_t* wl, disp_common_t* 
 		randgen = json_as_string(*i_randgen);
 
 		if(strcmp(randgen, "libc") == 0) {
-			rg_class = &rg_libc;
+			rg_class = &rg_libc_class;
 		}
 		else {
 			tsload_error_msg(TSE_INVALID_DATA, "Invalid random generator class '%s' for workload %s",
@@ -61,7 +61,7 @@ static int json_disp_proc_common(JSONNODE* node, workload_t* wl, disp_common_t* 
 		json_free(randgen);
 	}
 	else {
-		rg_class = &rg_libc;
+		rg_class = &rg_libc_class;
 	}
 
 	disp->disp_randgen = rg_create(rg_class, seed);
