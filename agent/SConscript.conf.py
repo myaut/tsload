@@ -178,6 +178,10 @@ if env.SupportedPlatform('linux'):
     
     if not conf.CheckDeclaration('clock_gettime', '#include <time.h>'):
         raise StopError("clock_gettime() is missing")
+
+if env.SupportedPlatform('solaris'):
+    if not conf.CheckLib('rt'):
+        raise StopError("librt is missing")
         
 # ----------------------------
 # log checks

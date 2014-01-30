@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 /**
  * Test getopt() for correctness
@@ -23,7 +24,8 @@ int test_main() {
     int i = 0;
 
     while((c = plat_getopt(7, testargs, "f:abc")) != -1) {
-    	printf("%d %c %s\n", optind, c, optarg);
+    	printf("%d %c %s\n", optind, c,
+    				(optarg == NULL) ? "(null)" : optarg);
 
     	switch(i) {
     	case 0:

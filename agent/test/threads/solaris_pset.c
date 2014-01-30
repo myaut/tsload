@@ -28,8 +28,6 @@ void create_mask(void);
 thread_result_t test_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, void, unused);
 
-	sched_set_affinity(thread, mask);
-
 	tm_sleep_milli(100 * T_MS);
 
 THREAD_END:
@@ -52,20 +50,24 @@ int test_main() {
 
 	/* Initialize thread */
 	t_init(&thread, NULL, test_thread, "thread");
+	ret = sched_set_affinity(&thread, mask);
 
-	tm_sleep_milli(10 * T_MS);
+	if(ret != SCHED_NOT_SUPPORTED) {
+		assert(ret == SCHED_OK);
 
-	/* Check if thread have correct affinity */
-	thread_mask = cpumask_create();
-	cpumask_reset(thread_mask);
-	ret = sched_get_affinity(&thread, thread_mask);
+		/* Check if thread have correct affinity */
+		thread_mask = cpumask_create();
+		cpumask_reset(thread_mask);
+		ret = sched_get_affinity(&thread, thread_mask);
 
-	assert(cpumask_eq(mask, thread_mask));
+		assert(cpumask_eq(mask, thread_mask));
+
+		cpumask_destroy(thread_mask);
+	}
 
 	/* Clean up the mess */
 	t_destroy(&thread);
 
-	cpumask_destroy(thread_mask);
 	cpumask_destroy(mask);
 
 	threads_fini();
