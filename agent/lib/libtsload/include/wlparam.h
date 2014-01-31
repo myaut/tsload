@@ -32,7 +32,7 @@
 
 struct workload;
 
-typedef long	wlp_integer_t;
+typedef int64_t	wlp_integer_t;
 typedef double	wlp_float_t;
 typedef char	wlp_string_t;
 typedef int  	wlp_bool_t;

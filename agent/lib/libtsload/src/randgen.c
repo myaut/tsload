@@ -181,7 +181,7 @@ randgen_t* json_randgen_proc(JSONNODE* node) {
 	return rg_create(rg_class, seed);
 }
 
-static json_randvar_proc_error(int ret, randvar_t* rv, const char* name) {
+static randvar_t* json_randvar_proc_error(int ret, randvar_t* rv, const char* name) {
 	if(ret == RV_INVALID_PARAM_NAME) {
 		tsload_error_msg(TSE_INTERNAL_ERROR,
 						 RV_ERROR_PREFIX ", parameter '%' not acceptable", name);

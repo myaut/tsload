@@ -19,18 +19,14 @@ def Stringify(s):
     return '"%s"' % s
 
 def CheckBinary(context, name, paths = []):
-    paths += context.env['ENV']['PATH'].split(os.pathsep)
-    
     context.Message('Checking for platform has %s program...' % name)
+    full_path = env.CheckBinary(name, paths)
     
-    for path in paths:
-        full_path = PathJoin(path, name)
-        
-        if PathIsFile(full_path) and PathAccess(full_path, os.X_OK):
-            context.sconf.Define(name.upper() + '_PATH', Stringify(full_path),
-                           'Defined to path to binary if it exists on build system')
-            context.Result(True)
-            return full_path
+    if full_path is not None:
+        context.sconf.Define(name.upper() + '_PATH', Stringify(full_path),
+                       'Defined to path to binary if it exists on build system')
+        context.Result(True)
+        return full_path
     
     context.Result(False)
 
@@ -93,10 +89,36 @@ def CheckGCCAtomicBuiltins(context):
     
     return ret
 
+def CheckUnalignedMemAccess(context):
+    test_source = """
+    #include <stddef.h>
+    #include <stdint.h>
+    #include <stdlib.h>
+    
+    int main() {
+            char* test = malloc(12);
+            volatile uint64_t val = *((uint64_t*) (test+4));
+    
+            return 0;
+    }
+    """
+    
+    context.Message('Checking if processor allows unaligned accesses...')
+    ret, _ = context.sconf.TryRun(test_source, '.c')
+    
+    if ret:
+        context.sconf.Define('HAVE_UNALIGNED_MEMACCESS', 
+                       comment='Processor allows unaligned accesses')
+    
+    context.Result(ret)
+    
+    return ret
+
 conf.AddTests({'CheckBinary': CheckBinary,
                'CheckDesignatedInitializers': CheckDesignatedInitializers,
                'CheckGCCSyncBuiltins': CheckGCCSyncBuiltins,
-               'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins})
+               'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins,
+               'CheckUnalignedMemAccess': CheckUnalignedMemAccess})
 
 #-------------------------------------------
 # C compiler and standard library checks
@@ -126,6 +148,8 @@ if not conf.CheckDeclaration('snprintf', '#include <stdio.h>'):
 if env['CC'] == 'gcc':
     if not conf.CheckGCCAtomicBuiltins() and not conf.CheckGCCSyncBuiltins():
         raise StopError("GCC doesn't support neither atomic nor __sync builtins")
+
+conf.CheckUnalignedMemAccess()
 
 # ------------------------------------------
 # Global platform checks    
@@ -234,21 +258,6 @@ if env.SupportedPlatform('linux') or env.SupportedPlatform('solaris'):
 # hostinfo checks?
 if GetOption('trace'):
     conf.Define('HOSTINFO_TRACE', comment='--trace was enabled')
-
-# -----------------------------
-# ctfconvert / ctfmerge (Solaris)
-
-if env.SupportedPlatform('solaris'):
-    ONBLD_PATH = [ # Solaris 11 path
-                  '/opt/onbld/bin/i386',
-                  '/opt/onbld/bin/sparc',
-                  
-                  # Solaris 10 path
-                  '/opt/SUNWonbld/bin/i386',
-                  '/opt/SUNWonbld/bin/sparc']
-    
-    env['CTFCONVERT'] = conf.CheckBinary('ctfconvert', ONBLD_PATH)
-    env['CTFMERGE'] = conf.CheckBinary('ctfmerge', ONBLD_PATH)
 
 env.Alias('configure', gen_config)
 

@@ -47,6 +47,8 @@ extern tp_disp_class_t tpd_rand_class;
 extern tp_disp_class_t tpd_fill_up_class;
 extern tp_disp_class_t tpd_ff_class;
 
+int tpd_preinit_fill_up(tp_disp_t* tpd, unsigned num_requests, int first_wid);
+
 boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t max_sleep) {
 	ts_time_t cur_time, next_time;
 	ts_time_t sleep_time;

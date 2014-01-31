@@ -93,9 +93,9 @@
  * }
  * */
 #define THREAD_END 		_l_thread_exit
-#define THREAD_FINISH(arg)    		\
-	thread->t_state = TS_DEAD;		\
-	t_exit(thread);					\
+#define THREAD_FINISH(arg)    						\
+	atomic_set(&thread->t_state_atomic, TS_DEAD);	\
+	t_exit(thread);									\
 	PLAT_THREAD_FINISH(arg, thread->t_ret_code)
 
 /**
@@ -199,10 +199,7 @@ typedef struct thread {
 	plat_thread_t	t_impl;
 	plat_sched_t	t_sched_impl;
 
-	union {
-		thread_state_t	t_state;
-		atomic_t		t_state_atomic;
-	};
+	atomic_t		t_state_atomic;
 
 	thread_id_t  	t_id;
 	int				t_local_id;

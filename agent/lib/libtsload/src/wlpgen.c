@@ -12,6 +12,7 @@
 #include <randgen.h>
 #include <tsload.h>
 #include <errcode.h>
+#include <field.h>
 
 #include <math.h>
 #include <float.h>
@@ -31,6 +32,12 @@
  *      * for integer and float wlparam types it will take pure generator/variator value
  *      * for other wlparam types it uses probability map and random generator only
  */
+
+DECLARE_FIELD_FUNCTIONS(wlp_integer_t);
+DECLARE_FIELD_FUNCTIONS(wlp_float_t);
+DECLARE_FIELD_FUNCTIONS(wlp_bool_t);
+DECLARE_FIELD_FUNCTIONS(wlp_strset_t);
+DECLARE_FIELD_FUNCTIONS(wlp_hiobject_t);
 
 int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen);
 void wlpgen_destroy_pmap(wlp_generator_t* gen, int pcount, wlpgen_probability_t* pmap);
@@ -275,9 +282,9 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 }
 
 #define WLPGEN_GEN_VALUE(type, value, param)				\
-	(*(type*) param) = (*(type*) value->value)
+	FIELD_PUT_VALUE(type, param, * (type*) &value->value)
 #define WLPGEN_GEN_RANDOM(type, value, param)				\
-	(*(type*) param) = ((type) value)
+	FIELD_PUT_VALUE(type, param, value)
 
 void wlpgen_gen_value(wlp_generator_t* gen, wlpgen_value_t* value, void* param) {
 	switch(wlp_get_base_type(gen->wlp)) {

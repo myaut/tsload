@@ -11,6 +11,7 @@
 #include <tsfile.h>
 #include <mempool.h>
 #include <list.h>
+#include <field.h>
 
 #include <csv.h>
 
@@ -24,6 +25,14 @@ const char csv_opt_separator = ':';
 const unsigned csv_entries_per_chunk = 8;
 
 extern const char* tsfile_error_str[];
+
+DECLARE_FIELD_FUNCTION_BYTE(uint8_t);
+DECLARE_FIELD_FUNCTIONS(boolean_t);
+DECLARE_FIELD_FUNCTIONS(uint16_t);
+DECLARE_FIELD_FUNCTIONS(uint32_t);
+DECLARE_FIELD_FUNCTIONS(uint64_t);
+DECLARE_FIELD_FUNCTIONS(float);
+DECLARE_FIELD_FUNCTIONS(double);
 
 void* csv_entry_create(list_head_t* list, size_t entry_size) {
 	csv_entry_chunk_t* entry_chunk;
@@ -546,9 +555,6 @@ static size_t csv_read_string(const char* ptr, char* string, size_t str_length) 
 	return src - ptr + 1;
 }
 
-#define	FIELD_GET_VALUE(type, value)				*((type*) value)
-#define	FIELD_PUT_VALUE(type, value, new_value)	*((type*) value) = (type) new_value
-
 void csv_write_entry(FILE* file, csv_binding_t* bindings, int bcount, void* entry) {
 	int bid;
 
@@ -585,8 +591,13 @@ void csv_write_entry(FILE* file, csv_binding_t* bindings, int bcount, void* entr
 			}
 			break;
 		case TSFILE_FIELD_FLOAT:
-			{
+			switch(field->size) {
+			case sizeof(float):
+				fprintf(file, "%f", FIELD_GET_VALUE(float, value));
+			break;
+			case sizeof(double):
 				fprintf(file, "%f", FIELD_GET_VALUE(double, value));
+			break;
 			}
 			break;
 		case TSFILE_FIELD_STRING:

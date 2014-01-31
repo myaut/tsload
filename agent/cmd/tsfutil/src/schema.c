@@ -10,6 +10,7 @@
 
 #include <tsfile.h>
 #include <libjson.h>
+#include <mempool.h>
 
 #include <stdio.h>
 #include <stdlib.h>
