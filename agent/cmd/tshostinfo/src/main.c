@@ -15,6 +15,7 @@
 #include <hiprint.h>
 
 #include <hiobject.h>
+#include <schedutil.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -24,6 +25,7 @@ int print_flags = INFO_DEFAULT;
 
 struct subsystem subsys[] = {
 	SUBSYSTEM("mempool", mempool_init, mempool_fini),
+	SUBSYSTEM("sched", sched_init, sched_fini),
 	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini)
 };
 
@@ -72,6 +74,7 @@ int print_info(const char* topic) {
 	PRINT_INFO_IMPL(host);
 	PRINT_INFO_IMPL(disk);
 	PRINT_INFO_IMPL(cpu);
+	PRINT_INFO_IMPL(sched);
 
 	return 1;
 }

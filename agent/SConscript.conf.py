@@ -16,6 +16,8 @@ conf = Configure(env, config_h = str(gen_config))
 
 # Make python string C string literal
 def Stringify(s):
+    s = s.replace('\\', '\\\\')
+    s = s.replace('"', '\\"')
     return '"%s"' % s
 
 def CheckBinary(context, name, paths = []):
@@ -116,6 +118,7 @@ conf.CheckDesignatedInitializers()
 
 conf.CheckDeclaration('min', '#include <stdlib.h>')
 conf.CheckDeclaration('max', '#include <stdlib.h>')
+conf.CheckDeclaration('round', '#include <math.h>')
 
 if not conf.CheckDeclaration('snprintf', '#include <stdio.h>'):
     if not conf.CheckDeclaration('_snprintf', '#include <stdio.h>'):
@@ -126,6 +129,8 @@ if not conf.CheckDeclaration('snprintf', '#include <stdio.h>'):
 if env['CC'] == 'gcc':
     if not conf.CheckGCCAtomicBuiltins() and not conf.CheckGCCSyncBuiltins():
         raise StopError("GCC doesn't support neither atomic nor __sync builtins")
+
+conf.CheckHeader('inttypes.h')
 
 # ------------------------------------------
 # Global platform checks    

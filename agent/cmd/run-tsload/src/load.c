@@ -480,7 +480,7 @@ static void start_all_wls(void) {
 static int configure_threadpools(JSONNODE* tp_node) {
 	JSONNODE_ITERATOR iter = json_begin(tp_node),
 				      end = json_end(tp_node);
-	JSONNODE_ITERATOR i_num_threads, i_quantum, i_disp, i_bindings, i_discard;
+	JSONNODE_ITERATOR i_num_threads, i_quantum, i_disp, i_sched, i_discard;
 	JSONNODE_ITERATOR i_end;
 
 	unsigned num_threads;
@@ -504,7 +504,7 @@ static int configure_threadpools(JSONNODE* tp_node) {
 		CONFIGURE_TP_PARAM(i_num_threads, "num_threads", JSON_NUMBER);
 		CONFIGURE_TP_PARAM(i_quantum, "quantum", JSON_NUMBER);
 		CONFIGURE_TP_PARAM(i_disp, "disp", JSON_NODE);
-		i_bindings = json_find(*iter, "bindings");
+		i_sched = json_find(*iter, "sched");
 		i_discard = json_find(*iter, "discard");
 
 		num_threads = json_as_int(*i_num_threads);
@@ -520,9 +520,9 @@ static int configure_threadpools(JSONNODE* tp_node) {
 			return LOAD_ERR_CONFIGURE;
 		}
 
-		if(i_bindings != i_end) {
+		if(i_sched != i_end) {
 			/* If we fail to do bindings - ignore it */
-			(void) tsload_bind_threadpool(tp_name, *i_bindings);
+			(void) tsload_schedule_threadpool(tp_name, *i_sched);
 		}
 
 		load_fprintf(stdout, "Configured thread pool '%s' with %u threads and %lld ns quantum\n",

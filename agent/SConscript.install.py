@@ -7,6 +7,11 @@ from installdirs import install_dirs
 
 Import('env')
 
+def Stringify(s):
+    s = s.replace('\\', '\\\\')
+    s = s.replace('"', '\\"')
+    return '"%s"' % s
+
 AddOption('--prefix',  dest='prefix', action="store", default = '',
           metavar='PREFIX', help='Installation prefix') 
 
@@ -31,7 +36,7 @@ for key, dir, win_dir, param, help in install_dirs:
               metavar='DIR', help=help + ' [EPREFIX/%default]')
     env[key] = GetOption(param)
     
-    conf_install.Define(key, '"%s"' % env[key], comment = help)
+    conf_install.Define(key, Stringify(env[key]), comment = help)
 
 conf_install.Finish()
 

@@ -173,9 +173,12 @@ if env['DEBUG']:
     if env['CC'] == 'gcc':
         env.Append(CCFLAGS = ["-g"])
     elif env['CC'] == 'cl':
-        env.Append(CCFLAGS = ["/Zi", '/Od'])
-        env.Append(LINKFLAGS =  ["/debug"])
-    
+        # FIXME: Build service fails when creating PDBs on Windows
+        # C1902 - looks like cl.exe couldn't connect to mspdbsrv.exe
+        if 'TSLOAD_PDBSERV_DISABLE' not in os.environ:
+            env.Append(CCFLAGS = ["/Zi"])
+            env.Append(LINKFLAGS =  ["/debug"])
+        env.Append(CCFLAGS = ['/Od'])           
 else:
     if env['CC'] == 'gcc':
         env.Append(CCFLAGS = ['-O2'])

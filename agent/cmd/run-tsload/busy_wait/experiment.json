@@ -14,14 +14,14 @@
             	"type": "first-free"
             },
             "discard": true,
-            "bindings": [
-            	{ "tid": 0,
+            "sched": [
+            	{ "wid": 0,
             	  "objects": ["strand:0:0:0"] },
-            	{ "tid": 1,
+            	{ "wid": 1,
             	  "objects": ["strand:0:0:0"] },
-            	{ "tid": 2,
+            	{ "wid": 2,
             	  "objects": ["strand:0:0:0"] },
-            	{ "tid": 3,
+            	{ "wid": 3,
             	  "objects": ["strand:0:0:0"] }            	 
             ]
         }

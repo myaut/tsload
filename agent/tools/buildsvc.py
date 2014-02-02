@@ -140,8 +140,19 @@ class BuildServer(object):
         self.builddir = None
     
     def _setup_env(self):
-        idx = 2 if self.plat == 'win32' else 1
-        subdirs = dict((d[0], d[idx]) for d in install_dirs)
+        if self.plat == 'win32':
+            path_win2posix = lambda path: path.replace('\\', '/') if path else './'
+            
+            subdirs = dict((d[0], path_win2posix(d[2])) 
+                           for d 
+                           in install_dirs)
+            self.env['EXESUFFIX'] = '.exe'
+        else:
+            subdirs = dict((d[0], d[1]) 
+                           for d 
+                           in install_dirs)
+            self.env['EXESUFFIX'] = ''
+            
         
         self.env.update(subdirs)
     
@@ -275,7 +286,7 @@ class BuildServer(object):
         template = string.Template(command)
         command = template.substitute(self.env) 
         
-        command = 'cd %s && %s' % (workdir, command)
+        command = 'cd %s ; source ~/.profile ; %s' % (workdir, command)
         
         self._log(BuildServer.LOG_FILE, '\t%s\n', command)
         
@@ -360,10 +371,10 @@ class BuildManager(object):
                 
                 server.get_results(self.prefix)
                 
-                server.test_run('${INSTALL_BIN}tshostinfo -x')
+                server.test_run('${INSTALL_BIN}tshostinfo${EXESUFFIX} -x')
                 
-                server.test_run('${INSTALL_BIN}run-tsload -m')
-                server.test_run('${INSTALL_BIN}run-tsload -e ${INSTALL_VAR}busy_wait')
+                server.test_run('${INSTALL_BIN}run-tsload${EXESUFFIX} -m')
+                server.test_run('${INSTALL_BIN}run-tsload${EXESUFFIX} -e ${INSTALL_VAR}busy_wait')
                 
                 server.build(self.global_opts, 'zip')
                 server.fetch(self.out_dir)

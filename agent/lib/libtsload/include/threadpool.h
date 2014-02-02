@@ -30,9 +30,7 @@
 #define CONTROL_TID		-1
 #define WORKER_TID		0
 
-#define	WORKING			0
-#define SLEEPING		1
-#define INTERRUPT		2
+#define TP_ERROR_SCHED_PREFIX	"Failed to schedule threadpool '%s'"
 
 struct request;
 struct workload;
@@ -111,7 +109,7 @@ void tp_rele(thread_pool_t* tp, boolean_t may_destroy);
 #include <libjson.h>
 
 JSONNODE* json_tp_format_all(void);
-int json_tp_bind(thread_pool_t* tp, JSONNODE* bindings);
+int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched);
 #endif
 
 #endif /* THREADPOOL_H_ */

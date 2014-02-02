@@ -60,6 +60,7 @@ threads/mutex		file=mutex.c
 threads/event		file=event.c 	maxtime=2
 threads/affinity	file=affinity.c	lib=libhostinfo
 threads/solaris_pset file=solaris_pset.c lib=libhostinfo plat=solaris
+threads/sched 		file=sched.c
 
 # Tests for hostinfo
 ^hostinfo 			lib=libjson 	lib=libtscommon		lib=libhostinfo

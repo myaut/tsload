@@ -8,6 +8,7 @@
 #define LOG_SOURCE "csv"
 #include <log.h>
 
+#include <defs.h>
 #include <tsfile.h>
 #include <mempool.h>
 #include <list.h>
@@ -16,7 +17,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <inttypes.h>
 
 const char csv_separator = ',';
 const char csv_opt_separator = ':';

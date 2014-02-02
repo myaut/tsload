@@ -167,7 +167,7 @@ JSONNODE* tsload_get_threadpools(void) {
 	return json_tp_format_all();
 }
 
-int tsload_bind_threadpool(const char* tp_name, JSONNODE* bindings) {
+int tsload_schedule_threadpool(const char* tp_name, JSONNODE* bindings) {
 	thread_pool_t* tp = tp_search(tp_name);
 
 	if(tp == NULL) {
@@ -175,7 +175,7 @@ int tsload_bind_threadpool(const char* tp_name, JSONNODE* bindings) {
 		return TSLOAD_ERROR;
 	}
 
-	json_tp_bind(tp, bindings);
+	json_tp_schedule(tp, bindings);
 
 	return TSLOAD_OK;
 }

@@ -8,13 +8,10 @@
 #ifndef PLAT_SCHEDUTIL_H_
 #define PLAT_SCHEDUTIL_H_
 
-#include <sys/pset.h>
-#include <sys/priocntl.h>
+#include <windows.h>
 
 typedef struct {
-	psetid_t	pset;
-	char		clname[PC_CLNMSZ];
-	pc_vaparms_t pcparms;
+	int priority;
 } plat_sched_t;
 
 #endif /* PLAT_SCHEDUTIL_H_ */

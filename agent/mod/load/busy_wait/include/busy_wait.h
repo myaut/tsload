@@ -11,6 +11,7 @@
 #include <wlparam.h>
 
 struct busy_wait_workload {
+	int unused;
 };
 
 struct busy_wait_request {

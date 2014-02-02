@@ -104,6 +104,42 @@ end:
 	return str;
 }
 
+static char* worker_sched_print(thread_pool_t* tp, int wid) {
+	tp_worker_t* worker = tp->tp_workers + wid;
+	size_t len = 0, capacity = 256;
+	char* str = mp_malloc(capacity);
+	sched_policy_t* policy;
+	sched_param_t* param;
+	int64_t value;
+
+	if(sched_get_policy(&worker->w_thread, str, capacity) != SCHED_OK) {
+		mp_free(str);
+		return NULL;
+	}
+
+	len = strlen(str);
+	policy = sched_policy_find_byname(str);
+
+	if(policy == NULL)
+		return str;
+
+	param = &policy->params[0];
+	while(param->name != NULL) {
+		if(sched_get_param(&worker->w_thread, param->name, &value) == SCHED_OK) {
+			if((capacity - len) < (24 + strlen(param->name))) {
+				capacity += 256;
+				str = mp_realloc(str, capacity);
+			}
+
+			len += snprintf(str + len, capacity - len, " %s:%lld",
+								param->name, (long long) value);
+		}
+
+		++param;
+	}
+
+	return str;
+}
 
 static void tp_create_worker(thread_pool_t* tp, int tid) {
 	tp_worker_t* worker = tp->tp_workers + tid;
@@ -460,20 +496,6 @@ JSONNODE* json_tp_format_all(void) {
 	return json_hm_format_all(&tp_hash_map, json_tp_format);
 }
 
-#define JSON_GET_VALIDATE_PARAM(iter, tp_name, name, req_type)	\
-	{											\
-		iter = json_find(node, name);			\
-		if(iter == i_end) {						\
-			tsload_error_msg(TSE_MESSAGE_FORMAT,	\
-					"Failed to parse threadpool %s, missing parameter %s", tp_name, name);	\
-			return 1;							\
-		}										\
-		if(json_type(*iter) != req_type) {		\
-			tsload_error_msg(TSE_MESSAGE_FORMAT,	\
-					"Expected that " name " is " #req_type );	\
-			return 1;							\
-		}										\
-	}
 
 /*
  * To check bindings externally:
@@ -487,8 +509,7 @@ JSONNODE* json_tp_format_all(void) {
  *		Look at Affinity field
  * */
 
-static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
-	JSONNODE_ITERATOR i_tid;
+static int json_tp_bind_worker(thread_pool_t* tp, int wid, JSONNODE* node) {
 	JSONNODE_ITERATOR i_objects;
 	JSONNODE_ITERATOR i_object;
 	JSONNODE_ITERATOR i_objects_end;
@@ -496,7 +517,7 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 
 	char* obj_name;
 	hi_cpu_object_t* object;
-	int tid;
+	tp_worker_t* worker = tp->tp_workers + wid;
 
 	int err = 0;
 
@@ -504,21 +525,16 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 
 	char* binding_str;
 
-	if(json_type(node) != JSON_NODE) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to bind threadpool %s, binding must be node",
-								tp->tp_name);
-		return 1;
+	i_end = json_end(node);
+	i_objects = json_find(node, "objects");
+
+	if(i_objects == i_end) {
+		return 0;
 	}
 
-	i_end = json_end(node);
-
-	JSON_GET_VALIDATE_PARAM(i_tid, tp->tp_name, "tid", JSON_NUMBER);
-	JSON_GET_VALIDATE_PARAM(i_objects, tp->tp_name, "objects", JSON_ARRAY);
-
-	tid = json_as_int(*i_tid);
-	if(tid > tp->tp_num_threads || tid < 0) {
-		tsload_error_msg(TSE_INVALID_DATA, "Failed to bind threadpool %s, invalid tid %d",
-								tp->tp_name, tid);
+	if(json_type(*i_objects) != JSON_ARRAY) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT,
+						 TP_ERROR_SCHED_PREFIX ": 'objects' element should be JSON_ARRAY", tp->tp_name);
 		return 1;
 	}
 
@@ -536,8 +552,8 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 			object = hi_cpu_find(obj_name);
 
 			if(object == NULL) {
-				tsload_error_msg(TSE_INVALID_DATA, "Failed to bind threadpool %s: no such object '%s'",
-												tp->tp_name, obj_name);
+				tsload_error_msg(TSE_INVALID_DATA,
+								 TP_ERROR_SCHED_PREFIX ": no such object '%s'", tp->tp_name, obj_name);
 				json_free(obj_name);
 				goto end;
 			}
@@ -546,17 +562,17 @@ static int json_tp_bind_worker(thread_pool_t* tp, JSONNODE* node) {
 		}
 	}
 
-	sched_set_affinity(&tp->tp_workers[tid].w_thread, binding);
+	sched_set_affinity(&worker->w_thread, binding);
 
-	binding_str = worker_affinity_print(tp, tid);
+	binding_str = worker_affinity_print(tp, wid);
 	if(binding_str) {
-		logmsg(LOG_INFO, "json_tp_bind_worker: tp: '%s' tid: %d binding: %s",
-				tp->tp_name, tid, binding_str);
+		logmsg(LOG_INFO, "Worker #%d in threadpool '%s' was bound to %s",
+				wid, tp->tp_name, binding_str);
 		mp_free(binding_str);
 	}
 	else {
-		logmsg(LOG_INFO, "json_tp_bind_worker: tp: '%s' tid: %d binding: ???",
-				tp->tp_name, tid);
+		logmsg(LOG_INFO, "Worker #%d in threadpool '%s' was bound",
+			    wid, tp->tp_name);
 	}
 
 end:
@@ -565,21 +581,147 @@ end:
 	return err;
 }
 
-int json_tp_bind(thread_pool_t* tp, JSONNODE* bindings) {
-	JSONNODE_ITERATOR i_binding;
-	JSONNODE_ITERATOR i_end;
+static int json_tp_schedule_worker(thread_pool_t* tp, int wid, JSONNODE* node) {
+	char* policy;
+	char* param;
+	int64_t value;
+	int err;
+	char* sched_str;
 
-	if(json_type(bindings) != JSON_ARRAY) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to bind threadpool %s, 'bindings' must be array", tp->tp_name);
+	tp_worker_t* worker = tp->tp_workers + wid;
+
+	JSONNODE_ITERATOR i_end, i_policy, i_param, i_params, i_params_end;
+
+	i_end = json_end(node);
+	i_policy = json_find(node, "policy");
+	i_params = json_find(node, "params");
+
+	if(i_policy == i_end) {
+		return 0;
+	}
+
+	if(json_type(*i_policy) != JSON_STRING) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT,
+						 TP_ERROR_SCHED_PREFIX ": 'policy' should be JSON_STRING", tp->tp_name);
 		return 1;
 	}
 
-	i_end = json_end(bindings);
-	for(i_binding = json_begin(bindings);
-		i_binding != i_end ; ++i_binding) {
-			if(json_tp_bind_worker(tp, *i_binding) != 0) {
-				/* XXX: revert previous bindings?  */
+	policy = json_as_string(*i_policy);
+	err = sched_set_policy(&worker->w_thread, policy);
+	json_free(policy);
+
+	if(err != SCHED_OK)
+		return err;
+
+	if(i_params != i_end) {
+		if(json_type(*i_params) != JSON_NODE) {
+			tsload_error_msg(TSE_MESSAGE_FORMAT,
+							 TP_ERROR_SCHED_PREFIX ": 'params' should be JSON_NODE", tp->tp_name);
+			return 1;
+		}
+
+		for(i_param = json_begin(*i_params),
+				i_params_end = json_end(*i_params) ;
+				i_param != i_params_end ;
+				++i_param) {
+			if(json_type(*i_param) != JSON_NUMBER) {
+				tsload_error_msg(TSE_MESSAGE_FORMAT,
+								 TP_ERROR_SCHED_PREFIX ": 'param' should be JSON_NUMBER", tp->tp_name);
 				return 1;
+			}
+
+			value = json_as_int(*i_param);
+			param = json_name(*i_param);
+
+			err = sched_set_param(&worker->w_thread, param, value);
+
+			if(err != SCHED_OK) {
+				tsload_error_msg(TSE_INVALID_DATA,
+								 TP_ERROR_SCHED_PREFIX ": failed to set param '%s' error = %d",
+								 tp->tp_name, param, err);
+				json_free(param);
+				return 1;
+			}
+
+			json_free(param);
+		}
+	}
+
+	err = sched_commit(&worker->w_thread);
+	if(err != SCHED_OK)
+		return err;
+
+	sched_str = worker_sched_print(tp, wid);
+	if(sched_str) {
+		logmsg(LOG_INFO, "Worker #%d in threadpool '%s' was scheduled (%s)",
+				wid, tp->tp_name, sched_str);
+		mp_free(sched_str);
+	}
+	else {
+		logmsg(LOG_INFO, "Worker #%d in threadpool '%s' was scheduled",
+			    wid, tp->tp_name);
+	}
+
+	return 0;
+}
+
+int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched) {
+	JSONNODE_ITERATOR i_sched;
+	JSONNODE_ITERATOR i_end;
+	JSONNODE_ITERATOR i_wid, i_w_end;
+
+	int wid;
+	int err;
+
+	if(json_type(sched) != JSON_ARRAY) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT,
+						 TP_ERROR_SCHED_PREFIX ": 'sched' should be JSON_ARRAY", tp->tp_name);
+		return 1;
+	}
+
+	i_end = json_end(sched);
+	for(i_sched = json_begin(sched);
+		i_sched != i_end ; ++i_sched) {
+			if(json_type(*i_sched) != JSON_NODE) {
+				tsload_error_msg(TSE_MESSAGE_FORMAT,
+							     TP_ERROR_SCHED_PREFIX ": 'sched' element should be JSON_NODE",
+								 tp->tp_name);
+				return 1;
+			}
+
+			i_w_end = json_end(*i_sched);
+			i_wid = json_find(*i_sched, "wid");
+
+			if(i_wid == i_w_end) {
+				tsload_error_msg(TSE_MESSAGE_FORMAT,
+								 TP_ERROR_SCHED_PREFIX ": missing 'wid' ");
+				return 1;
+			}
+
+			if(json_type(*i_wid) != JSON_NUMBER) {
+				tsload_error_msg(TSE_MESSAGE_FORMAT,
+								 TP_ERROR_SCHED_PREFIX ": 'wid' should be JSON_NUMBER");
+				return 1;
+			}
+
+			wid = json_as_int(*i_wid);
+			if(wid > tp->tp_num_threads || wid < 0) {
+				tsload_error_msg(TSE_INVALID_DATA,
+							     TP_ERROR_SCHED_PREFIX ", invalid worker id #%d", tp->tp_name, wid);
+				return 1;
+			}
+
+			if((err = json_tp_bind_worker(tp, wid, *i_sched)) != 0) {
+				/* XXX: revert previous schedule options?  */
+				tsload_error_msg(TSE_INVALID_DATA,
+								 TP_ERROR_SCHED_PREFIX "  - couldn't bind worker #%d", tp->tp_name, wid);
+				return err;
+			}
+
+			if((err = json_tp_schedule_worker(tp, wid, *i_sched)) != 0) {
+				tsload_error_msg(TSE_INVALID_DATA,
+								 TP_ERROR_SCHED_PREFIX "  - couldn't schedule worker #%d", tp->tp_name, wid);
+				return err;
 			}
 	}
 

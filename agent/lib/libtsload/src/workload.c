@@ -584,13 +584,14 @@ void wl_report_requests(list_head_t* rq_list) {
 
 void wl_rq_list_destroy(void *p_rq_list) {
 	list_head_t* rq_list = (list_head_t*) p_rq_list;
-	request_t *rq_root, *rq, *rq_tmp;
+	request_t *rq_root, *rq, *rq_tmp, *rq_next;
 
 	list_for_each_entry_safe(request_t, rq_root, rq_tmp, rq_list, rq_node) {
 		rq = rq_root;
 		do {
+			rq_next = rq->rq_chain_next;
 			wl_request_destroy(rq);
-			rq = rq->rq_chain_next;
+			rq = rq_next;
 		} while(rq != NULL);
 	}
 

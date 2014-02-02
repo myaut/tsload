@@ -6,8 +6,29 @@
  */
 
 #include <schedutil.h>
+#include <threads.h>
 
 #include <windows.h>
+
+#define DECLARE_WIN_SCHED_POLICY(name, id)				\
+	sched_param_t sched_ ## name ## _params[] = {		\
+		DECLARE_SCHED_PARAM_END()						\
+	};													\
+	DECLARE_SCHED_POLICY(name,sched_ ## name ## _params, id)
+
+DECLARE_WIN_SCHED_POLICY(idle, THREAD_PRIORITY_IDLE);
+DECLARE_WIN_SCHED_POLICY(lowest, THREAD_PRIORITY_LOWEST);
+DECLARE_WIN_SCHED_POLICY(below_normal, THREAD_PRIORITY_BELOW_NORMAL);
+DECLARE_WIN_SCHED_POLICY(normal, THREAD_PRIORITY_NORMAL);
+DECLARE_WIN_SCHED_POLICY(above_normal, THREAD_PRIORITY_ABOVE_NORMAL);
+DECLARE_WIN_SCHED_POLICY(highest, THREAD_PRIORITY_HIGHEST);
+DECLARE_WIN_SCHED_POLICY(time_critical, THREAD_PRIORITY_TIME_CRITICAL);
+
+PLATAPIDECL(sched_get_policies) sched_policy_t* sched_policies[8] = {
+	&sched_idle_policy, &sched_lowest_policy, &sched_below_normal_policy,
+	&sched_normal_policy, &sched_above_normal_policy, &sched_highest_policy,
+	&sched_time_critical_policy, NULL
+};
 
 PLATAPI int sched_get_cpuid(void) {
 	/* TODO: Should support processor groups through GetCurrentProcessorNumberEx */
@@ -57,3 +78,44 @@ PLATAPI int sched_switch(void) {
 	return SCHED_OK;
 }
 
+PLATAPI sched_policy_t** sched_get_policies() {
+	return sched_policies;
+}
+
+PLATAPI void plat_tsched_init(thread_t* thread) {
+	thread->t_sched_impl.priority = THREAD_PRIORITY_NORMAL;
+}
+
+
+PLATAPI int sched_set_policy(thread_t* thread, const char* name) {
+	sched_policy_t* policy = sched_policy_find_byname(name);
+
+	if(policy == NULL)
+		return SCHED_INVALID_POLICY;
+
+	thread->t_sched_impl.priority = policy->id;
+	return SCHED_OK;
+}
+
+PLATAPI int sched_commit(thread_t* thread) {
+	if(SetThreadPriority(thread->t_impl.t_handle, thread->t_sched_impl.priority) == 0)
+		return SCHED_ERROR;
+
+	return SCHED_OK;
+}
+
+PLATAPI int sched_get_policy(thread_t* thread, char* name, size_t len) {
+	int priority = GetThreadPriority(thread->t_impl.t_handle);
+	sched_policy_t* policy;
+
+	if(priority == THREAD_PRIORITY_ERROR_RETURN)
+		return SCHED_ERROR;
+
+	policy = sched_policy_find_byid(priority);
+
+	if(policy == NULL)
+		return SCHED_ERROR;
+
+	strncpy(name, policy->name, len);
+	return SCHED_OK;
+}

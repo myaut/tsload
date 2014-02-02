@@ -223,7 +223,7 @@ int tsfutil_csv_get(FILE* file, tsfile_t* ts_file, int start, int end) {
 		}
 
 		for(i = 0; i < entry_count; ++i) {
-			entry = entries + i * entry_size;
+			entry = ((char*) entries) + i * entry_size;
 			csv_write_entry(file, bindings, bcount, entry);
 		}
 

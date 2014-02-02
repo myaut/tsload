@@ -109,6 +109,24 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #	include <stdlib.h>
 #endif
 
+#ifndef HAVE_DECL_ROUND
+#include <math.h>
+STATIC_INLINE double round(double val)
+{
+    return floor(val + 0.5);
+}
+#endif
+
+#ifndef HAVE_INTTYPES_H
+#	if defined(_MSC_VER)
+#		include <msc/inttypes.h>
+#	else
+# 		error "<inttypes.h> is missing"
+#	endif
+#else
+# 	include <inttypes.h>
+#endif
+
 /* Hint to TSDOC that function is not documentable */
 #define TSDOC_HIDDEN
 
