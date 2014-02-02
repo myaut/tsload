@@ -102,8 +102,21 @@ if env.SupportedPlatform('win'):
 elif env.SupportedPlatform('posix'):
     env.Append(LIBS = ['c'])
     env.Macroses('_GNU_SOURCE')
+    env.Macroses('_REENTRANT')
     
-    if env.SupportedPlatform('solaris'):
-        env.Macroses('_REENTRANT')
+# -----------------------------
+# ctfconvert / ctfmerge (Solaris)
+
+if env.SupportedPlatform('solaris'):
+    ONBLD_PATH = [ # Solaris 11 path
+                  '/opt/onbld/bin/i386',
+                  '/opt/onbld/bin/sparc',
+                  
+                  # Solaris 10 path
+                  '/opt/SUNWonbld/bin/i386',
+                  '/opt/SUNWonbld/bin/sparc']
+    
+    env['CTFCONVERT'] = env.CheckBinary('ctfconvert', ONBLD_PATH)
+    env['CTFMERGE'] = env.CheckBinary('ctfmerge', ONBLD_PATH)
     
 Export('env')

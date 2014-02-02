@@ -10,6 +10,8 @@
 
 #include <disp.h>
 
+#include <math.h>
+
 /**
  * Inter-arrival time dispatcher
  *  */

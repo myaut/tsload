@@ -221,8 +221,20 @@ void test_erlang(distribution_t* d, int shape, double rate) {
 	rv_destroy(rv_erlang);
 }
 
+void test_rg(randgen_class_t* rg_class, const char* rg_class_name) {
+	printf("Testing RG '%s'\n", rg_class_name);
+
+	rg = rg_create(rg_class, tm_get_clock());
+
+	test_uniform();
+	test_exponential(&exponential_r1, 1.0);
+
+	rg_destroy(rg);
+}
+
 int test_main(void) {
-	rg = rg_create(&rg_libc, tm_get_clock());
+	/* Test all distributions with libc RG */
+	rg = rg_create(&rg_libc_class, tm_get_clock());
 
 	test_uniform();
 
@@ -235,6 +247,14 @@ int test_main(void) {
 	test_erlang(&erlang_l2_k2, 2, 2.0);
 
 	rg_destroy(rg);
+
+	/* Test other RGs such as lcg, devrandom, etc. */
+
+	test_rg(&rg_lcg_class, "lcg");
+
+#ifdef PLAT_POSIX
+	test_rg(&rg_devrandom_class, "devrandom");
+#endif
 
 	return 0;
 }

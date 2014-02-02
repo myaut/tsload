@@ -63,10 +63,14 @@ int  rg_init_dummy(randgen_t* rg);
 void rg_destroy_dummy(randgen_t* rg);
 
 /**
- * Default random generator provided by standard library:
- * rand()/srand() & RAND_MAX
+ * Random generators
  * */
-LIBIMPORT randgen_class_t rg_libc;
+LIBIMPORT randgen_class_t rg_libc_class;
+LIBIMPORT randgen_class_t rg_seq_class;
+LIBIMPORT randgen_class_t rg_lcg_class;
+#ifdef PLAT_POSIX
+LIBIMPORT randgen_class_t rg_devrandom_class;
+#endif
 
 #define	RV_PARAM_OK				0
 #define RV_INVALID_PARAM_NAME	-1

@@ -7,6 +7,7 @@
 
 #include <tsfile.h>
 #include <mempool.h>
+#include <field.h>
 
 #include <libjson.h>
 
@@ -27,10 +28,15 @@
  * tsfile_fill_node() deserializes entry, while tsfile_fill_entry() serializes it
  */
 
-int	tsfile_nodes_count = 40;
+DECLARE_FIELD_FUNCTION_BYTE(uint8_t);
+DECLARE_FIELD_FUNCTIONS(boolean_t);
+DECLARE_FIELD_FUNCTIONS(uint16_t);
+DECLARE_FIELD_FUNCTIONS(uint32_t);
+DECLARE_FIELD_FUNCTIONS(uint64_t);
+DECLARE_FIELD_FUNCTIONS(float);
+DECLARE_FIELD_FUNCTIONS(double);
 
-#define	FIELD_GET_VALUE(type, value)			*((type*) value)
-#define	FIELD_PUT_VALUE(type, value, new_value)	*((type*) value) = (type) new_value
+int	tsfile_nodes_count = 40;
 
 void tsfile_init_nodes(tsfile_t* file) {
 	file->node_count = 0;
@@ -161,16 +167,16 @@ void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
 		{
 			switch(schema->fields[fi].size) {
 			case 1:
-				json_set_i(*i_field, FIELD_GET_VALUE(int8_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(uint8_t, value));
 			break;
 			case 2:
-				json_set_i(*i_field, FIELD_GET_VALUE(int16_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(uint16_t, value));
 			break;
 			case 4:
-				json_set_i(*i_field, FIELD_GET_VALUE(int32_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(uint32_t, value));
 			break;
 			case 8:
-				json_set_i(*i_field, FIELD_GET_VALUE(int64_t, value));
+				json_set_i(*i_field, FIELD_GET_VALUE(uint64_t, value));
 			break;
 			}
 		}

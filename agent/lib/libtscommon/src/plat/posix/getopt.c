@@ -7,7 +7,7 @@
 
 #include <defs.h>
 
-#include <unistd.h>
+extern int getopt(int argc, const char* argv[], const char* options);
 
 PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
 	return getopt(argc, argv, options);

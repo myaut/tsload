@@ -12,6 +12,7 @@
 #include <hashmap.h>
 #include <defs.h>
 #include <atomic.h>
+#include <schedutil.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -74,7 +75,7 @@ void t_init(thread_t* thread, void* arg,
 	thread->t_event = NULL;
 	thread->t_arg = arg;
 
-	thread->t_state = TS_INITIALIZED;
+	thread->t_state_atomic = (atomic_t) TS_INITIALIZED;
 
 	thread->t_next = NULL;
 	thread->t_pool_next = NULL;

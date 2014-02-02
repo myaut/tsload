@@ -24,9 +24,9 @@ class Repository(object):
         - repo_path - absolute path to TSLoad source repository
     '''
     class File(object):
-        def __init__(self, path):
+        def __init__(self, path, abspath):
             self.path = path
-            self.stat = os.stat(path)
+            self.stat = os.stat(abspath)
         
         def newer(self, stat):
             '''Checks if local file is newer than remote file
@@ -61,11 +61,12 @@ class Repository(object):
             if self.is_ignored(filename, subpath):
                 continue
             
-            path = os.path.join(subpath, filename) 
-            self.filelist.append(Repository.File(path))
+            fileabspath = os.path.join(abspath, filename) 
+            filepath = os.path.join(subpath, filename) 
+            self.filelist.append(Repository.File(filepath, fileabspath))
             
-            if os.path.isdir(path):
-                self._walk(path)
+            if os.path.isdir(fileabspath):
+                self._walk(filepath)
         
         self.ignore = ignore_orig
     
@@ -285,8 +286,7 @@ class BuildServer(object):
         
         template = string.Template(command)
         command = template.substitute(self.env) 
-        
-        command = 'cd %s ; source ~/.profile ; %s' % (workdir, command)
+        command = 'cd %s && . ~/.profile && %s' % (workdir, command)
         
         self._log(BuildServer.LOG_FILE, '\t%s\n', command)
         

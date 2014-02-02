@@ -12,6 +12,7 @@
 #include <wlparam.h>
 #include <tsload.h>
 #include <workload.h>
+#include <field.h>
 
 #include <cpuinfo.h>
 #include <diskinfo.h>
@@ -22,6 +23,12 @@
 #include <string.h>
 
 #define STRSETCHUNK		256
+
+DECLARE_FIELD_FUNCTIONS(wlp_integer_t);
+DECLARE_FIELD_FUNCTIONS(wlp_float_t);
+DECLARE_FIELD_FUNCTIONS(wlp_bool_t);
+DECLARE_FIELD_FUNCTIONS(wlp_strset_t);
+DECLARE_FIELD_FUNCTIONS(wlp_hiobject_t);
 
 const char* wlt_type_names[WLP_TYPE_MAX] = {
 	"null",
@@ -40,6 +47,7 @@ const char* wlt_type_names[WLP_TYPE_MAX] = {
 
 static wlp_type_t wlp_base_types[WLP_TYPE_MAX] = {
 	WLP_NULL,
+	WLP_BOOL,
 	WLP_INTEGER,
 	WLP_FLOAT,
 	WLP_RAW_STRING,
@@ -165,7 +173,6 @@ int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 
 static int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
 	int i;
-	wlp_strset_t* ss = (wlp_strset_t*) param;
 	char* js = NULL;
 
 	if(json_type(node) != JSON_STRING)
@@ -175,7 +182,7 @@ static int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* para
 
 	for(i = 0; i < wlp->range.ss_num; ++i) {
 		if(strcmp(wlp->range.ss_strings[i], js) == 0) {
-			*ss = i;
+			FIELD_PUT_VALUE(wlp_strset_t, param, i);
 
 			json_free(js);
 
@@ -186,12 +193,12 @@ static int json_wlparam_strset_proc(JSONNODE* node, wlp_descr_t* wlp, void* para
 	/* No match found - wrong value provided*/
 	json_free(js);
 
-	*ss = -1;
+	FIELD_PUT_VALUE(wlp_strset_t, param, -1);
 	return WLPARAM_JSON_OUTSIDE_RANGE;
 }
 
 static int json_wlparam_hiobj_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
-	hi_object_t** pobj = (hi_object_t**) param;
+	wlp_hiobject_t hiobj;
 	int ret = WLPARAM_JSON_OUTSIDE_RANGE;
 	char* js = NULL;
 
@@ -202,25 +209,26 @@ static int json_wlparam_hiobj_proc(JSONNODE* node, wlp_descr_t* wlp, void* param
 
 	switch(wlp->type) {
 	case WLP_CPU_OBJECT:
-		*pobj = hi_cpu_find(js);
+		hiobj =  hi_cpu_find(js);
 		break;
 	case WLP_DISK:
-		*pobj = hi_dsk_find(js);
+		hiobj = hi_dsk_find(js);
 		break;
 	}
 
-	if(*pobj != NULL) {
+	if(hiobj != NULL) {
 		ret = WLPARAM_JSON_OK;
 	}
 
 	json_free(js);
+	FIELD_PUT_VALUE(wlp_hiobject_t, param, hiobj);
 
 	return ret;
 }
 
 #define WLPARAM_RANGE_CHECK(min, max)						\
 		if(wlp->range.range &&								\
-			(*p < wlp->range.min || *p > wlp->range.max))	\
+			(value < wlp->range.min ||value > wlp->range.max))	\
 					return WLPARAM_JSON_OUTSIDE_RANGE;
 
 #define WLPARAM_NO_RANGE_CHECK
@@ -228,11 +236,12 @@ static int json_wlparam_hiobj_proc(JSONNODE* node, wlp_descr_t* wlp, void* param
 #define WLPARAM_PROC_SIMPLE(type, json_node_type, 	\
 		json_as_func, range_check) 					\
 	{												\
-		type* p = (type*) param;					\
+		type value;									\
 		if(json_type(node) != json_node_type)		\
 			return WLPARAM_JSON_WRONG_TYPE;			\
-		*p = json_as_func(node);					\
+		value = json_as_func(node);					\
 		range_check;								\
+		FIELD_PUT_VALUE(type, param, value);		\
 	}
 
 int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) {
@@ -270,22 +279,23 @@ int wlparam_set_default(wlp_descr_t* wlp, void* param) {
 
 	switch(wlp->type) {
 	case WLP_BOOL:
-		(*(wlp_bool_t*) param) = wlp->defval.b;
+		FIELD_PUT_VALUE(wlp_bool_t, param, wlp->defval.b);
 		break;
 	case WLP_SIZE:
 	case WLP_TIME:
 	case WLP_INTEGER:
-		(*(wlp_integer_t*) param) = wlp->defval.i;
+		FIELD_PUT_VALUE(wlp_integer_t, param, wlp->defval.i);
 		break;
 	case WLP_FLOAT:
-		(*(wlp_float_t*) param) = wlp->defval.f;
+		FIELD_PUT_VALUE(wlp_float_t, param, wlp->defval.f);
 		break;
 	case WLP_FILE_PATH:
 	case WLP_RAW_STRING:
 		/* Not checking length of default value here*/
 		strcpy((char*) param, wlp->defval.s);
 	case WLP_STRING_SET:
-		(*(wlp_strset_t*) param) = wlp->defval.ssi;
+		FIELD_PUT_VALUE(wlp_strset_t, param, wlp->defval.ssi);
+		break;
 	}
 
 	return WLPARAM_DEFAULT_OK;

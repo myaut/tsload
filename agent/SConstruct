@@ -117,7 +117,7 @@ if sys.platform == 'win32':
 
 # --------------------------
 # ETRACE PREPROCESSOR
-env['ETRACEENABLED'] = False
+env['ETRACEENABLED'] = GetOption('usdt') or GetOption('etw')
 SConscript('SConscript.etrace.py', 'env')
     
 # ----------------------------

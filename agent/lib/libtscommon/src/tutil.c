@@ -19,14 +19,14 @@
 	thread_t* t = t_self();						\
 	if(t != NULL) {								\
 		t->t_block_time = tm_get_time();		\
-		t->t_state = state;						\
+		atomic_set(&t->t_state_atomic, state);	\
 		t->t_block_##objname = obj;				\
 	}
 
-#define THREAD_LEAVE_LOCK(objname)				\
-	if(t != NULL) {								\
-		t->t_state = TS_RUNNABLE;				\
-		t->t_block_##objname = NULL;			\
+#define THREAD_LEAVE_LOCK(objname)						\
+	if(t != NULL) {										\
+		atomic_set(&t->t_state_atomic, TS_RUNNABLE);	\
+		t->t_block_##objname = NULL;					\
 	}
 #else
 #define THREAD_ENTER_LOCK(state, objname, obj)

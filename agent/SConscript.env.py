@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 
 from itertools import product
 
@@ -8,6 +9,8 @@ from SCons.Action import CommandAction, ActionFactory
 PathJoin = os.path.join
 PathBaseName = os.path.basename
 PathExists = os.path.exists
+PathAccess = os.access
+PathIsFile = os.path.isfile
 
 Import('env')
 
@@ -109,6 +112,17 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     
     return module
 
+def CheckBinary(self, name, paths = []):
+    paths += self['ENV']['PATH'].split(os.pathsep)
+    
+    for path in paths:
+        full_path = PathJoin(path, name)
+        
+        if PathIsFile(full_path) and PathAccess(full_path, os.X_OK):
+            return full_path
+    
+    return None
+
 def FindMicrosoftSDK(self):
     # Search for windows SDK. SCons doesn't support newest SDKs so implement our own
     winsdk_path = GetOption('with_windows_sdk')
@@ -143,6 +157,7 @@ env.AddMethod(CompileSharedLibrary)
 env.AddMethod(CompileProgram)
 env.AddMethod(LinkSharedLibrary)
 env.AddMethod(FindMicrosoftSDK)
+env.AddMethod(CheckBinary)
 
 env.Append(CPPPATH = [PathJoin(env['TSLOADPATH'], 'include'),   # TSLoad include directory (defs.h)
                       env.BuildDir('include'),                  # Generated includes (genbuild.h, genconfig.h) 
@@ -164,9 +179,23 @@ env.Append(TESTLIBS = {})
 if env['CC'] == 'gcc': 
     env.Append(CCFLAGS = ['-Wall'])
     env.Append(CCFLAGS = ['-Wno-unused-label', '-Wno-unused-variable', 
-                          '-Wno-unused-function', '-Wno-switch'])
+                          '-Wno-unused-function', '-Wno-switch', 
+                          '-Werror-implicit-function-declaration'])
 elif env['CC'] == 'cl':
     env.Append(CCFLAGS = ['/W3'])
+
+mach = GetOption('mach')
+if mach:
+    if env['CC'] == 'gcc': 
+        if re.match('i\d86', mach) or mach == 'x86' or mach == 'sparc':
+            env.Append(CCFLAGS = ["-m32"])
+            env.Append(LINKFLAGS = ["-m32"])
+        else:
+            env.Append(CCFLAGS = ["-m64"])
+            env.Append(LINKFLAGS = ["-m64"])
+    elif env['CC'] == 'cl':
+        # FIXME: should be implemented
+        pass
 
 # Determine build flags (debug/release)
 if env['DEBUG']:

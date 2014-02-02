@@ -83,7 +83,7 @@ static int		tp_count = 0;
 
 static boolean_t load_error = B_FALSE;
 
-#pragma pack(push, 1)
+/* No need to pack/pad this structure because we generate schema dynamically.  */
 struct request_entry {
 	uint32_t	step;
 	uint32_t	request;
@@ -92,13 +92,10 @@ struct request_entry {
 	int64_t		start_time;
 	int64_t		end_time;
 	uint16_t	flags;
-
-	char 		padding[26];
-} PACKED_STRUCT;
-#pragma pack(pop)
+};
 
 tsfile_schema_t request_schema = {
-	TSFILE_SCHEMA_HEADER(64, 7),
+	TSFILE_SCHEMA_HEADER(sizeof(struct request_entry), 7),
 	{
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, step, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, request, TSFILE_FIELD_INT),
@@ -368,14 +365,16 @@ static int configure_all_wls(JSONNODE* steps_node, JSONNODE* wl_node) {
 	while(iter != end) {
 		wl_name = json_name(*iter);
 
+		awl = awl_create(wl_name);
+
 		tsload_configure_workload(wl_name, *iter);
 		atomic_inc(&wl_cfg_count);
 
 		if(load_error) {
+			awl_destroy(awl);
 			return LOAD_ERR_CONFIGURE;
 		}
 
-		awl = awl_create(wl_name);
 		json_free(wl_name);
 
 		if(json_find(*iter, "chain") != json_end(*iter)) {

@@ -9,6 +9,7 @@
 #include <mempool.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * Use standard library allocator for mempool

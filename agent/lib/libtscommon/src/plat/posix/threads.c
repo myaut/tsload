@@ -11,6 +11,7 @@
 #include <threads.h>
 
 #include <unistd.h>
+#include <sys/select.h>
 
 PLATAPI void plat_thread_init(plat_thread_t* thread, void* arg,
 		  	  	  	  	  	  thread_start_func start) {

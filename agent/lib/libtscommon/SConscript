@@ -13,7 +13,7 @@ if lib.SupportedPlatform('posix'):
     lib.Append(LIBS = ['dl', 'pthread'])
 
 # We need librt for ns-precision time source
-if lib.SupportedPlatform('linux'):
+if lib.SupportedPlatform('linux') or lib.SupportedPlatform('solaris'):
     lib.Append(LIBS = ['rt'])
 
 # Add winsock2 library

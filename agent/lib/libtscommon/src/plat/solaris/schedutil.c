@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <sys/processor.h>
 #include <sys/pset.h>
+#include <errno.h>
 
 #include <sys/priocntl.h>
 #include <sys/tspriocntl.h>
@@ -130,8 +131,14 @@ PLATAPI int sched_set_affinity(thread_t* thread , cpumask_t* mask) {
 	else {
 		ret = pset_create(&pset);
 
-		if(ret == -1)
+		if(ret == -1) {
+			if(errno == ENOTSUP) {
+				/* In Solaris 10, psets may be disabled if pools are not configured.  */
+				return SCHED_NOT_SUPPORTED;
+			}
+
 			return SCHED_ERROR;
+		}
 
 		ret = cpumask_to_pset(pset, mask);
 

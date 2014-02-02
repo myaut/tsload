@@ -208,7 +208,7 @@ int hi_sol_dm_read_aliases(hi_sol_dsk_t* dsk) {
 
 	int i;
 
-	char* wwn;
+	char* wwn = NULL;
 	uint32_t target;
 	uint32_t lun;
 
@@ -224,17 +224,19 @@ int hi_sol_dm_read_aliases(hi_sol_dsk_t* dsk) {
 		if(attrs == NULL)
 			return -1;
 
-		if(!wwn_set && nvlist_lookup_string(attrs, DM_WWN, &wwn) != 0) {
-			strncpy(dsk->sd_wwn, wwn, 32);
-			wwn_set = B_TRUE;
+		if(!wwn_set && nvlist_lookup_string(attrs, DM_WWN, &wwn) == 0) {
+			if(wwn != NULL) {
+				strncpy(dsk->sd_wwn, wwn, 32);
+				wwn_set = B_TRUE;
+			}
 		}
 
-		if(!target_set && nvlist_lookup_uint32(attrs, DM_TARGET, &target) != 0) {
+		if(!target_set && nvlist_lookup_uint32(attrs, DM_TARGET, &target) == 0) {
 			dsk->sd_target = target;
 			target_set = B_TRUE;
 		}
 
-		if(!lun_set && nvlist_lookup_uint32(attrs, DM_LUN, &lun) != 0) {
+		if(!lun_set && nvlist_lookup_uint32(attrs, DM_LUN, &lun) == 0) {
 			dsk->sd_lun = lun;
 			lun_set = B_TRUE;
 		}
