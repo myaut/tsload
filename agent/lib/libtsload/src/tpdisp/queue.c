@@ -5,6 +5,9 @@
  *      Author: myaut
  */
 
+#define LOG_SOURCE "tpd-queue"
+#include <log.h>
+
 #include <tpdisp.h>
 #include <threadpool.h>
 #include <threads.h>
@@ -19,10 +22,11 @@
  * #### Queue-based dispatcher classes
  *
  * Starting each step, pre-distributes requests among workers then sleeps
- * Has two options:
+ * Has four options:
  * 		- Round-robin
  * 		- Random
  * 		- Fill up to N requests
+ * 		- Per-user
  * */
 
 int tpd_init_queue(thread_pool_t* tp) {
@@ -50,15 +54,29 @@ void tpd_worker_done_queue(thread_pool_t* tp, tp_worker_t* worker, request_t* rq
 	mutex_unlock(&worker->w_rq_mutex);
 }
 
+struct tpd_queue_rq_nodes {
+	list_node_t* prev_rq_node;
+	list_node_t* next_rq_node;
+};
+
 void tpd_control_sleep_queue(thread_pool_t* tp, int wid,
-							 int (*next_wid)(thread_pool_t* tp, int wid)) {
+							 int (*next_wid)(thread_pool_t* tp, int wid, request_t* rq)) {
 	request_t* rq;
 	int lwid = 0;
 	tp_worker_t* worker;
 	ts_time_t cur_time;
 
+	struct tpd_queue_rq_nodes* worker_nodes =
+			mp_malloc(tp->tp_num_threads * sizeof(struct tpd_queue_rq_nodes));
+
 	for(lwid = 0; lwid < tp->tp_num_threads; ++lwid) {
-		mutex_lock(&tp->tp_workers[lwid].w_rq_mutex);
+		worker = tp->tp_workers + lwid;
+
+		mutex_lock(&worker->w_rq_mutex);
+
+		tp_insert_request_initnodes(&worker->w_rq_head,
+								    &worker_nodes[lwid].prev_rq_node,
+								    &worker_nodes[lwid].next_rq_node);
 	}
 
 	list_for_each_entry(request_t, rq, &tp->tp_rq_head, rq_node) {
@@ -66,8 +84,27 @@ void tpd_control_sleep_queue(thread_pool_t* tp, int wid,
 		if(rq->rq_step != rq->rq_workload->wl_current_step)
 			continue;
 
-		list_add_tail(&rq->rq_w_node, &tp->tp_workers[wid].w_rq_head);
-		wid = next_wid(tp, wid);
+		wid = next_wid(tp, wid, rq);
+
+		rq->rq_thread_id = wid;
+		worker = tp->tp_workers + wid;
+
+		/* With think-time request scheduler, some requests may be left
+		 * because step is ended and they can not discarded (due to tp policy).
+		 * In that case they may be first in queue but not first by
+		 * schedule time, because current step arrivals come earlier. So
+		 * fall back to slower tp_insert_request() that guarantees
+		 * ordered requests queue */
+		if( tp->tp_discard ||
+				(worker_nodes[lwid].prev_rq_node == NULL &&
+				 worker_nodes[lwid].next_rq_node == NULL)) {
+			list_add_tail(&rq->rq_w_node, &worker->w_rq_head);
+		}
+		else {
+			tp_insert_request(&worker->w_rq_head, &rq->rq_w_node,
+							  &worker_nodes[wid].prev_rq_node,
+							  &worker_nodes[wid].next_rq_node, rq_w_node);
+		}
 	}
 
 	for(lwid = 0; lwid < tp->tp_num_threads; ++lwid) {
@@ -76,6 +113,8 @@ void tpd_control_sleep_queue(thread_pool_t* tp, int wid,
 		cv_notify_one(&worker->w_rq_cv);
 		mutex_unlock(&worker->w_rq_mutex);
 	}
+
+	mp_free(worker_nodes);
 
 	cur_time = tm_get_clock();
 	if(cur_time < tp->tp_time + tp->tp_quantum)
@@ -137,6 +176,44 @@ void tpd_control_report_queue(thread_pool_t* tp) {
 	wl_report_requests(rq_list);
 }
 
+void tpd_relink_request_queue(thread_pool_t* tp, request_t* rq) {
+	tp_worker_t* worker = tp->tp_workers + rq->rq_thread_id;
+	request_t* prev_rq = NULL;
+	request_t* next_rq = NULL;
+
+	list_node_t* prev_rq_node = NULL;
+	list_node_t* next_rq_node = NULL;
+
+	boolean_t need_relink = B_FALSE;
+
+	mutex_lock(&worker->w_rq_mutex);
+
+	if(!list_is_first(&rq->rq_w_node, &worker->w_rq_head)) {
+		prev_rq = list_prev_entry(request_t, rq, rq_w_node);
+		prev_rq_node = &prev_rq->rq_w_node;
+
+		if(tp_compare_requests(rq, prev_rq) >= 0) {
+			need_relink = B_TRUE;
+		}
+	}
+
+	if(!list_is_last(&rq->rq_w_node, &worker->w_rq_head)) {
+		next_rq = list_next_entry(request_t, rq, rq_w_node);
+		next_rq_node = &next_rq->rq_w_node;
+
+		if(tp_compare_requests(rq, next_rq) < 0) {
+			need_relink = B_TRUE;
+		}
+	}
+
+	if(need_relink) {
+		list_del(&rq->rq_w_node);
+		tp_insert_request(&worker->w_rq_head, &rq->rq_w_node, &prev_rq_node, &next_rq_node, rq_w_node);
+	}
+
+	mutex_unlock(&worker->w_rq_mutex);
+}
+
 void tpd_control_sleep_rr(thread_pool_t* tp) {
 	int wid = tpd_first_wid_rand(tp);
 
@@ -150,7 +227,8 @@ tp_disp_class_t tpd_rr_class = {
 	tpd_control_sleep_rr,
 	tpd_worker_pick_queue,
 	tpd_worker_done_queue,
-	tpd_wqueue_signal
+	tpd_wqueue_signal,
+	tpd_relink_request_queue
 };
 
 void tpd_control_sleep_rand(thread_pool_t* tp) {
@@ -166,7 +244,27 @@ tp_disp_class_t tpd_rand_class = {
 	tpd_control_sleep_rand,
 	tpd_worker_pick_queue,
 	tpd_worker_done_queue,
-	tpd_wqueue_signal
+	tpd_wqueue_signal,
+	tpd_relink_request_queue
+};
+
+static int tpd_next_wid_user(thread_pool_t* tp, int wid, request_t* rq) {
+	return rq->rq_user_id % tp->tp_num_threads;
+}
+
+void tpd_control_sleep_user(thread_pool_t* tp) {
+	tpd_control_sleep_queue(tp, 0, tpd_next_wid_user);
+}
+
+tp_disp_class_t tpd_user_class = {
+	tpd_init_queue,
+	tpd_destroy_queue,
+	tpd_control_report_queue,
+	tpd_control_sleep_user,
+	tpd_worker_pick_queue,
+	tpd_worker_done_queue,
+	tpd_wqueue_signal,
+	tpd_relink_request_queue
 };
 
 typedef struct {
@@ -201,7 +299,7 @@ int tpd_init_fill_up(thread_pool_t* tp) {
 	return TPD_OK;
 }
 
-static int tpd_next_wid_fill_up(thread_pool_t* tp, int wid) {
+static int tpd_next_wid_fill_up(thread_pool_t* tp, int wid, request_t* rq) {
 	tpd_fill_up_t* fill_up = (tpd_fill_up_t*) tp->tp_disp->tpd_data;
 
 	++fill_up->num_rqs;
@@ -234,5 +332,6 @@ tp_disp_class_t tpd_fill_up_class = {
 	tpd_control_sleep_fill_up,
 	tpd_worker_pick_queue,
 	tpd_worker_done_queue,
-	tpd_wqueue_signal
+	tpd_wqueue_signal,
+	tpd_relink_request_queue
 };

@@ -88,6 +88,7 @@ struct request_entry {
 	uint32_t	step;
 	uint32_t	request;
 	uint32_t	thread;
+	uint32_t	user;
 	int64_t		sched_time;
 	int64_t		start_time;
 	int64_t		end_time;
@@ -95,11 +96,12 @@ struct request_entry {
 };
 
 tsfile_schema_t request_schema = {
-	TSFILE_SCHEMA_HEADER(sizeof(struct request_entry), 7),
+	TSFILE_SCHEMA_HEADER(sizeof(struct request_entry), 8),
 	{
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, step, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, request, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, thread, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, user, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, sched_time, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, start_time, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, end_time, TSFILE_FIELD_INT),
@@ -133,6 +135,7 @@ static int load_vfprintf(FILE* file, const char* fmt, va_list va) {
 
 	mutex_lock(&output_lock);
 	ret = vfprintf(file, fmt, va);
+	fflush(file);
 	mutex_unlock(&output_lock);
 
 	return ret;
@@ -831,6 +834,7 @@ static void report_request(request_t* rq) {
 	rqe->step = rq->rq_step;
 	rqe->request = rq->rq_id;
 	rqe->thread = rq->rq_thread_id;
+	rqe->user = rq->rq_user_id;
 
 	rqe->sched_time = rq->rq_sched_time;
 	rqe->start_time = rq->rq_start_time;

@@ -40,25 +40,33 @@
  *  * worker_done - called when worker finished executing request
  *  * worker_finish - special hook for tp_destroy() code. If dispatcher uses
  *    external cv's, should wakeup worker because threadpool is dying.
+ *  * relink_request is called when request's rq_sched_time changes and it should
+ *    be again linked to maintain queue sorted.
  */
 
 extern tp_disp_class_t tpd_rr_class;
 extern tp_disp_class_t tpd_rand_class;
+extern tp_disp_class_t tpd_user_class;
 extern tp_disp_class_t tpd_fill_up_class;
 extern tp_disp_class_t tpd_ff_class;
 
 int tpd_preinit_fill_up(tp_disp_t* tpd, unsigned num_requests, int first_wid);
 
-boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t max_sleep) {
+boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t sleep_not_until) {
 	ts_time_t cur_time, next_time;
 	ts_time_t sleep_time;
+	ts_time_t max_sleep;
 
 	cur_time = tm_get_clock();
-	next_time = rq->rq_sched_time;
+	next_time = rq->rq_sched_time + rq->rq_workload->wl_start_clock;
 	sleep_time = tm_diff(cur_time, next_time) - TP_WORKER_OVERHEAD;
+	max_sleep = tm_diff(cur_time, sleep_not_until);
 
-	if(sleep_time > max_sleep)
+	if(sleep_time > max_sleep) {
+		if(sleep_not_until > cur_time)
+			tm_sleep_nano(max_sleep);
 		return B_FALSE;
+	}
 
 	if(cur_time < next_time && sleep_time > TP_WORKER_MIN_SLEEP) {
 		tm_sleep_nano(sleep_time);
@@ -145,6 +153,9 @@ tp_disp_t* json_tp_disp_proc(JSONNODE* node) {
 	}
 	else if(strcmp(type, "random") == 0) {
 		tpd->tpd_class = &tpd_rand_class;
+	}
+	else if(strcmp(type, "user") == 0) {
+		tpd->tpd_class = &tpd_user_class;
 	}
 	else if(strcmp(type, "first-free") == 0) {
 		tpd->tpd_class = &tpd_ff_class;

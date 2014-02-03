@@ -20,7 +20,7 @@
 #include <tsload.h>
 #include <tstime.h>
 #include <etrace.h>
-#include <disp.h>
+#include <rqsched.h>
 
 #include <libjson.h>
 
@@ -104,7 +104,7 @@ DECLARE_HASH_MAP(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_hm_next,
 static atomic_t wl_count = (atomic_t) 0l;
 ts_time_t wl_poll_interval = 200 * T_MS;
 
-extern disp_class_t simple_disp;
+extern struct rqsched_class simple_rqsched_class;
 
 /**
  * wl_create - create new workload: allocate memory and initialize fields
@@ -129,6 +129,8 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_hm_next = NULL;
 	wl->wl_chain_next = NULL;
 
+	wl->wl_last_request = NULL;
+
 	list_node_init(&wl->wl_tp_node);
 
 	wl->wl_params = mp_malloc(wlt->wlt_params_size);
@@ -138,11 +140,12 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	WL_SET_STATUS(wl, WLS_NEW);
 
 	wl->wl_start_time = TS_TIME_MAX;
-
 	wl->wl_notify_time = 0;
+	wl->wl_start_clock = TS_TIME_MAX;
+	wl->wl_time = 0;
 
-	wl->wl_disp_class = NULL;
-	wl->wl_disp_private = NULL;
+	wl->wl_rqsched_class = NULL;
+	wl->wl_rqsched_private = NULL;
 
 	mutex_init(&wl->wl_rq_mutex, "wl-%s-rq", name);
 	mutex_init(&wl->wl_status_mutex, "wl-%s-st", name);
@@ -163,8 +166,8 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
  *
  * */
 void wl_destroy_impl(workload_t* wl) {
-	if(wl->wl_disp_class)
-		wl->wl_disp_class->disp_fini(wl);
+	if(wl->wl_rqsched_class)
+		wl->wl_rqsched_class->rqsched_fini(wl);
 
 	if(WL_HAD_STATUS(wl, WLS_CONFIGURING))
 		t_destroy(&wl->wl_cfg_thread);
@@ -229,7 +232,7 @@ void wl_finish(workload_t* wl) {
 }
 
 /**
- * Chain workload to backward of request chain
+ * Chain workload to backwards of request chain
  *
  * @param parent one of workloads in chain
  * @param wl workload that needs to be chained
@@ -394,10 +397,6 @@ int wl_is_started(workload_t* wl) {
 /**
  * Provide number of requests for current step
  *
- * Responds to agent:
- * 	- Error AE_INVALID_DATA if step_id is incorrect
- * 	- Response { "success": true | false, "reason": "Reason" }
- *
  * @param wl workload
  * @param step_id step id to be provided
  * @param num_rqs number
@@ -432,8 +431,8 @@ done:
 /**
  * Proceed to next step, and return number of requests in it
  *
- * @param wl processing workload
- * @param p_num_rqs variable where number of requests is saved. Cannot be NULL
+ * @param step step, that contains workload. Number of requests is saved in \
+ * 		wls_rq_count field of this parameter
  *
  * @return 0 if operation successful or -1 if not steps on queue
  * */
@@ -465,7 +464,7 @@ int wl_advance_step(workload_step_t* step) {
 	step_off = wl->wl_current_step  & WLSTEPQMASK;
 	step->wls_rq_count = wl->wl_rqs_per_step[step_off];
 
-	wl->wl_disp_class->disp_step(step);
+	wl->wl_rqsched_class->rqsched_step(step);
 
 done:
 	mutex_unlock(&wl->wl_rq_mutex);
@@ -488,10 +487,12 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	if(parent == NULL) {
 		rq->rq_step = wl->wl_current_step;
 		rq->rq_id = wl->wl_current_rq++;
+		rq->rq_user_id = 0;
 	}
 	else {
 		rq->rq_step = parent->rq_step;
 		rq->rq_id = parent->rq_id;
+		rq->rq_user_id = parent->rq_user_id;
 	}
 
 	rq->rq_thread_id = -1;
@@ -506,7 +507,7 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 
 	rq->rq_params = wlpgen_generate(wl);
 
-	wl->wl_disp_class->disp_pre_request(rq);
+	wl->wl_rqsched_class->rqsched_pre_request(rq);
 
 	list_node_init(&rq->rq_node);
 	list_node_init(&rq->rq_w_node);
@@ -520,8 +521,15 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 		rq->rq_chain_next = NULL;
 	}
 
-	logmsg(LOG_TRACE, "Created request %s/%d step: %d", wl->wl_name,
-			rq->rq_id, rq->rq_step);
+	if(wl->wl_last_request != NULL) {
+		wl->wl_last_request->rq_wl_next = rq;
+	}
+
+	wl->wl_last_request = rq;
+	rq->rq_wl_next = NULL;
+
+	logmsg(LOG_TRACE, "Created request %s/%d step: %d sched_time: %lld", wl->wl_name,
+					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
 
 	return rq;
 }
@@ -529,8 +537,8 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 /**
  * Destroy request memory */
 void wl_request_destroy(request_t* rq) {
-	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %d", rq->rq_workload->wl_name,
-			rq->rq_id, rq->rq_step);
+	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %d thread: %d", rq->rq_workload->wl_name,
+			rq->rq_id, rq->rq_step, rq->rq_thread_id);
 
 	if(rq->rq_params != NULL) {
 		mp_free(rq->rq_params);
@@ -542,7 +550,7 @@ void wl_request_destroy(request_t* rq) {
 
 /**
  * Run request for execution */
-void wl_run_request(request_t* rq, int thread_id) {
+void wl_run_request(request_t* rq) {
 	int ret;
 	workload_t* wl = rq->rq_workload;
 
@@ -553,13 +561,14 @@ void wl_run_request(request_t* rq, int thread_id) {
 	if(WL_HAD_STATUS(wl, WLS_FINISHED))
 		return;
 
-	logmsg(LOG_TRACE, "Running request %s/%d step: %d worker: #%d",
-			rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, thread_id);
+	rq->rq_start_time = tm_get_clock() - wl->wl_start_clock;
 
-	rq->rq_thread_id = thread_id;
-	rq->rq_start_time = tm_get_clock();
+	logmsg(LOG_TRACE, "Running request %s/%d step: %d worker: #%d sched: %lld start: %lld",
+				rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, rq->rq_thread_id,
+				(long long) rq->rq_sched_time, (long long) rq->rq_start_time);
+
 	ret = wl->wl_type->wlt_run_request(rq);
-	rq->rq_end_time = tm_get_clock();
+	rq->rq_end_time = tm_get_clock() - wl->wl_start_clock;
 
 	if(rq->rq_start_time <= rq->rq_sched_time)
 		rq->rq_flags |= RQF_ONTIME;
@@ -569,7 +578,7 @@ void wl_run_request(request_t* rq, int thread_id) {
 
 	rq->rq_flags |= RQF_FINISHED;
 
-	wl->wl_disp_class->disp_post_request(rq);
+	wl->wl_rqsched_class->rqsched_post_request(rq);
 
 	if(rq->rq_chain_next != NULL) {
 		rq->rq_chain_next->rq_sched_time = rq->rq_end_time;
@@ -702,7 +711,7 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 	wl_type_t* wlt = NULL;
 	thread_pool_t* tp = NULL;
 
-	int ret = DISP_JSON_OK;
+	int ret = RQSCHED_JSON_OK;
 
 	/* Get threadpool and module from incoming message
 	 * and find corresponding objects*/
@@ -740,16 +749,16 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 	/* Create workload */
 	wl = wl_create(wl_name, wlt, tp);
 
-	/* Process request dispatcher.
-	 * Chained workloads do not have dispatchers - use simple dispatcher */
+	/* Process request scheduler.
+	 * Chained workloads do not have scheduler - use simple scheduler */
 	if(parent == NULL) {
-		ret = json_disp_proc(node, wl);
+		ret = json_rqsched_proc(node, wl);
 	}
 	else {
-		wl->wl_disp_class = &simple_disp;
+		wl->wl_rqsched_class = &simple_rqsched_class;
 	}
 
-	if(ret != DISP_JSON_OK) {
+	if(ret != RQSCHED_JSON_OK) {
 		goto fail;
 	}
 

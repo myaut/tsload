@@ -38,11 +38,12 @@
 #define RQF_FINISHED	0x08
 
 struct workload;
-struct disp_class;
+struct rqsched_class;
 
 typedef struct request {
 	long rq_step;
 	int rq_id;
+	int rq_user_id;
 
 	int rq_thread_id;
 
@@ -58,6 +59,7 @@ typedef struct request {
 
 	list_node_t rq_node;		/* Next request in chain */
 	list_node_t rq_w_node;
+	struct request* rq_wl_next;
 	struct request* rq_chain_next;	/* Next request in workload chain */
 } request_t;
 
@@ -117,9 +119,12 @@ typedef struct workload {
 	atomic_t		 wl_ref_count;
 
 	int				 wl_current_rq;
+	request_t*		 wl_last_request;
 
 	ts_time_t		 wl_start_time;
 	ts_time_t		 wl_notify_time;
+	ts_time_t		 wl_start_clock;
+	ts_time_t		 wl_time;
 
 	/* Requests queue */
 	thread_mutex_t	 wl_rq_mutex;		/**< Mutex that protects wl_requests*/
@@ -128,8 +133,8 @@ typedef struct workload {
 	unsigned		 wl_rqs_per_step[WLSTEPQSIZE];	/**< Contains number of requests per step*/
 	/* End of requests queue*/
 
-	struct disp_class* wl_disp_class; /**< Dispatcher class*/
-	void* wl_disp_private;			 /**< Dispatcher data */
+	struct rqsched_class* wl_rqsched_class; /**< Dispatcher class*/
+	void* wl_rqsched_private;			 /**< Dispatcher data */
 
 	struct workload* wl_hm_next;		/**< next in workload hashmap*/
 	struct workload* wl_chain_next;		/**< next in workload chain*/
@@ -161,7 +166,7 @@ int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs);
 int wl_advance_step(workload_step_t* step);
 
 request_t* wl_create_request(workload_t* wl, request_t* parent);
-void wl_run_request(request_t* rq, int thread_id);
+void wl_run_request(request_t* rq);
 void wl_request_free(request_t* rq);
 void wl_report_requests(list_head_t* rq_list);
 

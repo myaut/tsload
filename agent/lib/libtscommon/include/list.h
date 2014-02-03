@@ -228,14 +228,25 @@ STATIC_INLINE void list_move_tail(list_node_t *list,
 }
 
 /**
- * list_is_last - tests whether @list is the last entry in list @head
- * @param list  the entry to test
+ * list_is_last - tests whether node is the last entry in list head
+ * @param node  the entry to test
  * @param head  the head of the list
  */
-STATIC_INLINE int list_is_last(const list_node_t *list,
+STATIC_INLINE int list_is_last(const list_node_t *node,
 				const list_head_t *head)
 {
-	return list->next == &(head->l_head);
+	return node->next == &(head->l_head);
+}
+
+/**
+ * list_is_first - tests whether node is the first entry in list head
+ * @param node  the entry to test
+ * @param head  the head of the list
+ */
+STATIC_INLINE int list_is_first(const list_node_t *node,
+				const list_head_t *head)
+{
+	return node->prev == &(head->l_head);
 }
 
 /**
@@ -508,6 +519,17 @@ STATIC_INLINE void list_merge(list_head_t *head, list_head_t *list1,
 	list_entry((ptr)->member.next, type, member)
 
 /**
+ * list_prev_entry - get the element from a list before node
+ * @param ptr 	pointer to current entry
+ * @param type 	the type of the struct this is embedded in.
+ * @param member 	the name of the list_struct within the struct.
+ *
+ * Note, that node is expected not being first.
+ */
+#define list_prev_entry(type, ptr, member) \
+	list_entry((ptr)->member.prev, type, member)
+
+/**
  * list_for_each	-	iterate over a list
  * @param pos 	the &struct list_head to use as a loop cursor.
  * @param head 	the head for your list.
@@ -555,6 +577,23 @@ STATIC_INLINE void list_merge(list_head_t *head, list_head_t *list1,
 	for (pos = (head)->l_head.prev, n = pos->prev; \
 	     pos != &(head)->l_head; \
 	     pos = n, n = pos->prev)
+
+
+/**
+ * list_for_each_continue	-	iterate over a list starting from pre-determined position
+ * @param pos 	the &struct list_head to use as a loop cursor. Starting position
+ * @param head 	the head for your list.
+ */
+#define list_for_each_continue(pos, head) \
+	for ( pos = pos->next ; pos != &(head)->l_head; pos = pos->next)
+
+/**
+ * list_for_each_prev	-	iterate over a list backwards starting from position
+ * @param pos 	the &struct list_head to use as a loop cursor. Starting position
+ * @param head 	the head for your list.
+ */
+#define list_for_each_continue_reverse(pos, head) \
+	for ( pos = pos->prev ; pos != &(head)->l_head; pos = pos->prev)
 
 /**
  * list_for_each_entry	-	iterate over list of given type

@@ -7,6 +7,8 @@
 
 #include <schedutil.h>
 
+#include <string.h>
+
 #define SCHED_POLICY_FIND(condition)							\
 	sched_policy_t** sched_policies = sched_get_policies();		\
 	sched_policy_t* policy = sched_policies[0];					\

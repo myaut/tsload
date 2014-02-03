@@ -13,6 +13,8 @@
 #include <workload.h>
 #include <list.h>
 
+#include <assert.h>
+
 /**
  * #### First-Free thread pool dispatcher
  *
@@ -88,17 +90,20 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 	ts_time_t max_sleep, sleep_time;
 	ts_time_t cur_time = tm_get_clock();
 
+	mutex_lock(&ff->ff_mutex);
+
 	list_for_each_entry_safe(request_t, rq, rq_next, &tp->tp_rq_head, rq_node) {
 		dispatched = B_FALSE;
 
-		max_sleep = tm_diff(cur_time, tp->tp_time + tp->tp_quantum);
-		if(!tpd_wait_for_arrival(rq, max_sleep)) {
+		mutex_unlock(&ff->ff_mutex);
+
+		if(!tpd_wait_for_arrival(rq, tp->tp_time + tp->tp_quantum)) {
 			return;
 		}
 
-		list_del(&rq->rq_node);
-
 		mutex_lock(&ff->ff_mutex);
+
+		list_del(&rq->rq_node);
 
 		/* Try to dispatch request `rq` to one of of workers (selected randomly).
 		 * If it is not busy, put it onto worker queue.
@@ -117,21 +122,35 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 				break;
 			}
 
-			wid = tpd_next_wid_rr(tp, wid);
+			wid = tpd_next_wid_rr(tp, wid, rq);
 		}
 
 		if(!dispatched) {
+			while(ff->ff_last_rq != NULL) {
+				cur_time = tm_get_clock();
+				if(cur_time > (tp->tp_time + tp->tp_quantum)) {
+					/* Oops - we didn't managed to dispatch request.
+					 * Return it back to rq_head, so no one will notice*/
+					list_add(&rq->rq_node, &tp->tp_rq_head);
+					mutex_unlock(&ff->ff_mutex);
+					return;
+				}
+
+				max_sleep = tm_diff(cur_time, tp->tp_time + tp->tp_quantum);
+				cv_wait_timed(&ff->ff_control_cv, &ff->ff_mutex, max_sleep);
+			}
+
 			ff->ff_last_rq = rq;
-			cv_wait_timed(&ff->ff_control_cv, &ff->ff_mutex, max_sleep);
 		}
-
-		mutex_unlock(&ff->ff_mutex);
-
-		cur_time = tm_get_clock();
 	}
 
-	if(cur_time < tp->tp_time + tp->tp_quantum)
-		tm_sleep_nano(tm_diff(cur_time, tp->tp_time + tp->tp_quantum));
+	mutex_unlock(&ff->ff_mutex);
+
+	cur_time = tm_get_clock();
+	if(cur_time < (tp->tp_time + tp->tp_quantum)) {
+		max_sleep = tm_diff(cur_time, tp->tp_time + tp->tp_quantum);
+		tm_sleep_nano(max_sleep);
+	}
 }
 
 void tpd_control_report_ff(thread_pool_t* tp) {
@@ -168,16 +187,20 @@ request_t* tpd_worker_pick_ff(thread_pool_t* tp, tp_worker_t* worker) {
 	if(ff->ff_last_rq != NULL) {
 		rq = ff->ff_last_rq;
 		ff->ff_last_rq = NULL;
+
+		cv_notify_one(&ff->ff_control_cv);
 	}
 	else {
 		*wstate = FF_WSTATE_SLEEPING;
 	}
 
-	cv_notify_one(&ff->ff_control_cv);
 	mutex_unlock(&ff->ff_mutex);
 
 	if(rq == NULL) {
 		rq = tpd_wqueue_pick(tp, worker);
+	}
+	if(rq != NULL) {
+		rq->rq_thread_id = worker->w_thread.t_local_id;
 	}
 
 	return rq;
@@ -196,6 +219,48 @@ void tpd_worker_done_ff(thread_pool_t* tp, tp_worker_t* worker, request_t* rq) {
 	mutex_unlock(&ff->ff_mutex);
 }
 
+void tpd_relink_request_ff(thread_pool_t* tp, request_t* rq) {
+	tpd_ff_t* ff = (tpd_ff_t*) tp->tp_disp->tpd_data;
+	request_t* prev_rq = NULL;
+	request_t* next_rq = NULL;
+
+	list_node_t* prev_rq_node = NULL;
+	list_node_t* next_rq_node = NULL;
+
+	boolean_t need_relink = B_FALSE;
+
+	mutex_lock(&ff->ff_mutex);
+
+	if(list_node_alone(&rq->rq_node) || list_is_first(&rq->rq_node, &tp->tp_rq_head)) {
+		/* Already in control thread -- oops */
+		mutex_unlock(&ff->ff_mutex);
+		return;
+	}
+
+	prev_rq = list_prev_entry(request_t, rq, rq_node);
+	prev_rq_node = &prev_rq->rq_node;
+
+	if(tp_compare_requests(rq, prev_rq) >= 0) {
+		need_relink = B_TRUE;
+	}
+
+	if(!list_is_last(&rq->rq_w_node, &tp->tp_rq_head)) {
+		next_rq = list_next_entry(request_t, rq, rq_node);
+		next_rq_node = &next_rq->rq_node;
+
+		if(tp_compare_requests(rq, next_rq) < 0) {
+			need_relink = B_TRUE;
+		}
+	}
+
+	if(need_relink) {
+		list_del(&rq->rq_node);
+		tp_insert_request(&tp->tp_rq_head, &rq->rq_node, &prev_rq_node, &next_rq_node, rq_node);
+	}
+
+	mutex_unlock(&ff->ff_mutex);
+}
+
 tp_disp_class_t tpd_ff_class = {
 	tpd_init_ff,
 	tpd_destroy_ff,
@@ -203,5 +268,6 @@ tp_disp_class_t tpd_ff_class = {
 	tpd_control_sleep_ff,
 	tpd_worker_pick_ff,
 	tpd_worker_done_ff,
-	tpd_wqueue_signal
+	tpd_wqueue_signal,
+	tpd_relink_request_ff
 };

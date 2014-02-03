@@ -113,6 +113,13 @@ static void control_prepare_step(thread_pool_t* tp, workload_step_t* step) {
 	if(unlikely(!wl_is_started(wl))) {
 		return;
 	}
+	if(wl->wl_start_clock == TS_TIME_MAX) {
+		wl->wl_start_clock = tp->tp_time;
+		wl->wl_time = 0;
+	}
+	else {
+		wl->wl_time += tp->tp_quantum;
+	}
 
 	ret = wl_advance_step(step);
 
@@ -161,7 +168,7 @@ thread_result_t worker_thread(thread_arg_t arg) {
 
 		rq = rq_root;
 		do {
-			wl_run_request(rq, worker->w_thread.t_local_id);
+			wl_run_request(rq);
 
 			rq = rq->rq_chain_next;
 		} while(rq != NULL);

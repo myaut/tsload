@@ -20,7 +20,7 @@ lib.AddDeps(('lib', 'libjson'),
             ('lib', 'libhostinfo'))
 
 lib.PreparePlatform()
-objects = lib.CompileSharedLibrary(Glob("src/disp/*.c") + Glob("src/randgen/*.c") + \
+objects = lib.CompileSharedLibrary(Glob("src/rqsched/*.c") + Glob("src/randgen/*.c") + \
                                    Glob("src/tpdisp/*.c"))
 
 etrace_files, man_files = env.PreprocessETrace(['src/workload.c'] + objects, 

@@ -368,6 +368,176 @@ void tp_detach(thread_pool_t* tp, struct workload* wl) {
 }
 
 /**
+ * Compare two requests. Returns >= 0 if request rq2 is going after rq1
+ */
+int tp_compare_requests(struct request* rq1, struct request* rq2) {
+	ts_time_t time1 = rq1->rq_sched_time + rq1->rq_workload->wl_start_clock;
+	ts_time_t time2 = rq2->rq_sched_time + rq2->rq_workload->wl_start_clock;
+
+	if(time2 > time1)
+		return 100;
+	if(time2 < time1)
+		return -100;
+
+
+	return rq2->rq_id - rq1->rq_id;
+}
+
+#define NODE_TO_REQUEST(rq_node, offset)    ((request_t*)(((char*) (rq_node)) - offset))
+#define REQUEST_TO_NODE(rq, offset)    		((list_node_t*)(((char*) (rq)) + offset))
+
+static void tp_trace_insert_request(request_t* rq, list_head_t* rq_list, ptrdiff_t offset) {
+	request_t* prev_rq = NULL;
+	request_t* next_rq = NULL;
+	char buf[512];
+	size_t len = 0;
+
+	list_node_t* rq_node = REQUEST_TO_NODE(rq, offset);
+
+	if(rq_node->next != &rq_list->l_head) {
+		next_rq = NODE_TO_REQUEST(rq_node->next, offset);
+	}
+	if(rq_node->prev != &rq_list->l_head) {
+		prev_rq = NODE_TO_REQUEST(rq_node->prev, offset);
+	}
+
+	logmsg(LOG_TRACE, "Linking request %s/%d (%lld) prev: %s/%d (%lld) next: %s/%d (%lld)",
+		   rq->rq_workload->wl_name, rq->rq_id,  (long long) rq->rq_sched_time,
+		   (prev_rq)? prev_rq->rq_workload->wl_name : "???", (prev_rq)? prev_rq->rq_id : -1,
+		   (prev_rq)? (long long) prev_rq->rq_sched_time : -1,
+		   (next_rq)? next_rq->rq_workload->wl_name : "???", (next_rq)? next_rq->rq_id : -1,
+		   (next_rq)? (long long) next_rq->rq_sched_time : -1);
+
+#if 0
+	list_for_each(rq_node, rq_list) {
+		if(len >= 480)
+			break;
+		rq = NODE_TO_REQUEST(rq_node, offset);
+		len += snprintf(buf + len, 512 - len, "->%s/%d/%d", rq->rq_workload->wl_name,
+					    rq->rq_id, rq->rq_step);
+	}
+
+	logmsg(LOG_TRACE, "\t %s", buf);
+#endif
+}
+
+/**
+ * Insert request into request queue. Keeps requests sorted by their sched-time.
+ * Doesn't walks entire list, but uses prev_rq and next_rq as hint parameters.
+ *
+ * I.e. if we have requests on queue with schedule times 10,20,30,40,50 and 60
+ * and want to add request from another workload with sched time 45, prev request
+ * should point to 60, and we walk back. Then we will get prev_rq = 40 and next_rq
+ * is 50, so to insert request with 55, we shouldn't walk entire list of requests.
+ *
+ * @param rq_list request queue
+ * @param rq request to be inserted
+ * @param p_prev_rq hint that contains previous request inside queue
+ * @param p_next_rq hint that contains next request inside queue
+ */
+void tp_insert_request_impl(list_head_t* rq_list, list_node_t* rq_node,
+					   list_node_t** p_prev_node, list_node_t** p_next_node, ptrdiff_t offset) {
+	list_node_t* prev_rq_node = *p_prev_node;
+	list_node_t* next_rq_node = *p_next_node;
+
+	request_t* rq = NODE_TO_REQUEST(rq_node, offset);
+	list_node_t* tmp_node = prev_rq_node;
+
+	/* Usually there are only one workload per threadpool, so we may simple put
+	 * new request after last request. But if it is second workload, these conditions
+	 * would not be satisfied (there would be requests after current request, and
+	 * we have to find appropriate place for it. */
+	if(list_empty(rq_list)) {
+		list_add_tail(rq_node, rq_list);
+		prev_rq_node = rq_node;
+		next_rq_node = rq_node;
+	}
+	else {
+		boolean_t middle = B_FALSE;
+
+		if(tp_compare_requests(rq, NODE_TO_REQUEST(next_rq_node, offset)) < 0) {
+			/* Search forward */
+			prev_rq_node = next_rq_node;
+
+			list_for_each_continue(next_rq_node, rq_list) {
+				if(tp_compare_requests(rq, NODE_TO_REQUEST(next_rq_node, offset)) >= 0) {
+					middle = B_TRUE;
+					break;
+				}
+				prev_rq_node = next_rq_node;
+			}
+
+			if(!middle) {
+				list_add_tail(rq_node, rq_list);
+				next_rq_node = rq_node;
+			}
+		}
+		else if(tp_compare_requests(rq, NODE_TO_REQUEST(prev_rq_node, offset)) >= 0) {
+			/* Search backward */
+			next_rq_node = prev_rq_node;
+
+			list_for_each_continue_reverse(prev_rq_node, rq_list) {
+				if(tp_compare_requests(NODE_TO_REQUEST(prev_rq_node, offset), rq) >= 0) {
+					middle = B_TRUE;
+					break;
+				}
+				next_rq_node = prev_rq_node;
+			}
+
+			if(!middle) {
+				list_add(rq_node, rq_list);
+				prev_rq_node = rq_node;
+			}
+		}
+		else {
+			middle = B_TRUE;
+		}
+
+		if(middle) {
+			/* Insert new request between next_rq and last_rq */
+			assert(prev_rq_node->next == next_rq_node);
+			assert(next_rq_node->prev == prev_rq_node);
+
+			__list_add(rq_node, prev_rq_node, next_rq_node);
+			prev_rq_node = rq_node;
+		}
+	}
+
+	tp_trace_insert_request(rq, rq_list, offset);
+
+	*p_prev_node = prev_rq_node;
+	*p_next_node = next_rq_node;
+}
+
+/**
+ * Make preliminary initialization of previous and next node if
+ * list already contains requests. Sets prev and next node to NULL
+ * otherwise.
+ */
+void tp_insert_request_initnodes(list_head_t* rq_list, list_node_t** p_prev_node, list_node_t** p_next_node) {
+	request_t* prev_rq = NULL;
+
+	list_node_t* prev_rq_node = NULL;
+	list_node_t* next_rq_node = NULL;
+
+	if(!list_empty(rq_list)) {
+		prev_rq = list_first_entry(request_t, rq_list, rq_node);
+
+		prev_rq_node = &prev_rq->rq_node;
+
+		if(list_is_singular(rq_list)) {
+			next_rq_node = prev_rq_node;
+		}
+		else {
+			next_rq_node = prev_rq_node->next;
+		}
+	}
+
+	*p_prev_node = prev_rq_node;
+	*p_next_node = next_rq_node;
+}
+
+/**
  * Distribute requests across threadpool's workers
  *
  * I.e. we have to distribute 11 requests across 4 workers
@@ -379,77 +549,25 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 	unsigned rq_count = step->wls_rq_count;
 
 	request_t* rq;
-	request_t* last_rq;
-	request_t* next_rq;
+	request_t* prev_rq = NULL;
+	request_t* next_rq = NULL;
 
 	list_head_t* rq_list = &tp->tp_rq_head;
+	list_node_t* prev_rq_node = NULL;
+	list_node_t* next_rq_node = NULL;
 
 	int tid;
 
 	if(step->wls_rq_count == 0)
 		return;
 
-	/* Create sorted list of requests */
-	if(list_empty(rq_list)) {
-		last_rq = NULL;
-	}
-	else {
-		last_rq = list_last_entry(request_t, rq_list, rq_node);
-	}
+	tp_insert_request_initnodes(rq_list, &prev_rq_node, &next_rq_node);
 
+	/* Create sorted list of requests */
 	while(rq_count != 0) {
 		rq = wl_create_request(step->wls_workload, NULL);
 
-		/* Usually there are only one workload per threadpool, so we may simple put
-		 * new request after last request. But if it is second workload, these conditions
-		 * would not be satisfied (there would be requests after current request, and
-		 * we have to find appropriate place for it. */
-		if(!last_rq ||
-				(list_is_last(&last_rq->rq_node, rq_list) &&
-				 rq->rq_sched_time >= last_rq->rq_sched_time) ) {
-			list_add_tail(&rq->rq_node, rq_list);
-			last_rq = rq;
-		}
-		else {
-			boolean_t middle = B_FALSE;
-
-			next_rq = last_rq;
-
-			if(rq->rq_sched_time >= last_rq->rq_sched_time) {
-				/* Search forward */
-				list_for_each_entry_continue(request_t, next_rq, rq_list, rq_node) {
-					if(rq->rq_sched_time < next_rq->rq_sched_time) {
-						middle = B_TRUE;
-						break;
-					}
-					last_rq = next_rq;
-				}
-
-				if(!middle) {
-					list_add_tail(&rq->rq_node, rq_list);
-				}
-			}
-			else {
-				/* Search backward */
-				list_for_each_entry_continue_reverse(request_t, last_rq, rq_list, rq_node) {
-					if(rq->rq_sched_time >= last_rq->rq_sched_time) {
-						middle = B_TRUE;
-						break;
-					}
-
-					next_rq = last_rq;
-				}
-
-				if(!middle) {
-					list_add(&rq->rq_node, rq_list);
-				}
-			}
-
-			if(middle) {
-				/* Insert new request between next_rq and last_rq */
-				__list_add(&rq->rq_node, &last_rq->rq_node, &next_rq->rq_node);
-			}
-		}
+		tp_insert_request(rq_list, &rq->rq_node, &prev_rq_node, &next_rq_node, rq_node);
 
 		--rq_count;
 	}
@@ -463,7 +581,7 @@ JSONNODE* json_tp_format(hm_item_t* object) {
 
 	thread_pool_t* tp = (thread_pool_t*) object;
 
-	/* TODO: Should return bindings */
+	/* TODO: Should return bindings && scheduler options */
 
 	if(tp->tp_is_dead)
 		return NULL;
@@ -705,7 +823,7 @@ int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched) {
 			}
 
 			wid = json_as_int(*i_wid);
-			if(wid > tp->tp_num_threads || wid < 0) {
+			if(wid >= tp->tp_num_threads || wid < 0) {
 				tsload_error_msg(TSE_INVALID_DATA,
 							     TP_ERROR_SCHED_PREFIX ", invalid worker id #%d", tp->tp_name, wid);
 				return 1;

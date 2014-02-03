@@ -14,6 +14,7 @@
 #include <threads.h>
 #include <syncqueue.h>
 #include <atomic.h>
+#include <stddef.h>
 
 #define TPNAMELEN		64
 #define TPMAXTHREADS 	64
@@ -96,6 +97,14 @@ LIBEXPORT thread_pool_t* tp_search(const char* name);
 
 void tp_attach(thread_pool_t* tp, struct workload* wl);
 void tp_detach(thread_pool_t* tp, struct workload* wl);
+
+int tp_compare_requests(struct request* rq1, struct request* rq2);
+void tp_insert_request_impl(list_head_t* rq_list, list_node_t* rq_node,
+							list_node_t** p_prev_node, list_node_t** p_next_node, ptrdiff_t offset);
+#define tp_insert_request(rq_list, rq_node, p_prev_node, p_next_node, member)			\
+			tp_insert_request_impl(rq_list, rq_node, p_prev_node, p_next_node,			\
+								   offsetof(struct request, member))
+void tp_insert_request_initnodes(list_head_t* rq_list, list_node_t** p_prev_node, list_node_t** p_next_node);
 
 void tp_distribute_requests(struct workload_step* step, thread_pool_t* tp);
 

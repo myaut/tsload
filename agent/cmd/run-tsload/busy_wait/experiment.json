@@ -4,6 +4,10 @@
 		"test1": {
 			"num_steps":	20,
  			"num_requests": 20
+		},
+		"test2": {
+			"num_steps":	20,
+ 			"num_requests": 20
 		}
 	},
 	"threadpools": {
@@ -11,28 +15,19 @@
             "num_threads": 4,
             "quantum": 1000000000,
             "disp": {
-            	"type": "first-free"
-            },
-            "discard": true,
-            "sched": [
-            	{ "wid": 0,
-            	  "objects": ["strand:0:0:0"] },
-            	{ "wid": 1,
-            	  "objects": ["strand:0:0:0"] },
-            	{ "wid": 2,
-            	  "objects": ["strand:0:0:0"] },
-            	{ "wid": 3,
-            	  "objects": ["strand:0:0:0"] }            	 
-            ]
+            	"type": "user"
+            }
         }
 	},
 	"workloads" :	{
 		"test1" : {
 			"wltype": "busy_wait",
 			"threadpool": "test_tp",
-			"disp": "iat",
-			"disp_params": {
-				"distribution": "exponential"
+			"rqsched": "think",
+			"rqsched_params": {
+				"distribution": "uniform",
+				"scope": 0,
+				"nusers": 4
 			},
 			"params": { 
 				"num_cycles": {
@@ -42,12 +37,23 @@
 					"pmap": [
 						{ "probability": 0.2,
 						  "value": 30000 },
-						{ "probability": 0.65,
+						{ "probability": 0.55,
 						  "value": 40000 },
-						{ "probability": 0.15,
-						  "value": 50000 }
+						{ "probability": 0.25,
+						  "value": 100000 }
 					]
 				} 
+			}
+		},
+		"test2" : {
+			"wltype": "busy_wait",
+			"threadpool": "test_tp",
+			"rqsched": "iat",
+			"rqsched_params": {
+				"distribution": "exponential"
+			},
+			"params": { 
+				"num_cycles": 50000
 			}
 		}
 	}
