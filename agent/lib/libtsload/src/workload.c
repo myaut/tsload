@@ -472,29 +472,7 @@ done:
 	return ret;
 }
 
-/**
- * Create request structure, append it to requests queue, initialize
- * For chained workloads inherits parent step and request id
- *
- * @param wl workload for request
- * @param thread_id id of thread that will execute thread
- * @param parent parent request (for chained workloads) \
- * 		For unchained workloads should be set to NULL.
- * */
-request_t* wl_create_request(workload_t* wl, request_t* parent) {
-	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
-
-	if(parent == NULL) {
-		rq->rq_step = wl->wl_current_step;
-		rq->rq_id = wl->wl_current_rq++;
-		rq->rq_user_id = 0;
-	}
-	else {
-		rq->rq_step = parent->rq_step;
-		rq->rq_id = parent->rq_id;
-		rq->rq_user_id = parent->rq_user_id;
-	}
-
+static void wl_init_request(workload_t* wl, request_t* rq) {
 	rq->rq_thread_id = -1;
 
 	rq->rq_flags = 0;
@@ -507,12 +485,39 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 
 	rq->rq_params = wlpgen_generate(wl);
 
-	wl->wl_rqsched_class->rqsched_pre_request(rq);
+	rq->rq_queue_len = -1;
 
 	list_node_init(&rq->rq_node);
 	list_node_init(&rq->rq_w_node);
+}
+
+/**
+ * Create request structure, append it to requests queue, initialize
+ * For chained workloads inherits parent step and request id
+ *
+ * @param wl workload for request
+ * @param parent parent request (for chained workloads) \
+ * 		For unchained workloads should be set to NULL.
+ * */
+request_t* wl_create_request(workload_t* wl, request_t* parent) {
+	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
 
 	wl_hold(wl);
+
+	if(parent == NULL) {
+		rq->rq_step = wl->wl_current_step;
+		rq->rq_id = wl->wl_current_rq++;
+		rq->rq_user_id = 0;
+	}
+	else {
+		rq->rq_step = parent->rq_step;
+		rq->rq_id = parent->rq_id;
+		rq->rq_user_id = parent->rq_user_id;
+	}
+
+	wl_init_request(wl, rq);
+
+	wl->wl_rqsched_class->rqsched_pre_request(rq);
 
 	if(wl->wl_chain_next != NULL) {
 		rq->rq_chain_next = wl_create_request(wl->wl_chain_next, rq);
@@ -529,6 +534,41 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	rq->rq_wl_next = NULL;
 
 	logmsg(LOG_TRACE, "Created request %s/%d step: %d sched_time: %lld", wl->wl_name,
+					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
+
+	return rq;
+}
+
+/**
+ * Clone request - used by benchmark threadpool dispatcher
+ */
+request_t* wl_clone_request(request_t* origin) {
+	workload_t* wl = origin->rq_workload;
+	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
+
+	wl_hold(wl);
+
+	rq->rq_step = origin->rq_step;
+	rq->rq_id = wl->wl_current_rq++;
+	rq->rq_user_id = origin->rq_user_id;
+
+	wl_init_request(wl, rq);
+
+	if(origin->rq_chain_next != NULL) {
+		rq->rq_chain_next = wl_clone_request(origin->rq_chain_next);
+	}
+	else {
+		rq->rq_chain_next = NULL;
+	}
+
+	if(wl->wl_last_request != NULL) {
+		wl->wl_last_request->rq_wl_next = rq;
+	}
+
+	wl->wl_last_request = rq;
+	rq->rq_wl_next = NULL;
+
+	logmsg(LOG_TRACE, "Cloned request %s/%d step: %d sched_time: %lld", wl->wl_name,
 					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
 
 	return rq;

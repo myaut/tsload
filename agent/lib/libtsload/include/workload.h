@@ -32,10 +32,16 @@
 #define WLSTEPQMASK	(WLSTEPQSIZE - 1)
 
 /* Request flags sibling of TSRequestFlag */
-#define RQF_STARTED		0x01
-#define RQF_SUCCESS		0x02
-#define RQF_ONTIME		0x04
-#define RQF_FINISHED	0x08
+#define RQF_STARTED		0x0001
+#define RQF_SUCCESS		0x0002
+#define RQF_ONTIME		0x0004
+#define RQF_FINISHED	0x0008
+
+/* Internal flags for TP dispatcher */
+#define RQF_DISPATCHED	0x0100
+#define RQF_DEQUEUED	0x0200
+
+#define RQF_FLAG_MASK	0x00ff
 
 struct workload;
 struct rqsched_class;
@@ -52,6 +58,8 @@ typedef struct request {
 	ts_time_t rq_end_time;
 
 	int rq_flags;
+
+	int rq_queue_len;
 
 	struct workload* rq_workload;
 
@@ -166,9 +174,13 @@ int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs);
 int wl_advance_step(workload_step_t* step);
 
 request_t* wl_create_request(workload_t* wl, request_t* parent);
+request_t* wl_clone_request(request_t* origin);
+
 void wl_run_request(request_t* rq);
 void wl_request_free(request_t* rq);
 void wl_report_requests(list_head_t* rq_list);
+
+void wl_rq_list_destroy(void *p_rq_list);
 
 LIBEXPORT int wl_init(void);
 LIBEXPORT void wl_fini(void);

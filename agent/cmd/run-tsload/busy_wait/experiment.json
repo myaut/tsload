@@ -3,19 +3,19 @@
 	"steps": {
 		"test1": {
 			"num_steps":	20,
- 			"num_requests": 20
+ 			"num_requests": 2000
 		},
 		"test2": {
 			"num_steps":	20,
- 			"num_requests": 20
+ 			"num_requests": 2000
 		}
 	},
 	"threadpools": {
 		"test_tp" : {
-            "num_threads": 4,
+            "num_threads": 2,
             "quantum": 1000000000,
             "disp": {
-            	"type": "user"
+            	"type": "random"
             }
         }
 	},
@@ -23,7 +23,7 @@
 		"test1" : {
 			"wltype": "busy_wait",
 			"threadpool": "test_tp",
-			"rqsched": "think",
+			"rqsched": "iat",
 			"rqsched_params": {
 				"distribution": "uniform",
 				"scope": 0,

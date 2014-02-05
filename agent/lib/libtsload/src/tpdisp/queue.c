@@ -37,10 +37,34 @@ void tpd_destroy_queue(thread_pool_t* tp) {
 	/* NOTHING */
 }
 
+int tpd_get_queue_len_queue(thread_pool_t* tp, tp_worker_t* worker, request_t* rq) {
+	int qlen = 0;
+	ts_time_t cur_time = tm_get_clock();
+	ts_time_t next_time;
+	request_t* rq_next;
+
+	mutex_lock(&worker->w_rq_mutex);
+
+	list_for_each_entry(request_t, rq_next, &worker->w_rq_head, rq_w_node) {
+		next_time = rq_next->rq_sched_time + rq->rq_workload->wl_start_clock;
+
+		if(next_time > cur_time)
+			break;
+
+		++qlen;
+	}
+
+	mutex_unlock(&worker->w_rq_mutex);
+
+	return qlen;
+}
+
 request_t* tpd_worker_pick_queue(thread_pool_t* tp, tp_worker_t* worker) {
 	request_t* rq = tpd_wqueue_pick(tp, worker);
 
 	if(rq != NULL) {
+		rq->rq_queue_len = tpd_get_queue_len_queue(tp, worker, rq);
+
 		tpd_wait_for_arrival(rq, TS_TIME_MAX);
 	}
 

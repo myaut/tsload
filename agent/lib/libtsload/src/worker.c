@@ -24,7 +24,6 @@ void tp_detach_nolock(thread_pool_t* tp, struct workload* wl);
 
 static void control_prepare_step(thread_pool_t* tp, workload_step_t* step);
 
-
 /**
  * Control thread
  *

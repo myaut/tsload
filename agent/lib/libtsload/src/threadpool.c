@@ -273,10 +273,12 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 		tp_destroy_worker(tp, tid);
 	}
 
-	tpd_destroy(tp->tp_disp);
-
 	if(tp->tp_started)
 		t_destroy(&tp->tp_ctl_thread);
+
+	tp->tp_discard = B_TRUE;
+	tp->tp_disp->tpd_class->control_report(tp);
+	tpd_destroy(tp->tp_disp);
 
 	mutex_destroy(&tp->tp_mutex);
 
@@ -389,8 +391,6 @@ int tp_compare_requests(struct request* rq1, struct request* rq2) {
 static void tp_trace_insert_request(request_t* rq, list_head_t* rq_list, ptrdiff_t offset) {
 	request_t* prev_rq = NULL;
 	request_t* next_rq = NULL;
-	char buf[512];
-	size_t len = 0;
 
 	list_node_t* rq_node = REQUEST_TO_NODE(rq, offset);
 
@@ -407,18 +407,6 @@ static void tp_trace_insert_request(request_t* rq, list_head_t* rq_list, ptrdiff
 		   (prev_rq)? (long long) prev_rq->rq_sched_time : -1,
 		   (next_rq)? next_rq->rq_workload->wl_name : "???", (next_rq)? next_rq->rq_id : -1,
 		   (next_rq)? (long long) next_rq->rq_sched_time : -1);
-
-#if 0
-	list_for_each(rq_node, rq_list) {
-		if(len >= 480)
-			break;
-		rq = NODE_TO_REQUEST(rq_node, offset);
-		len += snprintf(buf + len, 512 - len, "->%s/%d/%d", rq->rq_workload->wl_name,
-					    rq->rq_id, rq->rq_step);
-	}
-
-	logmsg(LOG_TRACE, "\t %s", buf);
-#endif
 }
 
 /**
@@ -495,15 +483,17 @@ void tp_insert_request_impl(list_head_t* rq_list, list_node_t* rq_node,
 
 		if(middle) {
 			/* Insert new request between next_rq and last_rq */
-			assert(prev_rq_node->next == next_rq_node);
-			assert(next_rq_node->prev == prev_rq_node);
-
 			__list_add(rq_node, prev_rq_node, next_rq_node);
 			prev_rq_node = rq_node;
 		}
 	}
 
 	tp_trace_insert_request(rq, rq_list, offset);
+
+	if(prev_rq_node != next_rq_node) {
+		assert(prev_rq_node->next == next_rq_node);
+		assert(next_rq_node->prev == prev_rq_node);
+	}
 
 	*p_prev_node = prev_rq_node;
 	*p_next_node = next_rq_node;

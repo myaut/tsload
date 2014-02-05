@@ -34,6 +34,7 @@ boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t max_sleep);
 request_t* tpd_wqueue_pick(thread_pool_t* tp, tp_worker_t* worker);
 void tpd_wqueue_done(thread_pool_t* tp, tp_worker_t* worker, request_t* rq);
 void tpd_wqueue_put(thread_pool_t* tp, tp_worker_t* worker, request_t* rq);
+void tpd_worker_wait(thread_pool_t* tp, int wid);
 void tpd_wqueue_signal(thread_pool_t* tp, int wid);
 
 static int tpd_next_wid_rr(thread_pool_t* tp, int wid, request_t* rq) {

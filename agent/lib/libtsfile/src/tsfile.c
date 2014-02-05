@@ -23,6 +23,8 @@ int tsfile_errno;
 			((header)->sb[(sbi)].count = new_count);		\
 			((header)->sb[(sbi)].time = tm_get_time())
 
+boolean_t tsfile_sync_mode = B_FALSE;
+
 /**
  * TimeSeries File Format Library
  *
@@ -50,7 +52,10 @@ static tsfile_t* tsfile_open_file(const char* filename, boolean_t create) {
 	tsfile_t* file = NULL;
 	int fd;
 	size_t filename_len;
-	int flags = O_RDWR | O_SYNC;
+	int flags = O_RDWR;
+
+	if(tsfile_sync_mode)
+		flags |= O_SYNC;
 
 	if(create) {
 		fd = open(filename, flags | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);

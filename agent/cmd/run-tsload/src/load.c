@@ -52,7 +52,6 @@ char experiment_name[EXPNAMELEN];
 /* Wait until experiment finishes or fails */
 static thread_mutex_t	output_lock;
 static thread_event_t	workload_event;
-static thread_event_t	request_event;
 
 typedef struct agent_workload {
 	char wl_name[WLNAMELEN];
@@ -76,7 +75,6 @@ DECLARE_HASH_MAP(agent_wl_hash_map, agent_workload_t, WLHASHSIZE, wl_name, wl_hm
 
 static atomic_t	wl_cfg_count;
 static atomic_t	wl_run_count;
-static atomic_t	rq_count;
 
 static char**	tp_name_array = NULL;	/* Names of configured threadpools */
 static int		tp_count = 0;
@@ -92,11 +90,12 @@ struct request_entry {
 	int64_t		sched_time;
 	int64_t		start_time;
 	int64_t		end_time;
+	int32_t		queue_length;
 	uint16_t	flags;
 };
 
 tsfile_schema_t request_schema = {
-	TSFILE_SCHEMA_HEADER(sizeof(struct request_entry), 8),
+	TSFILE_SCHEMA_HEADER(sizeof(struct request_entry), 9),
 	{
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, step, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, request, TSFILE_FIELD_INT),
@@ -105,6 +104,7 @@ tsfile_schema_t request_schema = {
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, sched_time, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, start_time, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, end_time, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(struct request_entry, queue_length, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(struct request_entry, flags, TSFILE_FIELD_INT),
 	}
 };
@@ -301,8 +301,6 @@ int load_provide_step(agent_workload_t* awl) {
 	if(ret == STEP_OK)
 		tsload_provide_step(awl->wl_name, step_id, num_rqs, &status);
 
-	atomic_add(&rq_count, num_rqs);
-
 	return ret;
 }
 
@@ -408,9 +406,8 @@ static int awl_unconfigure_walker(hm_item_t* obj, void* ctx) {
 	agent_workload_t* awl = (agent_workload_t*) obj;
 
 	tsload_unconfigure_workload(awl->wl_name);
-	awl_destroy(awl);
 
-	return HM_WALKER_REMOVE | HM_WALKER_CONTINUE;
+	return HM_WALKER_CONTINUE;
 }
 
 static void unconfigure_all_wls(void) {
@@ -468,6 +465,18 @@ static void start_all_wls(void) {
 	load_fprintf(stdout, "\n\n=== RUNNING EXPERIMENT '%s' === \n", experiment_name);
 
 	hash_map_walk(&agent_wl_hash_map, awl_start_walker, &actx);
+}
+
+static int awl_destroy_walker(hm_item_t* obj, void* ctx) {
+	agent_workload_t* awl = (agent_workload_t*) obj;
+
+	awl_destroy(awl);
+
+	return HM_WALKER_REMOVE | HM_WALKER_CONTINUE;
+}
+
+static void destroy_all_awls(void) {
+	hash_map_walk(&agent_wl_hash_map, awl_destroy_walker, NULL);
 }
 
 #define CONFIGURE_TP_PARAM(i_node, name, type) 											\
@@ -840,14 +849,13 @@ static void report_request(request_t* rq) {
 	rqe->start_time = rq->rq_start_time;
 	rqe->end_time = rq->rq_end_time;
 
-	rqe->flags = rq->rq_flags;
+	rqe->queue_length = rq->rq_queue_len;
+
+	rqe->flags = rq->rq_flags & RQF_FLAG_MASK;
 
 	tsfile_add(awl->wl_rqreport_file, rqe, 1);
 
 	mp_free(rqe);
-
-	if(!awl->wl_is_chained)
-		atomic_dec(&rq_count);
 }
 
 void do_requests_report(list_head_t* rq_list) {
@@ -864,8 +872,6 @@ void do_requests_report(list_head_t* rq_list) {
 		} while(rq != NULL);
 	}
 
-	event_notify_all(&request_event);
-
 	if(count > 0)
 		load_fprintf(stdout, "Reported %d requests\n", count);
 }
@@ -881,7 +887,6 @@ int do_load(void) {
 
 	wl_cfg_count = (atomic_t) 0l;
 	wl_run_count = (atomic_t) 0l;
-	rq_count = (atomic_t) 0l;
 
 	/* Install tsload/tsfile handlers */
 	tsload_error_msg = do_error_msg;
@@ -916,10 +921,6 @@ int do_load(void) {
 
 	load_fprintf(stdout, "\n\n=== FINISHING EXPERIMENT '%s' === \n", experiment_name);
 
-	while(atomic_read(&rq_count) != 0) {
-		event_wait(&request_event);
-	}
-
 end:
 	unconfigure_all_wls();
 	unconfigure_threadpools();
@@ -933,14 +934,14 @@ int load_init(void) {
 	hash_map_init(&agent_wl_hash_map, "agent_wl_hash_map");
 
 	event_init(&workload_event, "workload_event");
-	event_init(&request_event, "request_event");
 	mutex_init(&output_lock, "output_lock");
 
 	return 0;
 }
 
 void load_fini(void) {
-	event_destroy(&request_event);
+	destroy_all_awls();
+
 	event_destroy(&workload_event);
 	mutex_destroy(&output_lock);
 

@@ -68,12 +68,35 @@ void tpd_destroy_ff(thread_pool_t* tp) {
 	for(wid = 0; wid < tp->tp_num_threads; ++wid) {
 		worker = tp->tp_workers + wid;
 		mp_free(worker->w_tpd_data);
+
+		assert(list_empty(&worker->w_rq_head));
 	}
+
+	assert(list_empty(&ff->ff_finished));
+	assert(ff->ff_last_rq == NULL);
 
 	mutex_destroy(&ff->ff_mutex);
 	cv_destroy(&ff->ff_control_cv);
 
 	mp_free(ff);
+}
+
+int tpd_get_queue_len_ff(thread_pool_t* tp, request_t* rq) {
+	int qlen = 0;
+	ts_time_t cur_time = tm_get_clock();
+	ts_time_t next_time;
+	request_t* rq_next;
+
+	list_for_each_entry(request_t, rq_next, &tp->tp_rq_head, rq_node) {
+		next_time = rq_next->rq_sched_time + rq->rq_workload->wl_start_clock;
+
+		if(next_time > cur_time)
+			break;
+
+		++qlen;
+	}
+
+	return qlen;
 }
 
 void tpd_control_sleep_ff(thread_pool_t* tp) {
@@ -94,6 +117,10 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 
 	list_for_each_entry_safe(request_t, rq, rq_next, &tp->tp_rq_head, rq_node) {
 		dispatched = B_FALSE;
+		rq->rq_flags |= RQF_DISPATCHED;
+		if(!list_is_last(&rq->rq_node, &tp->tp_rq_head)) {
+			rq_next->rq_flags |= RQF_DISPATCHED;
+		}
 
 		mutex_unlock(&ff->ff_mutex);
 
@@ -102,6 +129,8 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 		}
 
 		mutex_lock(&ff->ff_mutex);
+
+		rq->rq_queue_len = tpd_get_queue_len_ff(tp, rq);
 
 		list_del(&rq->rq_node);
 
@@ -166,12 +195,39 @@ void tpd_control_report_ff(thread_pool_t* tp) {
 	list_head_init(rq_list, "rqs-%s-out", tp->tp_name);
 
 	mutex_lock(&ff->ff_mutex);
+
 	if(tp->tp_discard) {
 		list_merge(rq_list, &ff->ff_finished, &tp->tp_rq_head);
+
+		/* If some requests was dispatched, but not yet handled by workers,
+		 * discard them too. */
+		if(ff->ff_last_rq != NULL)
+			list_add_tail(ff->ff_last_rq, rq_list);
+
+		for(wid = 0; wid < tp->tp_num_threads; ++wid) {
+			worker = tp->tp_workers + wid;
+
+			mutex_lock(&worker->w_rq_mutex);
+			if(!list_empty(&worker->w_rq_head)) {
+				rq = list_first_entry(request_t, &worker->w_rq_head, rq_w_node);
+
+				if(!(rq->rq_flags & RQF_DEQUEUED)) {
+					list_del(&rq->rq_w_node);
+					list_add_tail(&rq->rq_node, rq_list);
+				}
+			}
+			mutex_unlock(&worker->w_rq_mutex);
+		}
 	}
 	else {
 		list_splice_init(&ff->ff_finished, list_head_node(rq_list));
+
+		if(ff->ff_last_rq != NULL)
+			list_add(ff->ff_last_rq, &tp->tp_rq_head);
 	}
+
+	ff->ff_last_rq = NULL;
+
 	mutex_unlock(&ff->ff_mutex);
 
 	wl_report_requests(rq_list);
@@ -231,7 +287,7 @@ void tpd_relink_request_ff(thread_pool_t* tp, request_t* rq) {
 
 	mutex_lock(&ff->ff_mutex);
 
-	if(list_node_alone(&rq->rq_node) || list_is_first(&rq->rq_node, &tp->tp_rq_head)) {
+	if(rq->rq_flags & RQF_DISPATCHED) {
 		/* Already in control thread -- oops */
 		mutex_unlock(&ff->ff_mutex);
 		return;

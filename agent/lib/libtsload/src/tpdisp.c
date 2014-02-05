@@ -49,6 +49,7 @@ extern tp_disp_class_t tpd_rand_class;
 extern tp_disp_class_t tpd_user_class;
 extern tp_disp_class_t tpd_fill_up_class;
 extern tp_disp_class_t tpd_ff_class;
+extern tp_disp_class_t tpd_bench_class;
 
 int tpd_preinit_fill_up(tp_disp_t* tpd, unsigned num_requests, int first_wid);
 
@@ -75,6 +76,7 @@ boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t sleep_not_until) {
 	return B_TRUE;
 }
 
+
 /**
  * Wait until somebody put request onto worker's queue than return
  * this request. If threadpool dies, returns NULL.
@@ -94,6 +96,7 @@ request_t* tpd_wqueue_pick(thread_pool_t* tp, tp_worker_t* worker) {
 	}
 
 	rq = list_first_entry(request_t, &worker->w_rq_head, rq_w_node);
+	rq->rq_flags |= RQF_DEQUEUED;
 
 	mutex_unlock(&worker->w_rq_mutex);
 
@@ -116,6 +119,14 @@ void tpd_wqueue_put(thread_pool_t* tp, tp_worker_t* worker, request_t* rq) {
 	/* Wake up control thread if it is reporting now */
 	cv_notify_one(&worker->w_rq_cv);
 
+	mutex_unlock(&worker->w_rq_mutex);
+}
+
+void tpd_worker_wait(thread_pool_t* tp, int wid) {
+	tp_worker_t* worker = tp->tp_workers + wid;
+
+	mutex_lock(&worker->w_rq_mutex);
+	cv_wait(&worker->w_rq_cv, &worker->w_rq_mutex);
 	mutex_unlock(&worker->w_rq_mutex);
 }
 
@@ -167,6 +178,9 @@ tp_disp_t* json_tp_disp_proc(JSONNODE* node) {
 			mp_free(tpd);
 			tpd = NULL;
 		}
+	}
+	else if(strcmp(type, "benchmark") == 0) {
+		tpd->tpd_class = &tpd_bench_class;
 	}
 	else {
 		tsload_error_msg(TSE_INVALID_DATA,
