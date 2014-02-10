@@ -19,9 +19,6 @@
 #include <string.h>
 #include <stdio.h>
 
-const char csv_separator = ',';
-const char csv_opt_separator = ':';
-
 const unsigned csv_entries_per_chunk = 8;
 
 extern const char* tsfile_error_str[];
@@ -115,18 +112,18 @@ static void csv_header_iter_init(csv_hdr_iter_t* iter, const char* header) {
 	iter->opt_length = iter->length = iter->name_length = 0;
 }
 
-static void csv_header_iter_next_opt(csv_hdr_iter_t* iter) {
+static void csv_header_iter_next_opt(csv_chars_t* chars, csv_hdr_iter_t* iter) {
 	char* opt2;
 
 	if(!iter->opt)
 		return;
 
-	iter->opt = strchr(iter->opt, csv_opt_separator);
+	iter->opt = strchr(iter->opt, chars->csv_opt_separator);
 	if(iter->opt != NULL &&
 			(iter->tmp == NULL || iter->opt < iter->tmp)) {
 		++iter->opt;
 
-		opt2 = strchr(iter->opt, csv_opt_separator);
+		opt2 = strchr(iter->opt, chars->csv_opt_separator);
 		iter->opt_length =
 			(opt2 != NULL && opt2 < iter->tmp)
 				? opt2 - iter->opt
@@ -138,16 +135,16 @@ static void csv_header_iter_next_opt(csv_hdr_iter_t* iter) {
 	}
 }
 
-static void csv_header_iter_next(csv_hdr_iter_t* iter) {
+static void csv_header_iter_next(csv_chars_t* chars, csv_hdr_iter_t* iter) {
 	iter->opt = iter->ptr = iter->tmp;
 
-	iter->tmp = strchr(iter->ptr, csv_separator);
+	iter->tmp = strchr(iter->ptr, chars->csv_separator);
 	iter->length =
 		(iter->tmp != NULL)
 			? iter->tmp - iter->ptr
 			: strlen(iter->ptr);
 
-	csv_header_iter_next_opt(iter);
+	csv_header_iter_next_opt(chars, iter);
 
 	iter->name_length =
 		(iter->opt == NULL)
@@ -185,12 +182,12 @@ static boolean_t csv_header_field_eq(csv_hdr_iter_t* iter, tsfile_field_t* field
 			binding->opt.int_flags |= flag;							\
 		}
 
-static int csv_parse_header_opts(csv_hdr_iter_t* iter, csv_binding_t* binding) {
+static int csv_parse_header_opts(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_binding_t* binding) {
 	tsfile_field_t* field = binding->field;
 
 	if(field->type == TSFILE_FIELD_BOOLEAN) {
 		CSV_PARSE_BOOL_OPT(iter, binding, true_literal, "true");
-		csv_header_iter_next_opt(iter);
+		csv_header_iter_next_opt(chars, iter);
 		CSV_PARSE_BOOL_OPT(iter, binding, false_literal, "false");
 	}
 	else if(field->type == TSFILE_FIELD_INT) {
@@ -198,14 +195,14 @@ static int csv_parse_header_opts(csv_hdr_iter_t* iter, csv_binding_t* binding) {
 			CSV_PARSE_INT_OPT(iter, binding, "hex", CSV_INT_HEX);
 			CSV_PARSE_INT_OPT(iter, binding, "unsigned", CSV_INT_UNSIGNED);
 
-			csv_header_iter_next_opt(iter);
+			csv_header_iter_next_opt(chars, iter);
 		}
 	}
 
 	return CSV_OK;
 }
 
-static int csv_parse_header_field(csv_hdr_iter_t* iter, csv_binding_t* bindings,
+static int csv_parse_header_field(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_binding_t* bindings,
 								  tsfile_schema_t* schema, csv_hdr_mode_t mode, int bcount) {
 	int bid, fid, count;
 
@@ -216,7 +213,7 @@ static int csv_parse_header_field(csv_hdr_iter_t* iter, csv_binding_t* bindings,
 	for(bid = 0; bid < bcount; ++bid) {
 		if(csv_header_field_eq(iter, bindings[bid].field)) {
 			if(mode == CSV_HDR_UPDATE) {
-				return csv_parse_header_opts(iter, bindings + bid);
+				return csv_parse_header_opts(chars, iter, bindings + bid);
 			}
 			else {
 				return csv_header_field_error(CSV_HEADER_DUPLICATE, iter,
@@ -236,7 +233,7 @@ static int csv_parse_header_field(csv_hdr_iter_t* iter, csv_binding_t* bindings,
 		if(csv_header_field_eq(iter, field)) {
 			bindings[bcount].field = field;
 
-			return csv_parse_header_opts(iter, bindings + bid);
+			return csv_parse_header_opts(chars, iter, bindings + bid);
 		}
 	}
 
@@ -244,8 +241,8 @@ static int csv_parse_header_field(csv_hdr_iter_t* iter, csv_binding_t* bindings,
 						"Header: unknown field '%s' at %d");
 }
 
-int csv_parse_header(const char* header, csv_binding_t* bindings, tsfile_schema_t* schema,
-						csv_hdr_mode_t mode, int bcount) {
+int csv_parse_header(csv_chars_t* chars, const char* header, csv_binding_t* bindings, tsfile_schema_t* schema,
+					 csv_hdr_mode_t mode, int bcount) {
 	int bid, fid, count;
 	int binding_count;
 	size_t length, name_length;
@@ -278,9 +275,9 @@ int csv_parse_header(const char* header, csv_binding_t* bindings, tsfile_schema_
 			}
 		}
 
-		csv_header_iter_next(&iter);
+		csv_header_iter_next(chars, &iter);
 
-		ret = csv_parse_header_field(&iter, bindings, schema, mode, bcount);
+		ret = csv_parse_header_field(chars, &iter, bindings, schema, mode, bcount);
 
 		if(mode != CSV_HDR_UPDATE)
 			++bcount;
@@ -299,6 +296,7 @@ int csv_parse_header(const char* header, csv_binding_t* bindings, tsfile_schema_
  * option header. If `file != NULL`, csv_read_header reads it from file first,
  * then updates it with data from **header**
  *
+ * @param chars csv characters
  * @param file CSV file
  * @param header Header line (from command line option)
  * @param bindings Destination array of bindings
@@ -306,7 +304,7 @@ int csv_parse_header(const char* header, csv_binding_t* bindings, tsfile_schema_
  *
  * @return count of bindings that set or negative error value.
  */
-int csv_read_header(FILE* file, const char* header, csv_binding_t* bindings, tsfile_schema_t* schema) {
+int csv_read_header(csv_chars_t* chars, FILE* file, const char* header, csv_binding_t* bindings, tsfile_schema_t* schema) {
 	char file_header[CSV_HEADER_LENGTH];
 	int ret = CSV_OK;
 	size_t read_len = 0;
@@ -321,13 +319,13 @@ int csv_read_header(FILE* file, const char* header, csv_binding_t* bindings, tsf
 		if(file_header[read_len - 1] == '\n')
 			file_header[--read_len] = '\0';
 
-		ret = csv_parse_header(file_header, bindings, schema, CSV_HDR_PARSE_ALL, 0);
+		ret = csv_parse_header(chars, file_header, bindings, schema, CSV_HDR_PARSE_ALL, 0);
 
 		if(ret < CSV_OK)
 			return ret;
 
 		if(header != NULL)
-			return csv_parse_header(header, bindings, schema, CSV_HDR_UPDATE, ret);
+			return csv_parse_header(chars, header, bindings, schema, CSV_HDR_UPDATE, ret);
 
 		return ret;
 	}
@@ -335,7 +333,7 @@ int csv_read_header(FILE* file, const char* header, csv_binding_t* bindings, tsf
 	if(header == NULL)
 		return CSV_INTERNAL_ERROR;
 
-	return csv_parse_header(header, bindings, schema, CSV_HDR_PARSE_ALL, 0);
+	return csv_parse_header(chars, header, bindings, schema, CSV_HDR_PARSE_ALL, 0);
 }
 
 /**
@@ -345,7 +343,7 @@ int csv_read_header(FILE* file, const char* header, csv_binding_t* bindings, tsf
  * @param bindings Destination array of bindings
  * @param schema TSF Schema
  */
-int csv_generate_bindings(const char* header, csv_binding_t* bindings,
+int csv_generate_bindings(csv_chars_t* chars, const char* header, csv_binding_t* bindings,
 		tsfile_schema_t* schema, csv_hdr_mode_t mode) {
 	int count = schema->hdr.count;
 	int bid, bcount = 0;
@@ -359,7 +357,7 @@ int csv_generate_bindings(const char* header, csv_binding_t* bindings,
 		}
 
 		if(header != NULL) {
-			ret = csv_parse_header(header, bindings, schema, CSV_HDR_UPDATE, count);
+			ret = csv_parse_header(chars, header, bindings, schema, CSV_HDR_UPDATE, count);
 
 			if(ret != CSV_OK)
 				return ret;
@@ -368,13 +366,13 @@ int csv_generate_bindings(const char* header, csv_binding_t* bindings,
 		return count;
 	}
 
-	return csv_parse_header(header, bindings, schema, CSV_HDR_PARSE_OPT, 0);
+	return csv_parse_header(chars, header, bindings, schema, CSV_HDR_PARSE_OPT, 0);
 }
 
 /**
  * Write header to file
  */
-void csv_write_header(FILE* file, csv_binding_t* bindings, int bcount) {
+void csv_write_header(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, int bcount) {
 	int bid;
 
 	tsfile_field_t* field;
@@ -385,20 +383,20 @@ void csv_write_header(FILE* file, csv_binding_t* bindings, int bcount) {
 		fputs(field->name, file);
 
 		if(field->type == TSFILE_FIELD_BOOLEAN) {
-			fprintf(file, ":%s:%s", bindings[bid].opt.bool.true_literal,
-					bindings[bid].opt.bool.false_literal);
+			fprintf(file, "%c%s%c%s", chars->csv_opt_separator, bindings[bid].opt.bool.true_literal,
+					chars->csv_opt_separator, bindings[bid].opt.bool.false_literal);
 		}
 		else if(field->type == TSFILE_FIELD_INT) {
 			if(bindings[bid].opt.int_flags & CSV_INT_HEX) {
-				fputs(":hex", file);
+				fprintf(file, "%chex", chars->csv_opt_separator);
 			}
 			if(bindings[bid].opt.int_flags & CSV_INT_UNSIGNED) {
-				fputs(":unsigned", file);
+				fprintf(file, "%cunsigned", chars->csv_opt_separator);
 			}
 		}
 
 		if(bid < (bcount - 1))
-			fputc(csv_separator, file);
+			fputc(chars->csv_separator, file);
 	}
 
 	fputc('\n', file);
@@ -489,8 +487,8 @@ static const char* csv_int_format_str(csv_binding_t* binding, boolean_t is_scanf
 	return csv_int_format_table[i][j];
 }
 
-static void csv_write_string(FILE* file, const char* string) {
-	const char* ptr = strchr(string, csv_separator);
+static void csv_write_string(csv_chars_t* chars, FILE* file, const char* string) {
+	const char* ptr = strchr(string, chars->csv_separator);
 
 	if(ptr == NULL) {
 		fputs(string, file);
@@ -511,7 +509,7 @@ static void csv_write_string(FILE* file, const char* string) {
 	fputc('"', file);
 }
 
-static size_t csv_read_string(const char* ptr, char* string, size_t str_length) {
+static size_t csv_read_string(csv_chars_t* chars, const char* ptr, char* string, size_t str_length) {
 	const char* src = ptr;
 	char* dst = string;
 	size_t length = str_length;
@@ -525,7 +523,7 @@ static size_t csv_read_string(const char* ptr, char* string, size_t str_length) 
 				++src;
 
 				/* Reached end-of field */
-				if(*src == csv_separator || !*src)
+				if(*src == chars->csv_separator || !*src)
 					break;
 			}
 
@@ -539,7 +537,7 @@ static size_t csv_read_string(const char* ptr, char* string, size_t str_length) 
 		}
 	}
 	else {
-		while(*src != csv_separator && *src) {
+		while(*src != chars->csv_separator && *src) {
 			if(length > 0) {
 				*dst = *src;
 				++dst;
@@ -555,7 +553,7 @@ static size_t csv_read_string(const char* ptr, char* string, size_t str_length) 
 	return src - ptr + 1;
 }
 
-void csv_write_entry(FILE* file, csv_binding_t* bindings, int bcount, void* entry) {
+void csv_write_entry(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, int bcount, void* entry) {
 	int bid;
 
 	tsfile_field_t* field;
@@ -601,18 +599,18 @@ void csv_write_entry(FILE* file, csv_binding_t* bindings, int bcount, void* entr
 			}
 			break;
 		case TSFILE_FIELD_STRING:
-			csv_write_string(file, value);
+			csv_write_string(chars, file, value);
 		break;
 		}
 
 		if(bid < (bcount - 1))
-			fputc(csv_separator, file);
+			fputc(chars->csv_separator, file);
 	}
 
 	fputc('\n', file);
 }
 
-int csv_read_entry(const char* line, csv_binding_t* bindings, int bcount, void* entry) {
+int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings, int bcount, void* entry) {
 	int bid;
 
 	tsfile_field_t* field;
@@ -641,11 +639,11 @@ int csv_read_entry(const char* line, csv_binding_t* bindings, int bcount, void* 
 		}
 
 		if(field->type == TSFILE_FIELD_STRING) {
-			pos += csv_read_string(line + pos, value, field->size);
+			pos += csv_read_string(chars, line + pos, value, field->size);
 			continue;
 		}
 		else if(field->type == TSFILE_FIELD_BOOLEAN) {
-			pos += csv_read_string(line + pos, bool_value, field->size);
+			pos += csv_read_string(chars, line + pos, bool_value, field->size);
 
 			if(strncmp(bool_value, bindings[bid].opt.bool.true_literal, CSVBOOLLEN) == 0) {
 				FIELD_PUT_VALUE(boolean_t, value, B_TRUE);
@@ -670,7 +668,7 @@ int csv_read_entry(const char* line, csv_binding_t* bindings, int bcount, void* 
 		}
 
 		if(bid < (bcount - 1)) {
-			sprintf(fmttmp, "%s,%%n", fmtstr);
+			sprintf(fmttmp, "%s%c%%n", fmtstr, chars->csv_separator);
 			fmtstr = fmttmp;
 		}
 		else {

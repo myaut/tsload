@@ -5,12 +5,19 @@
  *      Author: myaut
  */
 
+#define LOG_SOURCE "tsfile"
+#include <log.h>
+
 #include <tsfile.h>
 #include <mempool.h>
 
 #include <libjson.h>
 
 #include <assert.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 
 #define PARSE_SCHEMA_PARAM(root, i_node, name, type) 						\
 	i_node = json_find(root, name);											\
@@ -28,13 +35,98 @@
 
 static int json_tsfile_schema_proc_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset);
 
+tsfile_schema_t* tsfile_schema_read(const char* filename) {
+	JSONNODE* root;
+	tsfile_schema_t* schema;
+
+	FILE* file = fopen(filename, "r");
+	char* schema_str;
+	size_t filesize;
+
+	if(file == NULL) {
+		logmsg(LOG_CRIT, "Failed to open schema file '%s'", filename);
+		logerror();
+		return NULL;
+	}
+
+	/* Read schema into array */
+	fseek(file, 0, SEEK_END);
+	filesize = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	schema_str = mp_malloc(filesize);
+	fread(schema_str, 1, filesize, file);
+
+	fclose(file);
+
+	root = json_parse(schema_str);
+	mp_free(schema_str);
+
+	if(root == NULL) {
+		logmsg(LOG_CRIT, "Couldn't parse schema file '%s'", filename);
+		return NULL;
+	}
+
+	schema = json_tsfile_schema_proc(root, B_FALSE);
+
+	json_delete(root);
+	return schema;
+}
+
+int tsfile_schema_write(const char* filename, tsfile_schema_t* schema) {
+	JSONNODE* schema_node;
+	char* schema_str;
+	FILE* schema_file = fopen(filename, "w");
+
+	if(schema_file == NULL) {
+		return -1;
+	}
+
+	schema_node = json_tsfile_schema_format(schema);
+
+	schema_str = json_write_formatted(schema_node);
+	fputs(schema_str, schema_file);
+	json_free(schema_str);
+
+	fclose(schema_file);
+
+	return 0;
+}
+
+tsfile_schema_t* tsfile_schema_alloc(int field_count) {
+	size_t schema_size;
+
+	if(field_count > MAXFIELDCOUNT) {
+		return NULL;
+	}
+
+	schema_size = sizeof(tsfile_shdr_t) +
+				  field_count * sizeof(tsfile_field_t);
+
+	return mp_malloc(schema_size);
+}
+
+tsfile_schema_t* tsfile_schema_clone(int ext_field_count, tsfile_schema_t* base) {
+	tsfile_schema_t* schema = tsfile_schema_alloc(ext_field_count + base->hdr.count);
+	size_t schema_size;
+
+	if(schema == NULL)
+		return NULL;
+
+	schema_size = sizeof(tsfile_shdr_t) +
+				  base->hdr.count * sizeof(tsfile_field_t);
+
+	memcpy(schema, base, schema_size);
+
+	return schema;
+}
+
 tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset) {
 	JSONNODE_ITERATOR i_size, i_fields, i_end;
 	JSONNODE_ITERATOR i_fields_end, i_field;
 
 	tsfile_schema_t* schema = NULL;
 	tsfile_field_t* field;
-	size_t schema_size;
 	ptrdiff_t offset = (ptrdiff_t) -1;
 	int field_count, fi;
 	int err;
@@ -45,15 +137,13 @@ tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset) 
 	PARSE_SCHEMA_PARAM(root, i_fields, "fields", JSON_NODE);
 
 	field_count = json_size(*i_fields);
-	schema_size = sizeof(tsfile_shdr_t) +
-			 	  field_count * sizeof(tsfile_field_t);
 
 	if(field_count > MAXFIELDCOUNT) {
 		tsfile_error_msg(TSE_MESSAGE_FORMAT, "Too many fields in schema");
 		return NULL;
 	}
 
-	schema = mp_malloc(schema_size);
+	schema = tsfile_schema_alloc(field_count);
 
 	schema->hdr.entry_size = json_as_int(*i_size);
 	schema->hdr.count = field_count;

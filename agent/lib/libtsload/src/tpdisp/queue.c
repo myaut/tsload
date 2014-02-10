@@ -18,6 +18,8 @@
 #include <errcode.h>
 #include <tsload.h>
 
+#include <assert.h>
+
 /**
  * #### Queue-based dispatcher classes
  *
@@ -120,8 +122,8 @@ void tpd_control_sleep_queue(thread_pool_t* tp, int wid,
 		 * fall back to slower tp_insert_request() that guarantees
 		 * ordered requests queue */
 		if( tp->tp_discard ||
-				(worker_nodes[lwid].prev_rq_node == NULL &&
-				 worker_nodes[lwid].next_rq_node == NULL)) {
+				(worker_nodes[wid].prev_rq_node == NULL &&
+				 worker_nodes[wid].next_rq_node == NULL)) {
 			list_add_tail(&rq->rq_w_node, &worker->w_rq_head);
 		}
 		else {
@@ -183,8 +185,6 @@ void tpd_control_report_queue(thread_pool_t* tp) {
 			 * (report requests
 			 *  until w_rq_head->next) */
 			if(!list_empty(&worker->w_rq_head)) {
-				cv_wait(&worker->w_rq_cv, &worker->w_rq_mutex);
-
 				/* Return requests that not yet finished back to TP queue */
 				rq = list_first_entry(request_t, &worker->w_rq_head, rq_w_node);
 				list_for_each_entry_from(request_t, rq, &worker->w_rq_head, rq_w_node) {
@@ -201,7 +201,7 @@ void tpd_control_report_queue(thread_pool_t* tp) {
 }
 
 void tpd_relink_request_queue(thread_pool_t* tp, request_t* rq) {
-	tp_worker_t* worker = tp->tp_workers + rq->rq_thread_id;
+	tp_worker_t* worker = NULL;
 	request_t* prev_rq = NULL;
 	request_t* next_rq = NULL;
 
@@ -209,6 +209,16 @@ void tpd_relink_request_queue(thread_pool_t* tp, request_t* rq) {
 	list_node_t* next_rq_node = NULL;
 
 	boolean_t need_relink = B_FALSE;
+
+	if(list_node_alone(&rq->rq_w_node)) {
+		/* Request not yet linked - concurrency between relink and tpd_control_sleep_queue().
+		 * So tpd_control_sleep_queue() will link request correctly - abandon it. */
+		return;
+	}
+
+	assert((rq->rq_thread_id >= 0) && (rq->rq_thread_id < tp->tp_num_threads));
+
+	worker = tp->tp_workers + rq->rq_thread_id;
 
 	mutex_lock(&worker->w_rq_mutex);
 

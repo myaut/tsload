@@ -86,10 +86,15 @@ static tsfile_t* tsfile_open_file(const char* filename, boolean_t create) {
 		lseek(fd, 0, SEEK_SET);
 	}
 
+	file->header = NULL;
+
 	return file;
 }
 
 static void tsfile_close_file(tsfile_t* file) {
+	if(file->header)
+		mp_free(file->header);
+
 	mp_free(file->filename);
 	close(file->fd);
 
@@ -155,7 +160,9 @@ static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t
 	if(schema1->hdr.count 	   != schema2->hdr.count ||
 	   schema1->hdr.entry_size != schema2->hdr.entry_size) {
 			tsfile_error_msg(TSE_INTERNAL_ERROR,
-							 "Different schema headers", fi);
+							 "Different schema headers: hdr: %d,%d schema: %d,%d",
+							 schema1->hdr.count, schema1->hdr.entry_size,
+							 schema2->hdr.count, schema2->hdr.entry_size);
 			return B_FALSE;
 	}
 

@@ -9,6 +9,7 @@
 #include <workload.h>
 #include <hashmap.h>
 #include <mempool.h>
+#include <plat/posixdecl.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -28,18 +29,33 @@ steps_generator_t* step_create_generator(steps_generator_type_t type) {
 	return sg;
 }
 
-steps_generator_t* step_create_file(const char* file_name) {
+steps_generator_t* step_create_file(const char* file_name, const char* out_file_name) {
 	steps_generator_t* sg;
 	steps_file_t* sf;
 	FILE* file = fopen(file_name, "r");
+	FILE* fileout;
+	struct stat statbuf;
 
 	if(!file)
 		return NULL;
+
+	if(stat(file, &statbuf) == 0) {
+		fclose(file);
+		return NULL;
+	}
+
+	fileout = fopen(out_file_name, "w");
+
+	if(!fileout) {
+		fclose(file);
+		return NULL;
+	}
 
 	sg = step_create_generator(STEPS_FILE);
 
 	sf = &sg->sg_file;
 	sf->sf_file = file;
+	sf->sf_file_out = fileout;
 	sf->sf_step_id = 0;
 	sf->sf_error = B_FALSE;
 
@@ -84,6 +100,7 @@ static long step_parse_line(char* line) {
 
 void step_close_file(steps_file_t* sf) {
 	fclose(sf->sf_file);
+	fclose(sf->sf_file_out);
 }
 
 int step_get_step(steps_generator_t* sg, long* step_id, unsigned* p_num_rqs) {
@@ -123,6 +140,8 @@ int step_get_step_file(steps_file_t* sf, long* step_id, unsigned* p_num_rqs) {
 	*p_num_rqs = num_rqs;
 
 	sf->sf_step_id++;
+
+	fprintf(sf->sf_file_out, "%ld\n", num_rqs);
 
 	return STEP_OK;
 }

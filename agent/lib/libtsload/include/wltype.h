@@ -10,6 +10,7 @@
 
 #include <modules.h>
 #include <wlparam.h>
+#include <hashmap.h>
 
 #define WLTNAMELEN		64
 
@@ -73,8 +74,7 @@ void wlt_fini(void);
 #ifndef NO_JSON
 #include <libjson.h>
 
-LIBEXPORT JSONNODE* json_wl_type_format(const char* name);
-LIBEXPORT JSONNODE* json_wl_type_format_all();
+JSONNODE* json_wl_type_format(hm_item_t* object);
 #endif
 
 #endif /* MODAPI_H_ */

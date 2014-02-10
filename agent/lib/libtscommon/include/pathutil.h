@@ -19,6 +19,7 @@
  * Maximum length of path
  */
 #define PATHMAXLEN      1024
+#define PATHPARTMAXLEN	256
 
 #define PATHMAXPARTS   32
 

@@ -162,12 +162,12 @@ build_items = [ # tsload-core
                ('cmd', 'tsfutil'),               
                
                # tsload-standalone
-               ('cmd', 'run-tsload'),
+               ('cmd', 'tsexperiment'),
                
                # tsload-agents
-               ('lib', 'libtsagent'),
-               ('cmd', 'tsgenuuid'),               
-               ('cmd', 'tsloadd'),
+               # ('lib', 'libtsagent'),
+               # ('cmd', 'tsgenuuid'),               
+               # ('cmd', 'tsloadd'),
                ]
 
 # ------------

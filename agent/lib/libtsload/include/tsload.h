@@ -11,6 +11,7 @@
 #include <defs.h>
 #include <list.h>
 #include <errcode.h>
+#include <hashmap.h>
 
 #include <tsinit.h>
 #include <tstime.h>
@@ -32,19 +33,37 @@ LIBIMPORT tsload_workload_status_func tsload_workload_status;
 LIBIMPORT tsload_requests_report_func tsload_requests_report;
 
 /* TSLoad calls */
-LIBEXPORT JSONNODE* tsload_get_workload_types(void);
-LIBEXPORT JSONNODE* tsload_get_resources(void);
 
-LIBEXPORT int tsload_configure_workload(const char* wl_name, JSONNODE* wl_params);
+/**
+ * Walkie-talkie. Operations for tsload_walk_* functions
+ *
+ * @value TSLOAD_WALK_FIND Find element identified by key stored in arg
+ * @value TSLOAD_WALK_JSON Do TSLOAD_WALK_FIND but return formatted JSONNODE*
+ * @value TSLOAD_WALK_JSON_ALL Walks over hashmap and return json representation of all items. args are ignored
+ * @value TSLOAD_WALK_WALK Walk over hashmap traditionally. arg - context of the walker
+ */
+typedef enum tsload_walk_op {
+	TSLOAD_WALK_FIND,
+	TSLOAD_WALK_JSON,
+	TSLOAD_WALK_JSON_ALL,
+	TSLOAD_WALK_WALK
+} tsload_walk_op_t;
+
+LIBEXPORT void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker);
+
+LIBEXPORT JSONNODE* tsload_get_resources(void);
+LIBEXPORT JSONNODE* tsload_get_hostinfo(void);
+
+LIBEXPORT int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name,
+		 	 	 	 	 	 	 	    const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params);
 LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, int* pstatus);
 LIBEXPORT int tsload_start_workload(const char* wl_name, ts_time_t start_time);
 LIBEXPORT int tsload_unconfigure_workload(const char* wl_name);
 
 LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,
 		 	 	 	 	 	 	 	   boolean_t discard, JSONNODE* disp);
-LIBEXPORT int tsload_schedule_threadpool(const char* tp_name, JSONNODE* bindings);
-LIBEXPORT JSONNODE* tsload_get_threadpools(void);
-LIBEXPORT JSONNODE* tsload_get_dispatchers(void);
+LIBEXPORT int tsload_schedule_threadpool(const char* tp_name, JSONNODE* sched);
+LIBEXPORT void* tsload_walk_threadpools(tsload_walk_op_t op, void* arg, hm_walker_func walker);
 LIBEXPORT int tsload_destroy_threadpool(const char* tp_name);
 
 LIBEXPORT int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,

@@ -6,6 +6,7 @@
  */
 
 #include <hashmap.h>
+#include <mempool.h>
 #include <threads.h>
 
 #include <libjson.h>
@@ -30,7 +31,7 @@ STATIC_INLINE unsigned hm_hash_object(hashmap_t* hm, hm_item_t* obj) {
 }
 
 /**
- * Initialize hash map.
+ * Initialize static hash map.
  *
  * Because hash map usually a global object, it doesn't
  * provide formatted names
@@ -46,6 +47,39 @@ void hash_map_init(hashmap_t* hm, const char* name) {
 	}
 
 	mutex_init(&hm->hm_mutex, "hm-%s", name);
+
+	strncpy(hm->hm_name, name, HMNAMELEN);
+}
+
+/**
+ * Create dynamic hashmap
+ *
+ * @param base static hashmap, that contains compare/hash functions, size and offsets
+ * @param namefmt name format
+ */
+hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...) {
+	hashmap_t* hm = mp_malloc(sizeof(hashmap_t));
+	va_list va;
+	char name[HMNAMELEN];
+
+	hm->hm_type = HASH_MAP_DYNAMIC;
+
+	hm->hm_size = base->hm_size;
+	hm->hm_heads = mp_malloc(base->hm_size * sizeof(hm_item_t*));
+
+	hm->hm_off_key = base->hm_off_key;
+	hm->hm_off_next = base->hm_off_next;
+
+	hm->hm_compare = base->hm_compare;
+	hm->hm_hash_key = base->hm_hash_key;
+
+	va_start(va, namefmt);
+	vsnprintf(name, HMNAMELEN, namefmt, va);
+	va_end(va);
+
+	hash_map_init(hm, name);
+
+	return hm;
 }
 
 /**
@@ -61,6 +95,11 @@ void hash_map_destroy(hashmap_t* hm) {
 	}
 
 	mutex_destroy(&hm->hm_mutex);
+
+	if(hm->hm_type == HASH_MAP_DYNAMIC) {
+		mp_free(hm->hm_heads);
+		mp_free(hm);
+	}
 }
 
 /**
@@ -202,7 +241,7 @@ void* hash_map_find(hashmap_t* hm, const hm_key_t* key) {
  *
  * @return NULL or object where func returned STOP
  */
-void* hash_map_walk(hashmap_t* hm, int (*func)(hm_item_t* object, void* arg), void* arg) {
+void* hash_map_walk(hashmap_t* hm, hm_walker_func func, void* arg) {
 	int i = 0;
 	int ret = 0;
 	hm_item_t* iter = NULL;

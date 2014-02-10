@@ -60,19 +60,24 @@ typedef enum {
 	CSV_HDR_UPDATE
 } csv_hdr_mode_t;
 
+typedef struct {
+	int csv_separator;
+	int csv_opt_separator;
+} csv_chars_t;
+
 void* csv_entry_create(list_head_t* list, size_t entry_size);
 
 int csv_entry_list_add(tsfile_t* ts_file, list_head_t* list);
 int csv_entry_list_destroy(list_head_t* list);
 
 size_t csv_max_line_length(csv_binding_t* bindings, int bcount);
-int csv_read_header(FILE* file, const char* header, csv_binding_t* bindings,
+int csv_read_header(csv_chars_t* chars, FILE* file, const char* header, csv_binding_t* bindings,
 					tsfile_schema_t* schema);
-int csv_read_entry(const char* line, csv_binding_t* bindings, int bcount, void* entry);
+int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings, int bcount, void* entry);
 
-int csv_generate_bindings(const char* header, csv_binding_t* bindings,
+int csv_generate_bindings(csv_chars_t* chars, const char* header, csv_binding_t* bindings,
 						  tsfile_schema_t* schema, csv_hdr_mode_t mode);
-void csv_write_header(FILE* file, csv_binding_t* bindings, int bcount);
-void csv_write_entry(FILE* file, csv_binding_t* bindings, int bcount, void* entry);
+void csv_write_header(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, int bcount);
+void csv_write_entry(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, int bcount, void* entry);
 
 #endif /* CSV_H_ */

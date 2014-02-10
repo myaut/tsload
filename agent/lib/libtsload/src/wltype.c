@@ -69,7 +69,7 @@ struct json_wl_type_context {
 	JSONNODE* node;
 };
 
-static JSONNODE* json_wl_type_format_impl(hm_item_t* object) {
+JSONNODE* json_wl_type_format(hm_item_t* object) {
 	wl_type_t* wlt = (wl_type_t*) object;
 	int i;
 	JSONNODE* wlt_node = json_new(JSON_NODE);
@@ -92,15 +92,6 @@ static JSONNODE* json_wl_type_format_impl(hm_item_t* object) {
 
 	return wlt_node;
 }
-
-JSONNODE* json_wl_type_format(const char* name) {
-	return json_hm_format_bykey(&wl_type_hash_map, json_wl_type_format_impl, (void*) name);
-}
-
-JSONNODE* json_wl_type_format_all(void) {
-	return json_hm_format_all(&wl_type_hash_map, json_wl_type_format_impl);
-}
-
 
 int wlt_init(void) {
 	hash_map_init(&wl_type_hash_map, "wl_type_hash_map");

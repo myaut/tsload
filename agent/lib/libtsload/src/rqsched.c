@@ -167,21 +167,20 @@ static int json_rqsched_proc_think(JSONNODE* node, workload_t* wl, rqsched_think
 int json_rqsched_proc(JSONNODE* node, workload_t* wl) {
 	int ret = RQSCHED_JSON_OK;
 
-	JSONNODE_ITERATOR i_rqsched = json_find(node, "rqsched"),
-					  i_rqsched_params = json_find(node, "rqsched_params"),
+	JSONNODE_ITERATOR i_type = json_find(node, "type"),
 					  i_end = json_end(node);
 
 	char* rqsched_name;
 	rqsched_common_t* rqs = NULL;
 	rqsched_think_t* rqs_think = NULL;
 
-	if(i_rqsched == i_end) {
+	if(i_type == i_end) {
 		tsload_error_msg(TSE_MESSAGE_FORMAT,
 						 "Missing request scheduler class for workload %s", wl->wl_name);
 		return RQSCHED_JSON_UNDEFINED;
 	}
 
-	rqsched_name = json_as_string(*i_rqsched);
+	rqsched_name = json_as_string(*i_type);
 
 	wl->wl_rqsched_private = NULL;
 
@@ -191,35 +190,25 @@ int json_rqsched_proc(JSONNODE* node, workload_t* wl) {
 	else if(strcmp(rqsched_name, "iat") == 0) {
 		wl->wl_rqsched_class = &iat_rqsched_class;
 
-		if(i_rqsched_params != i_end) {
-			rqs = (rqsched_common_t*) mp_malloc(sizeof(rqsched_common_t));
-			ret = json_rqsched_proc_common(*i_rqsched_params, wl, rqs);
+		rqs = (rqsched_common_t*) mp_malloc(sizeof(rqsched_common_t));
+		ret = json_rqsched_proc_common(node, wl, rqs);
 
-			if(ret == RQSCHED_JSON_OK) {
-				wl->wl_rqsched_private = (void*) rqs;
-			}
-		}
-		else {
-			ret = RQSCHED_JSON_MISSING_PARAMS;
+		if(ret == RQSCHED_JSON_OK) {
+			wl->wl_rqsched_private = (void*) rqs;
 		}
 	}
 	else if(strcmp(rqsched_name, "think") == 0) {
 		wl->wl_rqsched_class = &think_rqsched_class;
 
-		if(i_rqsched_params != i_end) {
-			rqs_think = (rqsched_think_t*) mp_malloc(sizeof(rqsched_think_t));
-			rqs = &rqs_think->common;
+		rqs_think = (rqsched_think_t*) mp_malloc(sizeof(rqsched_think_t));
+		rqs = &rqs_think->common;
 
-			ret = json_rqsched_proc_common(*i_rqsched_params, wl, rqs);
+		ret = json_rqsched_proc_common(node, wl, rqs);
 
-			if(ret == RQSCHED_JSON_OK) {
-				ret = json_rqsched_proc_think(*i_rqsched_params, wl, rqs_think);
+		if(ret == RQSCHED_JSON_OK) {
+			ret = json_rqsched_proc_think(node, wl, rqs_think);
 
-				wl->wl_rqsched_private = (void*) rqs_think;
-			}
-		}
-		else {
-			ret = RQSCHED_JSON_MISSING_PARAMS;
+			wl->wl_rqsched_private = (void*) rqs_think;
 		}
 	}
 	else {

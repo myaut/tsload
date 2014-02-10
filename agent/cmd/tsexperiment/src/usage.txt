@@ -1,0 +1,45 @@
+TS Experiment - standalone agent to run TSLoad experiments 
+
+$ tsexperiment [global options] command [options and arguments]
+
+Experiment constsists of current config and several "runs", that contain versions of config 
+(maybe with altered parameters) and experiment results. Each run identified by it's unique 
+number called runid. 
+
+Where global options are:
+	-e <experiment_path>
+		Path to experiment root directory
+	-d|-t 
+		Enable debug or tracing
+
+To run experiment, issue tsexperiment with subcommand run:
+$ tsexperiment -e <experiment_path> run [-n name] [-s param=value] [-b]
+
+Experiment config variables may be altered by using -s option, where param name is path 
+to JSON node inside config. Some nodes may be aliased: 
+	* tp - threadpools 
+	* wl - workloads
+	
+I.e:
+	* run -s tp:tp_test:num_threads=10
+	* run -s wl:workload1:params:cycles:pmap:0:probability = 0.3
+	
+Additional subcommands:
+ * workload|wl [-j] [wl1 [wl2...]]  
+   Lists supported workload types with it's parameters
+ * list
+   Lists experiment runs
+ * show [-j] [-l] [runid]
+   Shows experiment information and config
+   Options:
+   		* -j - Show in formatted json format
+   		* -l - Show as name-value list (useful to create run -s option arguments)
+ * diff runid1 [runid2]
+   Show differences between experiment configs identified by runid1 and runid2.
+   If runid2 is ommitted, than tsexperiment compares config with current root config.
+ * reset runid
+   Resets current config to run's config identified by runid.
+ * report runid [wl1 [wl2...]]  
+   Show simple report about experiment run
+ * export [-d dest] [-F csv|json|jsonraw] [-o option] [-o wl_name:option] runid [wl1 [wl2...]]   
+   Export workload measurement data into text files

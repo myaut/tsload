@@ -39,15 +39,34 @@ DECLARE_HASH_MAP(tp_hash_map, thread_pool_t, TPHASHSIZE, tp_name, tp_next,
 	}
 )
 
-/* Minimum quantum duration. Should be set to system's tick */
+/* Minimum quantum duration. Should be set to system's tick
+ * Maximum reasonable quantum duration. Currently 10 min*/
 ts_time_t tp_min_quantum = TP_MIN_QUANTUM;
+ts_time_t tp_max_quantum = TP_MAX_QUANTUM;
 
 boolean_t tp_collector_enabled = B_TRUE;
 ts_time_t tp_collector_interval = T_SEC / 2;
 
+/**
+ * tunable: minimum time worker (or control thread) will sleep waiting for request arrival.
+ * Because OS have granular scheduling if we go to sleep, for example for 100us, we may wakeup
+ * only after 178us because nanosleep is not precise (however OS may use high-resolution timer).
+ *
+ * So TSLoad may prefer early arrival and ignore sleeping if time interval lesser than tp_worker_min_sleep
+ * */
+ts_time_t tp_worker_min_sleep = TP_WORKER_MIN_SLEEP;
+
+/**
+ * tunable: estimated time consumed by worker between handling of arrival and calling module's
+ * mod_run_request method. Like tp_worker_min_sleep used to make arrivals more precise
+ */
+ts_time_t tp_worker_overhead = TP_WORKER_OVERHEAD;
+
 static thread_t  t_tp_collector;
 
-static atomic_t tp_count = (atomic_t) 0l;
+static thread_mutex_t tp_collect_mutex;
+static thread_cv_t tp_collect_cv;
+static int tp_count = 0;
 
 void* worker_thread(void* arg);
 void* control_thread(void* arg);
@@ -230,7 +249,10 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 		return NULL;
 	}
 
-	atomic_inc(&tp_count);
+	mutex_lock(&tp_collect_mutex);
+	++tp_count;
+	mutex_unlock(&tp_collect_mutex);
+
 	tp_start_threads(tp);
 
 	hash_map_insert(&tp_hash_map, tp);
@@ -285,7 +307,10 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 	mp_cache_free_array(&tp_worker_cache, tp->tp_workers, tp->tp_num_threads);
 	mp_cache_free(&tp_cache, tp);
 
-	atomic_dec(&tp_count);
+	mutex_lock(&tp_collect_mutex);
+	--tp_count;
+	cv_notify_one(&tp_collect_cv);
+	mutex_unlock(&tp_collect_mutex);
 }
 
 void tp_destroy(thread_pool_t* tp) {
@@ -600,11 +625,6 @@ JSONNODE* json_tp_format(hm_item_t* object) {
 	return node;
 }
 
-JSONNODE* json_tp_format_all(void) {
-	return json_hm_format_all(&tp_hash_map, json_tp_format);
-}
-
-
 /*
  * To check bindings externally:
  * Linux:
@@ -848,10 +868,18 @@ static int tp_collect_tp(hm_item_t* item, void* arg) {
 }
 
 static void tp_collect(void) {
-	while(tp_collector_enabled || atomic_read(&tp_count) > 0) {
+	mutex_lock(&tp_collect_mutex);
+
+	while(tp_collector_enabled || tp_count > 0) {
+		mutex_unlock(&tp_collect_mutex);
+
 		hash_map_walk(&tp_hash_map, tp_collect_tp, NULL);
-		tm_sleep_milli(tp_collector_interval);
+
+		mutex_lock(&tp_collect_mutex);
+		cv_wait_timed(&tp_collect_cv, &tp_collect_mutex, tp_collector_interval);
 	}
+
+	mutex_unlock(&tp_collect_mutex);
 }
 
 static thread_result_t tp_collector_thread(thread_arg_t arg) {
@@ -863,6 +891,9 @@ THREAD_END:
 }
 
 int tp_init(void) {
+	mutex_init(&tp_collect_mutex, "tp_collect_mutex");
+	cv_init(&tp_collect_cv, "tp_collect_cv");
+
 	hash_map_init(&tp_hash_map, "tp_hash_map");
 
 	mp_cache_init(&tp_cache, thread_pool_t);
@@ -878,8 +909,6 @@ int tp_init(void) {
 void tp_fini(void) {
 	if(tp_collector_enabled) {
 		tp_collector_enabled = B_FALSE;
-
-		/* FIXME: May wait up to tp_collector_interval - implement via timed events */
 		t_destroy(&t_tp_collector);
 	}
 	else {
@@ -890,4 +919,7 @@ void tp_fini(void) {
 	mp_cache_destroy(&tp_cache);
 
 	hash_map_destroy(&tp_hash_map);
+
+	cv_destroy(&tp_collect_cv);
+	mutex_destroy(&tp_collect_mutex);
 }

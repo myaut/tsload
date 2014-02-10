@@ -59,6 +59,8 @@ void tsfile_destroy_nodes(tsfile_t* file) {
 			json_delete(file->node_cache[j]);
 	}
 
+	mp_free(file->node_cache);
+
 	mutex_destroy(&file->node_mutex);
 }
 

@@ -14,9 +14,13 @@
 #include <atomic.h>
 #include <threads.h>
 
+#include <stdio.h>
+
 #ifndef NO_JSON
 #include <libjson.h>
 #endif
+
+#define TSFILE_EXTENSION	"tsf"
 
 #define TSFILE_MAGIC_LEN	6
 #define TSFILE_MAGIC		"TSFILE"
@@ -127,6 +131,12 @@ LIBIMPORT	int tsfile_errno;
 #define SCHEMA_FIELD_MISSING_OFF	3
 #define SCHEMA_FIELD_MISSING_SIZE	4
 
+LIBEXPORT tsfile_schema_t* tsfile_schema_read(const char* filename);
+LIBEXPORT int tsfile_schema_write(const char* filename, tsfile_schema_t* schema);
+
+LIBEXPORT tsfile_schema_t* tsfile_schema_alloc(int field_count);
+LIBEXPORT tsfile_schema_t* tsfile_schema_clone(int ext_field_count, tsfile_schema_t* base);
+
 #ifndef NO_JSON
 LIBEXPORT tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset);
 LIBEXPORT JSONNODE* json_tsfile_schema_format(tsfile_schema_t* schema);
@@ -146,6 +156,8 @@ boolean_t tsfile_put_node(tsfile_t* file, JSONNODE* node);
 void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry);
 int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry);
 #endif
+
+/* TSFile API */
 
 LIBEXPORT tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema);
 LIBEXPORT tsfile_t* tsfile_open(const char* filename, tsfile_schema_t* schema);
@@ -169,5 +181,44 @@ LIBEXPORT int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array);
 LIBEXPORT int tsfile_init(void);
 LIBEXPORT void tsfile_fini(void);
 
+/* Backends */
+
+struct tsf_backend_class;
+
+typedef struct tsf_backend {
+	FILE* file;
+	tsfile_t* ts_file;
+
+	struct tsf_backend_class* tsf_class;
+	void* private;
+} tsf_backend_t;
+
+typedef int (*tsf_get_func)(tsf_backend_t* backend, int start, int end);
+typedef int (*tsf_add_func)(tsf_backend_t* backend);
+
+typedef int (*tsf_set_func)(tsf_backend_t* backend, const char* option);
+
+typedef struct tsf_backend_class {
+	tsf_set_func set;
+
+	tsf_get_func get;
+	tsf_add_func add;
+} tsf_backend_class_t;
+
+tsf_backend_t* tsfile_backend_create(const char* name);
+void tsfile_backend_set_files(tsf_backend_t* backend, FILE* file, tsfile_t* ts_file);
+void tsfile_backend_destroy(tsf_backend_t* backend);
+
+STATIC_INLINE int tsfile_backend_set(tsf_backend_t* backend, const char* option) {
+	return backend->tsf_class->set(backend, option);
+}
+
+STATIC_INLINE int tsfile_backend_get(tsf_backend_t* backend, int start, int end) {
+	return backend->tsf_class->get(backend, start, end);
+}
+
+STATIC_INLINE int tsfile_backend_add(tsf_backend_t* backend) {
+	return backend->tsf_class->add(backend);
+}
 
 #endif /* TSFILE_H_ */

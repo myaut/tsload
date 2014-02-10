@@ -23,6 +23,8 @@
 #define WLHASHMASK	(WLHASHSIZE - 1)
 #define WLNAMELEN	64
 
+#define WLNOTIFYMSGLEN	512
+
 /**
  * Workloads
  * */
@@ -153,11 +155,11 @@ typedef struct workload {
 } workload_t;
 
 typedef struct {
-	workload_t* wl;
+	char wl_name[WLNAMELEN];
 	wl_status_t status;
 	long progress;
 
-	char msg[256];
+	char msg[WLNOTIFYMSGLEN];
 } wl_notify_msg_t;
 
 LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...);
@@ -207,7 +209,8 @@ void wl_finish(workload_t* wl);
 #include <libjson.h>
 
 LIBEXPORT JSONNODE* json_request_format_all(list_head_t* rq_list);
-workload_t* json_workload_proc(const char* wl_name, JSONNODE* node);
+workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name,
+        					   const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params);
 #endif
 
 #endif /* WORKLOAD_H_ */

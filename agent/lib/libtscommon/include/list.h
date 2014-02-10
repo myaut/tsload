@@ -138,6 +138,15 @@ STATIC_INLINE void list_insert(list_node_t *node, list_node_t *iter)
 	__list_add(node, iter, iter->next);
 }
 
+/**
+ * list_insert_before - insert entry before another
+ * @param node  new entry to be added
+ * @param iter  node before which it has to be added
+ */
+STATIC_INLINE void list_insert_before(list_node_t *node, list_node_t *iter)
+{
+	__list_add(node, iter->prev, iter);
+}
 
 /*
  * Delete a list entry by making the prev/next entries

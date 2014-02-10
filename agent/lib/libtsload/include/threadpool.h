@@ -14,6 +14,8 @@
 #include <threads.h>
 #include <syncqueue.h>
 #include <atomic.h>
+#include <hashmap.h>
+
 #include <stddef.h>
 
 #define TPNAMELEN		64
@@ -23,8 +25,9 @@
 #define	TPHASHMASK		3
 
 #define TP_MIN_QUANTUM			(10 * T_MS)
-#define TP_WORKER_MIN_SLEEP 	(500 * T_US)
-#define TP_WORKER_OVERHEAD	 	(200 * T_US)
+#define TP_MAX_QUANTUM			(600 * T_SEC)
+#define TP_WORKER_MIN_SLEEP 	(200 * T_US)
+#define TP_WORKER_OVERHEAD	 	(30 * T_US)
 
 #define DEFAULT_TP_NAME	"[DEFAULT]"
 
@@ -117,7 +120,7 @@ void tp_rele(thread_pool_t* tp, boolean_t may_destroy);
 #ifndef NO_JSON
 #include <libjson.h>
 
-JSONNODE* json_tp_format_all(void);
+JSONNODE* json_tp_format(hm_item_t* object);
 int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched);
 #endif
 

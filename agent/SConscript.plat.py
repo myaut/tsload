@@ -100,7 +100,7 @@ if env.SupportedPlatform('win'):
         env.Append(CCFLAGS = ['/MD'])
     env.FindMicrosoftSDK()
 elif env.SupportedPlatform('posix'):
-    env.Append(LIBS = ['c'])
+    env.Append(LIBS = ['c', 'm'])
     env.Macroses('_GNU_SOURCE')
     env.Macroses('_REENTRANT')
     

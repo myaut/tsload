@@ -11,5 +11,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/file.h>
 
 #endif /* PLAT_POSIX_POSIXDECL_H_ */

@@ -23,24 +23,13 @@
 
 /* = Agent's handlers = */
 void agent_get_host_info(JSONNODE* argv[]) {
-	JSONNODE* response = json_new(JSON_NODE);
-
-	json_push_back(response, json_new_a("hostname", hi_get_nodename()));
-
-	json_push_back(response, json_new_a("domainname", hi_get_domainname()));
-	json_push_back(response, json_new_a("osname", hi_get_os_name()));
-	json_push_back(response, json_new_a("release", hi_get_os_release()));
-	json_push_back(response, json_new_a("machineArch", hi_get_mach()));
-
-	json_push_back(response, json_new_i("numCPUs", hi_cpu_num_cpus()));
-	json_push_back(response, json_new_i("numCores", hi_cpu_num_cores()));
-	json_push_back(response, json_new_i("memTotal", hi_cpu_mem_total()));
+	JSONNODE* response = tsload_get_hostinfo();
 
 	return agent_response_msg(response);
 }
 
 void agent_get_workload_types(JSONNODE* argv[]) {
-	JSONNODE* response = tsload_get_workload_types();
+	JSONNODE* response = tsload_walk_workload_types(TSLOAD_WALK_JSON_ALL, NULL, NULL);
 
 	return agent_response_msg(response);
 }

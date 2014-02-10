@@ -123,15 +123,10 @@ static void control_prepare_step(thread_pool_t* tp, workload_step_t* step) {
 	ret = wl_advance_step(step);
 
 	if(ret == -1) {
-		wl_finish(wl);
-
-		/*If steps was not provided, detach workload from threadpool*/
-		tp_detach_nolock(wl->wl_tp, wl);
 		return;
 	}
 
-	wl_notify(wl, WLS_RUNNING, 0, "Running workload %s step #%ld: %d requests",
-					wl->wl_name, wl->wl_current_step, step->wls_rq_count);
+	wl_notify(wl, WLS_RUNNING, 0, "%d requests", step->wls_rq_count);
 
 	if(wl->wl_type->wlt_wl_step) {
 		wl->wl_type->wlt_wl_step(wl, step->wls_rq_count);

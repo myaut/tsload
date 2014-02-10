@@ -12,6 +12,7 @@
 #include <threads.h>
 
 #include <stddef.h>
+#include <string.h>
 
 /**
  * @module Hash maps
@@ -25,26 +26,38 @@ typedef void hm_item_t;
 typedef void hm_key_t;
 #endif
 
+#define HMNAMELEN			32
+
+#define HASH_MAP_STATIC		1
+#define HASH_MAP_DYNAMIC	2
+
 typedef struct {
 	size_t			hm_size;
 	hm_item_t** 	hm_heads;
+
+	int 			hm_type;
 
 	thread_mutex_t hm_mutex;
 
 	ptrdiff_t hm_off_key;
 	ptrdiff_t hm_off_next;
 
+	char 	hm_name[HMNAMELEN];
+
 	unsigned (*hm_hash_key)(const hm_key_t* key);
 	boolean_t (*hm_compare)(const hm_key_t* key1, const hm_key_t* key2);
 } hashmap_t;
 
+typedef int (*hm_walker_func)(hm_item_t* object, void* arg);
+
 LIBEXPORT void hash_map_init(hashmap_t* hm, const char* name);
+LIBEXPORT hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...);
 LIBEXPORT void hash_map_destroy(hashmap_t* hm);
 
 LIBEXPORT int  hash_map_insert(hashmap_t* hm, hm_item_t* object);
 LIBEXPORT int  hash_map_remove(hashmap_t* hm, hm_item_t* object);
 LIBEXPORT void* hash_map_find(hashmap_t* hm, const hm_key_t* key);
-LIBEXPORT void* hash_map_walk(hashmap_t* hm, int (*func)(hm_item_t* object, void* arg), void* arg);
+LIBEXPORT void* hash_map_walk(hashmap_t* hm, hm_walker_func func, void* arg);
 
 LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 
@@ -70,15 +83,26 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 	hm_hash_body									\
 													\
 	static type* hm_heads_##name[size];				\
-	static hashmap_t name = {						\
+	hashmap_t name = {								\
 		SM_INIT(.hm_size, size),							\
 		SM_INIT(.hm_heads, (void**) hm_heads_##name),		\
+		SM_INIT(.hm_type, HASH_MAP_STATIC),					\
 		SM_INIT(.hm_mutex, THREAD_MUTEX_INITIALIZER),		\
 		SM_INIT(.hm_off_key, offsetof(type, key_field)),	\
 		SM_INIT(.hm_off_next, offsetof(type, next_field)),	\
+		SM_INIT(.hm_name, #name ),							\
 		SM_INIT(.hm_hash_key, hm_hash_##name),				\
 		SM_INIT(.hm_compare, hm_compare_##name)				\
 	};
+
+/**
+ * Same as DECLARE_HASH_MAP, but assumes that key field is string
+ */
+#define DECLARE_HASH_MAP_STRKEY(name, type, size, key_field, next_field, mask)	\
+	DECLARE_HASH_MAP(name, type, size, key_field, next_field, 					\
+		{ return hm_string_hash(key, mask); },									\
+		{ return strcmp((char*) key1, (char*) key2) == 0; }						\
+	)
 
 /**
  * hm_* functions return codes

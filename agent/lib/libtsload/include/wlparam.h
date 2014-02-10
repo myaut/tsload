@@ -32,12 +32,12 @@
 
 struct workload;
 
-typedef int64_t	wlp_integer_t;
-typedef double	wlp_float_t;
-typedef char	wlp_string_t;
-typedef int  	wlp_bool_t;
-typedef int  	wlp_strset_t;
-typedef void*	wlp_hiobject_t;
+typedef int64_t		wlp_integer_t;
+typedef double		wlp_float_t;
+typedef char		wlp_string_t;
+typedef boolean_t	wlp_bool_t;
+typedef int  		wlp_strset_t;
+typedef void*		wlp_hiobject_t;
 
 /**
  * Workload paramter type
@@ -219,7 +219,7 @@ typedef struct wlp_generator {
 	list_node_t	node;
 } wlp_generator_t;
 
-wlp_type_t wlp_get_base_type(wlp_descr_t* wlp);
+LIBEXPORT wlp_type_t wlp_get_base_type(wlp_descr_t* wlp);
 
 int wlparam_set_default(wlp_descr_t* wlp, void* param);
 

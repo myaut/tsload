@@ -56,5 +56,8 @@ LIBEXPORT PLATAPI void tm_sleep_nano(ts_time_t t);
 
 LIBEXPORT ts_time_t tm_ceil_diff(ts_time_t tm, ts_time_t precision);
 
+LIBEXPORT size_t tm_human_print(ts_time_t t, const char* dst, size_t size);
+LIBEXPORT size_t tm_datetime_print(ts_time_t t, const char* dst, size_t size);
+
 
 #endif /* TS_TIME_H_ */

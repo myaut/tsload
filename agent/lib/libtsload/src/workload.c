@@ -172,9 +172,15 @@ void wl_destroy_impl(workload_t* wl) {
 	if(WL_HAD_STATUS(wl, WLS_CONFIGURING))
 		t_destroy(&wl->wl_cfg_thread);
 
+	if(wl->wl_tp != NULL) {
+		tp_detach(wl->wl_tp, wl);
+	}
+
 	if(wl->wl_chain_next) {
 		wl_rele(wl->wl_chain_next);
 	}
+
+	wl_notify(wl, WLS_DESTROYED, 0, "status flags: %d", wl->wl_status_flags);
 
 	wlpgen_destroy_all(wl);
 
@@ -227,8 +233,7 @@ void wl_rele(workload_t* wl) {
 void wl_finish(workload_t* wl) {
 	long step = wl->wl_current_step;
 
-	wl_notify(wl, WLS_FINISHED, 0, "Finished workload %s on step #%ld",
-							wl->wl_name, step);
+	wl_notify(wl, WLS_FINISHED, wl->wl_current_step, "");
 }
 
 /**
@@ -292,6 +297,7 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	break;
 	case WLS_RUNNING:
 	case WLS_FINISHED:
+	case WLS_DESTROYED:
 		progress = wl->wl_current_step;
 		break;
 	default:
@@ -306,13 +312,13 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	msg = mp_malloc(sizeof(wl_notify_msg_t));
 
 	va_start(args, format);
-	vsnprintf(msg->msg, 512, format, args);
+	vsnprintf(msg->msg, WLNOTIFYMSGLEN, format, args);
 	va_end(args);
 
 	logmsg((status == WLS_CFG_FAIL)? LOG_WARN : LOG_INFO,
 			"Workload %s status: %s", wl->wl_name, msg->msg);
 
-	msg->wl = wl;
+	strcpy(msg->wl_name, wl->wl_name);
 	msg->status = status;
 	msg->progress = progress;
 
@@ -331,7 +337,7 @@ thread_result_t wl_notification_thread(thread_arg_t arg) {
 			THREAD_EXIT(0);
 		}
 
-		tsload_workload_status(msg->wl->wl_name, msg->status, msg->progress, msg->msg);
+		tsload_workload_status(msg->wl_name, msg->status, msg->progress, msg->msg);
 
 		mp_free(msg);
 	}
@@ -344,7 +350,7 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, workload_t, wl);
 	int ret;
 
-	wl_notify(wl, WLS_CONFIGURING, 0, "started configuring");
+	wl_notify(wl, WLS_CONFIGURING, 0, "");
 
 	ret = wl->wl_type->wlt_wl_config(wl);
 
@@ -358,7 +364,7 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 		tp_attach(wl->wl_tp, wl);
 	}
 
-	wl_notify(wl, WLS_CONFIGURED, 100, "Successfully configured workload %s", wl->wl_name);
+	wl_notify(wl, WLS_CONFIGURED, 100, "");
 
 
 THREAD_END:
@@ -453,9 +459,12 @@ int wl_advance_step(workload_step_t* step) {
 
 	if(wl->wl_current_step > wl->wl_last_step) {
 		/* No steps on queue */
-		logmsg(LOG_WARN, "No steps on queue %s, step #%ld!", wl->wl_name, wl->wl_current_step);
+		logmsg(LOG_INFO, "No steps on queue %s, step #%ld!", wl->wl_name, wl->wl_current_step);
 
 		ret = -1;
+
+		wl_finish(wl);
+
 		goto done;
 	}
 
@@ -696,55 +705,8 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 	return j_rq_list;
 }
 
-#define JSON_GET_VALIDATE_PARAM(iter, name, req_type, optional)	\
-	{													\
-		iter = json_find(node, name);					\
-		if(iter == i_end) {								\
-			if(!optional) {								\
-				tsload_error_msg(TSE_MESSAGE_FORMAT,	\
-						"Failed to parse workload, missing parameter %s", name);	\
-				goto fail;								\
-			}											\
-		}												\
-		else if(json_type(*iter) != req_type) {			\
-			tsload_error_msg(TSE_MESSAGE_FORMAT,		\
-					"Expected that " name " is " #req_type );	\
-			goto fail;									\
-		}												\
-	}
-
-#define SEARCH_OBJ(dest, iter, type, search) 				\
-	do {									\
-		type* obj = NULL;					\
-		char* name = json_as_string(*iter);	\
-		obj = search(name);					\
-		if(obj == NULL) {					\
-			tsload_error_msg(TSE_INVALID_DATA,				\
-					"Couldn't find " #type " '%s'", name);	\
-			json_free(name);								\
-			goto fail;						\
-		}									\
-		json_free(name);					\
-		dest = obj;							\
-	} while(0);
-
-
-/**
- * Process incoming workload in format
- * {
- * 		"module": "..."
- * 		"threadpool": "..." | "chain" : "...",
- * 		"params": {}
- * }
- * and create workload. Called from agent context,
- * so returns NULL in case of error and invokes agent_error_msg
- * */
-workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
-	JSONNODE_ITERATOR i_wlt = NULL;
-	JSONNODE_ITERATOR i_tp = NULL;
-	JSONNODE_ITERATOR i_chain = NULL;
-	JSONNODE_ITERATOR i_params = NULL;
-	JSONNODE_ITERATOR i_end = json_end(node);
+workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name,
+		                       const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params) {
 
 	workload_t* wl = NULL;
 	workload_t* parent = NULL;
@@ -753,38 +715,34 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 
 	int ret = RQSCHED_JSON_OK;
 
-	/* Get threadpool and module from incoming message
-	 * and find corresponding objects*/
-	JSON_GET_VALIDATE_PARAM(i_wlt, "wltype", JSON_STRING, B_FALSE);
-	JSON_GET_VALIDATE_PARAM(i_tp, "threadpool", JSON_STRING, B_TRUE);
-	JSON_GET_VALIDATE_PARAM(i_chain, "chain", JSON_STRING, B_TRUE);
-	JSON_GET_VALIDATE_PARAM(i_params, "params", JSON_NODE, B_FALSE);
+	wlt = wl_type_search(wl_type);
 
-	SEARCH_OBJ(wlt, i_wlt, wl_type_t, wl_type_search);
-
-	if(i_tp != i_end) {
-		SEARCH_OBJ(tp, i_tp, thread_pool_t, tp_search);
+	if(rqsched_params == NULL) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT,
+				         "Request scheduler parameters was not provided for workload '%s'", wl_name);
+		goto fail;
 	}
-	else if(i_chain != i_end) {
-		SEARCH_OBJ(parent, i_chain, workload_t, wl_search);
+
+	if(wl_params == NULL) {
+		tsload_error_msg(TSE_MESSAGE_FORMAT,
+				         "Workload / request parameters was not provided for workload '%s'", wl_name);
+		goto fail;
+	}
+
+	if(tp_name) {
+		tp = tp_search(tp_name);
+	}
+	else if(wl_chain_name) {
+		parent = wl_search(wl_chain_name);
 	}
 	else {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "Neither threadpool nor chain not set for workload");
+		tsload_error_msg(TSE_INVALID_DATA,
+						 "Neither threadpool nor chain are set for workload '%s'", wl_name);
 		goto fail;
 	}
 
 	/* Get workload's name */
 	logmsg(LOG_DEBUG, "Parsing workload %s", wl_name);
-
-	if(strlen(wl_name) == 0) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "Failed to parse workload, no name was defined");
-		goto fail;
-	}
-
-	if(wl_search(wl_name) != NULL) {
-		tsload_error_msg(TSE_INVALID_DATA, "Workload %s already exists", wl_name);
-		goto fail;
-	}
 
 	/* Create workload */
 	wl = wl_create(wl_name, wlt, tp);
@@ -792,7 +750,7 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 	/* Process request scheduler.
 	 * Chained workloads do not have scheduler - use simple scheduler */
 	if(parent == NULL) {
-		ret = json_rqsched_proc(node, wl);
+		ret = json_rqsched_proc(rqsched_params, wl);
 	}
 	else {
 		wl->wl_rqsched_class = &simple_rqsched_class;
@@ -804,7 +762,7 @@ workload_t* json_workload_proc(const char* wl_name, JSONNODE* node) {
 
 	/* Process params from i_params to wl_params, where mod_params contains
 	 * parameters descriptions (see wlparam) */
-	ret = json_wlparam_proc_all(*i_params, wlt->wlt_params, wl);
+	ret = json_wlparam_proc_all(wl_params, wlt->wlt_params, wl);
 
 	if(ret != WLPARAM_JSON_OK) {
 		goto fail;

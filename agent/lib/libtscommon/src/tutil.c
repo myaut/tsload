@@ -53,7 +53,7 @@ void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex) {
 void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout) {
 	THREAD_ENTER_LOCK(TS_WAITING, cv, cv);
 
-	plat_cv_wait_timed(&cv->tcv_impl, mutex, timeout);
+	plat_cv_wait_timed(&cv->tcv_impl, &mutex->tm_impl, timeout);
 
 	THREAD_LEAVE_LOCK(cv);
 }

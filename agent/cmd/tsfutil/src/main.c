@@ -24,7 +24,8 @@ LIBIMPORT char log_filename[];
 LIBIMPORT int log_debug;
 LIBIMPORT int log_trace;
 
-tsfutil_backend_t* backend = &json_backend;
+tsf_backend_t* backend = NULL;
+
 int command = COMMAND_CREATE;
 
 char tsf_path[PATHMAXLEN];
@@ -55,7 +56,6 @@ int parse_get_range(const char* range) {
 	if(*ptr == '\0') {
 		/* Special case for JSON - get one entry */
 		end = start + 1;
-		tsfutil_json_print_one = B_TRUE;
 		return 0;
 	}
 
@@ -93,16 +93,9 @@ void parse_options_args(int argc, const char* argv[]) {
 			s_flag = B_TRUE;
 			break;
 		case 'F':
-			if(strcmp(optarg, "csv") == 0) {
-				backend = &csv_backend;
-			}
-			else if(strcmp(optarg, "json") == 0) {
-				backend = &json_backend;
-			}
-			else if(strcmp(optarg, "jsonraw") == 0) {
-				backend = &jsonraw_backend;
-			}
-			else {
+			backend = tsfile_backend_create(optarg);
+
+			if(backend == NULL) {
 				usage(1, "Invalid backend '%s'\n", optarg);
 			}
 			break;
@@ -150,7 +143,7 @@ void parse_options_args(int argc, const char* argv[]) {
 			}
 			break;
 		case 'o':
-			ok = backend->set(optarg);
+			ok = tsfile_backend_set(backend, optarg);
 			if(!ok) {
 				usage(1, "Unknown backend option '%s'\n", optarg);
 			}
@@ -225,7 +218,7 @@ void tsfutil_error_msg(ts_errcode_t errcode, const char* format, ...) {
 
 int do_command(void) {
 	tsfile_t* ts_file;
-	tsfile_schema_t* schema = schema_read(schema_path);
+	tsfile_schema_t* schema = tsfile_schema_read(schema_path);
 	FILE* file;
 
 	int ret = 0;
@@ -258,15 +251,17 @@ int do_command(void) {
 				goto end;
 			}
 
+			tsfile_backend_set_files(backend, file, ts_file);
+
 			if(command == COMMAND_GET_ENTRIES) {
 				if(end == -1) {
 					end = (int) tsfile_get_count(ts_file);
 				}
 
-				backend->get(file, ts_file, start, end);
+				ret = tsfile_backend_get(backend, start, end);
 			}
 			else if(command == COMMAND_ADD) {
-				backend->add(file, ts_file);
+				ret = tsfile_backend_add(backend);
 			}
 
 			tsfutil_close_file(file);
@@ -274,6 +269,10 @@ int do_command(void) {
 	}
 
 end:
+	if(ret != 0) {
+		fputs("Failure occured. See log for details\n", stderr);
+	}
+
 	tsfile_close(ts_file);
 	return ret;
 }

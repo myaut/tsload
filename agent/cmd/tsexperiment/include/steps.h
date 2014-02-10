@@ -22,6 +22,7 @@ typedef enum {
 
 typedef struct steps_file {
 	FILE* 	sf_file;
+	FILE*   sf_file_out;
 	long 	sf_step_id;
 
 	boolean_t sf_error;
@@ -45,7 +46,7 @@ typedef struct steps_generator {
 	};
 } steps_generator_t;
 
-steps_generator_t* step_create_file(const char* file_name);
+steps_generator_t* step_create_file(const char* file_name, const char* out_file_name);
 steps_generator_t* step_create_const(long num_steps, unsigned num_requests);
 
 int step_get_step(steps_generator_t* sg, long* step_id, unsigned* p_num_rqs);

@@ -51,6 +51,10 @@ extern tp_disp_class_t tpd_fill_up_class;
 extern tp_disp_class_t tpd_ff_class;
 extern tp_disp_class_t tpd_bench_class;
 
+extern ts_time_t tp_worker_min_sleep;
+
+extern ts_time_t tp_worker_overhead;
+
 int tpd_preinit_fill_up(tp_disp_t* tpd, unsigned num_requests, int first_wid);
 
 boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t sleep_not_until) {
@@ -60,7 +64,7 @@ boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t sleep_not_until) {
 
 	cur_time = tm_get_clock();
 	next_time = rq->rq_sched_time + rq->rq_workload->wl_start_clock;
-	sleep_time = tm_diff(cur_time, next_time) - TP_WORKER_OVERHEAD;
+	sleep_time = tm_diff(cur_time, next_time) - tp_worker_overhead;
 	max_sleep = tm_diff(cur_time, sleep_not_until);
 
 	if(sleep_time > max_sleep) {
@@ -69,7 +73,7 @@ boolean_t tpd_wait_for_arrival(request_t* rq, ts_time_t sleep_not_until) {
 		return B_FALSE;
 	}
 
-	if(cur_time < next_time && sleep_time > TP_WORKER_MIN_SLEEP) {
+	if(cur_time < next_time && sleep_time > tp_worker_min_sleep) {
 		tm_sleep_nano(sleep_time);
 	}
 

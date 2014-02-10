@@ -17,9 +17,11 @@
 #include <threadpool.h>
 #include <tpdisp.h>
 #include <tstime.h>
+#include <netsock.h>
+
 #include <uname.h>
 #include <hiobject.h>
-#include <netsock.h>
+#include <cpuinfo.h>
 
 #include <tsinit.h>
 #include <tsload.h>
@@ -28,11 +30,15 @@
 
 #include <stdlib.h>
 
+extern hashmap_t wl_type_hash_map;
+extern hashmap_t tp_hash_map;
+
 tsload_error_msg_func tsload_error_msg = NULL;
 tsload_workload_status_func tsload_workload_status = NULL;
 tsload_requests_report_func tsload_requests_report = NULL;
 
 extern ts_time_t tp_min_quantum;
+extern ts_time_t tp_max_quantum;
 
 struct subsystem subsys[] = {
 	SUBSYSTEM("log", log_init, log_fini),
@@ -45,16 +51,57 @@ struct subsystem subsys[] = {
 	SUBSYSTEM("netsock", nsk_init, nsk_fini),
 };
 
-JSONNODE* tsload_get_workload_types(void) {
-	return json_wl_type_format_all();
+static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func walker,
+								  hashmap_t* hm, hm_json_formatter formatter) {
+	switch(op) {
+	case TSLOAD_WALK_FIND:
+		return hash_map_find(hm, arg);
+	case TSLOAD_WALK_JSON:
+		return json_hm_format_bykey(hm, formatter, arg);
+	case TSLOAD_WALK_JSON_ALL:
+		return json_hm_format_all(hm, formatter);
+	case TSLOAD_WALK_WALK:
+		return hash_map_walk(hm, walker, arg);
+	}
+}
+
+void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &wl_type_hash_map, json_wl_type_format);
 }
 
 JSONNODE* tsload_get_resources(void) {
 	return json_hi_format_all(B_TRUE);
 }
 
-int tsload_configure_workload(const char* wl_name, JSONNODE* wl_params) {
-	workload_t* wl = json_workload_proc(wl_name, wl_params);
+JSONNODE* tsload_get_hostinfo(void) {
+	JSONNODE* node = json_new(JSON_NODE);
+
+	json_push_back(node, json_new_a("hostname", hi_get_nodename()));
+
+	json_push_back(node, json_new_a("domainname", hi_get_domainname()));
+	json_push_back(node, json_new_a("osname", hi_get_os_name()));
+	json_push_back(node, json_new_a("release", hi_get_os_release()));
+	json_push_back(node, json_new_a("machine_arch", hi_get_mach()));
+
+	json_push_back(node, json_new_i("num_cpus", hi_cpu_num_cpus()));
+	json_push_back(node, json_new_i("num_cores", hi_cpu_num_cores()));
+	json_push_back(node, json_new_i("mem_total", hi_cpu_mem_total()));
+
+	json_push_back(node, json_new_i("agent_pid", t_get_pid()));
+
+	return node;
+}
+
+int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name,
+							  const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params) {
+	workload_t* wl;
+
+	if(wl_search(wl_name) != NULL) {
+		tsload_error_msg(TSE_INVALID_DATA, "Workload '%s' already exists", wl_name);
+		return TSLOAD_ERROR;
+	}
+
+	wl = json_workload_proc(wl_name, wl_type, tp_name, wl_chain_name, rqsched_params, wl_params);
 
 	if(wl == NULL) {
 		tsload_error_msg(TSE_INTERNAL_ERROR, "Error in tsload_configure_workload!");
@@ -129,14 +176,19 @@ int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_
 	tp_disp_t* tpd = NULL;
 
 	if(num_threads > TPMAXTHREADS || num_threads == 0) {
-		tsload_error_msg(TSE_INVALID_DATA, "Too much or zero threads requested (%u, max: %u)", num_threads,
+		tsload_error_msg(TSE_INVALID_DATA, "Too much or zero threads requested for tp '%s' (%u, max: %u)", tp_name, num_threads,
 							TPMAXTHREADS);
 		return TSLOAD_ERROR;
 	}
 
-	if(quantum < tp_min_quantum) {
-		tsload_error_msg(TSE_INVALID_DATA, "Too small quantum requested (%lld, max: %lld)", quantum,
-							tp_min_quantum);
+	if(quantum < tp_min_quantum || quantum > tp_max_quantum) {
+		tsload_error_msg(TSE_INVALID_DATA, "Invalid value of quantum requested for tp '%s' (%lld, min: %lld max: %lld)",
+							tp_name, quantum, (long long) tp_min_quantum, (long long) tp_max_quantum);
+		return TSLOAD_ERROR;
+	}
+
+	if(disp == NULL) {
+		tsload_error_msg(TSE_INVALID_DATA, "Dispatcher properties are voluntary for tp '%s'", tp_name);
 		return TSLOAD_ERROR;
 	}
 
@@ -163,29 +215,27 @@ int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_
 	return TSLOAD_OK;
 }
 
-JSONNODE* tsload_get_threadpools(void) {
-	return json_tp_format_all();
-}
-
-int tsload_schedule_threadpool(const char* tp_name, JSONNODE* bindings) {
+int tsload_schedule_threadpool(const char* tp_name, JSONNODE* sched) {
 	thread_pool_t* tp = tp_search(tp_name);
+	int ret;
 
 	if(tp == NULL) {
 		tsload_error_msg(TSE_INVALID_DATA, "Thread pool '%s' not exists", tp_name);
 		return TSLOAD_ERROR;
 	}
 
-	json_tp_schedule(tp, bindings);
+	ret = json_tp_schedule(tp, sched);
+
+	if(ret != 0) {
+		tsload_error_msg(TSE_INTERNAL_ERROR, "Couldn't set scheduler options for threadpool '%s'", tp_name);
+		return TSLOAD_ERROR;
+	}
 
 	return TSLOAD_OK;
 }
 
-JSONNODE* tsload_get_dispatchers(void) {
-	JSONNODE* disps = json_new(JSON_ARRAY);
-
-	json_push_back(disps, json_new_a("simple", "simple"));
-
-	return disps;
+void* tsload_walk_threadpools(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &tp_hash_map, json_tp_format);
 }
 
 int tsload_destroy_threadpool(const char* tp_name) {

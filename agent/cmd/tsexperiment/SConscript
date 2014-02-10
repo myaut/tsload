@@ -1,16 +1,16 @@
 from pathutil import *
 
 tgtroot = 'tsload-standalone'
-_target = 'run-tsload'
+target = 'tsexperiment'
 
 Import('env')
 
+cmd = env.Clone()
+
 def InstallExperiment(experiment_name):
     for file in Dir(experiment_name).glob('*'):
-        cmd.Depends(run_tsload,  file)
+        cmd.Depends(tsexperiment,  file)
         cmd.InstallTarget(tgtroot, PathJoin(cmd['INSTALL_VAR'], experiment_name), file)
-
-cmd = env.Clone()
 
 cmd.AddDeps(('lib', 'libtsagent'), 
             ('lib', 'libtscommon'), 
@@ -19,15 +19,8 @@ cmd.AddDeps(('lib', 'libtsagent'),
             ('lib', 'libhostinfo'), 
             ('lib', 'libtsload'))
 objects = cmd.CompileProgram()
-run_tsload = cmd.Program(_target, objects)
+tsexperiment = cmd.Program(target, objects)
 
-i_run_tsload = cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], run_tsload)
+i_tsexperiment = cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsexperiment)
 
-# Install test experiment files
-InstallExperiment('simpleio')
-InstallExperiment('busy_wait')
-
-# Install request schema file
-request_schema = 'request-schema.json'
-cmd.Depends(run_tsload, request_schema)
-cmd.InstallTarget(tgtroot, cmd['INSTALL_VAR'], request_schema)
+InstallExperiment('sample')
