@@ -537,6 +537,8 @@ static void wl_link_request(workload_t* wl, request_t* rq) {
 request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
 
+	double u;
+
 	wl_hold(wl);
 
 	if(parent == NULL) {
@@ -556,7 +558,10 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 
 	wl->wl_rqsched_class->rqsched_pre_request(rq);
 
-	if(wl->wl_chain_next != NULL) {
+	if(wl->wl_chain_next != NULL &&
+			(wl->wl_chain_next->wl_chain_rg == NULL ||
+			 rg_generate_double(wl->wl_chain_next->wl_chain_rg) >=
+			 	 wl->wl_chain_next->wl_chain_probability)) {
 		rq->rq_chain_next = wl_create_request(wl->wl_chain_next, rq);
 	}
 	else {
@@ -655,20 +660,24 @@ void wl_run_request(request_t* rq) {
 	int ret;
 	workload_t* wl = rq->rq_workload;
 
-	rq->rq_flags |= RQF_STARTED;
-
 	ETRC_PROBE2(tsload__workload, request__start, workload_t*, wl, request_t*, rq);
+
+	logmsg(LOG_TRACE, "Running request %s/%d step: %d worker: #%d sched: %lld start: %lld",
+		rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, rq->rq_thread_id,
+		(long long) rq->rq_sched_time, (long long) rq->rq_start_time);
 
 	if(WL_HAD_STATUS(wl, WLS_FINISHED))
 		return;
 
+	rq->rq_flags |= RQF_STARTED;
 	rq->rq_start_time = tm_get_clock() - wl->wl_start_clock;
 
-	logmsg(LOG_TRACE, "Running request %s/%d step: %d worker: #%d sched: %lld start: %lld",
-				rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, rq->rq_thread_id,
-				(long long) rq->rq_sched_time, (long long) rq->rq_start_time);
+	if(tm_diff(rq->rq_sched_time, rq->rq_start_time) > wl->wl_deadline) {
+		return;
+	}
 
 	ret = wl->wl_type->wlt_run_request(rq);
+
 	rq->rq_end_time = tm_get_clock() - wl->wl_start_clock;
 
 	if(rq->rq_start_time <= rq->rq_sched_time)
@@ -762,13 +771,20 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 	return j_rq_list;
 }
 
-workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name,
-		                       const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params) {
+workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
+		                       JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params) {
 
 	workload_t* wl = NULL;
 	workload_t* parent = NULL;
 	wl_type_t* wlt = NULL;
 	thread_pool_t* tp = NULL;
+
+	char* wl_chain_name;
+	double wl_chain_probability = -1.0;
+	randgen_t* wl_chain_rg = NULL;
+
+	JSONNODE_ITERATOR i_randgen, i_workload, i_probability,
+					  i_prob_value, i_prob_end, i_end;
 
 	int ret = RQSCHED_JSON_OK;
 
@@ -789,8 +805,55 @@ workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const c
 			goto fail;
 		}
 	}
-	else if(wl_chain_name) {
+	else if(wl_chain_params) {
+		i_end = json_end(wl_chain_params);
+		i_probability = json_find(wl_chain_params, "probability");
+		i_workload = json_find(wl_chain_params, "workload");
+
+		if(i_probability != i_end) {
+			i_prob_end = json_end(*i_probability);
+			i_randgen = json_find(*i_probability, "randgen");
+			i_prob_value = json_find(*i_probability, "value");
+
+			if(i_randgen != i_prob_end) {
+				wl_chain_rg = json_randgen_proc(*i_randgen);
+			}
+
+			if(i_prob_value != i_prob_end) {
+				wl_chain_probability = json_as_float(*i_prob_value);
+			}
+
+			if(wl_chain_probability < 0.0 || wl_chain_probability > 1.0) {
+				tsload_error_msg(TSE_MESSAGE_FORMAT,
+								 "Not specified or incorrect chain probability value for workload '%s'", wl_name);
+				goto fail;
+			}
+
+			if(wl_chain_rg == NULL) {
+				tsload_error_msg(TSE_MESSAGE_FORMAT,
+								 "Not specified or incorrect random generator "
+								 "of chain probability for workload '%s'", wl_name);
+				goto fail;
+			}
+		}
+
+		if(i_workload == i_end) {
+			tsload_error_msg(TSE_INVALID_DATA,
+							 "Not specified chain parent for workload '%s'", wl_name);
+			goto fail;
+		}
+
+		wl_chain_name = json_as_string(*i_workload);
 		parent = wl_search(wl_chain_name);
+
+		if(parent == NULL) {
+			tsload_error_msg(TSE_INVALID_DATA,
+							 "Not found chain parent '%s' for workload '%s'", wl_chain_name, wl_name);
+			json_free(wl_chain_name);
+			goto fail;
+		}
+
+		json_free(wl_chain_name);
 	}
 	else {
 		tsload_error_msg(TSE_INVALID_DATA,
@@ -828,7 +891,12 @@ workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const c
 	/* Chain workload */
 	if(parent != NULL) {
 		wl_chain_back(parent, wl);
+
+		wl->wl_chain_probability = wl_chain_probability;
+		wl->wl_chain_rg = wl_chain_rg;
 	}
+
+	wl->wl_deadline = deadline;
 
 	return wl;
 

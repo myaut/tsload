@@ -113,12 +113,15 @@ typedef struct exp_workload {
 	char wl_name[WLNAMELEN];
 
 	char wl_type[WLTNAMELEN];
-	char wl_chain_name[WLNAMELEN];
 	char wl_tp_name[TPNAMELEN];
 
+	ts_time_t wl_deadline;
+
+	JSONNODE* wl_chain;
 	JSONNODE* wl_rqsched;
 	JSONNODE* wl_params;
 
+	char wl_chain_name[WLNAMELEN];
 	JSONNODE* wl_steps_cfg;
 
 	/* Current parameters */

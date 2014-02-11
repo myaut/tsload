@@ -16,6 +16,7 @@
 #include <modules.h>
 #include <wltype.h>
 #include <tstime.h>
+#include <randgen.h>
 
 #define WL_NOTIFICATIONS_PER_SEC	20
 
@@ -177,11 +178,16 @@ typedef struct workload {
 	workload_step_t  wl_step_queue[WLSTEPQSIZE];
 	/* End of requests queue*/
 
+	ts_time_t		 wl_deadline;
+
+	struct workload* wl_chain_next;
+	randgen_t*		 wl_chain_rg;
+	double			 wl_chain_probability;
+
 	struct rqsched_class* wl_rqsched_class;
 	void* wl_rqsched_private;
 
 	struct workload* wl_hm_next;		/**< next in workload hashmap*/
-	struct workload* wl_chain_next;		/**< next in workload chain*/
 
 	list_node_t		 wl_tp_node;		/**< thread pool wl list*/
 
@@ -245,8 +251,8 @@ void wl_finish(workload_t* wl);
 #include <libjson.h>
 
 LIBEXPORT JSONNODE* json_request_format_all(list_head_t* rq_list);
-workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name,
-        					   const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params);
+workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
+		                       JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params);
 #endif
 
 #endif /* WORKLOAD_H_ */

@@ -38,29 +38,39 @@ boolean_t tse_run_batch_mode = B_FALSE;
 int tse_experiment_set(experiment_t* exp, const char* option);
 int tse_prepare_experiment(experiment_t* exp, experiment_t* base);
 
-int tse_run_fprintf(experiment_t* exp, const char* fmt, ...) {
-	va_list va;
+int tse_run_vfprintf(experiment_t* exp, const char* fmt, va_list va) {
+	va_list va1;
+	va_list va2;
+
 	int ret;
+
+	va_copy(va1, va);
+	va_copy(va2, va);
 
 	mutex_lock(&output_lock);
 
 	if(!tse_run_batch_mode) {
-		va_start(va, fmt);
-		ret = vfprintf(stderr, fmt, va);
-		va_end(va);
-
+		ret = vfprintf(stderr, fmt, va1);
 		fflush(stderr);
 	}
 
 	if(exp->exp_log != NULL) {
-		va_start(va, fmt);
-		ret = vfprintf(exp->exp_log, fmt, va);
-		va_end(va);
-
+		ret = vfprintf(exp->exp_log, fmt, va2);
 		fflush(exp->exp_log);
 	}
 
 	mutex_unlock(&output_lock);
+
+	return ret;
+}
+
+int tse_run_fprintf(experiment_t* exp, const char* fmt, ...) {
+	va_list va;
+	int ret;
+
+	va_start(va, fmt);
+	tse_run_vfprintf(exp, fmt, va);
+	va_end(va);
 
 	return ret;
 }
@@ -121,6 +131,8 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 
 	if(ewl->wl_steps_cfg == NULL) {
 		tse_run_fprintf(ctx->exp, "Missing steps for workload %s\n", ewl->wl_name);
+		ctx->error = -3;
+		return HM_WALKER_STOP;
 	}
 
 	i_end = json_end(ewl->wl_steps_cfg);
@@ -269,7 +281,7 @@ void tse_run_error_handler(ts_errcode_t code, const char* format, ...) {
 	snprintf(fmtstr, 256, "ERROR %d: %s\n", code, format);
 
 	va_start(va, format);
-	tse_run_fprintf(running, fmtstr, va);
+	tse_run_vfprintf(running, fmtstr, va);
 	va_end(va);
 
 	mutex_lock(&running->exp_mutex);
@@ -287,9 +299,19 @@ void tse_run_error_handler(ts_errcode_t code, const char* format, ...) {
 
 int tse_run_tp_configure_walk(hm_item_t* item, void* context) {
 	exp_threadpool_t* etp = (exp_threadpool_t*) item;
+	experiment_t* exp = (experiment_t*) context;
 	char quantum[40];
 
-	int ret = tsload_create_threadpool(etp->tp_name, etp->tp_num_threads, etp->tp_quantum,
+	int ret;
+
+	JSONNODE* tp_disp = etp->tp_disp;
+	JSONNODE* trace_tp_disp = NULL;
+
+	if(exp->exp_trace_mode) {
+		experiment_cfg_add(etp->tp_disp, NULL, json_new_a("type", "trace"), B_TRUE);
+	}
+
+	ret = tsload_create_threadpool(etp->tp_name, etp->tp_num_threads, etp->tp_quantum,
 			                           etp->tp_discard, etp->tp_disp);
 
 	if(ret != TSLOAD_OK) {
@@ -333,8 +355,7 @@ int tse_run_wl_configure_walk(hm_item_t* item, void* context) {
 
 	int ret = tsload_configure_workload(ewl->wl_name, ewl->wl_type,
 										(ewl->wl_is_chained)? NULL : ewl->wl_tp_name,
-										(ewl->wl_is_chained)? ewl->wl_chain_name : NULL,
-										ewl->wl_rqsched, ewl->wl_params);
+										ewl->wl_deadline, ewl->wl_chain, ewl->wl_rqsched, ewl->wl_params);
 
 	if(ret != TSLOAD_OK) {
 		ewl->wl_status = EXPERIMENT_ERROR;
@@ -518,7 +539,7 @@ void experiment_run(experiment_t* exp) {
 
 	tse_run_fprintf(exp, "\n=== CONFIGURING EXPERIMENT '%s' RUN #%d === \n", exp->exp_name, exp->exp_runid);
 
-	hash_map_walk(exp->exp_threadpools, tse_run_tp_configure_walk, NULL);
+	hash_map_walk(exp->exp_threadpools, tse_run_tp_configure_walk, exp);
 	if(exp->exp_status != EXPERIMENT_NOT_CONFIGURED) {
 		tse_run_fprintf(exp, "Failure occured while spawning threadpools\n");
 		goto unconfigure;
@@ -563,7 +584,7 @@ void experiment_run(experiment_t* exp) {
 	mutex_unlock(&exp->exp_mutex);
 
 unconfigure:
-	tse_run_fprintf(exp, "\n=== UNCONFIGURING EXPERIMENT '%s' === \n", exp->exp_name);
+	tse_run_fprintf(exp, "\n=== UNCONFIGURING EXPERIMENT '%s' RUN #%d === \n", exp->exp_name, exp->exp_runid);
 
 	if(exp->exp_status != EXPERIMENT_OK) {
 		tse_run_fprintf(exp, "WARNING: Error encountered during experiment run\n");

@@ -17,6 +17,7 @@
 #include <wlparam.h>
 #include <wltype.h>
 #include <tsload.h>
+#include <tstime.h>
 
 #include <experiment.h>
 
@@ -161,14 +162,18 @@ static exp_workload_t* exp_wl_create(const char* name) {
 	 strncpy(ewl->wl_name, name, WLNAMELEN);
 
 	 ewl->wl_type[0] = '\0';
-	 ewl->wl_chain_name[0] = '\0';
 	 ewl->wl_tp_name[0] = '\0';
+
+	 ewl->wl_deadline = TS_TIME_MAX;
 
 	 ewl->wl_rqsched = NULL;
 	 ewl->wl_params = NULL;
+	 ewl->wl_chain = NULL;
 
 	 ewl->wl_chain_next = NULL;
 	 ewl->wl_next = NULL;
+
+	 ewl->wl_chain_name[0] = '\0';
 
 	 ewl->wl_steps = NULL;
 	 ewl->wl_steps_cfg = NULL;
@@ -807,6 +812,7 @@ int experiment_cfg_add(JSONNODE* config, const char* parent_name, JSONNODE* node
 #define EXP_CONFIG_THREADPOOLS			1
 #define EXP_CONFIG_WORKLOADS			2
 #define EXP_CONFIG_STEPS				3
+#define EXP_CONFIG_WL_CHAIN				4
 
 struct exp_config_context {
 	experiment_t* exp;
@@ -862,17 +868,20 @@ static int exp_wl_proc_param(const char* node_name, JSONNODE* node, struct exp_c
 		strncpy(ewl->wl_type, str, WLTNAMELEN);
 		json_free(str);
 	}
-	else if(strcmp(node_name, "chain") == 0) {
-		str = json_as_string(node);
-		strncpy(ewl->wl_chain_name, str, WLTNAMELEN);
-		json_free(str);
-
-		ewl->wl_is_chained = B_TRUE;
+	else if(strcmp(node_name, "workload") == 0) {
+		if(ctx->mode == EXP_CONFIG_WL_CHAIN) {
+			str = json_as_string(node);
+			strncpy(ewl->wl_chain_name, str, WLTNAMELEN);
+			json_free(str);
+		}
 	}
 	else if(strcmp(node_name, "threadpool") == 0) {
 		str = json_as_string(node);
 		strncpy(ewl->wl_tp_name, str, WLTNAMELEN);
 		json_free(str);
+	}
+	else if(strcmp(node_name, "deadline") == 0) {
+		ewl->wl_deadline = json_as_int(node);
 	}
 	else if(strcmp(node_name, "rqsched") == 0) {
 		ewl->wl_rqsched = node;
@@ -881,6 +890,12 @@ static int exp_wl_proc_param(const char* node_name, JSONNODE* node, struct exp_c
 	else if(strcmp(node_name, "params") == 0) {
 		ewl->wl_params = node;
 		return EXP_WALK_NEXT;
+	}
+	else if(strcmp(node_name, "chain") == 0) {
+		ewl->wl_chain = node;
+		ctx->mode = EXP_CONFIG_WL_CHAIN;
+
+		ewl->wl_is_chained = B_TRUE;
 	}
 
 	return EXP_WALK_CONTINUE;
@@ -943,7 +958,7 @@ static int exp_cfg_proc_walk_pre(const char* name, JSONNODE* parent, JSONNODE* n
 			if(ctx->mode == EXP_CONFIG_THREADPOOLS) {
 				return exp_tp_proc_param(node_name, node, ctx);
 			}
-			else if(ctx->mode == EXP_CONFIG_WORKLOADS) {
+			else if(ctx->mode == EXP_CONFIG_WORKLOADS || ctx->mode == EXP_CONFIG_WL_CHAIN) {
 				return exp_wl_proc_param(node_name, node, ctx);
 			}
 		}
@@ -954,6 +969,14 @@ static int exp_cfg_proc_walk_pre(const char* name, JSONNODE* parent, JSONNODE* n
 
 static int exp_cfg_proc_walk_post(const char* name, JSONNODE* parent, JSONNODE* node, void* context) {
 	struct exp_config_context* ctx = (struct exp_config_context*) context;
+	char* node_name = strrchr_y(name, ':');
+
+	if(node_name == NULL) {
+		node_name = name;
+	}
+	else {
+		++node_name;
+	}
 
 	if(ctx->node == NULL) {
 		ctx->mode = EXP_CONFIG_NONE;
@@ -976,6 +999,10 @@ static int exp_cfg_proc_walk_post(const char* name, JSONNODE* parent, JSONNODE* 
 			ctx->data.wl = NULL;
 		}
 		ctx->node = NULL;
+	}
+
+	if(ctx->mode == EXP_CONFIG_WL_CHAIN && strcmp(node_name, "chain") == 0)  {
+		ctx->mode = EXP_CONFIG_WORKLOADS;
 	}
 
 	return EXP_WALK_CONTINUE;

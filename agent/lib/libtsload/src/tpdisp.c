@@ -47,6 +47,7 @@
 extern tp_disp_class_t tpd_rr_class;
 extern tp_disp_class_t tpd_rand_class;
 extern tp_disp_class_t tpd_user_class;
+extern tp_disp_class_t tpd_trace_class;
 extern tp_disp_class_t tpd_fill_up_class;
 extern tp_disp_class_t tpd_ff_class;
 extern tp_disp_class_t tpd_bench_class;
@@ -171,6 +172,9 @@ tp_disp_t* json_tp_disp_proc(JSONNODE* node) {
 	}
 	else if(strcmp(type, "user") == 0) {
 		tpd->tpd_class = &tpd_user_class;
+	}
+	else if(strcmp(type, "trace") == 0) {
+		tpd->tpd_class = &tpd_trace_class;
 	}
 	else if(strcmp(type, "first-free") == 0) {
 		tpd->tpd_class = &tpd_ff_class;

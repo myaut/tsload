@@ -369,3 +369,26 @@ tp_disp_class_t tpd_fill_up_class = {
 	tpd_wqueue_signal,
 	tpd_relink_request_queue
 };
+
+static int tpd_next_wid_trace(thread_pool_t* tp, int wid, request_t* rq) {
+	if(rq->rq_thread_id < 0) {
+		return tpd_next_wid_rand(tp, wid, rq);
+	}
+
+	return rq->rq_thread_id % tp->tp_num_threads;
+}
+
+void tpd_control_sleep_trace(thread_pool_t* tp) {
+	tpd_control_sleep_queue(tp, 0, tpd_next_wid_trace);
+}
+
+tp_disp_class_t tpd_trace_class = {
+	tpd_init_queue,
+	tpd_destroy_queue,
+	tpd_control_report_queue,
+	tpd_control_sleep_trace,
+	tpd_worker_pick_queue,
+	tpd_worker_done_queue,
+	tpd_wqueue_signal,
+	tpd_relink_request_queue
+};

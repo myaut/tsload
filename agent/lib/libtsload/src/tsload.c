@@ -63,6 +63,8 @@ static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func
 	case TSLOAD_WALK_WALK:
 		return hash_map_walk(hm, walker, arg);
 	}
+
+	return NULL;
 }
 
 void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
@@ -92,8 +94,8 @@ JSONNODE* tsload_get_hostinfo(void) {
 	return node;
 }
 
-int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name,
-							  const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params) {
+int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
+							  JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params) {
 	workload_t* wl;
 
 	if(wl_search(wl_name) != NULL) {
@@ -101,7 +103,7 @@ int tsload_configure_workload(const char* wl_name, const char* wl_type, const ch
 		return TSLOAD_ERROR;
 	}
 
-	wl = json_workload_proc(wl_name, wl_type, tp_name, wl_chain_name, rqsched_params, wl_params);
+	wl = json_workload_proc(wl_name, wl_type, tp_name, deadline, wl_chain_params, rqsched_params, wl_params);
 
 	if(wl == NULL) {
 		tsload_error_msg(TSE_INTERNAL_ERROR, "Error in tsload_configure_workload!");
@@ -126,13 +128,18 @@ int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, lis
 
 	switch(ret) {
 	case WL_STEP_INVALID:
-		tsload_error_msg(TSE_INVALID_DATA, "Step %ld is not correct, last step was %ld!", step_id, wl->wl_last_step);
+		tsload_error_msg(TSE_INVALID_DATA, "Step %ld is not correct, last step of workload '%s' was %ld!",
+						 step_id, wl_name, wl->wl_last_step);
 		return TSLOAD_ERROR;
 	case WL_STEP_QUEUE_FULL:
 	case WL_STEP_OK:
 		*pstatus = ret;
 		return TSLOAD_OK;
 	}
+
+	/* Shouldn't be here */
+	tsload_error_msg(TSE_INTERNAL_ERROR, "Unknown result of wl_provide_step() call");
+	return TSLOAD_ERROR;
 }
 
 /**
