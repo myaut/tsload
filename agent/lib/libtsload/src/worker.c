@@ -20,9 +20,7 @@
 
 #include <assert.h>
 
-void tp_detach_nolock(thread_pool_t* tp, struct workload* wl);
-
-static void control_prepare_step(thread_pool_t* tp, workload_step_t* step);
+static void control_prepare_step(thread_pool_t* tp, workload_t* step);
 
 /**
  * Control thread
@@ -36,8 +34,6 @@ thread_result_t control_thread(thread_arg_t arg) {
 	workload_t *wl;
 	int wl_count = 0, wl_count_prev = 0, wli = 0;
 	int wid = 0;
-
-	workload_step_t* step = mp_malloc(1 * sizeof(workload_step_t));
 
 	int wi;
 	tp_worker_t* worker;
@@ -60,28 +56,6 @@ thread_result_t control_thread(thread_arg_t arg) {
 		mutex_lock(&tp->tp_mutex);
 		wl_count = tp->tp_wl_count;
 
-		/* = INITIALIZE STEP ARRAY = */
-		if(unlikely(tp->tp_wl_changed)) {
-			/* Workload count changes very rare,
-			 * so it's easier to reallocate step array */
-			if(unlikely(wl_count != wl_count_prev)) {
-				mp_free(step);
-				step = mp_malloc(wl_count * sizeof(workload_step_t));
-			}
-
-			/*Re-initialize step's workloads*/
-			wli = 0;
-			list_for_each_entry(workload_t, wl, &tp->tp_wl_head, wl_tp_node) {
-				assert(wli < wl_count);
-
-				step[wli].wls_workload = wl;
-				++wli;
-			}
-
-			tp->tp_wl_changed = B_FALSE;
-		}
-
-		mutex_unlock(&tp->tp_mutex);
 
 		wl_count_prev = wl_count;
 
@@ -89,40 +63,47 @@ thread_result_t control_thread(thread_arg_t arg) {
 
 		/* Advance step for each workload, then
 		 * distribute requests across workers*/
-		for(wli = 0; wli < wl_count; ++wli) {
-			control_prepare_step(tp, &step[wli]);
+		list_for_each_entry(workload_t, wl, &tp->tp_wl_head, wl_tp_node) {
+			control_prepare_step(tp, wl);
 		}
+
+		mutex_unlock(&tp->tp_mutex);
 
 		tp->tp_disp->tpd_class->control_sleep(tp);
 		tp->tp_time += tp->tp_quantum;
 	}
 
 THREAD_END:
-	mp_free(step);
 	tp_rele(tp, B_FALSE);
 	THREAD_FINISH(arg);
 }
 
-static void control_prepare_step(thread_pool_t* tp, workload_step_t* step) {
-	int ret = 0;
-	workload_t *wl;
-
-	wl = step->wls_workload;
+static void control_prepare_step(thread_pool_t* tp, workload_t* wl) {
+	workload_step_t* step;
+	workload_t* wl_chain = wl;
 
 	if(unlikely(!wl_is_started(wl))) {
 		return;
 	}
+
 	if(wl->wl_start_clock == TS_TIME_MAX) {
-		wl->wl_start_clock = tp->tp_time;
-		wl->wl_time = 0;
+		do {
+			wl_chain->wl_start_clock = tp->tp_time;
+			wl_chain->wl_time = 0;
+
+			wl_chain = wl_chain->wl_chain_next;
+		} while(wl_chain != NULL);
 	}
 	else {
-		wl->wl_time += tp->tp_quantum;
+		do {
+			wl_chain->wl_time += tp->tp_quantum;
+			wl_chain = wl_chain->wl_chain_next;
+		} while(wl_chain != NULL);
 	}
 
-	ret = wl_advance_step(step);
+	step = wl_advance_step(wl);
 
-	if(ret == -1) {
+	if(step == NULL) {
 		return;
 	}
 
@@ -133,7 +114,6 @@ static void control_prepare_step(thread_pool_t* tp, workload_step_t* step) {
 	}
 
 	if(wl->wl_type->wlt_run_request) {
-		/*FIXME: case if worker didn't started processing of requests for previous step yet */
 		tp_distribute_requests(step, tp);
 	}
 

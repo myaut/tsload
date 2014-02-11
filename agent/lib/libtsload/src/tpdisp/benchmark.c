@@ -105,8 +105,11 @@ void tpd_control_report_bench(thread_pool_t* tp) {
 
 	mutex_unlock(&bench->bench_mutex);
 
-	if(old_rq_list != NULL)
-		wl_rq_list_destroy(old_rq_list);
+	if(old_rq_list != NULL) {
+		/* FIXME: do not allocate rq_list each time */
+		wl_destroy_request_list(old_rq_list);
+		mp_free(old_rq_list);
+	}
 
 	wl_report_requests(rq_list);
 }

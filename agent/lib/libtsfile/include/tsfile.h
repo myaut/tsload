@@ -59,6 +59,8 @@ typedef struct tsfile_field {
 typedef struct tsfile_shdr {
 	uint16_t		entry_size;
 	uint16_t		count;
+	uint32_t		pad1;
+	uint64_t		pad2;
 } tsfile_shdr_t;
 
 typedef struct tsfile_schema {

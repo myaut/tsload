@@ -19,8 +19,6 @@
 
 #include <libjson.h>
 
-#include <steps.h>
-
 #define EWLHASHSIZE			8
 #define EWLHASHMASK			3
 #define ETPHASHSIZE			8
@@ -80,15 +78,19 @@
 #define EXPERIMENT_OPENLOG_EXISTS		-2
 #define EXPERIMENT_OPENLOG_ERROR		-3
 
+#define EXPERIMENT_FINISHED				2
 #define EXPERIMENT_NOT_CONFIGURED		1
 #define EXPERIMENT_OK					0
 #define EXPERIMENT_ERROR				-1
+#define EXPERIMENT_UNKNOWN				-2
 
-#define EXPERIMENT_LOG_FILE		"tsexperiment.log"
+#define EXPERIMENT_LOG_FILE		"tsexperiment.out"
 #define EXPERIMENT_FILENAME		"experiment.json"
 #define EXPERIMENT_FILENAME_OLD	"experiment.json.old"
 #define EXPID_FILENAME			"experiment.id"
 #define EXP_SCHEMA_SUFFIX		"schema.json"
+
+struct steps_generator;
 
 typedef struct exp_threadpool {
 	/* Config parameters */
@@ -118,15 +120,18 @@ typedef struct exp_workload {
 	JSONNODE* wl_params;
 
 	JSONNODE* wl_steps_cfg;
-	steps_generator_t* wl_steps;
+
+	/* Current parameters */
+	struct steps_generator* wl_steps;
 
 	boolean_t wl_is_chained;
 
-	/* Current parameters */
 	tsfile_schema_t* wl_file_schema;
 	tsfile_t* wl_file;
 	int wl_file_flags;
+	int wl_file_index;	/* Cached value for trace-based generator */
 
+	struct exp_workload* wl_chain_next;
 	struct exp_workload* wl_next;
 
 	int wl_status;		/* EXPERIMENT_OK etc. - not a wl_notify() status */
@@ -135,9 +140,10 @@ typedef struct exp_workload {
 /* No need to pack/pad this structure because we generate schema dynamically.  */
 typedef struct exp_request_entry {
 	uint32_t	rq_step;
-	uint32_t	rq_request;
-	uint32_t	rq_thread;
-	uint32_t	rq_user;
+	int32_t		rq_request;
+	int32_t 	rq_chain_request;
+	int32_t		rq_thread;
+	int32_t		rq_user;
 	int64_t		rq_sched_time;
 	int64_t		rq_start_time;
 	int64_t		rq_end_time;
@@ -182,6 +188,8 @@ typedef struct {
 
 	int exp_status;
 	int exp_error;
+
+	boolean_t exp_trace_mode;
 } experiment_t;
 
 experiment_t* experiment_load_root(const char* path);

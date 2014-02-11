@@ -134,7 +134,6 @@ void tse_show_normal(experiment_t* exp) {
 	}
 
 	agent = experiment_cfg_find(exp->exp_config, "agent", NULL);
-	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL);
 
 	TSE_SHOW_PARAM("%s", "name", exp->exp_name);
 	TSE_SHOW_PARAM("%s", "root", exp->exp_root);
@@ -142,13 +141,12 @@ void tse_show_normal(experiment_t* exp) {
 	TSE_SHOW_PARAM("%d", "runid", exp->exp_runid);
 
 	if(start_time != NULL) {
-		char str[32];
-		ts_time_t t = json_as_int(start_time);
-
-		tm_datetime_print(t, str, 32);
-
-		TSE_SHOW_PARAM("%s", "start_time", str);
+		char date[32];
+		tse_exp_print_start_time(exp, date, 32);
+		TSE_SHOW_PARAM("%s", "start_time", date);
 	}
+
+	TSE_SHOW_PARAM("%s", "status", tse_exp_get_status_str(exp));
 
 	if(agent != NULL) {
 		TSE_SHOW_JSON_PARAM_INT(agent, "agent_pid");

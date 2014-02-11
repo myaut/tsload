@@ -54,10 +54,12 @@ tsfile_schema_t* tsfile_schema_read(const char* filename) {
 	filesize = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	schema_str = mp_malloc(filesize);
+	schema_str = mp_malloc(filesize  + 1);
 	fread(schema_str, 1, filesize, file);
+	schema_str[filesize] = '\0';
 
 	fclose(file);
+
 
 	root = json_parse(schema_str);
 	mp_free(schema_str);

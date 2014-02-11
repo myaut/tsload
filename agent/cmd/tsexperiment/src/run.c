@@ -36,9 +36,9 @@ static thread_mutex_t	output_lock;
 boolean_t tse_run_batch_mode = B_FALSE;
 
 int tse_experiment_set(experiment_t* exp, const char* option);
-int tse_prepare_experiment(experiment_t* exp);
+int tse_prepare_experiment(experiment_t* exp, experiment_t* base);
 
-static int tse_run_fprintf(experiment_t* exp, const char* fmt, ...) {
+int tse_run_fprintf(experiment_t* exp, const char* fmt, ...) {
 	va_list va;
 	int ret;
 
@@ -48,14 +48,17 @@ static int tse_run_fprintf(experiment_t* exp, const char* fmt, ...) {
 		va_start(va, fmt);
 		ret = vfprintf(stderr, fmt, va);
 		va_end(va);
+
+		fflush(stderr);
 	}
 
-	va_start(va, fmt);
-	ret = vfprintf(exp->exp_log, fmt, va);
-	va_end(va);
+	if(exp->exp_log != NULL) {
+		va_start(va, fmt);
+		ret = vfprintf(exp->exp_log, fmt, va);
+		va_end(va);
 
-	fflush(stderr);
-	fflush(exp->exp_log);
+		fflush(exp->exp_log);
+	}
 
 	mutex_unlock(&output_lock);
 
@@ -88,16 +91,17 @@ static const char* tse_run_wl_status_msg(wl_status_t wls) {
  * ------------------------
  */
 
-struct exp_load_steps_context {
+struct exp_create_steps_context {
 	int error;
 	experiment_t* exp;
+	experiment_t* base;
 };
 
 /**
  * Reads steps file name from configuration for workload wl_name; opens
  * steps file or creates const generator. */
-int exp_steps_walk(hm_item_t* item, void* context) {
-	struct exp_load_steps_context* ctx = (struct exp_load_steps_context*) context;
+int exp_create_steps_walk(hm_item_t* item, void* context) {
+	struct exp_create_steps_context* ctx = (struct exp_create_steps_context*) context;
 	exp_workload_t* ewl = (exp_workload_t*) item;
 
 	JSONNODE_ITERATOR i_end, i_file, i_const_rqs, i_const_steps;
@@ -161,18 +165,33 @@ int exp_steps_walk(hm_item_t* item, void* context) {
 		}
 	}
 
-	ewl->wl_steps = sg;
+	if(ctx->exp->exp_trace_mode) {
+		ewl->wl_steps = step_create_trace(sg, ctx->base, ewl);
+
+		if(ewl->wl_steps == NULL) {
+			step_destroy(sg);
+
+			tse_run_fprintf(ctx->exp, "Couldn't create trace-driven step generator for workload '%s'\n",
+						    ewl->wl_name);
+			ctx->error = -2;
+			return HM_WALKER_STOP;
+		}
+	}
+	else {
+		ewl->wl_steps = sg;
+	}
 
 	return HM_WALKER_CONTINUE;
 }
 
-int experiment_load_steps(experiment_t* exp) {
-	struct exp_load_steps_context ctx;
+int experiment_create_steps(experiment_t* exp, experiment_t* base) {
+	struct exp_create_steps_context ctx;
 
 	ctx.error = 0;
 	ctx.exp = exp;
+	ctx.base = base;
 
-	hash_map_walk(exp->exp_workloads, &exp_steps_walk, &ctx);
+	hash_map_walk(exp->exp_workloads, &exp_create_steps_walk, &ctx);
 
 	return ctx.error;
 }
@@ -203,6 +222,13 @@ static void tse_run_report_request(request_t* rq) {
 	rqe->rq_queue_length = rq->rq_queue_len;
 
 	rqe->rq_flags = rq->rq_flags & RQF_FLAG_MASK;
+
+	if(rq->rq_chain_next != NULL) {
+		rqe->rq_chain_request = rq->rq_chain_next->rq_id;
+	}
+	else {
+		rqe->rq_chain_request = -1;
+	}
 
 	rqparams_start = sizeof(exp_request_entry_t);
 
@@ -329,22 +355,49 @@ int tse_run_wl_provide_step(exp_workload_t* ewl) {
 	unsigned num_rqs = 0;
 	long step_id = -1;
 	int status;
-	int ret;
+	int ret, err;
+
+	list_head_t trace_rqs;
 
 	if(ewl->wl_is_chained)
 		return STEP_NO_RQS;
 
-	ret = step_get_step(ewl->wl_steps, &step_id, &num_rqs);
+	if(ewl->wl_status == EXPERIMENT_NOT_CONFIGURED)
+		return STEP_ERROR;
+
+	list_head_init(&trace_rqs, "trace-rqs-%s", ewl->wl_name);
+	ret = step_get_step(ewl->wl_steps, &step_id, &num_rqs, &trace_rqs);
 
 	if(ret == STEP_ERROR) {
 		tse_run_fprintf(running,
-				        "Cannot process step %ld for workload '%s'\n", step_id, ewl->wl_name);
+				        "Couldn't process step %ld for workload '%s': steps failure\n", step_id, ewl->wl_name);
 		ewl->wl_status = EXPERIMENT_ERROR;
 		return ret;
 	}
 
-	if(ret == STEP_OK)
-		tsload_provide_step(ewl->wl_name, step_id, num_rqs, &status);
+	/* Do not check if we overflow queue because we provide steps
+	 * synchronously to TSLoad Core. But this code relies on logic of wl_provide_step
+	 * so still have to be careful. */
+
+	if(ret == STEP_OK) {
+		err = tsload_provide_step(ewl->wl_name, step_id, num_rqs, &trace_rqs, &status);
+
+		if(err != TSLOAD_OK) {
+			tse_run_fprintf(running,
+							"Couldn't provide step %ld for workload '%s': TSLoad core error\n", step_id, ewl->wl_name);
+
+			ewl->wl_status = EXPERIMENT_ERROR;
+			return STEP_ERROR;
+		}
+
+		if(status == WL_STEP_QUEUE_FULL) {
+			tse_run_fprintf(running,
+							"Couldn't provide step %ld for workload '%s': queue is full\n", step_id, ewl->wl_name);
+
+			ewl->wl_status = EXPERIMENT_ERROR;
+			return STEP_ERROR;
+		}
+	}
 
 	return ret;
 }
@@ -358,7 +411,7 @@ int tse_run_wl_start_walk(hm_item_t* item, void* context) {
 
 	mutex_lock(&running->exp_mutex);
 
-	for(step = 0; step < WLSTEPQSIZE; ++step) {
+	for(step = 0; step < (WLSTEPQSIZE - 1); ++step) {
 		ret = tse_run_wl_provide_step(ewl);
 
 		if(ret == STEP_ERROR) {
@@ -394,6 +447,8 @@ int tse_run_wl_unconfigure_walk(hm_item_t* item, void* context) {
 	if(ewl->wl_steps) {
 		step_destroy(ewl->wl_steps);
 	}
+
+	ewl->wl_status = EXPERIMENT_NOT_CONFIGURED;
 
 	return HM_WALKER_CONTINUE;
 }
@@ -464,16 +519,20 @@ void experiment_run(experiment_t* exp) {
 	tse_run_fprintf(exp, "\n=== CONFIGURING EXPERIMENT '%s' RUN #%d === \n", exp->exp_name, exp->exp_runid);
 
 	hash_map_walk(exp->exp_threadpools, tse_run_tp_configure_walk, NULL);
-	if(exp->exp_status != EXPERIMENT_OK) {
+	if(exp->exp_status != EXPERIMENT_NOT_CONFIGURED) {
 		tse_run_fprintf(exp, "Failure occured while spawning threadpools\n");
 		goto unconfigure;
 	}
 
 	hash_map_walk(exp->exp_workloads, tse_run_wl_configure_walk, NULL);
-	if(exp->exp_status != EXPERIMENT_OK) {
+	if(exp->exp_status != EXPERIMENT_NOT_CONFIGURED) {
 		tse_run_fprintf(exp, "Failure occured while configuring workloads\n");
 		goto unconfigure;
 	}
+
+	mutex_lock(&running_lock);
+	exp->exp_status = EXPERIMENT_OK;
+	mutex_unlock(&running_lock);
 
 	mutex_lock(&exp->exp_mutex);
 	while(exp->exp_wl_configuring_count > 0)
@@ -522,6 +581,10 @@ unconfigure:
 	mutex_lock(&running_lock);
 	running = NULL;
 	mutex_unlock(&running_lock);
+
+	if(exp->exp_status == EXPERIMENT_OK) {
+		exp->exp_status = EXPERIMENT_FINISHED;
+	}
 }
 
 int tse_run(experiment_t* root, int argc, char* argv[]) {
@@ -533,6 +596,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 
 	char exp_name[EXPNAMELEN];
 	boolean_t nflag = B_FALSE;
+	boolean_t trace_mode = B_FALSE;
 
 	experiment_t* base = NULL;
 	experiment_t* exp = NULL;
@@ -542,7 +606,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	exp_name[0] = '\0';
 
 	argi = optind;
-	while((c = plat_getopt(argc, argv, "bn:s:")) != -1) {
+	while((c = plat_getopt(argc, argv, "bTn:s:")) != -1) {
 		switch(c) {
 		case 'n':
 			strncpy(exp_name, optarg, EXPNAMELEN);
@@ -550,6 +614,9 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 			break;
 		case 'b':
 			tse_run_batch_mode = B_TRUE;
+			break;
+		case 'T':
+			trace_mode = B_TRUE;
 			break;
 		case 's':
 			/* There are no experiment config cause we will get it after read runid argument
@@ -565,6 +632,9 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	}
 
 	base = tse_shift_experiment_run(root, argc, argv);
+	if(base == NULL) {
+		base = root;
+	}
 
 	exp = experiment_create(root, base, (nflag)? exp_name : NULL);
 	if(exp == NULL) {
@@ -574,26 +644,37 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 		goto end_base;
 	}
 
+	exp->exp_trace_mode = trace_mode;
+
 	optind = argi;
-	while((c = plat_getopt(argc, argv, "bn:s:")) != -1) {
+	while((c = plat_getopt(argc, argv, "bTn:s:")) != -1) {
 		switch(c) {
 		case 'n':
 		case 'b':
+		case 'T':
 			break;
 		case 's':
-			err = tse_experiment_set(exp, optarg);
-			if(err != CMD_OK) {
-				fprintf(stderr, "Invalid set option: '%s'\n", optarg);
+			if(!exp->exp_trace_mode) {
+				err = tse_experiment_set(exp, optarg);
+				if(err != CMD_OK) {
+					fprintf(stderr, "Invalid set option: '%s'\n", optarg);
+					goto end;
+				}
+			}
+			else {
+				err = CMD_INVALID_OPT;
+				fprintf(stderr, "Altering experiment options is not allowed in trace mode\n");
 				goto end;
 			}
 			break;
 		case '?':
 			/* Shouldn't be here */
-			return CMD_INVALID_OPT;
+			err =  CMD_INVALID_OPT;
+			goto end;
 		}
 	}
 
-	ret = tse_prepare_experiment(exp);
+	ret = tse_prepare_experiment(exp, base);
 	if(ret != CMD_OK)
 		goto end;
 
@@ -627,7 +708,7 @@ end:
 	experiment_destroy(exp);
 
 end_base:
-	if(base != NULL)
+	if(base != root)
 		experiment_destroy(base);
 
 	return ret;
@@ -654,7 +735,7 @@ int tse_experiment_set(experiment_t* exp, const char* option) {
 	return CMD_OK;
 }
 
-int tse_prepare_experiment(experiment_t* exp) {
+int tse_prepare_experiment(experiment_t* exp, experiment_t* base) {
 	int err;
 
 	/* Add agent info and datetime here */
@@ -683,9 +764,28 @@ int tse_prepare_experiment(experiment_t* exp) {
 		return CMD_ERROR;
 	}
 
-	err = experiment_load_steps(exp);
+	if(exp->exp_trace_mode) {
+		if(base->exp_runid != EXPERIMENT_ROOT && base->exp_status != EXPERIMENT_FINISHED) {
+			fprintf(stderr, "Couldn't create trace-driven simulation based on unfinished run.\n");
+			return CMD_ERROR;
+		}
+
+		err = experiment_process_config(base);
+		if(err != EXP_CONFIG_OK) {
+			fprintf(stderr, "Couldn't process base experiment config. Error: %d\n", err);
+			return CMD_ERROR;
+		}
+
+		err = experiment_open_workloads(base, EXP_OPEN_RQPARAMS);
+		if(err != EXP_OPEN_OK) {
+			fprintf(stderr, "Couldn't read trace files. Error: %d\n", err);
+			return CMD_ERROR;
+		}
+	}
+
+	err = experiment_create_steps(exp, base);
 	if(err != 0) {
-		fprintf(stderr, "Couldn't load experiment steps. Error: %d\n", err);
+		fprintf(stderr, "Couldn't create experiment steps. Error: %d\n", err);
 		return CMD_ERROR;
 	}
 

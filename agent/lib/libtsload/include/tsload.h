@@ -12,6 +12,7 @@
 #include <list.h>
 #include <errcode.h>
 #include <hashmap.h>
+#include <workload.h>
 
 #include <tsinit.h>
 #include <tstime.h>
@@ -56,7 +57,11 @@ LIBEXPORT JSONNODE* tsload_get_hostinfo(void);
 
 LIBEXPORT int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name,
 		 	 	 	 	 	 	 	    const char* wl_chain_name, JSONNODE* rqsched_params, JSONNODE* wl_params);
-LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, int* pstatus);
+LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, list_head_t* trace_rqs,
+								  int* pstatus);
+LIBEXPORT int tsload_create_request(const char* wl_name, list_head_t* rq_list, boolean_t chained,
+	 	   	   	   	   	   	   	   	int rq_id, long step, int user_id, int thread_id,
+	 	   	   	   	   	   	   	   	ts_time_t sched_time, void* rq_params);
 LIBEXPORT int tsload_start_workload(const char* wl_name, ts_time_t start_time);
 LIBEXPORT int tsload_unconfigure_workload(const char* wl_name);
 

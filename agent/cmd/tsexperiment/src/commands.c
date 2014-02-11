@@ -97,6 +97,47 @@ experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[
 	return exp;
 }
 
+size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen) {
+	JSONNODE* start_time;
+	ts_time_t start_time_tm;
 
+	/* Get date */
+	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL);
+	if(start_time != NULL) {
+		start_time = json_as_int(start_time);
+		return tm_datetime_print(start_time_tm, date, buflen);
+	}
+
+	return strcpy(date, "???");
+}
+
+const char* tse_exp_get_status_str(experiment_t* exp) {
+	JSONNODE* status;
+	int status_code = EXPERIMENT_UNKNOWN;
+
+	if(exp->exp_status == EXPERIMENT_UNKNOWN) {
+		status = experiment_cfg_find(exp->exp_config, "status", NULL);
+		if(status != NULL) {
+			status_code = json_as_int(status);
+		}
+	}
+	else {
+		status_code = exp->exp_status;
+	}
+
+	switch(status_code) {
+		case EXPERIMENT_OK:
+			return "OK";
+		case EXPERIMENT_ERROR:
+			return "ERROR";
+			break;
+		case EXPERIMENT_FINISHED:
+			return "FINISHED";
+		case EXPERIMENT_NOT_CONFIGURED:
+			return "NOTCFG";
+	}
+
+	return "UNKNOWN";
+}
 
 

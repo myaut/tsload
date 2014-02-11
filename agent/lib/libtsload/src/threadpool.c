@@ -553,17 +553,16 @@ void tp_insert_request_initnodes(list_head_t* rq_list, list_node_t** p_prev_node
 }
 
 /**
- * Distribute requests across threadpool's workers
+ * Create requests instances according to step data or attach
+ * trace-based requests to threadpool request queue. Automatically sorts
+ * requests by its arrival time.
  *
- * I.e. we have to distribute 11 requests across 4 workers
- * First of all, it attaches 2 rqs (10 / 4 = 2 for integer division)
- * to each worker then distributes 3 rqs randomly
- *
- * @note Called with w_rq_mutex held for all workers*/
+ * Distribution across workers is actually done by threadpool dispatcher. */
 void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 	unsigned rq_count = step->wls_rq_count;
 
 	request_t* rq;
+	request_t* rq_chain;
 	request_t* prev_rq = NULL;
 	request_t* next_rq = NULL;
 
@@ -573,18 +572,29 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 
 	int tid;
 
-	if(step->wls_rq_count == 0)
-		return;
-
 	tp_insert_request_initnodes(rq_list, &prev_rq_node, &next_rq_node);
 
 	/* Create sorted list of requests */
-	while(rq_count != 0) {
-		rq = wl_create_request(step->wls_workload, NULL);
+	if(list_empty(&step->wls_trace_rqs)) {
+		while(rq_count != 0) {
+			rq = wl_create_request(step->wls_workload, NULL);
+			tp_insert_request(rq_list, &rq->rq_node, &prev_rq_node, &next_rq_node, rq_node);
+			--rq_count;
+		}
+	}
+	else {
+		list_for_each_entry_safe(request_t, rq, next_rq, &step->wls_trace_rqs, rq_node) {
+			list_del(&rq->rq_node);
 
-		tp_insert_request(rq_list, &rq->rq_node, &prev_rq_node, &next_rq_node, rq_node);
+			rq_chain = rq;
+			do {
+				wl_hold(rq_chain->rq_workload);
+				rq_chain = rq_chain->rq_chain_next;
+			} while(rq_chain != NULL);
 
-		--rq_count;
+			tp_insert_request(rq_list, &rq->rq_node, &prev_rq_node, &next_rq_node, rq_node);
+			++step->wls_rq_count;
+		}
 	}
 }
 

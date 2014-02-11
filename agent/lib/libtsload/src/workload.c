@@ -113,6 +113,8 @@ extern struct rqsched_class simple_rqsched_class;
  */
 workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	workload_t* wl = (workload_t*) mp_cache_alloc(&wl_cache);
+	workload_step_t* step;
+	int i;
 
 	if(wl == NULL)
 		return NULL;
@@ -125,6 +127,14 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_current_rq = 0;
 	wl->wl_current_step = -1;
 	wl->wl_last_step = -1;
+
+	for(i = 0; i < WLSTEPQSIZE; ++i) {
+		step = wl->wl_step_queue + i;
+
+		step->wls_workload = wl;
+		step->wls_rq_count = 0u;
+		list_head_init(&step->wls_trace_rqs, "wl-trace-%d", name);
+	}
 
 	wl->wl_hm_next = NULL;
 	wl->wl_chain_next = NULL;
@@ -166,6 +176,10 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
  *
  * */
 void wl_destroy_impl(workload_t* wl) {
+	int i;
+	request_t* rq;
+	request_t* rq_next;
+
 	if(wl->wl_rqsched_class)
 		wl->wl_rqsched_class->rqsched_fini(wl);
 
@@ -178,6 +192,10 @@ void wl_destroy_impl(workload_t* wl) {
 
 	if(wl->wl_chain_next) {
 		wl_rele(wl->wl_chain_next);
+	}
+
+	for(i = 0; i < WLSTEPQSIZE; ++i) {
+		wl_destroy_request_list(&(wl->wl_step_queue[i].wls_trace_rqs));
 	}
 
 	wl_notify(wl, WLS_DESTROYED, 0, "status flags: %d", wl->wl_status_flags);
@@ -222,9 +240,12 @@ void wl_rele(workload_t* wl) {
 		is_destroyed = WL_HAD_STATUS(wl, WLS_DESTROYED);
 		mutex_unlock(&wl->wl_status_mutex);
 
-		if(is_destroyed)
+		if(is_destroyed) {
 			wl_destroy_impl(wl);
+		}
 	}
+
+	assert(wl->wl_ref_count >= 0);
 }
 
 /**
@@ -406,16 +427,20 @@ int wl_is_started(workload_t* wl) {
  * @param wl workload
  * @param step_id step id to be provided
  * @param num_rqs number
+ * @param trace_rqs linked list of trace-based request
  *
  * @return 0 if steps are saved, -1 if incorrect step provided or wl_requests is full
  * */
-int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs) {
+int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t* trace_rqs) {
 	int ret = WL_STEP_OK;
 	long step_off = step_id & WLSTEPQMASK;
+	workload_step_t* step = wl->wl_step_queue + step_off;
 
 	mutex_lock(&wl->wl_rq_mutex);
 
-	if((wl->wl_last_step - wl->wl_current_step) == WLSTEPQSIZE) {
+	/* Reserve 1 slot for current step because it may be
+	 * still processing by control thread of threadpool */
+	if((wl->wl_last_step - wl->wl_current_step + 1) == WLSTEPQSIZE) {
 		ret = WL_STEP_QUEUE_FULL;
 		goto done;
 	}
@@ -426,7 +451,9 @@ int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs) {
 	}
 
 	wl->wl_last_step = step_id;
-	wl->wl_rqs_per_step[step_off] = num_rqs;
+
+	step->wls_rq_count = num_rqs;
+	list_splice_init(trace_rqs, list_head_node(&step->wls_trace_rqs));
 
 done:
 	mutex_unlock(&wl->wl_rq_mutex);
@@ -437,48 +464,40 @@ done:
 /**
  * Proceed to next step, and return number of requests in it
  *
- * @param step step, that contains workload. Number of requests is saved in \
- * 		wls_rq_count field of this parameter
+ * @param wl Workload to work with.
  *
- * @return 0 if operation successful or -1 if not steps on queue
+ * @return Workload's step or NULL of no steps are on queue
  * */
-int wl_advance_step(workload_step_t* step) {
-	int ret = 0;
+workload_step_t* wl_advance_step(workload_t* wl) {
 	long step_off;
+	workload_step_t* step = NULL;
 
-	workload_t* wl = NULL;
-
-	assert(step != NULL);
-
-	wl = step->wls_workload;
+	assert(wl != NULL);
 
 	mutex_lock(&wl->wl_rq_mutex);
 
-	wl->wl_current_step++;
+	++wl->wl_current_step;
 	wl->wl_current_rq = 0;
 
 	if(wl->wl_current_step > wl->wl_last_step) {
 		/* No steps on queue */
 		logmsg(LOG_INFO, "No steps on queue %s, step #%ld!", wl->wl_name, wl->wl_current_step);
-
-		ret = -1;
-
 		wl_finish(wl);
 
-		goto done;
+		goto end;
 	}
 
 	ETRC_PROBE1(tsload__workload, workload__step, workload_t*, wl);
 
 	step_off = wl->wl_current_step  & WLSTEPQMASK;
-	step->wls_rq_count = wl->wl_rqs_per_step[step_off];
+	step = wl->wl_step_queue + step_off;
 
 	wl->wl_rqsched_class->rqsched_step(step);
 
-done:
+end:
 	mutex_unlock(&wl->wl_rq_mutex);
 
-	return ret;
+	return step;
 }
 
 static void wl_init_request(workload_t* wl, request_t* rq) {
@@ -492,12 +511,19 @@ static void wl_init_request(workload_t* wl, request_t* rq) {
 	rq->rq_start_time = 0;
 	rq->rq_end_time = 0;
 
-	rq->rq_params = wlpgen_generate(wl);
-
 	rq->rq_queue_len = -1;
 
 	list_node_init(&rq->rq_node);
 	list_node_init(&rq->rq_w_node);
+}
+
+static void wl_link_request(workload_t* wl, request_t* rq) {
+	if(wl->wl_last_request != NULL) {
+		wl->wl_last_request->rq_wl_next = rq;
+	}
+
+	wl->wl_last_request = rq;
+	rq->rq_wl_next = NULL;
 }
 
 /**
@@ -526,6 +552,8 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 
 	wl_init_request(wl, rq);
 
+	rq->rq_params = wlpgen_generate(wl);
+
 	wl->wl_rqsched_class->rqsched_pre_request(rq);
 
 	if(wl->wl_chain_next != NULL) {
@@ -535,12 +563,7 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 		rq->rq_chain_next = NULL;
 	}
 
-	if(wl->wl_last_request != NULL) {
-		wl->wl_last_request->rq_wl_next = rq;
-	}
-
-	wl->wl_last_request = rq;
-	rq->rq_wl_next = NULL;
+	wl_link_request(wl, rq);
 
 	logmsg(LOG_TRACE, "Created request %s/%d step: %d sched_time: %lld", wl->wl_name,
 					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
@@ -563,6 +586,8 @@ request_t* wl_clone_request(request_t* origin) {
 
 	wl_init_request(wl, rq);
 
+	rq->rq_params = wlpgen_generate(wl);
+
 	if(origin->rq_chain_next != NULL) {
 		rq->rq_chain_next = wl_clone_request(origin->rq_chain_next);
 	}
@@ -570,15 +595,42 @@ request_t* wl_clone_request(request_t* origin) {
 		rq->rq_chain_next = NULL;
 	}
 
-	if(wl->wl_last_request != NULL) {
-		wl->wl_last_request->rq_wl_next = rq;
-	}
-
-	wl->wl_last_request = rq;
-	rq->rq_wl_next = NULL;
+	wl_link_request(wl, rq);
 
 	logmsg(LOG_TRACE, "Cloned request %s/%d step: %d sched_time: %lld", wl->wl_name,
 					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
+
+	return rq;
+}
+
+/**
+ * Create trace-based requests
+ */
+request_t* wl_create_request_trace(workload_t* wl, int rq_id, long step, int user_id, int thread_id,
+								   ts_time_t sched_time, void* rq_params) {
+	request_t* rq = (request_t*) mp_cache_alloc(&wl_rq_cache);
+
+	wl_init_request(wl, rq);
+
+	rq->rq_id = rq_id;
+	rq->rq_step = step;
+	rq->rq_user_id = user_id;
+	rq->rq_thread_id = thread_id;
+
+	rq->rq_sched_time = sched_time;
+
+	rq->rq_params = mp_malloc(wl->wl_type->wlt_rqparams_size);
+	memcpy(rq->rq_params, rq_params, wl->wl_type->wlt_rqparams_size);
+
+	/* Let upper layer do it's job of creating chain requests */
+	rq->rq_chain_next = NULL;
+
+	wl_link_request(wl, rq);
+
+	rq->rq_flags = RQF_TRACE;
+
+	logmsg(LOG_TRACE, "Created trace-based request %s/%d step: %d sched_time: %lld", wl->wl_name,
+			rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
 
 	return rq;
 }
@@ -627,7 +679,8 @@ void wl_run_request(request_t* rq) {
 
 	rq->rq_flags |= RQF_FINISHED;
 
-	wl->wl_rqsched_class->rqsched_post_request(rq);
+	if(!(rq->rq_flags & RQF_TRACE))
+		wl->wl_rqsched_class->rqsched_post_request(rq);
 
 	if(rq->rq_chain_next != NULL) {
 		rq->rq_chain_next->rq_sched_time = rq->rq_end_time;
@@ -640,8 +693,7 @@ void wl_report_requests(list_head_t* rq_list) {
 	squeue_push(&wl_requests, rq_list);
 }
 
-void wl_rq_list_destroy(void *p_rq_list) {
-	list_head_t* rq_list = (list_head_t*) p_rq_list;
+void wl_destroy_request_list(list_head_t* rq_list) {
 	request_t *rq_root, *rq, *rq_tmp, *rq_next;
 
 	list_for_each_entry_safe(request_t, rq_root, rq_tmp, rq_list, rq_node) {
@@ -652,8 +704,13 @@ void wl_rq_list_destroy(void *p_rq_list) {
 			rq = rq_next;
 		} while(rq != NULL);
 	}
+}
 
-	mp_free(p_rq_list);
+static void wl_rq_list_destroy(void* p_rq_list) {
+	list_head_t* rq_list = (list_head_t*) p_rq_list;
+
+	wl_destroy_request_list(rq_list);
+	mp_free(rq_list);
 }
 
 thread_result_t wl_requests_thread(thread_arg_t arg) {
@@ -717,12 +774,6 @@ workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const c
 
 	wlt = wl_type_search(wl_type);
 
-	if(rqsched_params == NULL) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-				         "Request scheduler parameters was not provided for workload '%s'", wl_name);
-		goto fail;
-	}
-
 	if(wl_params == NULL) {
 		tsload_error_msg(TSE_MESSAGE_FORMAT,
 				         "Workload / request parameters was not provided for workload '%s'", wl_name);
@@ -731,6 +782,12 @@ workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const c
 
 	if(tp_name) {
 		tp = tp_search(tp_name);
+
+		if(rqsched_params == NULL) {
+			tsload_error_msg(TSE_MESSAGE_FORMAT,
+					         "Request scheduler parameters was not provided for workload '%s'", wl_name);
+			goto fail;
+		}
 	}
 	else if(wl_chain_name) {
 		parent = wl_search(wl_chain_name);

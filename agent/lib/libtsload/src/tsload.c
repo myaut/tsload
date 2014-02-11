@@ -113,7 +113,7 @@ int tsload_configure_workload(const char* wl_name, const char* wl_type, const ch
 	return TSLOAD_OK;
 }
 
-int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, int* pstatus) {
+int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, list_head_t* trace_rqs, int* pstatus) {
 	workload_t* wl = wl_search(wl_name);
 	int ret;
 
@@ -122,7 +122,7 @@ int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, int
 		return TSLOAD_ERROR;
 	}
 
-	ret = wl_provide_step(wl, step_id, num_rqs);
+	ret = wl_provide_step(wl, step_id, num_rqs, trace_rqs);
 
 	switch(ret) {
 	case WL_STEP_INVALID:
@@ -135,16 +135,65 @@ int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, int
 	}
 }
 
+/**
+ * Create request and link it into rq_list
+ *
+ * If chained is B_TRUE, then it actually chains to last request in rq_list
+ *
+ * @note If error occurs, tsload_create_request() will empty rq_list
+ */
+int tsload_create_request(const char* wl_name, list_head_t* rq_list, boolean_t chained,
+		 	 	 	 	   int rq_id, long step, int user_id, int thread_id,
+						   ts_time_t sched_time, void* rq_params) {
+	workload_t* wl = wl_search(wl_name);
+	request_t* rq;
+	request_t* rq_parent;
+
+	if(wl == NULL) {
+		tsload_error_msg(TSE_INVALID_DATA, "Not found workload '%s'", wl_name);
+		return TSLOAD_ERROR;
+	}
+
+	if(chained && list_empty(rq_list)) {
+		tsload_error_msg(TSE_INVALID_DATA,
+						 "Couldn't chain request to empty rq_list for workload '%s'", wl_name);
+		return TSLOAD_ERROR;
+	}
+
+	rq = wl_create_request_trace(wl, rq_id, step, user_id, thread_id, sched_time, rq_params);
+
+	if(rq == NULL) {
+		/* Utilize previously created requests */
+		tsload_error_msg(TSE_INTERNAL_ERROR,
+						 "Failed to create trace based-request for workload '%s'", wl_name);
+		wl_destroy_request_list(rq_list);
+		return TSLOAD_ERROR;
+	}
+
+	if(chained) {
+		rq_parent = list_last_entry(request_t, rq_list, rq_node);
+		while(rq_parent->rq_chain_next != NULL) {
+			rq_parent = rq_parent->rq_chain_next;
+		}
+		rq_parent->rq_chain_next = rq;
+	}
+	else {
+		list_add_tail(&rq->rq_node, rq_list);
+	}
+
+	return TSLOAD_OK;
+}
+
 int tsload_start_workload(const char* wl_name, ts_time_t start_time) {
 	workload_t* wl = wl_search(wl_name);
 
 	if(wl == NULL) {
-		tsload_error_msg(TSE_INVALID_DATA, "Not found workload %s", wl_name);
+		tsload_error_msg(TSE_INVALID_DATA, "Not found workload '%s'", wl_name);
 		return TSLOAD_ERROR;
 	}
 
 	if(wl->wl_status != WLS_CONFIGURED) {
-		tsload_error_msg(TSE_INVALID_STATE, "Workload %s not in configured status", wl_name);
+		tsload_error_msg(TSE_INVALID_STATE, "Workload '%s' not in configured status", wl_name);
 		return TSLOAD_ERROR;
 	}
 

@@ -256,7 +256,7 @@ randvar_t* json_randvar_proc(JSONNODE* node, randgen_t* rg) {
 			int shape;
 
 			RANDVAR_GET_PARAM_VALUE(i_param, "rate", rate, json_as_float);
-			RANDVAR_GET_PARAM_VALUE(i_param, "shape", rate, json_as_int);
+			RANDVAR_GET_PARAM_VALUE(i_param, "shape", shape, json_as_int);
 
 			rv = rv_create(&rv_erlang_class, rg);
 			RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double);

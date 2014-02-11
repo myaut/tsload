@@ -18,6 +18,9 @@
 #define CMD_INVALID_ARG  	-5
 #define CMD_ERROR			-6
 
+size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen);
+const char* tse_exp_get_status_str(experiment_t* exp);
+
 int tse_do_command(const char* path, int argc, char* argv[]);
 
 experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[]);

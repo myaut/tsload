@@ -334,6 +334,8 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 	tsfile_backend_get(backend, 0, rq_count);
 
 	tsfile_backend_destroy(backend);
+
+	fprintf(stderr, "Exported workload '%s' to file %s\n", ewl->wl_name, path);
 }
 
 static void tse_add_option(list_head_t* options, const char* optarg) {

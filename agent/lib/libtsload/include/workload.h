@@ -33,7 +33,9 @@
 #define WLSTEPQSIZE	16
 #define WLSTEPQMASK	(WLSTEPQSIZE - 1)
 
-/* Request flags sibling of TSRequestFlag */
+/**
+ * Request flags.
+ * sibling of TSRequestFlag */
 #define RQF_STARTED		0x0001
 #define RQF_SUCCESS		0x0002
 #define RQF_ONTIME		0x0004
@@ -42,6 +44,7 @@
 /* Internal flags for TP dispatcher */
 #define RQF_DISPATCHED	0x0100
 #define RQF_DEQUEUED	0x0200
+#define RQF_TRACE		0x0400
 
 #define RQF_FLAG_MASK	0x00ff
 
@@ -76,9 +79,13 @@ typedef struct request {
 typedef struct workload_step {
 	struct workload* wls_workload;
 	unsigned wls_rq_count;
+	list_head_t wls_trace_rqs;
 } workload_step_t;
 
-/*Sibling to TSWorkloadStatusCode*/
+/**
+ * Workload state
+ *
+ * Sibling to TSWorkloadStatusCode*/
 typedef enum {
 	WLS_NEW = 0,
 	WLS_CHAINED = 1,
@@ -92,8 +99,11 @@ typedef enum {
 } wl_status_t;
 
 /**
+ * Workload primary structure
+ *
  * Workload FSM
  *
+ * ```
  * wl_create()  -> NEW / CHAINED
  *                      |
  * cfg_thread()	--> CONFIGURING
@@ -101,28 +111,52 @@ typedef enum {
  *                    /   \
  *                   /     \
  *             CONFIGURED CFG_FAIL
- *                 |
- *               STARTED
- *                 |
+ *                 |		 |
+ *               STARTED	 |
+ *                 |		 |
  *               RUNNING-----+
  *                 |         |
  *              FINISHED     |
  *                 |         |
  *              DESTROYED <--+
+ * ```
+ *
+ * @member wl_name 	Name of workload. Length limited to WLNAMELEN
+ * @member wl_type	Reference to workload type descriptor, provided by module
+ * @member wl_tp Reference to thread pool it was attached. May be set to NULL for chained workloads
+ * @member wl_params Vector of workload parameters
+ * @member wl_private Private field to keep module-specific data
+ * @member wl_cfg_thread Thread responsible for configuration
+ * @member wl_status Current workload state (see FSM above)
+ * @member wl_status_flags Bitmap that contains workload states it was passed. Use WL_HAD_FLAGS to check it
+ * @member wl_ref_count Reference counter. Workload is referenced by creator and requests			\
+ * 		Because after we unconfiguring workload there are requests that was not yet reported 		\
+ * 		and it is done by separate thread, we should wait for them.
+ * @member wl_current_rq Id of last created request
+ * @member wl_last_request Most newer request created for this workload
+ * @member wl_start_time Time when workload was scheduled to start
+ * @member wl_notify_time Timestamp when wl_notify was called. Used to reduce number of WLS_CONFIGURING messages
+ * @member wl_start_clock Clock when workload was run by threadpool. Used to normalize request times to	\
+ * 		start time of workload
+ * @member wl_time Current clock of workload: wl_start_clock + step * tp_quantum
+ * @member wl_current_step Current step of workload
+ * @member wl_last_step Last step id on queue
+ * @member wl_step_queue Queue that contains requests number of requests (or trace-based)
+ * @member wl_rqsched_class Workload request scheduler
+ * @member wl_rqsched_private Private data for request scheduler
  */
-
 typedef struct workload {
 	char 			 wl_name[WLNAMELEN];
 
 	wl_type_t*		 wl_type;
 
 	thread_pool_t*	 wl_tp;
-	void*			 wl_params;			/**< Provides pointer to parameters structure */
-	void*			 wl_private;		/**< Internal data keeped by module */
+	void*			 wl_params;
+	void*			 wl_private;
 
-	thread_t		 wl_cfg_thread;		/**< Thread responsible for configuration*/
+	thread_t		 wl_cfg_thread;
 
-	thread_mutex_t	 wl_status_mutex;	/**< Protects wl_status*/
+	thread_mutex_t	 wl_status_mutex;
 	wl_status_t 	 wl_status;
 	unsigned long	 wl_status_flags;
 
@@ -137,14 +171,14 @@ typedef struct workload {
 	ts_time_t		 wl_time;
 
 	/* Requests queue */
-	thread_mutex_t	 wl_rq_mutex;		/**< Mutex that protects wl_requests*/
-	long			 wl_current_step;	/**< Id of current step iteration*/
-	long			 wl_last_step;		/**< Latest defined step*/
-	unsigned		 wl_rqs_per_step[WLSTEPQSIZE];	/**< Contains number of requests per step*/
+	thread_mutex_t	 wl_rq_mutex;
+	long			 wl_current_step;
+	long			 wl_last_step;
+	workload_step_t  wl_step_queue[WLSTEPQSIZE];
 	/* End of requests queue*/
 
-	struct rqsched_class* wl_rqsched_class; /**< Dispatcher class*/
-	void* wl_rqsched_private;			 /**< Dispatcher data */
+	struct rqsched_class* wl_rqsched_class;
+	void* wl_rqsched_private;
 
 	struct workload* wl_hm_next;		/**< next in workload hashmap*/
 	struct workload* wl_chain_next;		/**< next in workload chain*/
@@ -172,17 +206,19 @@ LIBEXPORT void wl_config(workload_t* wl);
 LIBEXPORT void wl_unconfig(workload_t* wl);
 
 int wl_is_started(workload_t* wl);
-int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs);
-int wl_advance_step(workload_step_t* step);
+int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t* trace_rqs);
+workload_step_t* wl_advance_step(workload_t* wl);
 
 request_t* wl_create_request(workload_t* wl, request_t* parent);
 request_t* wl_clone_request(request_t* origin);
+request_t* wl_create_request_trace(workload_t* wl, int rq_id, long step, int user_id, int thread_id,
+								   ts_time_t sched_time, void* rq_params);
 
 void wl_run_request(request_t* rq);
 void wl_request_free(request_t* rq);
 void wl_report_requests(list_head_t* rq_list);
 
-void wl_rq_list_destroy(void *p_rq_list);
+void wl_destroy_request_list(list_head_t* rq_list);
 
 LIBEXPORT int wl_init(void);
 LIBEXPORT void wl_fini(void);

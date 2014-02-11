@@ -9,15 +9,22 @@
 #define STEPS_H_
 
 #include <defs.h>
+#include <list.h>
+
+#include <experiment.h>
+
 #include <stdio.h>
 
 #define STEP_OK			0
 #define STEP_NO_RQS		-1
 #define STEP_ERROR 		-2
 
+struct steps_generator;
+
 typedef enum {
 	STEPS_FILE,
-	STEPS_CONST
+	STEPS_CONST,
+	STEPS_TRACE
 } steps_generator_type_t;
 
 typedef struct steps_file {
@@ -35,6 +42,15 @@ typedef struct steps_const {
 	unsigned sc_num_requests;
 } steps_const_t;
 
+typedef struct steps_trace {
+	struct steps_generator* st_parent;
+
+	experiment_t* st_exp;
+	exp_workload_t* st_ewl;
+
+	list_head_t st_wl_chain;
+} steps_trace_t;
+
 typedef struct steps_generator {
 	steps_generator_type_t sg_type;
 
@@ -43,14 +59,17 @@ typedef struct steps_generator {
 	union {
 		steps_file_t sg_file;
 		steps_const_t sg_const;
+		steps_trace_t sg_trace;
 	};
 } steps_generator_t;
 
 steps_generator_t* step_create_file(const char* file_name, const char* out_file_name);
 steps_generator_t* step_create_const(long num_steps, unsigned num_requests);
+steps_generator_t* step_create_trace(steps_generator_t* parent, experiment_t* base, exp_workload_t* ewl);
 
-int step_get_step(steps_generator_t* sg, long* step_id, unsigned* p_num_rqs);
+int step_get_step(steps_generator_t* sg, long* step_id, unsigned* p_num_rqs, list_head_t* trace_rqs);
 
 void step_destroy(steps_generator_t* sg);
 
 #endif /* STEPS_H_ */
+

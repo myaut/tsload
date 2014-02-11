@@ -42,10 +42,11 @@ DECLARE_HASH_MAP_STRKEY(exp_workload_hash_map, exp_workload_t, EWLHASHSIZE, wl_n
 DECLARE_HASH_MAP_STRKEY(exp_tp_hash_map, exp_threadpool_t, ETPHASHSIZE, tp_name, tp_next, ETPHASHMASK);
 
 tsfile_schema_t request_schema = {
-	TSFILE_SCHEMA_HEADER(sizeof(exp_request_entry_t), 9),
+	TSFILE_SCHEMA_HEADER(sizeof(exp_request_entry_t), 10),
 	{
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_step, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_request, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_chain_request, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_thread, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_user, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_sched_time, TSFILE_FIELD_INT),
@@ -125,7 +126,10 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 
 	exp->exp_log = NULL;
 
-	exp->exp_status = EXPERIMENT_OK;
+	exp->exp_error = 0;
+	exp->exp_status = EXPERIMENT_NOT_CONFIGURED;
+
+	exp->exp_trace_mode = B_FALSE;
 }
 
 static exp_threadpool_t* exp_tp_create(const char* name) {
@@ -163,6 +167,7 @@ static exp_workload_t* exp_wl_create(const char* name) {
 	 ewl->wl_rqsched = NULL;
 	 ewl->wl_params = NULL;
 
+	 ewl->wl_chain_next = NULL;
 	 ewl->wl_next = NULL;
 
 	 ewl->wl_steps = NULL;
@@ -173,8 +178,9 @@ static exp_workload_t* exp_wl_create(const char* name) {
 	 ewl->wl_file_schema = NULL;
 	 ewl->wl_file = NULL;
 	 ewl->wl_file_flags = EXP_OPEN_NONE;
+	 ewl->wl_file_index = 0;
 
-	 ewl->wl_status = EXPERIMENT_NOT_CONFIGURED;
+	 ewl->wl_status = EXPERIMENT_UNKNOWN;
 
 	 return ewl;
 }
@@ -209,12 +215,28 @@ int exp_wl_destroy_walker(hm_item_t* obj, void* ctx) {
  */
 experiment_t* experiment_load_dir(const char* root_path, int runid, const char* dir) {
 	experiment_t* exp = mp_malloc(sizeof(experiment_t));
+	JSONNODE* status;
+	JSONNODE* name;
+	char* name_str;
 
 	experiment_init(exp, root_path, runid, dir);
 
 	if(experiment_read_config(exp) != EXP_LOAD_OK) {
 		mp_free(exp);
 		return NULL;
+	}
+
+	/* Fetch status & name if possibles */
+	status = experiment_cfg_find(exp->exp_config, "status", NULL);
+	if(status != NULL) {
+		exp->exp_status = json_as_int(status);
+	}
+
+	name = experiment_cfg_find(exp->exp_config, "name", NULL);
+	if(name != NULL) {
+		name_str = json_as_string(name);
+		strncpy(exp->exp_name, name_str, EXPNAMELEN);
+		json_free(name_str);
 	}
 
 	return exp;
@@ -294,7 +316,7 @@ static long experiment_generate_id(experiment_t* root) {
 	}
 	++runid;
 
-	if(runid != NULL) {
+	if(runid_file != NULL) {
 		runid_file = freopen(runid_path, "w", runid_file);
 	}
 	else {
@@ -349,10 +371,6 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 
 	snprintf(dir, PATHPARTMAXLEN, "%s-%ld", name, runid);
 
-	if(cfg_name != NULL) {
-		json_free(cfg_name);
-	}
-
 	exp = mp_malloc(sizeof(experiment_t));
 	experiment_init(exp, root->exp_root, runid, dir);
 
@@ -362,6 +380,10 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	exp->exp_config = json_copy(base->exp_config);
 
 	experiment_cfg_add(exp->exp_config, NULL, json_new_a("name", name), B_TRUE);
+
+	if(cfg_name != NULL) {
+		json_free(cfg_name);
+	}
 
 	return exp;
 }
@@ -959,6 +981,30 @@ static int exp_cfg_proc_walk_post(const char* name, JSONNODE* parent, JSONNODE* 
 	return EXP_WALK_CONTINUE;
 }
 
+int exp_wl_chain_walker(hm_item_t* obj, void* context) {
+	exp_workload_t* ewl = (exp_workload_t*) obj;
+	exp_workload_t* parent;
+	struct exp_config_context* ctx = (struct exp_config_context*) context;
+
+	if(ewl->wl_is_chained) {
+		parent = hash_map_find_nolock(ctx->exp->exp_workloads, ewl->wl_chain_name);
+
+		if(parent == NULL) {
+			ctx->error = EXP_CONFIG_NOT_FOUND;
+			return HM_WALKER_STOP;
+		}
+
+		if(parent->wl_chain_next != NULL) {
+			ctx->error = EXP_CONFIG_DUPLICATE;
+			return HM_WALKER_STOP;
+		}
+
+		parent->wl_chain_next = ewl;
+	}
+
+	return HM_WALKER_CONTINUE;
+}
+
 /**
  * Processes experiment config and fetches workloads and threadpools into
  * experiment object.
@@ -979,6 +1025,10 @@ int experiment_process_config(experiment_t* exp) {
 	exp->exp_threadpools = hash_map_create(&exp_tp_hash_map, "tp-%s", exp->exp_name);
 
 	experiment_cfg_walk(exp->exp_config, exp_cfg_proc_walk_pre, exp_cfg_proc_walk_post, &ctx);
+
+	if(ctx.error == EXP_CONFIG_OK) {
+		hash_map_walk(exp->exp_workloads, exp_wl_chain_walker, &ctx);
+	}
 
 	return ctx.error;
 }

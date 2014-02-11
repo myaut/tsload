@@ -204,13 +204,14 @@ done:
 }
 
 /**
- * Find object in hash map by key
+ * Find object in hash map by key without locking hashmap
+ * call it only from walker context!
  */
-void* hash_map_find(hashmap_t* hm, const hm_key_t* key) {
+void* hash_map_find_nolock(hashmap_t* hm, const hm_key_t* key) {
 	unsigned hash = hm->hm_hash_key(key);
-	hm_item_t* iter = hm->hm_heads[hash];
+	hm_item_t* iter;
 
-	mutex_lock(&hm->hm_mutex);
+	iter = hm->hm_heads[hash];
 
 	while(iter != NULL) {
 		if(hm->hm_compare(hm_get_key(hm, iter), key))
@@ -219,6 +220,17 @@ void* hash_map_find(hashmap_t* hm, const hm_key_t* key) {
 		iter =  hm_next(hm, iter);
 	}
 
+	return iter;
+}
+
+/**
+ * Find object in hash map by key
+ */
+void* hash_map_find(hashmap_t* hm, const hm_key_t* key) {
+	hm_item_t* iter;
+
+	mutex_lock(&hm->hm_mutex);
+	iter = hash_map_find_nolock(hm, key);
 	mutex_unlock(&hm->hm_mutex);
 
 	return iter;

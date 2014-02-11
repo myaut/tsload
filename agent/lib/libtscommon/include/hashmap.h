@@ -57,6 +57,7 @@ LIBEXPORT void hash_map_destroy(hashmap_t* hm);
 LIBEXPORT int  hash_map_insert(hashmap_t* hm, hm_item_t* object);
 LIBEXPORT int  hash_map_remove(hashmap_t* hm, hm_item_t* object);
 LIBEXPORT void* hash_map_find(hashmap_t* hm, const hm_key_t* key);
+LIBEXPORT void* hash_map_find_nolock(hashmap_t* hm, const hm_key_t* key);
 LIBEXPORT void* hash_map_walk(hashmap_t* hm, hm_walker_func func, void* arg);
 
 LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
