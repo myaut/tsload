@@ -9,6 +9,8 @@ from tsdoc import *
 from tsdoc.blocks import *
 from tsdoc.mdparser import MarkdownParser
 
+_TRACE_DOCS = []
+
 class TSDocProcessError(Exception):
     pass
 
@@ -72,7 +74,7 @@ class DocPage(object):
         where = self.gen_link_to(page)
         self.nav_links[nav_type] = NavLink(nav_type, page, where)
         
-    def gen_link_to(self, page):
+    def gen_link_to(self, page):        
         doc_dir = os.path.dirname(self.doc_path)
         return os.path.relpath(page.doc_path, doc_dir)
 
@@ -89,7 +91,7 @@ class MarkdownPage(DocPage):
         text = fp.read()
         fp.close()
         
-        parser = MarkdownParser(text)
+        parser = MarkdownParser(text, self.      page_path)
         self.blocks = parser.parse()
 
 class TSDocPage(DocPage):
@@ -284,13 +286,16 @@ class TSDocPage(DocPage):
         # They also is written on markdown, so parse them
         notes = doctext.get_notes(DocText.Note.TEXT)
         for note in notes:
-            parser = MarkdownParser(note.note)
+            parser = MarkdownParser(note.note, self.page_path)
+            
+            if self.name in _TRACE_DOCS:
+                parser.TRACE = True
             
             try:
                 blocks = parser.parse() 
                 block.extend(blocks)
             except MarkdownParser.ParseException as mpe:
-                print >> sys.stderr, str(mpe)
+                print >> sys.stderr, '%s/%s: %s' %(self.docspace, self.name, str(mpe))
                 # Print as is without Markdown
                 block.extend(note.note)
         
@@ -423,8 +428,9 @@ class IndexPage(MarkdownPage):
             
             self.reference = None
         
-        def process(self, pages):
+        def process(self, pages, docspaces):
             self.pages = pages
+            self.docspaces = docspaces
             
             # Collect links and references from all pages
             for page in self.pages.values():
@@ -438,16 +444,14 @@ class IndexPage(MarkdownPage):
             if self.gen_reference:
                 self._create_reference()
         
-        def generate(self, printer, index, joint = False):
+        def prepare(self, index):
             doc_dir = os.path.join(index.doc_dir, self.docspace)
             if not os.path.exists(doc_dir):
                 os.makedirs(doc_dir)
             
-            pages = self.pages.values()            
-            
             # Generate real paths 
             if self.is_external:
-                pages = pages + [self]
+                self.pages['__index__'] = self
             else:
                 # Main index file is real, so assume it's 
                 # doc_path, so gen_link_to will think that it is 
@@ -455,9 +459,12 @@ class IndexPage(MarkdownPage):
                 # and generate correct links
                 self.doc_path = index.doc_path
             
-            for page in pages:  
+            for page in self.pages.values():  
                 page.prep_print()
                 page.create_doc_path(index.doc_dir, index.doc_suffix)
+                
+        def generate(self, printer, index, joint = False):   
+            pages = self.pages.values()   
             
             if self.is_external:
                 self.add_nav_link(NavLink.HOME, index)
@@ -474,20 +481,25 @@ class IndexPage(MarkdownPage):
                 stream = file(page.doc_path, 'w')
                 printer.do_print(stream, self.header, page)
         
-        def _find_page(self, link):
-            docspace, name = link.where.split('/')
+        def find_page(self, link):
+            docspace_name, name = link.where.split('/')            
+            docspace = self
             
             # Cut anchor
             if '#' in name:
                 name = name[:name.rfind('#')]
             
-            if docspace != self.docspace:
-                print >> sys.stderr, 'WARNING: Invalid link "%s" in docspace "%s"' % (link.where,
-                                                                                      self.docspace)  
-                return None 
+            if docspace_name != self.docspace:                  
+                for docspace in self.docspaces:
+                    if docspace_name == docspace.docspace:
+                        break
+                else:
+                    print >> sys.stderr, 'WARNING: Invalid link "%s" in docspace "%s"' % (link.where,
+                                                                                          self.docspace)
+                    return None 
             
             try:
-                return self.pages[name]
+                return docspace.pages[name]
             except KeyError:
                 print >> sys.stderr, 'WARNING: Link "%s" not found in docspace "%s"' % (link.where,
                                                                                         self.docspace)  
@@ -515,17 +527,17 @@ class IndexPage(MarkdownPage):
             for (prev, cur, next) in zip([None] + index_links[:-1],
                                          index_links, 
                                          index_links[1:] + [None]):
-                cur_page = self._find_page(cur[1])
+                cur_page = self.find_page(cur[1])
                 
                 if cur_page is None:
                     continue
                 
                 if prev is not None:
-                    prev_page = self._find_page(prev[1])
+                    prev_page = self.find_page(prev[1])
                     if prev_page is not None:
                         cur_page.add_nav_link(NavLink.PREV, prev_page)
                 if next is not None:
-                    next_page = self._find_page(next[1])
+                    next_page = self.find_page(next[1])
                     if next_page is not None:
                         cur_page.add_nav_link(NavLink.NEXT, next_page)
                 
@@ -544,14 +556,15 @@ class IndexPage(MarkdownPage):
                 self.reference.add_nav_link(NavLink.HOME, index)
         
         def _xref(self):
-            for (_, link) in self.links:
+            for (refpage, link) in self.links:
                 if link.type != Link.INTERNAL:
                     continue
                 
-                page = self._find_page(link)
+                page = self.find_page(link)
                 
                 if page is None:
                     link.type = Link.INVALID
+                    print >> sys.stderr, 'WARNING: Not found page for link "%s"' % link
                     continue
                 
                 if not page.header and link.text:
@@ -566,7 +579,7 @@ class IndexPage(MarkdownPage):
                     anchor = ''
                 
                 link.type = Link.EXTERNAL
-                link.where = self.gen_link_to(page) + anchor
+                link.where = refpage.gen_link_to(page) + anchor
                 
         
         def _create_reference(self):
@@ -603,6 +616,9 @@ class IndexPage(MarkdownPage):
         self.doc_suffix = doc_suffix
         
         self.create_doc_path(doc_dir, doc_suffix)
+        
+        for docspace in self.docspaces:
+            docspace.prepare(self)
         
         for docspace in self.docspaces:
             docspace.generate(printer, self)     
@@ -700,4 +716,4 @@ class IndexPage(MarkdownPage):
         # 2nd pass - cross reference pages and links
         for docspace_index in self.docspaces:
             docspace_name = docspace_index.docspace
-            docspace_index.process(self.pages[docspace_name])
+            docspace_index.process(self.pages[docspace_name], self.docspaces)

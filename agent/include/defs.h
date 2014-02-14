@@ -127,6 +127,14 @@ STATIC_INLINE double round(double val)
 # 	include <inttypes.h>
 #endif
 
+#ifndef HAVE_DECL_VA_COPY
+#ifdef _MSC_VER
+#define va_copy(dst, src) (dst = src)
+#else
+#	error "Don't have va_copy() on your platform"
+#endif
+#endif
+
 /* Hint to TSDOC that function is not documentable */
 #define TSDOC_HIDDEN
 

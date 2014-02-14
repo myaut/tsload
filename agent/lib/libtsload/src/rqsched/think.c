@@ -16,7 +16,7 @@
 #include <math.h>
 
 /**
- * Think-time based request scheduler
+ * #### Think-time based request scheduler
  *  */
 
 extern void rqsched_pre_request_iat(request_t* rq);
@@ -43,16 +43,23 @@ void rqsched_pre_request_think(request_t* rq) {
 void rqsched_post_request_think(request_t* rq) {
 	ts_time_t rq_time = tm_diff(rq->rq_start_time, rq->rq_end_time);
 	thread_pool_t* tp = rq->rq_workload->wl_tp;
-	request_t* next_rq = rq->rq_wl_next;
+	workload_t* wl = rq->rq_workload;
+	request_t* next_rq = NULL;
 
-	while(next_rq != NULL) {
-		if(next_rq->rq_user_id == rq->rq_user_id) {
-			next_rq->rq_sched_time += rq_time;
-			tp->tp_disp->tpd_class->relink_request(tp, next_rq);
+	mutex_lock(&wl->wl_rq_mutex);
+
+	if(!list_is_last(&rq->rq_wl_node, &wl->wl_requests)) {
+		next_rq = list_next_entry(request_t, rq, rq_wl_node);
+
+		list_for_each_entry_continue(request_t, next_rq, &wl->wl_requests, rq_wl_node) {
+			if(next_rq->rq_user_id == rq->rq_user_id) {
+				next_rq->rq_sched_time += rq_time;
+				tp->tp_disp->tpd_class->relink_request(tp, next_rq);
+			}
 		}
-
-		next_rq = next_rq->rq_wl_next;
 	}
+
+	mutex_unlock(&wl->wl_rq_mutex);
 }
 
 rqsched_class_t think_rqsched_class = {

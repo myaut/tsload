@@ -67,6 +67,9 @@ static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func
 	return NULL;
 }
 
+/**
+ * Walk over workload types registered within TSLoad
+ */
 void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
 	return tsload_walkie_talkie(op, arg, walker, &wl_type_hash_map, json_wl_type_format);
 }
@@ -94,6 +97,18 @@ JSONNODE* tsload_get_hostinfo(void) {
 	return node;
 }
 
+/**
+ * Create and configure new workload
+ *
+ * @param wl_name name of workload
+ * @param wl_type name of workload type
+ * @param tp_name name of threadpool where workload would be attached. For chained workloads \
+ * 			should be NULL
+ * @param deadline deadline for request execution
+ * @param wl_chain_params parameters of chaining in [experiment.json][ref/experiment_json] format
+ * @param rqsched_params parameters of request scheduler in [experiment.json][ref/experiment_json] format
+ * @param wl_params workload and request param configuration
+ */
 int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
 							  JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params) {
 	workload_t* wl;
@@ -115,6 +130,17 @@ int tsload_configure_workload(const char* wl_name, const char* wl_type, const ch
 	return TSLOAD_OK;
 }
 
+/**
+ * Provide step for workload
+ *
+ * @param wl_name name of workload
+ * @param step_id id of step. This argument is used to control that no tsload_provide_step calls was missed
+ * @param num_rqs number of request that should be generated
+ * @param trace_rqs queue of requests that created earlier from trace through tsload_create_request(). \
+ * 	 If this list not empty, than TSLoad would generate num_rqs requests
+ * @param pstatus output field that set to WL_STEP_QUEUE_FULL if function returns TSLOAD_OK, but queue of \
+ * 	 workload requests is overrun.
+ */
 int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, list_head_t* trace_rqs, int* pstatus) {
 	workload_t* wl = wl_search(wl_name);
 	int ret;
@@ -143,9 +169,20 @@ int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, lis
 }
 
 /**
- * Create request and link it into rq_list
+ * Create request and link it into rq_list to create trace-driven workloads
  *
- * If chained is B_TRUE, then it actually chains to last request in rq_list
+ * If chained is set B_TRUE, then it actually chains to last request in rq_list
+ *
+ * @param wl_name name of workload
+ * @param rq_list linked list where new request should be put
+ * @param chained is request chained?
+ * @param rq_id id of request
+ * @param step id of step. Not neccessary be current/next step of workload
+ * @param user_id Id of user for user threadpool dispatcher
+ * @param thread_id Id of thread for trace threadpool dispatcher
+ * @param sched_time Scheduled time of request execution
+ * @param rq_params Vector of request params (copied inside this function, so \
+ * 		it could be safely deallocated after call)
  *
  * @note If error occurs, tsload_create_request() will empty rq_list
  */
@@ -191,6 +228,12 @@ int tsload_create_request(const char* wl_name, list_head_t* rq_list, boolean_t c
 	return TSLOAD_OK;
 }
 
+/**
+ * Schedule workload to start
+ *
+ * @param wl_name name of workload
+ * @param start_time scheduled start time
+ */
 int tsload_start_workload(const char* wl_name, ts_time_t start_time) {
 	workload_t* wl = wl_search(wl_name);
 
@@ -208,6 +251,13 @@ int tsload_start_workload(const char* wl_name, ts_time_t start_time) {
 	return TSLOAD_OK;
 }
 
+/**
+ * Unconfigure workload. Couldn't be called for workload that
+ * currenly have "WLS_CONFIGURING" state because we couldn't interrupt
+ * module routine
+ *
+ * @param wl_name name of workload
+ */
 int tsload_unconfigure_workload(const char* wl_name) {
 	workload_t* wl = wl_search(wl_name);
 
@@ -226,6 +276,15 @@ int tsload_unconfigure_workload(const char* wl_name) {
 	return TSLOAD_OK;
 }
 
+/**
+ * Create threadpool
+ *
+ * @param tp_name name of threadpool
+ * @param num_threads number of threads inside threadpool
+ * @param quantum threadpool's quantum
+ * @param discard if set to B_TRUE, threadpool will discard requests that missed their step
+ * @param disp parameters of threadpool dispatcher according to [experiment.json][ref/experiment_json] format
+ */
 int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,
 							 boolean_t discard, JSONNODE* disp) {
 	thread_pool_t* tp = NULL;
@@ -271,6 +330,12 @@ int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_
 	return TSLOAD_OK;
 }
 
+/**
+ * Set threadpool scheduler options
+ *
+ * @param tp_name name of threadpool
+ * @param sched scheduling parameters according to [experiment.json][ref/experiment_json] format
+ */
 int tsload_schedule_threadpool(const char* tp_name, JSONNODE* sched) {
 	thread_pool_t* tp = tp_search(tp_name);
 	int ret;
@@ -311,6 +376,14 @@ int tsload_destroy_threadpool(const char* tp_name) {
 	return TSLOAD_OK;
 }
 
+/**
+ * Initialize TSLoad engine
+ *
+ * @param pre_subsys array of subsystems that should be initialized before libtsload subsystems
+ * @param pre_count count of elements in pre_subsys
+ * @param post_subsys array of subsystems that initialized after libtsload
+ * @param post_count count of elements in post_subsys
+ */
 int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,
 				struct subsystem* post_subsys, unsigned post_count) {
 	struct subsystem** subsys_list = NULL;

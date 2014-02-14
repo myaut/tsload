@@ -47,6 +47,12 @@ struct wlt_class_name {
 
 #define WL_CLASS_NUM		10
 
+/**
+ * Register TSLoad workload type (called in mod_config)
+ *
+ * @param mod module descriptor
+ * @param wlt workload type descriptor
+ */
 int wl_type_register(module_t* mod, wl_type_t* wlt) {
 	wlt->wlt_module = mod;
 	wlt->wlt_next = NULL;
@@ -54,6 +60,12 @@ int wl_type_register(module_t* mod, wl_type_t* wlt) {
 	return hash_map_insert(&wl_type_hash_map, wlt);
 }
 
+/**
+ * Unregister TSLoad workload type (called in mod_unconfig)
+ *
+ * @param mod module descriptor
+ * @param wlt workload type descriptor
+ */
 int wl_type_unregister(module_t* mod, wl_type_t* wlt) {
 	return hash_map_remove(&wl_type_hash_map, wlt);
 }

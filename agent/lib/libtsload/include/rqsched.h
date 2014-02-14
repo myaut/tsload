@@ -17,6 +17,10 @@
 
 #define RQSCHED_NAME(name)		SM_INIT(.rqsched_name, name)
 
+/**
+ * @module Request schedulers
+ */
+
 typedef struct rqsched_class {
 	char rqsched_name[RQSCHEDNAMELEN];
 

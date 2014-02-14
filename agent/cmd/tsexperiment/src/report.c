@@ -38,6 +38,7 @@ struct report_time_stats {
 struct report_stats {
 	char step_name[8];
 	int start_idx;
+	int start_rq_idx;
 
 	int ontime;
 	int onstep;
@@ -113,18 +114,18 @@ int tse_report_workload_walk(hm_item_t* obj, void* context) {
 
 void tse_report_statistics(double* times, int from, int to, struct report_time_stats* stats) {
 	int idx;
-	double total = 0.0;
 	double mean = 0.0;
 	double var = 0.0;
 
 	for(idx = from; idx < to; ++idx) {
-		total += times[idx];
+		mean += times[idx];
 	}
-	mean = total / (double) (to - from);
+	mean = mean / (double) (to - from);
 
 	for(idx = from; idx < to; ++idx) {
 		var += pow(times[idx] - mean, 2);
 	}
+	var = var / (double) (to - from);
 
 	stats->mean = mean;
 	stats->stddev = sqrt(var);
@@ -136,7 +137,7 @@ void tse_report_step(struct report_stats* stats, double* wait_times, double* exe
 	tse_report_statistics(exec_times, stats->start_idx, idx, &stats->exec);
 
 	printf("%-8s %-6d %-6d %-6d %-8d %-10.3f %-10.3f %-10.3f %-10.3f\n",
-			stats->step_name, rq_idx - stats->start_idx, stats->ontime, stats->onstep, stats->discard,
+			stats->step_name, rq_idx - stats->start_rq_idx, stats->ontime, stats->onstep, stats->discard,
 			stats->wait.mean, stats->wait.stddev, stats->exec.mean, stats->exec.stddev);
 }
 
@@ -194,12 +195,13 @@ void tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 		tsfile_get_entries(ewl->wl_file, entry, rq_idx, rq_idx + 1);
 
 		if(rqe->rq_step > step) {
-			if(step > 0 && idx > step_stats.start_idx) {
+			if(step >= 0 && rq_idx > step_stats.start_rq_idx) {
 				tse_report_step(&step_stats, wait_times, exec_times, idx, rq_idx);
 			}
 
 			/* Save values at the beginning of step */
 			memset(&step_stats, 0, sizeof(struct report_stats));
+			step_stats.start_rq_idx = rq_idx;
 			step_stats.start_idx = idx;
 			step = rqe->rq_step;
 			snprintf(step_stats.step_name, 8, "%ld", step);

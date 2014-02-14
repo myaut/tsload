@@ -447,7 +447,7 @@ void step_trace_insert_rq(step_request_trace_t* strq, step_workload_trace_t* stw
 
 		list_for_each_entry_continue_reverse(step_request_trace_t, prev, &stwl->requests, node) {
 			if(prev->rqe->rq_request < strq->rqe->rq_request) {
-				list_insert(&strq->node, &prev->node);
+				list_insert_front(&strq->node, &prev->node);
 				return;
 			}
 		}

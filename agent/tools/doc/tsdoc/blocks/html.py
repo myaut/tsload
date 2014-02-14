@@ -5,6 +5,8 @@ from StringIO import StringIO
 from tsdoc.blocks import *
 
 class HTMLPrinter:
+    TAB_STOPS = 4
+    
     NAV_HOME_TEXT = 'Home'
     
     NAV_LINKS = [(NavLink.PREV, 'pull-left', 'Prev'),
@@ -66,13 +68,38 @@ class HTMLPrinter:
         
         return nav_home + '\n'.join(nav_links) 
     
+    def _fix_tab_stops(self, text):
+        lines = []
+        for line in text.split('\n'):
+            start_idx = idx = 0
+            new_line = ''
+            
+            while idx != -1:
+                idx = line.find('\t', start_idx)
+                if idx > 0:
+                    if line[idx - 1] == '\t':
+                        count = HTMLPrinter.TAB_STOPS
+                    else:
+                        count = HTMLPrinter.TAB_STOPS - idx % HTMLPrinter.TAB_STOPS
+                    new_line += line[start_idx:idx] + " " * count
+                    start_idx = idx + 1
+                else:
+                    break
+                
+            new_line += line[start_idx:]
+            lines.append(new_line)
+        
+        return '\n'.join(lines)
+    
     def _html_filter(self, block, s):
         if isinstance(block, Code):
-            return s
+            s = self._fix_tab_stops(s)
         
         s = s.replace('<', '&lt;')
         s = s.replace('>', '&gt;')
-        s = s.replace('\n', '<br />')
+        
+        if not isinstance(block, Code):
+            s = s.replace('\n', '<br />')
         
         return s
     
@@ -81,18 +108,36 @@ class HTMLPrinter:
         in_code = False
         
         if isinstance(block, Paragraph):
-            block_tags.append('p')
+            block_tags.append(('p', None))
         if isinstance(block, Code):
-            block_tags.append('pre')
+            block_tags.append(('pre', None))
             in_code = True
         elif isinstance(block, ListEntry):
-            block_tags.append('li')
+            block_tags.append(('li', None))
         elif isinstance(block, ListBlock):
-            block_tags.append('ul')
+            block_tags.append(('ul', None))
+        elif isinstance(block, Table):
+            block_tags.append(('table', 'class="table"'))
+        elif isinstance(block, TableRow):
+            block_tags.append(('tr', None))
+        elif isinstance(block, TableCell):
+            if block.colspan > 1:
+                attrs = 'colspan="%d"' % block.colspan
+            elif block.rowspan > 1:
+                attrs = 'rowspan="%d"' % block.rowspan
+            else:
+                attrs = None
+            
+            block_tags.append(('td', attrs))
+        elif isinstance(block, BlockQuote):
+             block_tags.append(('blockquote', None))
         
-        for tag in block_tags:
+        for tag, attrs in block_tags:
             self.stream.write(' ' * indent)
-            self.stream.write('<%s>\n' % tag)
+            if attrs:
+                self.stream.write('<%s %s>\n' % (tag, attrs))
+            else:
+                self.stream.write('<%s>\n' % (tag))
         
         text = ''
         list_stack = []
@@ -134,11 +179,13 @@ class HTMLPrinter:
                     if attr_str:
                         attr_str = ' ' + attr_str
                         
-                    text = '<%s%s>' % (tag, attr_str) + text + '</%s>\n' % (tag)                
+                    text = '<%s%s>' % (tag, attr_str) + text + '</%s>' % (tag)                
                 
-                if not in_code:
-                    self.stream.write('\n' + ' ' * indent)
+                text = text.replace('\t', ' ' * HTMLPrinter.TAB_STOPS)
+                
+                # if not in_code:
+                #    self.stream.write('\n' + ' ' * indent)
                 self.stream.write(text)
         
-        for tag in reversed(block_tags):
+        for (tag, attrs) in reversed(block_tags):
             self.stream.write('</%s>\n' % tag)

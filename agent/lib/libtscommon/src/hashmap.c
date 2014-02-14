@@ -172,7 +172,9 @@ int hash_map_remove(hashmap_t* hm, hm_item_t* object) {
 
 	mutex_lock(&hm->hm_mutex);
 
-	assert(*head != NULL);
+	if(*head == NULL) {
+		return HASH_MAP_NOT_FOUND;
+	}
 
 	if(*head == object) {
 		iter = hm_next(hm, *head);

@@ -455,10 +455,17 @@ class CommentParser(MultiLineParser):
             
             # Handle directive
             if line.startswith('@'):
-                directive, line = line.split(None, 1)
+                try:
+                    directive, line = line.split(None, 1)
+                except ValueError:
+                    continue
                 if directive in param_directives:
                     type = param_directives[directive]
-                    name, description = line.split(None, 1)
+                    try:
+                        name, description = line.split(None, 1)
+                    except ValueError:
+                        name = line
+                        description = ''
                     doctext.add_param(type, name, description)
                 elif directive in note_directives:
                     type = note_directives[directive]
@@ -524,15 +531,22 @@ class ComplexTypeParser(MultiLineParser):
         self.type_name = ''
     
     def is_last_line(self, line):   
+        if not self.first_brace and line.strip().endswith(';'):
+            return True;
+        
         self.braces_count += line.count('{') - line.count('}')
         if self.braces_count > 0:
             self.first_brace = True
         
         return (self.first_brace and self.braces_count == 0) 
 
-    def multiline_parse(self):
+    def multiline_parse(self):        
         typedef = ''.join(self.lines)
         typedef = filter_comments(typedef)
+        
+        # Forward declaration
+        if '{' not in typedef:
+            return None
         
         return self._parse_complex(typedef)
             
@@ -635,12 +649,14 @@ class ComplexTypeParser(MultiLineParser):
         scidx2 = members.find('{', scidx1) + 1
         braces = 1
         
+        print >> sys.stderr, members
+        
         while braces > 0:
             lbidx = members.find('{', scidx2) + 1
             rbidx = members.find('}', scidx2) + 1
             
-            if rbidx == -1:
-                raise TSDocDefinitionError(self, 'Unfinished curly braces')
+            if rbidx == 0:
+                raise TSDocParserError(self, 'Unfinished curly braces')
             
             if lbidx > 0 and lbidx < rbidx:
                 braces += 1
@@ -676,7 +692,7 @@ class PreprocDefineParser(MultiLineParser):
                 break
             nameidx += 1
         else:
-            raise TSDocDefinitionError(self, "Invalid preprocessor define '%s'" % proto)
+            raise TSDocParserError(self, "Invalid preprocessor define '%s'" % proto)
         
         # Find end of name and macro prototype definition
         nameend = None
@@ -795,11 +811,11 @@ class DefinitionGroupParser:
                 line1 = line[1:].strip()
                 if line1.startswith('define'):
                     def_parser = PreprocDefineParser(DEF.DEFINE, source, lineno)
-            elif 'struct' in line:
+            elif self._kw_in_line(line, 'struct'):
                 def_parser = ComplexTypeParser(DEF.STRUCT, source, lineno)
-            elif 'union' in line:
+            elif self._kw_in_line(line, 'union'):
                 def_parser = ComplexTypeParser(DEF.UNION, source, lineno)
-            elif 'enum' in line:
+            elif self._kw_in_line(line, 'enum'):
                 def_parser = ComplexTypeParser(DEF.ENUM, source, lineno)
             elif 'typedef' in line:
                 def_parser = TypeDefParser(DEF.TYPEDEF, source, lineno)
@@ -815,6 +831,16 @@ class DefinitionGroupParser:
         
         self.def_parser = def_parser
         return def_parser is None
+    
+    def _kw_in_line(self, line, kw):
+        # There is a possibility that struct keyword would
+        # go in arguments - so ensure that no commas was inside line        
+        if kw in line:
+            prefix = line[:line.index(kw)]
+            if '(' in prefix or ',' in prefix:
+                return False
+            return True 
+        return False
     
     def _add_defobj(self, def_parser):
         defobj = def_parser.parse()
@@ -902,10 +928,10 @@ class SourceParser:
                     my_names = my_group.get_names()
                     if my_names & names:
                         if my_group.have_doctext():
+                            my_group.merge(group)
+                        else:
                             new_group = my_group.split(names)
                             new_group.merge(group)
-                        else:
-                            my_group.merge(group)
                         break
                 else:
                     self.groups.append(group)

@@ -67,8 +67,7 @@ void test_hm_insert_collision() {
 	struct test bppke = TEST("bppke", 100);
 
 	assert(hash_map_insert(&test_hash_map, &bppke) == HASH_MAP_OK);
-
-	hash_map_remove(&test_hash_map, &bppke);
+	assert(hash_map_remove(&test_hash_map, &bppke) == HASH_MAP_OK);
 }
 
 /**

@@ -6,6 +6,32 @@
 
 struct tp_disp;
 
+/**
+ * @module ThreadPool Dispatchers
+ *
+ * ThreadPool dispatcher is set of hooks that simulate request arrivals,
+ * distributes requests between workers and reports finished requests.
+ *
+ * Hooks (see `tp_disp_class`):
+ *  * preinit - actually called by json_tp_disp_proc factory to set params
+ * 	* init/destroy - initialize/destroy private tpd data
+ * 	* control_report - called when control thread wants to report data
+ * 	  When discard policy is set, should clear worker queues and report
+ * 	  all requests to reporter thread. If not, should split request list into
+ * 	  two and report only finished requests.
+ *  * control_sleep - called when control thread finished generating requests
+ *    May simulate request arrivals
+ *  * worker_pick - called when worker wants to pick next request from queue
+ *  * worker_done - called when worker finished executing request
+ *  * worker_finish - special hook for tp_destroy() code. If dispatcher uses
+ *    external cv's, should wakeup worker because threadpool is dying.
+ *  * relink_request is called when request's rq_sched_time changes and it should
+ *    be again linked to maintain queue sorted.
+ */
+
+/**
+ * ThreadPool dispatcher error code
+ */
 #define TPD_OK				0
 #define TPD_ERROR			-1
 

@@ -9,7 +9,7 @@
 #define RANDGEN_H_
 
 /**
- * @name Random generators and variators
+ * @module Random generators and variators
  *
  * API for creating random generators and variators
  */

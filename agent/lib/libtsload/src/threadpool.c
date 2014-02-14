@@ -291,16 +291,17 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 
 	assert(list_empty(&tp->tp_wl_head));
 
+	tp->tp_discard = B_TRUE;
+	tp->tp_disp->tpd_class->control_report(tp);
+	tpd_destroy(tp->tp_disp);
+
 	for(tid = 0; tid < tp->tp_num_threads; ++tid) {
 		tp_destroy_worker(tp, tid);
 	}
 
-	if(tp->tp_started)
+	if(tp->tp_started) {
 		t_destroy(&tp->tp_ctl_thread);
-
-	tp->tp_discard = B_TRUE;
-	tp->tp_disp->tpd_class->control_report(tp);
-	tpd_destroy(tp->tp_disp);
+	}
 
 	mutex_destroy(&tp->tp_mutex);
 
@@ -456,6 +457,8 @@ void tp_insert_request_impl(list_head_t* rq_list, list_node_t* rq_node,
 	request_t* rq = NODE_TO_REQUEST(rq_node, offset);
 	list_node_t* tmp_node = prev_rq_node;
 
+	assert(rq != NULL);
+
 	/* Usually there are only one workload per threadpool, so we may simple put
 	 * new request after last request. But if it is second workload, these conditions
 	 * would not be satisfied (there would be requests after current request, and
@@ -530,15 +533,11 @@ void tp_insert_request_impl(list_head_t* rq_list, list_node_t* rq_node,
  * otherwise.
  */
 void tp_insert_request_initnodes(list_head_t* rq_list, list_node_t** p_prev_node, list_node_t** p_next_node) {
-	request_t* prev_rq = NULL;
-
 	list_node_t* prev_rq_node = NULL;
 	list_node_t* next_rq_node = NULL;
 
 	if(!list_empty(rq_list)) {
-		prev_rq = list_first_entry(request_t, rq_list, rq_node);
-
-		prev_rq_node = &prev_rq->rq_node;
+		prev_rq_node = list_head_node(rq_list)->next;
 
 		if(list_is_singular(rq_list)) {
 			next_rq_node = prev_rq_node;
@@ -918,7 +917,11 @@ int tp_init(void) {
 
 void tp_fini(void) {
 	if(tp_collector_enabled) {
+		mutex_lock(&tp_collect_mutex);
 		tp_collector_enabled = B_FALSE;
+		cv_notify_one(&tp_collect_cv);
+		mutex_unlock(&tp_collect_mutex);
+
 		t_destroy(&t_tp_collector);
 	}
 	else {

@@ -1,6 +1,8 @@
 import json
 import string
 
+import sys
+
 class Definition(object):
     __tsdoc_weight__ = -100
     

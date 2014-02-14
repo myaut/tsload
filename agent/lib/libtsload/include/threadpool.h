@@ -43,6 +43,8 @@ struct workload_step;
 struct tp_disp;
 
 /**
+ * @module Threadpools
+ *
  * Thread pools are set of threads for executing load requests.
  *
  * It consists of two type of threads:
@@ -50,6 +52,16 @@ struct tp_disp;
  * - Worker thread whose are running requests for execution
  * */
 
+/**
+ * Threadpool worker
+ *
+ * @member w_tp backward link to threadpool
+ * @member w_thread associated thread
+ * @member w_rq_mutex mutex that protects cv and queue of requests
+ * @member w_rq_cv condition variable for notifying sleeping worker
+ * @member w_rq_head list of requets attached to this worker
+ * @member w_tpd_data threadpool dispatcher per-worker data field
+ */
 typedef struct tp_worker {
 	struct thread_pool* w_tp;
 	thread_t w_thread;
@@ -61,6 +73,24 @@ typedef struct tp_worker {
 	void* w_tpd_data;
 } tp_worker_t;
 
+/**
+ * Threadpool main descriptor
+ *
+ * @member tp_num_threads number of worker threads
+ * @member tp_name threadpool name
+ * @member tp_is_dead flag that set when threadpool is destroyed
+ * @member tp_started internal flag that says that tp_create already started threads
+ * @member tp_quantum control thread's quantum duration (in ns)
+ * @member tp_time last time control thread had woken up (in ns)
+ * @member tp_ctl_thread control thread of threadpool
+ * @member tp_workers array of threadpool workers
+ * @member tp_mutex mutex that protects list of workloads attached to threadpool
+ * @member tp_ref_count reference counter for threadpool
+ * @member tp_disp pointer to dispatcher structure
+ * @member tp_discard see discard parameter for tsload_create_threadpool
+ * @member tp_rq_head list of requests that are executing by this threadpool
+ * @member tp_wl_head list of workloads attached to this threadpool
+ */
 typedef struct thread_pool {
 	unsigned tp_num_threads;
 	char tp_name[TPNAMELEN];
@@ -68,13 +98,13 @@ typedef struct thread_pool {
 	boolean_t tp_is_dead;
 	boolean_t tp_started;
 
-	ts_time_t tp_quantum;			/**< Dispatcher's quantum duration (in ns)*/
-	ts_time_t tp_time;				/**< Last time dispatcher had woken up (in ns)*/
+	ts_time_t tp_quantum;
+	ts_time_t tp_time;
 
-	thread_t  tp_ctl_thread;		/**< Dispatcher thread*/
-	tp_worker_t* tp_workers;		/**< Worker threads*/
+	thread_t  tp_ctl_thread;
+	tp_worker_t* tp_workers;
 
-	thread_mutex_t tp_mutex;				/**< Protects workload list and tp_cv*/
+	thread_mutex_t tp_mutex;
 	atomic_t	   tp_ref_count;
 
 	struct tp_disp* tp_disp;

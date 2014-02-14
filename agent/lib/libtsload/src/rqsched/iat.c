@@ -13,8 +13,21 @@
 #include <math.h>
 
 /**
- * Inter-arrival time request scheduler
+ * #### Inter-arrival time request scheduler
  *  */
+
+static ts_time_t rqsched_iat_get_last_time(workload_t* wl, ts_time_t last_time) {
+	request_t* last_rq;
+
+	mutex_lock(&wl->wl_rq_mutex);
+	if(!list_empty(&wl->wl_requests)) {
+		last_rq = list_last_entry(request_t, &wl->wl_requests, rq_wl_node);
+		last_time = last_rq->rq_sched_time;
+	}
+	mutex_unlock(&wl->wl_rq_mutex);
+
+	return last_time;
+}
 
 void rqsched_fini_iat(workload_t* wl) {
 	rqsched_common_t* disp = (rqsched_common_t*) wl->wl_rqsched_private;
@@ -32,8 +45,7 @@ void rqsched_step_iat(workload_step_t* step) {
 	 * (this also protects from division to zero) */
 	ts_time_t start_time = wl->wl_current_step * wl->wl_tp->tp_quantum;
 	ts_time_t end_time = start_time + wl->wl_tp->tp_quantum;
-	ts_time_t last_time = (wl->wl_last_request == NULL) ?
-							start_time : wl->wl_last_request->rq_sched_time;
+	ts_time_t last_time = rqsched_iat_get_last_time(wl, start_time);
 
 	double iat = (double) (end_time - max(last_time, start_time))/ (double) (step->wls_rq_count + 1);
 
@@ -61,8 +73,7 @@ void rqsched_pre_request_iat(request_t* rq) {
 
 	ts_time_t iat = (ts_time_t) rv_variate_double(rqs->rqs_randvar);
 
-	ts_time_t last_time = (wl->wl_last_request == NULL) ?
-							0 : wl->wl_last_request->rq_sched_time;
+	ts_time_t last_time = rqsched_iat_get_last_time(wl, 0);
 	ts_time_t start_time = wl->wl_current_step * wl->wl_tp->tp_quantum;
 
 	rq->rq_sched_time = iat + max(last_time, start_time);

@@ -104,7 +104,7 @@ size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen) {
 	/* Get date */
 	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL);
 	if(start_time != NULL) {
-		start_time = json_as_int(start_time);
+		start_time_tm = json_as_int(start_time);
 		return tm_datetime_print(start_time_tm, date, buflen);
 	}
 

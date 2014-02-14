@@ -373,8 +373,12 @@ class BuildManager(object):
                 
                 server.test_run('${INSTALL_BIN}tshostinfo${EXESUFFIX} -x')
                 
-                server.test_run('${INSTALL_BIN}run-tsload${EXESUFFIX} -m')
-                server.test_run('${INSTALL_BIN}run-tsload${EXESUFFIX} -e ${INSTALL_VAR}busy_wait')
+                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} workload')
+                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample run')
+                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample list')
+                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample show')
+                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample report')
+                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample export -F csv')
                 
                 server.build(self.global_opts, 'zip')
                 server.fetch(self.out_dir)

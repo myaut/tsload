@@ -12,6 +12,7 @@ env.AddMethod(AppendDoc)
 docfiles = env.DocGenerator('index.src.md')
 
 env.AppendDoc('intro')
+env.AppendDoc('ref')
 
 header = '%s %s documentation' % (env['TSPROJECT'], env['TSVERSION'])
 

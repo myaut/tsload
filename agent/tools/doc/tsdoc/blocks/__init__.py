@@ -55,7 +55,7 @@ class Reference(Text):
 
 class CodeReference(Reference):
     def __init__(self, text, ref_name, ref_class):
-        Reference.__init__(self, text)
+        Reference.__init__(self, text.replace(' ', '_'))
         
         self.ref_name = ref_name
         self.ref_class = ref_class
@@ -128,6 +128,23 @@ class Paragraph(Block):
 
 class Code(Paragraph):
     pass
+
+class Table(Block):
+    pass
+
+class TableRow(Block):
+    pass
+
+class TableCell(Block):
+    def __init__(self, colspan = 1, rowspan = 1):
+        Block.__init__(self, [])
+        
+        self.colspan = colspan
+        self.rowspan = rowspan
+
+class BlockQuote(Block):
+    pass
+        
 
 class NavLink(object):
     PREV = 0

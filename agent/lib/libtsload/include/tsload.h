@@ -19,18 +19,38 @@
 
 #include <libjson.h>
 
+/**
+ * @module TSLoad high-level API
+ *
+ * Use this API to build custom agent on top of libtsload
+ */
+
+/**
+ * TSLoad error codes
+ */
 #define TSLOAD_ERROR	1
 #define TSLOAD_OK		0
 
+/**
+ * Hook that called when one of high-level operations encounters errors.
+ * May be called multiple times during one call
+ */
 typedef void (*tsload_error_msg_func)(ts_errcode_t code, const char* format, ...);
+LIBIMPORT tsload_error_msg_func tsload_error_msg;
+
+/**
+ * Hook for reporting workload statuses
+ */
 typedef void (*tsload_workload_status_func)(const char* wl_name,
 					 					    int status,
 										    long progress,
 										    const char* config_msg);
-typedef void (*tsload_requests_report_func)(list_head_t* rq_list);
-
-LIBIMPORT tsload_error_msg_func tsload_error_msg;
 LIBIMPORT tsload_workload_status_func tsload_workload_status;
+
+/**
+ * Hook for reporting requests and it's params
+ */
+typedef void (*tsload_requests_report_func)(list_head_t* rq_list);
 LIBIMPORT tsload_requests_report_func tsload_requests_report;
 
 /* TSLoad calls */

@@ -78,7 +78,7 @@ void tse_list_insert(struct tse_list_item* item, list_head_t* list) {
 
 	list_for_each_entry(struct tse_list_item, next, list, node) {
 		if(next->runid > item->runid) {
-			list_insert_before(&item->node, &next->node);
+			list_insert_back(&item->node, &next->node);
 			return;
 		}
 	}

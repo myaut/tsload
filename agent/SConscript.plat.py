@@ -119,4 +119,7 @@ if env.SupportedPlatform('solaris'):
     env['CTFCONVERT'] = env.CheckBinary('ctfconvert', ONBLD_PATH)
     env['CTFMERGE'] = env.CheckBinary('ctfmerge', ONBLD_PATH)
     
+    # See https://github.com/mapnik/mapnik/issues/675
+    env.Append(SHLINKFLAGS = ['-shared'])
+    
 Export('env')

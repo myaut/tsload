@@ -6,9 +6,8 @@ import json
 from tsdoc.parser import SourceParser
 
 _ = sys.argv.pop(0)
+docspace = sys.argv.pop(0)
 header_path = sys.argv.pop(0)
-
-docspace = os.getenv('TSDOC_SPACE', '') 
 
 header = SourceParser(header_path)
 header.parse()

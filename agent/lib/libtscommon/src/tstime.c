@@ -43,7 +43,7 @@ struct tm_component {
  * Prints seconds - nanoseconds in human-readable format
  * Recommended buffer size is 40
  *
- * @returns 0 if dst was not enough or number of printed characters
+ * @return 0 if dst was not enough or number of printed characters
  */
 size_t tm_human_print(ts_time_t t, const char* dst, size_t size) {
 	struct tm_component components[] = {

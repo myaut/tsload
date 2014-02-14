@@ -5,6 +5,7 @@ from tsdoc.blocks import *
 
 class MarkdownParser:
     TRACE = False
+    _TRACE_FILES = []
     
     class ParseException(Exception):
         def __init__(self, idx, lineno, msg):
@@ -12,7 +13,7 @@ class MarkdownParser:
                                "Parsing exception '%s' at line %d (idx: %d)" % (msg, lineno, idx))
     
     
-    def __init__(self, text):        
+    def __init__(self, text, name=''):                
         self._escape = []
         
         self.text_pos = 0
@@ -31,6 +32,8 @@ class MarkdownParser:
             link_type = -1,
             link_end_char = '',
             
+            block_quote = False,
+            
             header_size = -1,
             
             list_level = -1,
@@ -42,12 +45,20 @@ class MarkdownParser:
             
             icode_cnt = -1)
         
+        self.name = name
         self.lineno = 1
+        
+        if name in self._TRACE_FILES:
+            self.TRACE = True
         
         self.block = Paragraph()
         self.list_blocks = {}
         self.list_parent = None
         self.blocks = []
+        
+        self.table_parent = None
+        self.table_block = None
+        self.table_row = None
         
         self.text = text
     
@@ -56,11 +67,9 @@ class MarkdownParser:
             self.default_state[attr] = value
             setattr(self, attr, value)
     
-    def _raise(self, idx, e):
-        traceback.print_exc()
-        
+    def _error(self, idx, e):
         lineno = self.text[:idx].count('\n')
-        raise MarkdownParser.ParseException(idx, lineno, str(e))
+        print 'Parsing error at %s:%d:%d -> %s' % (self.name, lineno, idx, str(e))
     
     def parse(self):
         idx = 0
@@ -79,9 +88,23 @@ class MarkdownParser:
                 try:
                     idx = self._parse_code(idx, char)
                 except Exception as e:
-                    self._raise(idx, e)
-                
+                    self._error(idx, e)
                 continue
+            
+            if char == '-':
+                try:
+                    idx = self._parse_table(idx, char)
+                except Exception as e:
+                    self._error(idx, e)
+                continue
+            
+            if char == '>':
+                match, prefix = self.prefix(self.newline_pos, idx - 1, ' \t')
+                if match:
+                    self.block = BlockQuote()
+                    idx += 1
+                    self.text_pos += 1
+                    continue
             
             if self.in_code:
                 idx += 1
@@ -102,7 +125,7 @@ class MarkdownParser:
                 try:
                     idx = self._parse_at(idx, char)
                 except Exception as e:
-                    self._raise(idx, e)
+                    self._error(idx, e)
                 
                 continue
                 
@@ -124,8 +147,47 @@ class MarkdownParser:
         
         return idx + count
     
+    def _parse_table_cell(self, idx):
+        count = 0
+        while self.text[idx + count] not in string.whitespace:
+            count += 1
+            
+        try:
+            span = self.text[idx:idx+count]
+            colspan, rowspan = map(int, span.split(','))
+            self.block = TableCell(colspan, rowspan)
+            
+            self.text_pos += count
+        except Exception as e:
+            self.block = TableCell()
+        
+        self.table_row.add(self.block)
+        
+        return idx + count
+    
+    def _parse_table(self, idx, char):
+        count = self.ctl_count(idx, '-')
+        match, _ = self.prefix(self.newline_pos, idx - 1, ' \t')
+        
+        if count >= 3 and match:
+            if self.table_block is None:
+                self.table_block = Table()
+                self.block.add(self.table_block)
+                self.table_parent = self.block
+            else:
+                self.table_row = None
+                self.table_block = None
+                self.block = self.table_parent
+                
+            self.text_pos += count
+            
+        return idx + count
+    
     def _parse_at(self, idx, char):
-        if char == '#':
+        if self.table_row is not None and char == '|':
+            self.end_block(idx, False)
+            return self._parse_table_cell(idx + 1)
+        elif char == '#':
             if self.ctl_count(idx, char) > 1:
                 return idx + 1
             
@@ -134,7 +196,7 @@ class MarkdownParser:
                 self.begin_text(idx - len(prefix) + 1, len(prefix) + 1,
                                 header_size = len(prefix))
         elif char == '*':
-            match, prefix = self.prefix(self.newline_pos, idx - 1, ' ')
+            match, prefix = self.prefix(self.newline_pos, idx - 1, ' \t')
             if match:
                 self.list_entry(idx, prefix)
             else: 
@@ -275,6 +337,15 @@ class MarkdownParser:
             self.escape_pos = -1
     
     def newline(self, idx):
+        if self.table_block is not None:
+            # End current cell
+            self.end_block(idx, False)
+            
+            self.table_row = TableRow()
+            self.table_block.add(self.table_row)
+            
+            self._parse_table_cell(idx + 1)
+        
         if self.header_size >= 0:
             self.end_text(idx, 1, Header, [self.header_size], 
                           header_size=-1)
@@ -303,7 +374,8 @@ class MarkdownParser:
     
     def _styled_text_impl(self, idx, count, klass, **state):
         # Do not interpret _s and *s inside strings
-        begin = self.text[idx - 1] in string.whitespace
+        begin = self.text[idx - 1] in (string.whitespace + string.punctuation) and  \
+                    self.link_pos == -1
         
         attr, char = state.items()[0]
         value = getattr(self, attr)
@@ -373,7 +445,7 @@ class MarkdownParser:
             self.dump_state(idx, 'END')
             pprint_block(self.block)
     
-    def end_block(self, idx):  
+    def end_block(self, idx, root_block = True):  
         if self.TRACE:
             self.dump_state(idx, 'BLOCK')
             pprint_block(self.block)
@@ -386,7 +458,8 @@ class MarkdownParser:
             value = getattr(self, attr)
             if value != default:
                 msg = 'Invalid state: %s = %s' % (attr, value)
-                self._raise(idx, msg)
+                self._error(idx, msg)
+                setattr(self, attr, default)
         
         self.end_text(idx)
         
@@ -396,10 +469,11 @@ class MarkdownParser:
             self.list_blocks = {}
             self.list_parent = None
         
-        if self.block.parts:
-            self.blocks.append(self.block)
-        
-        self.block = Paragraph()
+        if root_block:
+            if self.block.parts:
+                self.blocks.append(self.block)
+            
+            self.block = Paragraph()
     
     def code_block(self, count, idx):
         if self.in_code:
@@ -436,7 +510,8 @@ class MarkdownParser:
                    ('link_image', bool),
                    ('link_text_end', lambda pos: pos >= 0),
                    ('link_end_char', bool),
-                   ('link_type', lambda pos: pos >= 0)
+                   ('link_type', lambda pos: pos >= 0),
+                   ('block_quote', bool),
                   ]
     
     def dump_state(self, idx, opttext = ''):

@@ -14,7 +14,8 @@
 
 static const double rv_normal_magic_const = 1.7155277699214135;
 
-/* #### Normal distribution
+/**
+ * #### Normal distribution
  *
  * Uses Kinderman and Monahan method
  *

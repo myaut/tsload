@@ -61,11 +61,11 @@ def ZipArchive(target, source, env):
                 for fname in filenames:
                     path = PathJoin(dirpath, fname)
                     if PathIsFile(path):
-                        arcpath = PathRelative(path, env['PREFIX'])
+                        arcpath = PathJoin(env['TSNAME'], PathRelative(path, env['PREFIX']))
                         zf.write(path, arcpath)
         else:
             path = str(s)
-            arcpath = PathRelative(path, env['PREFIX'])
+            arcpath = PathJoin(env['TSNAME'], PathRelative(path, env['PREFIX']))
             zf.write(path, arcpath)
     zf.close()
 

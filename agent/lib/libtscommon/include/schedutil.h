@@ -62,8 +62,8 @@ typedef struct {
 	void* private;
 } sched_policy_t;
 
-sched_policy_t* sched_policy_find_byname(const char* name);
-sched_policy_t* sched_policy_find_byid(int id);
+LIBEXPORT sched_policy_t* sched_policy_find_byname(const char* name);
+LIBEXPORT sched_policy_t* sched_policy_find_byid(int id);
 
 /**
  * Returns array of available scheduler policies on current system

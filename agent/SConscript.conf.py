@@ -147,6 +147,13 @@ if not conf.CheckDeclaration('snprintf', '#include <stdio.h>'):
         raise StopError('snprintf or _snprintf are not supported by your platform!')
     
     conf.Define('snprintf', '_snprintf', 'Redefine sprintf')
+
+if not conf.CheckDeclaration('strtoll', '#include <stdlib.h>'):
+    if not conf.CheckDeclaration('_strtoi64', '#include <stdlib.h>'):
+        raise StopError('strtoll or _strtoi64 are not supported by your platform!')
+    
+    conf.Define('strtoll', '_strtoi64', 'Redefine strtoll')
+
     
 if env['CC'] == 'gcc':
     if not conf.CheckGCCAtomicBuiltins() and not conf.CheckGCCSyncBuiltins():
@@ -154,6 +161,8 @@ if env['CC'] == 'gcc':
 
 conf.CheckHeader('inttypes.h')
 conf.CheckUnalignedMemAccess()
+
+conf.CheckDeclaration('va_copy', '#include <stdarg.h>')
 
 # ------------------------------------------
 # Global platform checks    

@@ -9,32 +9,4 @@ Where global options are:
 	-F json|jsonraw|csv 
 		Input/output tsfutil format - default is json
 
-Subcommand is one of:
-	- create
-		creates new TSF file from specified schema
-	- count
-		prints number of entries in TSF file
-	- get 
-		read entries from tsffile and write them to outfile or stdin
-		if it is not specified. By default reads all entries from file.
-		To specify desired range of entries, specify option -g:
-		  -g N[:M|$]
-		    	Where N - start entry, M - last entry, and $ - alias for last
-		    	entry in tsffile. 
-	- add
-		adds entries from infile to tsffile
-
-Also, one of backend options may be specified using -o option:
-	-o <backend option>
-JSON options:
-	one - if getting only one entry, print it alone, not array of single nodes
-CSV options:
-	header=<header> - additional CSV header if not specified 
-	noheader 
-		If specified for 'get' subcommand, tsfutil don`t writes header into 
-		file. If specified for 'add' subcommand, means that CSV file do not 
-		contain valid header and header, specified by 'header=' option 
-		should be used.
-	all
-		For 'get' subcommand - retrieve all fields from tsfile, not just 
-		specified in 'header=' option. 
+Subcommand is one of create, count, get or add.

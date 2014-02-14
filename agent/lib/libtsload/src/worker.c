@@ -120,6 +120,9 @@ static void control_prepare_step(thread_pool_t* tp, workload_t* wl) {
 	logmsg(LOG_TRACE, "Workload %s step #%ld", wl->wl_name, wl->wl_current_step);
 }
 
+/**
+ * Worker thread
+ */
 thread_result_t worker_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, tp_worker_t, worker);
 

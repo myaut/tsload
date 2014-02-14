@@ -143,6 +143,8 @@ typedef void (*json_free_t)(void *);
     typedef void * (*json_realloc_t)(void *, unsigned long);
 #endif
 
+#if 0
+
 #ifdef JSON_DEBUG
     #ifdef NDEBUG
 	   #ifdef __GNUC__
@@ -159,6 +161,8 @@ typedef void (*json_free_t)(void *);
 		  #error, Release build of libjson, but NDEBUG is not on
 	   #endif
 	#endif
+#endif
+
 #endif
 
 #ifdef JSON_UNIT_TEST

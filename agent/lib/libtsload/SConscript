@@ -28,5 +28,21 @@ etrace_files, man_files = env.PreprocessETrace(['src/workload.c'] + objects,
 
 library = lib.LinkSharedLibrary(target, objects + etrace_files)
 
+lib.Append(TSDOC_SPACE='tsload')
+tsdoc = [lib.DocBuilder(['include/randgen.h', 'src/randgen.c', Glob('src/randgen/*.c')]),
+        
+        lib.DocBuilder(['include/threadpool.h', 'src/threadpool.c', 'src/worker.c']),
+        lib.DocBuilder(['include/tpdisp.h', 'src/tpdisp.c', Glob('src/tpdisp/*.c')]),
+        
+        lib.DocBuilder(['include/workload.h', 'src/workload.c']),
+        lib.DocBuilder(['include/wltype.h', 'src/wltype.c']),
+        lib.DocBuilder(['include/wlparam.h', 'src/wlparam.c', 'src/wlpgen.c']),
+        lib.DocBuilder(['include/rqsched.h', 'src/rqsched.c', Glob('src/rqsched/*.c')]),
+        
+        lib.DocBuilder(['include/tsload.h', 'src/tsload.c']),
+        ]
+        
+env.Append(TSDOC = tsdoc)
+
 lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 lib.InstallTarget(tgtroot, lib['INSTALL_SHARE'], man_files)

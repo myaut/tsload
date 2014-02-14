@@ -218,6 +218,8 @@ static void tse_run_report_request(request_t* rq) {
 	size_t rqe_size;
 	ptrdiff_t rqparams_start;
 
+	assert(ewl != NULL);
+
 	rqe_size = ewl->wl_file_schema->hdr.entry_size;
 
 	rqe = mp_malloc(rqe_size);
@@ -482,6 +484,9 @@ void tse_run_workload_status(const char* wl_name,
 
 	assert(ewl != NULL);
 
+	tse_run_fprintf(running, "Workload '%s' %s (%ld): %s\n", wl_name,
+					tse_run_wl_status_msg(status), progress, config_msg);
+
 	mutex_lock(&running->exp_mutex);
 
 	switch(status) {
@@ -514,9 +519,6 @@ void tse_run_workload_status(const char* wl_name,
 	}
 
 	mutex_unlock(&running->exp_mutex);
-
-	tse_run_fprintf(running, "Workload '%s' %s (%ld): %s\n", wl_name,
-					tse_run_wl_status_msg(status), progress, config_msg);
 }
 
 void experiment_run(experiment_t* exp) {

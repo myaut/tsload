@@ -233,11 +233,11 @@ int tsf_csv_get(tsf_backend_t* backend, int start, int end) {
 
 	csv_chars_t chars;
 
-	chars.csv_separator = csv->csv_separator;
-	chars.csv_opt_separator = csv->csv_opt_separator;
-
 	/* If no header was specified - assume that we want all entries */
 	boolean_t csv_all = !csv->csv_ext_header || (csv->csv_ext_header && csv->csv_all);
+
+	chars.csv_separator = csv->csv_separator;
+	chars.csv_opt_separator = csv->csv_opt_separator;
 
 	/* Parse header */
 	bindings = mp_malloc(schema->hdr.count * sizeof(csv_binding_t));

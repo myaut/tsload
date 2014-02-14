@@ -6,8 +6,7 @@
  			"num_requests": 2000
 		},
 		"test2": {
-			"num_steps":	20,
- 			"num_requests": 2000
+			"file": "test2.tss"
 		}
 	},
 	"threadpools": {
@@ -23,12 +22,13 @@
 		"test1" : {
 			"wltype": "busy_wait",
 			"threadpool": "test_tp",
-			"rqsched": "iat",
-			"rqsched_params": {
+			"rqsched": {
+				"type": "think",
 				"distribution": "uniform",
 				"scope": 0,
 				"nusers": 4
 			},
+			"deadline": 100000,
 			"params": { 
 				"num_cycles": {
 					"randgen": {
@@ -48,13 +48,37 @@
 		"test2" : {
 			"wltype": "busy_wait",
 			"threadpool": "test_tp",
-			"rqsched": "iat",
-			"rqsched_params": {
+			"rqsched": {
+				"type": "iat",
 				"distribution": "exponential"
 			},
 			"params": { 
 				"num_cycles": 50000
 			}
+		},
+		"test3" : {
+			"wltype" : "busy_wait",
+			"chain": {
+				"workload": "test2",
+				"probability": {
+					"randgen": {
+						"class": "lcg"
+					},
+					"value": 0.7
+				}
+			},
+			"params": {
+                "num_cycles": {
+					"randgen": {
+                        "class": "libc"
+                    },
+					"randvar": {
+						"class": "erlang",
+						"shape": 2,
+						"rate": 2e-4
+					}
+				}
+            }
 		}
 	}
 }

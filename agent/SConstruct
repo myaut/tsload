@@ -93,10 +93,12 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
 
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
-env['TSVERSION'] = '0.2'
+env['TSVERSION'] = '0.2.a0'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
 env['DEBUG'] = GetOption('debug')
+
+env['TARGET_ARCH'] = GetOption('mach')
 
 SConscript('SConscript.env.py', 'env')
 
@@ -104,6 +106,7 @@ SConscript('SConscript.env.py', 'env')
 # define these settings globally
 if GetOption('debug'):
     env.Macroses('JSON_DEBUG')
+    
 
 env.Macroses('JSON_MEMORY_CALLBACKS', 'JSON_INT_TYPE=long long')
 
@@ -212,12 +215,15 @@ SConscript(PathJoin('doc', 'SConscript'), 'env',
 packages = ['tsload-core', 
             'tsload-agents', 
             'tsload-standalone', 
-            'tsload-doc']
+            'tsload-doc',
+            'tsload-modules']
 
 # Packages dependencies
 
 env.Depends('tsload-agents', 'tsload-core')
 env.Depends('tsload-standalone', 'tsload-core')
+
+all_files = []
 
 for pkg in packages:
     aliases = env.Alias(pkg)
@@ -226,6 +232,13 @@ for pkg in packages:
     zip_name = '-'.join((pkg, env['TSVERSION']))   + '.zip'
     zip_path = PathJoin('#build', 'pkg', zip_name)
     
-    zip_files = env.ZipArchive(zip_path, alias.children())
-    env.Depends('zip', pkg)
-    env.Alias('zip', zip_files)
+    # zip_files = env.ZipArchive(zip_path, alias.children())
+    # env.Depends('zip', pkg)
+    # env.Alias('zip', zip_files)
+    
+    all_files.extend(alias.children())
+    
+zip_name = '-'.join((env['TSPROJECT'], env['TSVERSION'], env['TARGET_ARCH']))   + '.zip'
+zip_path = PathJoin('#build', 'pkg', zip_name)
+zip_file = env.ZipArchive(zip_path, all_files)
+env.Alias('zip', zip_file)

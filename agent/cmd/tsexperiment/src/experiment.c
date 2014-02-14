@@ -18,6 +18,7 @@
 #include <wltype.h>
 #include <tsload.h>
 #include <tstime.h>
+#include <filelock.h>
 
 #include <experiment.h>
 
@@ -310,7 +311,7 @@ static long experiment_generate_id(experiment_t* root) {
 	runid_file = fopen(runid_path, "r");
 	if(runid_file != NULL) {
 		/* FIXME: Locking on Windows*/
-		flock(fileno(runid_file), LOCK_EX);
+		plat_flock(fileno(runid_file), LOCK_EX);
 
 		fgets(runid_str, 32, runid_file);
 		runid = strtol(runid_str, NULL, 10);
@@ -326,14 +327,16 @@ static long experiment_generate_id(experiment_t* root) {
 	}
 	else {
 		runid_file = fopen(runid_path, "w");
-
 		if(runid_file == NULL) {
 			return -1;
 		}
 
-		flock(fileno(runid_file), LOCK_EX);
+		plat_flock(fileno(runid_file), LOCK_EX);
 	}
+
 	fprintf(runid_file, "%ld\n", runid);
+
+	plat_flock(fileno(runid_file), LOCK_UN);
 	fclose(runid_file);
 
 	return runid;

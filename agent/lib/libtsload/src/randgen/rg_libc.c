@@ -11,7 +11,8 @@
 #include <math.h>
 
 /**
- * libc (default) random generator implementation
+ * #### libc (default) random generator
+ *
  * Uses srand()/rand() functions from standard C library */
 
 int rg_init_libc(randgen_t* rg) {

@@ -78,6 +78,11 @@ for test in suite:
     
     if tst.SupportedPlatform('win'):
         tst['LIBS'] += ['DbgHelp']
+        
+    if tst['CC'] == 'gcc':
+        tst.Append(CCFLAGS = ['-g'] )
+    elif tst['CC'] == 'cl':
+        tst.Append(CCFLAGS = ['/Od']) 
     
     srcdirs = [Glob(PathJoin(test.group, dir, '*.c')) 
                for dir in test.dirs]

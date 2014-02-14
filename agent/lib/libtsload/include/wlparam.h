@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 /**
- * Workload parameters
+ * @module Workload parameters
  *
  * These declarations used to provide module description to server
  * and simply parse workload parameters in JSON format.
@@ -32,6 +32,9 @@
 
 struct workload;
 
+/**
+ * Workload parameter type definitions
+ */
 typedef int64_t		wlp_integer_t;
 typedef double		wlp_float_t;
 typedef char		wlp_string_t;

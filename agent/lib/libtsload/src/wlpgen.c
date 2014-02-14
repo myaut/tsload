@@ -39,6 +39,8 @@ DECLARE_FIELD_FUNCTIONS(wlp_bool_t);
 DECLARE_FIELD_FUNCTIONS(wlp_strset_t);
 DECLARE_FIELD_FUNCTIONS(wlp_hiobject_t);
 
+double wlpgen_pmap_eps = 0.00001;
+
 int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen);
 void wlpgen_destroy_pmap(wlp_generator_t* gen, int pcount, wlpgen_probability_t* pmap);
 
@@ -265,8 +267,7 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 	 * so we are being nice with small errors.
 	 * XXX: Is calculation of eps is correct?*/
 	diff = total - 1.0;
-	eps = DBL_MIN * pid;
-	if((diff > eps) || (diff < -eps)) {
+	if((diff > wlpgen_pmap_eps) || (diff < -wlpgen_pmap_eps)) {
 		tsload_error_msg(TSE_INVALID_DATA,
 						 WLP_ERROR_PREFIX ": probability map - invalid total probability %f",
 						 gen->wlp->name, total);

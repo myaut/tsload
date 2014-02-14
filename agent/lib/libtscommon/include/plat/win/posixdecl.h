@@ -8,6 +8,8 @@
 #ifndef PLAT_WIN_POSIXDECL_H_
 #define PLAT_WIN_POSIXDECL_H_
 
+#include <defs.h>
+
 #include <io.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -22,6 +24,8 @@
 #define read	_read
 #define write	_write
 #define access	_access
+#define mkdir   _mkdir
+#define fileno	_fileno
 
 /* See http://msdn.microsoft.com/en-us/library/1w06ktdy%28v=vs.71%29.aspx */
 #define 	F_OK	00

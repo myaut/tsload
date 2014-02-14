@@ -129,21 +129,21 @@ STATIC_INLINE void list_add_tail(list_node_t *node, list_head_t *head)
 }
 
 /**
- * list_insert - insert entry after another
+ * list_insert_front - insert entry after another
  * @param node  new entry to be added
  * @param iter  node after which it has to be added
  */
-STATIC_INLINE void list_insert(list_node_t *node, list_node_t *iter)
+STATIC_INLINE void list_insert_front(list_node_t *node, list_node_t *iter)
 {
 	__list_add(node, iter, iter->next);
 }
 
 /**
- * list_insert_before - insert entry before another
+ * list_insert_back - insert entry before another
  * @param node  new entry to be added
  * @param iter  node before which it has to be added
  */
-STATIC_INLINE void list_insert_before(list_node_t *node, list_node_t *iter)
+STATIC_INLINE void list_insert_back(list_node_t *node, list_node_t *iter)
 {
 	__list_add(node, iter->prev, iter);
 }

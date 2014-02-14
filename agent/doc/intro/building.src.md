@@ -1,7 +1,7 @@
 ## Prerequisites 
 * Python 2.6 or 2.7 (for SCons build system and various build scripts) - [www.python.org](http://www.python.org/).    
     Also you will need to install pywin32 extensions on Windows: [sourceforge.net/projects/pywin32/](http://sourceforge.net/projects/pywin32/)
-* SCons build  2.1 or 2.2 - [www.scons.org](http://www.scons.org/).    
+* SCons build  2.1 or newer - [www.scons.org](http://www.scons.org/).    
 * Compiler and linker
     * For Unix and Linux - GNU C/C++ Compiler 4.4. Proprietary Unix compilers such as IBM XLc and SunCC are currenly **not** supported
     * For Windows - Visual Studio 2010 Express (MinGW is not tested)
@@ -33,6 +33,8 @@
     # pkg install pkg:/developer/build/onbld
     ```
     NOTE: onbld provides ctfmerge and ctfconvert utilities which are used to convert debugging information from DWARF to CTF format (latter is supported by Solaris Modular DeBugger). They are not necessary.
+
+On Solaris 10 you will probably need to use [OpenCSW](http://www.opencsw.org/) repositories.
 
 ### Installing prerequisites on Windows
 
@@ -68,19 +70,11 @@ To make SCons quiet, specify `-Q` option.
 There are several targets provided by agent:
 * **configure** - only configures build system, generates genconfig.h and genbuild.h
 * if no target name provided, it builds agent from source
+* **tests** - run TSLoad unit tests
+* **doc** - generates documentation  
 * **install** - builds agent and installs it to desired location (specified by --prefix option)
 * **zip** - builds agent, installs it and makes zip file from that
 * To clean up after build (analogue to make clean), run scons with `-c` option (you may also run `scons install -c`)
-    
-You may specify which components should be built and installed by specifying build argument. You may also specify generic name "all" that builds all targets (enabled by default) and exclude targets from build list by specifying exclamation before target name. build arguments are processed in generator-agent/tools/build/manager.py    
-    `# scons build=all 'build=!load-modules'`
-    
-To list possible build targets it Makefile-like notation, run:    
-    `# scons --list`    
-Here are useful targets:
-* load-agent - builds only agent without standalone tool
-* load-tool - builds only standalone tool without agent
-* load-modules - builds only loader modules
 
 To build debug version of loader (currently it is built by default), you need to specify `--enable-debug` option. `--enable-trace` adds additional tracing facilities into loader. These options has `--disable-*` siblings that disable debug/trace options.
 
@@ -97,8 +91,8 @@ So let's make test build of our loader (this example is for Linux).
     `# scons install`
 * Change dir to default install directory (build/$TSPROJECT-$TSVERSION-$PLATFORM):   
     `# cd build/tsload-agent-0.2-linux2/`
-* Check version of tsloadd:   
-    `# bin/tsloadd -v`
+* Check version of tsexperiment:   
+    `# bin/tsexperiment -v`
 * Try to run test experiment:   
-    `# bin/run-tsload.sh -e var/busy_wait/`
+    `# bin/tseexperiment -e var/tsload/sample run`
     

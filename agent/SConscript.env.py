@@ -50,7 +50,7 @@ def CompileSharedLibrary(self, extra_sources = [],
     objects = self.SharedObject(Glob("src/*.c") + Glob("plat/*/*.c") + extra_sources)
     
     # In Solaris we need to convert types from DWARF into CTF
-    if ctfconvert and self.SupportedPlatform('solaris') and self['CTFCONVERT']:
+    if self['DEBUG'] and ctfconvert and self.SupportedPlatform('solaris') and self['CTFCONVERT']:
         # ctfobjs = filter(lambda o: str(o.srcnode).endswith('.cpp'), ctfobjs)
         
         self.AddPostAction(objects, CommandAction('$CTFCONVERT -l $TSVERSION $TARGET'))
@@ -68,10 +68,10 @@ def LinkSharedLibrary(self, target, objects,
                       ctfmerge = True):
     library = self.SharedLibrary(target, objects)
     
-    if ctfmerge and self.SupportedPlatform('solaris') and self['CTFMERGE']:
+    if self['DEBUG'] and ctfmerge and self.SupportedPlatform('solaris') and self['CTFMERGE']:
         self.AddPostAction(library, '$CTFMERGE -l $TSVERSION -o $TARGET $SOURCES')
     
-    if env['LINK'] == 'link':
+    if self['LINK'] == 'link':
         # For Microsoft linker library contains .dll, .lib and .exp file
         # return only .dll file because only it needs to be installed
         library = filter(lambda f: str(f).endswith(env['SHLIBSUFFIX']), library)
@@ -141,7 +141,7 @@ def FindMicrosoftSDK(self):
             raise StopError("FindMicrosoftSDK: couldn't find Microsoft SDK in one of predefined paths, use --with-windows-sdk")
     
     self.Append(CPPPATH = [PathJoin(winsdk_path, 'Include')])
-    if env['TARGET_ARCH'] == 'amd64':
+    if env['TARGET_ARCH'] == 'amd64' or env['TARGET_ARCH'] == 'x86_64':
         self.Append(LIBPATH = [PathJoin(winsdk_path, 'Lib\\x64')])
     else:
         self.Append(LIBPATH = [PathJoin(winsdk_path, 'Lib')])
@@ -184,7 +184,7 @@ if env['CC'] == 'gcc':
 elif env['CC'] == 'cl':
     env.Append(CCFLAGS = ['/W3'])
 
-mach = GetOption('mach')
+mach = env['TARGET_ARCH']
 if mach:
     if env['CC'] == 'gcc': 
         if re.match('i\d86', mach) or mach == 'x86' or mach == 'sparc':
@@ -193,9 +193,6 @@ if mach:
         else:
             env.Append(CCFLAGS = ["-m64"])
             env.Append(LINKFLAGS = ["-m64"])
-    elif env['CC'] == 'cl':
-        # FIXME: should be implemented
-        pass
 
 # Determine build flags (debug/release)
 if env['DEBUG']:

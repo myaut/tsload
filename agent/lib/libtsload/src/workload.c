@@ -53,35 +53,42 @@ mp_cache_t	wl_rq_cache;
  * Build with --enable-usdt (Linux + SystemTap or Solaris + DTrace) or --enable-etw
  * (Event Tracing for Windows).
  *
- * Windows:
- *		Register provider with wevtutil:
- *			C:\> wevtutil im Shared\workload.man
- *		Start tracing with logman:
- *		 	C:\> logman start -ets TSloadWL -p "Tslaod-Workload" 0 0 -o tracelog.etl
- *		Run run-tsload:
- *			C:\> run-tsload.bat -e Data\busy_wait\
- *		Stop tracing:
- *			C:\> logman stop -ets TSloadWL
- *		Generate reports:
- *			C:\> tracerpt -y tracelog.etl
+ * __Windows__:
+ *		* Register provider with wevtutil:
+ *			`C:\> wevtutil im Shared\workload.man`
+ *		* Start tracing with logman:
+ *		 	`C:\> logman start -ets TSloadWL -p "Tslaod-Workload" 0 0 -o tracelog.etl`
+ *		* Run tsexperiment:
+ *			`C:\> tsexperiment -e Data\sample\ run`
+ *		* Stop tracing:
+ *			`C:\> logman stop -ets TSloadWL`
+ *		* Generate reports:
+ *			`C:\> tracerpt -y tracelog.etl`
  *
- *		If you need to uninstall provider, call wevtutil with um command:
- *			C:\> wevtutil um Shared\workload.man
+ *		* If you need to uninstall provider, call wevtutil with um command:
+ *			`C:\> wevtutil um Shared\workload.man`
  *
- * Linux:
+ * __Linux__:
+ *
+ * ```
  * 		root@centos# stap -e '
  * 			probe process("../lib/libtsload.so").provider("tsload__workload").mark("request__start") {
  * 				println(user_string(@cast($arg1, "workload_t")->wl_name));
  * 			} ' \
- * 				-c 'run-tsload -e ../var/busy_wait/'
+ * 				-c 'tsexperiment -e ./var/tsload/sample run'
+ * ```
  *
- * Solaris:
+ * __Solaris__:
+ *
+ * ```
  * 		root@sol11# dtrace -n '
  * 			request-start {
  * 				this->wl_name = (char*) copyin(arg0, 64);
  * 				trace(stringof(this->wl_name));
  * 			}'	\
- * 				 -c 'run-tsload -e ../var/busy_wait/'
+ * 				 -c 'tsexperiment -e ./var/tsload/sample run'
+ * ```
+ *
  * */
 
 #define ETRC_GUID_TSLOAD_WORKLOAD	{0x9028d325, 0xfcfd, 0x49fd, {0xae, 0x39, 0x64, 0xbe, 0x46, 0xd2, 0x78, 0x42}}
@@ -139,7 +146,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	wl->wl_hm_next = NULL;
 	wl->wl_chain_next = NULL;
 
-	wl->wl_last_request = NULL;
+	list_head_init(&wl->wl_requests, "wl-rq-%s", name);
 
 	list_node_init(&wl->wl_tp_node);
 
@@ -159,6 +166,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 
 	mutex_init(&wl->wl_rq_mutex, "wl-%s-rq", name);
 	mutex_init(&wl->wl_status_mutex, "wl-%s-st", name);
+	mutex_init(&wl->wl_step_mutex, "wl-%s-step", name);
 	wl->wl_ref_count = (atomic_t) 0ul;
 
 	list_head_init(&wl->wl_wlpgen_head, "wl-%s-wlpgen", name);
@@ -204,6 +212,7 @@ void wl_destroy_impl(workload_t* wl) {
 
 	mutex_destroy(&wl->wl_rq_mutex);
 	mutex_destroy(&wl->wl_status_mutex);
+	mutex_destroy(&wl->wl_step_mutex);
 
 	mp_free(wl->wl_params);
 	mp_cache_free(&wl_cache, wl);
@@ -233,9 +242,9 @@ void wl_hold(workload_t* wl) {
 }
 
 void wl_rele(workload_t* wl) {
-	if(atomic_dec(&wl->wl_ref_count) == 1l) {
-		boolean_t is_destroyed;
+	boolean_t is_destroyed = B_FALSE;
 
+	if(atomic_dec(&wl->wl_ref_count) == 1l) {
 		mutex_lock(&wl->wl_status_mutex);
 		is_destroyed = WL_HAD_STATUS(wl, WLS_DESTROYED);
 		mutex_unlock(&wl->wl_status_mutex);
@@ -245,7 +254,9 @@ void wl_rele(workload_t* wl) {
 		}
 	}
 
-	assert(wl->wl_ref_count >= 0);
+	if(!is_destroyed) {
+		assert(wl->wl_ref_count >= 0);
+	}
 }
 
 /**
@@ -436,7 +447,7 @@ int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t*
 	long step_off = step_id & WLSTEPQMASK;
 	workload_step_t* step = wl->wl_step_queue + step_off;
 
-	mutex_lock(&wl->wl_rq_mutex);
+	mutex_lock(&wl->wl_step_mutex);
 
 	/* Reserve 1 slot for current step because it may be
 	 * still processing by control thread of threadpool */
@@ -456,7 +467,7 @@ int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t*
 	list_splice_init(trace_rqs, list_head_node(&step->wls_trace_rqs));
 
 done:
-	mutex_unlock(&wl->wl_rq_mutex);
+	mutex_unlock(&wl->wl_step_mutex);
 
 	return ret;
 }
@@ -474,7 +485,7 @@ workload_step_t* wl_advance_step(workload_t* wl) {
 
 	assert(wl != NULL);
 
-	mutex_lock(&wl->wl_rq_mutex);
+	mutex_lock(&wl->wl_step_mutex);
 
 	++wl->wl_current_step;
 	wl->wl_current_rq = 0;
@@ -495,7 +506,7 @@ workload_step_t* wl_advance_step(workload_t* wl) {
 	wl->wl_rqsched_class->rqsched_step(step);
 
 end:
-	mutex_unlock(&wl->wl_rq_mutex);
+	mutex_unlock(&wl->wl_step_mutex);
 
 	return step;
 }
@@ -515,16 +526,9 @@ static void wl_init_request(workload_t* wl, request_t* rq) {
 
 	list_node_init(&rq->rq_node);
 	list_node_init(&rq->rq_w_node);
+	list_node_init(&rq->rq_wl_node);
 }
 
-static void wl_link_request(workload_t* wl, request_t* rq) {
-	if(wl->wl_last_request != NULL) {
-		wl->wl_last_request->rq_wl_next = rq;
-	}
-
-	wl->wl_last_request = rq;
-	rq->rq_wl_next = NULL;
-}
 
 /**
  * Create request structure, append it to requests queue, initialize
@@ -568,7 +572,9 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 		rq->rq_chain_next = NULL;
 	}
 
-	wl_link_request(wl, rq);
+	mutex_lock(&wl->wl_rq_mutex);
+	list_add_tail(&rq->rq_wl_node, &wl->wl_requests);
+	mutex_unlock(&wl->wl_rq_mutex);
 
 	logmsg(LOG_TRACE, "Created request %s/%d step: %d sched_time: %lld", wl->wl_name,
 					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
@@ -600,7 +606,9 @@ request_t* wl_clone_request(request_t* origin) {
 		rq->rq_chain_next = NULL;
 	}
 
-	wl_link_request(wl, rq);
+	mutex_lock(&wl->wl_rq_mutex);
+	list_add_tail(&rq->rq_wl_node, &wl->wl_requests);
+	mutex_unlock(&wl->wl_rq_mutex);
 
 	logmsg(LOG_TRACE, "Cloned request %s/%d step: %d sched_time: %lld", wl->wl_name,
 					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
@@ -630,7 +638,9 @@ request_t* wl_create_request_trace(workload_t* wl, int rq_id, long step, int use
 	/* Let upper layer do it's job of creating chain requests */
 	rq->rq_chain_next = NULL;
 
-	wl_link_request(wl, rq);
+	mutex_lock(&wl->wl_rq_mutex);
+	list_add_tail(&rq->rq_wl_node, &wl->wl_requests);
+	mutex_unlock(&wl->wl_rq_mutex);
 
 	rq->rq_flags = RQF_TRACE;
 
@@ -646,11 +656,15 @@ void wl_request_destroy(request_t* rq) {
 	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %d thread: %d", rq->rq_workload->wl_name,
 			rq->rq_id, rq->rq_step, rq->rq_thread_id);
 
+	list_del(&rq->rq_wl_node);
+
 	if(rq->rq_params != NULL) {
 		mp_free(rq->rq_params);
 	}
 
 	wl_rele(rq->rq_workload);
+	memset(rq, 0xba, sizeof(request_t));
+
 	mp_cache_free(&wl_rq_cache, rq);
 }
 

@@ -116,7 +116,7 @@ struct tse_wlt_class tse_wlt_class_chars[] = {
 	{WLC_DISK_RW, 				10, 'D', 	11, 'r'},
 	{WLC_DISK_RW, 				10, 'D', 	12, 'w'},
 	{WLC_NETWORK, 				13, 'N', 	14, 'n'},
-	{WLC_NETWORK, 				14, 'N', 	15, 'c'},
+	{WLC_NET_CLIENT, 			14, 'N', 	15, 'c'},
 	{WLC_OS_BENCHMARK, 			16, 'O', 	-1, '\0'},
 };
 

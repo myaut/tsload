@@ -202,7 +202,7 @@ void tpd_control_report_ff(thread_pool_t* tp) {
 		/* If some requests was dispatched, but not yet handled by workers,
 		 * discard them too. */
 		if(ff->ff_last_rq != NULL)
-			list_add_tail(ff->ff_last_rq, rq_list);
+			list_add_tail(&ff->ff_last_rq->rq_node, rq_list);
 
 		for(wid = 0; wid < tp->tp_num_threads; ++wid) {
 			worker = tp->tp_workers + wid;
@@ -223,7 +223,7 @@ void tpd_control_report_ff(thread_pool_t* tp) {
 		list_splice_init(&ff->ff_finished, list_head_node(rq_list));
 
 		if(ff->ff_last_rq != NULL)
-			list_add(ff->ff_last_rq, &tp->tp_rq_head);
+			list_add(&ff->ff_last_rq->rq_node, &tp->tp_rq_head);
 	}
 
 	ff->ff_last_rq = NULL;

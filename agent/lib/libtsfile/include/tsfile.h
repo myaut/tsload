@@ -207,9 +207,9 @@ typedef struct tsf_backend_class {
 	tsf_add_func add;
 } tsf_backend_class_t;
 
-tsf_backend_t* tsfile_backend_create(const char* name);
-void tsfile_backend_set_files(tsf_backend_t* backend, FILE* file, tsfile_t* ts_file);
-void tsfile_backend_destroy(tsf_backend_t* backend);
+LIBEXPORT tsf_backend_t* tsfile_backend_create(const char* name);
+LIBEXPORT void tsfile_backend_set_files(tsf_backend_t* backend, FILE* file, tsfile_t* ts_file);
+LIBEXPORT void tsfile_backend_destroy(tsf_backend_t* backend);
 
 STATIC_INLINE int tsfile_backend_set(tsf_backend_t* backend, const char* option) {
 	return backend->tsf_class->set(backend, option);

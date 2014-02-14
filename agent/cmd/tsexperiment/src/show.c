@@ -90,7 +90,7 @@ int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
 }
 
 int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
-	exp_workload_t* ewl = (exp_threadpool_t*) ewl;
+	exp_workload_t* ewl = (exp_threadpool_t*) obj;
 	char* rqsched = NULL;
 
 	if(ewl->wl_rqsched != NULL) {
@@ -110,7 +110,7 @@ int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 	}
 	else if(ewl->wl_chain_name[0] != '\0') {
 		printf("%-16s %-12s %-16s %-12s chained: %s\n", ewl->wl_name, ewl->wl_type,
-							"-", rqsched, ewl->wl_chain_name);
+							"-", "-", ewl->wl_chain_name);
 	}
 	else {
 		printf("%16s [ERROR]\n", ewl->wl_name);

@@ -48,9 +48,10 @@
  * */
 
 #define N 20
+#define RETRIES 3
 
-float chi = 31.410;
-int number = 25000;
+float chi = 30.144;
+int number = 20000;
 
 randgen_t* rg;
 
@@ -134,7 +135,7 @@ double chisquare_error(const char* s, int o, double d) {
 	return error;
 }
 
-boolean_t chisquare_test(distribution_t* d, randvar_t* rv) {
+boolean_t chisquare_test_impl(distribution_t* d, randvar_t* rv) {
 	int o[N] = { 0, 0, 0, 0, 0,  0, 0, 0, 0, 0,
 			 	 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, };
 	int i, n;
@@ -178,6 +179,18 @@ boolean_t chisquare_test(distribution_t* d, randvar_t* rv) {
 	printf("   D=%4.8f\n", D);
 
 	return D < chi;
+}
+
+boolean_t chisquare_test(distribution_t* d, randvar_t* rv) {
+	boolean_t result = B_FALSE;
+	int retries = RETRIES;
+
+	while(--retries >= 0 && !result) {
+		result = chisquare_test_impl(d, rv);
+		printf("%d attempts left\n", retries);
+	}
+
+	return result;
 }
 
 void test_uniform(void) {

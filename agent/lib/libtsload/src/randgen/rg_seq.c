@@ -12,10 +12,11 @@
 #include <limits.h>
 
 /**
+ *
  * #### Sequental generator
  *
  * Uses API of random generators, but not really _random_ generator.
- * Generates sequence with start value rg_seed and in interval [0; ULLONG_MAX)
+ * Generates sequence with start value rg_seed and in interval \[0; ULLONG_MAX)
  * */
 
 typedef struct rq_seq {

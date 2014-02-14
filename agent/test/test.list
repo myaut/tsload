@@ -58,8 +58,8 @@ threads/thread1		file=thread1.c
 threads/atomic		file=atomic.c
 threads/mutex		file=mutex.c
 threads/event		file=event.c 	maxtime=2
-threads/affinity	file=affinity.c	lib=libhostinfo
-threads/solaris_pset file=solaris_pset.c lib=libhostinfo plat=solaris
+threads/affinity	file=affinity.c	lib=libhostinfo  maxtime=12
+threads/solaris_pset file=solaris_pset.c lib=libhostinfo plat=solaris maxtime=12
 threads/sched 		file=sched.c
 
 # Tests for hostinfo
@@ -68,4 +68,4 @@ hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c  plat=linux
 
 # Tests for random generators
 ^random 			lib=libjson lib=libtscommon lib=libhostinfo lib=libtsload
-random/chisquare	file=chisquare.c lib=m
+random/chisquare	file=chisquare.c lib=m maxtime=3

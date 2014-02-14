@@ -34,7 +34,7 @@ library = lib.LinkSharedLibrary(target, objects)
 
 lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 
-lib.Append(ENV = {'TSDOC_SPACE': 'tscommon'})
+lib.Append(TSDOC_SPACE='tscommon')
 tsdoc = [lib.DocBuilder(['include/hashmap.h', 'src/hashmap.c']),
          lib.DocBuilder(['include/syncqueue.h', 'src/syncqueue.c']),
          lib.DocBuilder(['include/list.h']),

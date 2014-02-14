@@ -27,7 +27,7 @@
 #define WLNOTIFYMSGLEN	512
 
 /**
- * Workloads
+ * @module Workloads
  * */
 
 /* Keep up to 16 steps in queue */
@@ -52,6 +52,26 @@
 struct workload;
 struct rqsched_class;
 
+/**
+ * Request descriptor
+ *
+ * @member rq_step id of step to which request belongs
+ * @member rq_id unique id of request for workload inside step
+ * @member rq_user_id id of user (set by think-time scheduler)
+ * @member rq_thread_id id of worker in threadpool which was run this request
+ * @member rq_sched_time arrival time
+ * @member rq_start_time service begin time
+ * @member rq_end_time service end time
+ * @member rq_queue_len count of requests in worker or threadpool queue that follow \
+ * 		this request and which arrival time is come.
+ * @member rq_flags request flags
+ * @member rq_workload workload to which it's request belongs
+ * @member rq_params vector of request params
+ * @member rq_node link node for threadpool queue
+ * @member rq_w_node link node for worker queue
+ * @member rq_wl_node link node for workload request list
+ * @member rq_chain_next next request (for workload chaining)
+ */
 typedef struct request {
 	long rq_step;
 	int rq_id;
@@ -73,7 +93,7 @@ typedef struct request {
 
 	list_node_t rq_node;		/* Next request in chain */
 	list_node_t rq_w_node;
-	struct request* rq_wl_next;
+	list_node_t rq_wl_node;
 	struct request* rq_chain_next;	/* Next request in workload chain */
 } request_t;
 
@@ -134,7 +154,7 @@ typedef enum {
  * 		Because after we unconfiguring workload there are requests that was not yet reported 		\
  * 		and it is done by separate thread, we should wait for them.
  * @member wl_current_rq Id of last created request
- * @member wl_last_request Most newer request created for this workload
+ * @member wl_requests List of workload's requests. Protected by wl_rq_mutex
  * @member wl_start_time Time when workload was scheduled to start
  * @member wl_notify_time Timestamp when wl_notify was called. Used to reduce number of WLS_CONFIGURING messages
  * @member wl_start_clock Clock when workload was run by threadpool. Used to normalize request times to	\
@@ -142,7 +162,7 @@ typedef enum {
  * @member wl_time Current clock of workload: wl_start_clock + step * tp_quantum
  * @member wl_current_step Current step of workload
  * @member wl_last_step Last step id on queue
- * @member wl_step_queue Queue that contains requests number of requests (or trace-based)
+ * @member wl_step_queue Queue that contains requests number of requests (or trace-based). Protected by wl_step_mutex
  * @member wl_rqsched_class Workload request scheduler
  * @member wl_rqsched_private Private data for request scheduler
  */
@@ -164,7 +184,8 @@ typedef struct workload {
 	atomic_t		 wl_ref_count;
 
 	int				 wl_current_rq;
-	request_t*		 wl_last_request;
+	thread_mutex_t	 wl_rq_mutex;
+	list_head_t		 wl_requests;
 
 	ts_time_t		 wl_start_time;
 	ts_time_t		 wl_notify_time;
@@ -172,7 +193,7 @@ typedef struct workload {
 	ts_time_t		 wl_time;
 
 	/* Requests queue */
-	thread_mutex_t	 wl_rq_mutex;
+	thread_mutex_t	 wl_step_mutex;
 	long			 wl_current_step;
 	long			 wl_last_step;
 	workload_step_t  wl_step_queue[WLSTEPQSIZE];

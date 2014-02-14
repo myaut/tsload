@@ -21,10 +21,17 @@ struct module;
 struct workload;
 struct request;
 
+/**
+ * @module Workload types
+ */
+
 typedef int (* wlt_wl_config_func)(struct workload* wl);
 typedef int (* wlt_wl_step_func)(struct workload* wl, unsigned num_requests);
 typedef int (* wlt_run_request_func)(struct request* wl);
 
+/**
+ * Workload classes
+ */
 typedef enum wl_class {
 	WLC_CPU_INTEGER 		= 0x0001,
 	WLC_CPU_FLOAT			= 0x0002,
@@ -44,13 +51,30 @@ typedef enum wl_class {
 	WLC_NET_CLIENT			= 0x100000
 } wl_class_t;
 
+/**
+ * Workload type descriptor
+ *
+ * Set up it statically in your module
+ *
+ * @member wlt_name Name of workload type
+ * @member wlt_class Bitmask of workload class flags
+ * @member wlt_params pointer to a vector of workload/request parameter descriptors
+ * @member wlt_params_size sizeof() of workload parameters structure
+ * @member wlt_rqparams_size sizeof() of request parameters structure
+ * @member wlt_wl_config pointer to function that configures workload
+ * @member wlt_wl_unconfig pointer to function that destroyes worklaod
+ * @member wlt_wl_step function that will be called at beginning of each step
+ * @member wlt_run_request primary workload function that services request
+ * @member wlt_module should be set to module structure passed to mod_config()
+ * @member wlt_next field internally used by TSLoad, set to NULL
+ */
 typedef struct wl_type {
 	char		 wlt_name[WLTNAMELEN];
 
 	wl_class_t	wlt_class;
 
 	wlp_descr_t* wlt_params;
-	size_t 		 wlt_params_size;			/**< sizeof structure where parameter values are stored*/
+	size_t 		 wlt_params_size;
 	size_t		 wlt_rqparams_size;
 
 	wlt_wl_config_func   wlt_wl_config;
