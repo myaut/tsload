@@ -328,7 +328,7 @@ int tse_run_tp_configure_walk(hm_item_t* item, void* context) {
 	etp->tp_status = EXPERIMENT_OK;
 
 	if(etp->tp_sched != NULL) {
-		ret = tsload_schedule_threadpool(etp->tp_name, etp);
+		ret = tsload_schedule_threadpool(etp->tp_name, etp->tp_sched);
 
 		if(ret != TSLOAD_OK) {
 			etp->tp_status = EXPERIMENT_ERROR;
