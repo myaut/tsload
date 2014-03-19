@@ -19,6 +19,7 @@ int print_host_info(int flags) {
 		printf("%-16s: %s\n", "osname", hi_get_os_name());
 		printf("%-16s: %s\n", "release", hi_get_os_release());
 		printf("%-16s: %s\n", "mach", hi_get_mach());
+		printf("%-16s: %s\n", "system", hi_get_sys_name());
 	}
 	else {
 		printf("%s %s.%s %s %s\n", hi_get_os_name(),

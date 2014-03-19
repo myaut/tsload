@@ -240,7 +240,7 @@ class BuildServer(object):
             raise BuildError('Could not find resulting build!')
         
         self.outputdir = os.path.join(self.repodir, BuildServer.BUILD_DIR, filenames[0])
-        self._log(BuildServer.LOG_ALL, 'Output directory is %s\n', self.builddir)
+        self._log(BuildServer.LOG_ALL, 'Output directory is %s\n', self.outputdir)
     
     def test_run(self, command):
         '''Runs test executable on remote build server.
@@ -353,9 +353,12 @@ class BuildManager(object):
             
             print fmtstr % (name, server.plat, server.mach, uri)
     
-    def run(self, repository, servers = []):
+    def run(self, repository, servers = [], targets = []):
         if not servers:
             servers = self.servers.keys()
+        
+        if not targets:
+            targets = ['copy', 'tests', 'install', 'fetch', 'run']
         
         for name in servers:
             print >> sys.stderr, '-------------%s-------------' % name
@@ -363,25 +366,32 @@ class BuildManager(object):
             server = self.servers[name]
             
             server.connect()
-            server.copy(repository)
+            
+            if 'copy' in targets:
+                server.copy(repository)
             
             try: 
-                server.build(self.global_opts, 'tests')
-                server.build(self.global_opts, 'install')
+                if 'tests' in targets:
+                    server.build(self.global_opts, 'tests')
+                    
+                if 'install' in targets:
+                    server.build(self.global_opts, 'install')
                 
-                server.get_results(self.prefix)
+                if 'run' in targets:
+                    server.get_results(self.prefix)
+                    
+                    server.test_run('${INSTALL_BIN}tshostinfo${EXESUFFIX} -x')
+                    
+                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} workload')
+                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample run')
+                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample list')
+                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample show')
+                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample report')
+                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample export -F csv')
                 
-                server.test_run('${INSTALL_BIN}tshostinfo${EXESUFFIX} -x')
-                
-                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} workload')
-                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample run')
-                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample list')
-                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample show')
-                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample report')
-                server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample export -F csv')
-                
-                server.build(self.global_opts, 'zip')
-                server.fetch(self.out_dir)
+                if 'fetch' in targets:
+                    server.build(self.global_opts, 'zip')
+                    server.fetch(self.out_dir)
             except BuildError as be:
                 print >> sys.stderr, str(be)
             except TestRunError as tre:
@@ -393,7 +403,12 @@ usage_str="""
 Build-service - tool to remotely build TSLoad packages
 
 Usage:
-$ python buildsvc.py -c /path/to/tsload-build.cfg -r /path/to/tsload/agent [node [node ...]]
+$ python buildsvc.py [OPTIONS] [TARGETS]
+
+Where options are
+ * -c /path/to/tsload-build.cfg 
+ * -r /path/to/tsload/agent 
+ * [-n node [ -n node ...]]
 
 To list remote build servers, specify -l option:
 $ python buildsvc.py -c /path/to/tsload-build.cfg -l"""
@@ -408,10 +423,11 @@ def error(error):
     sys.exit(1)   
     
 try:
-    opts, args = getopt.getopt(sys.argv[1:], 'lc:r:')
+    opts, args = getopt.getopt(sys.argv[1:], 'lc:r:n:')
 except getopt.GetoptError as goe:
     usage(str(goe))
 
+nodes = []
 config_path = None
 repo_path = None
 lflag = False
@@ -422,6 +438,8 @@ for opt, optarg in opts:
         repo_path = optarg
     elif opt == '-l':
         lflag = True
+    elif opt == '-n':
+        nodes.append(optarg)
     else:
         usage('Unknown option %s' % opt)
 
@@ -439,4 +457,4 @@ if repo_path is None:
 
 
 repository = Repository(repo_path)
-manager.run(repository, args)
+manager.run(repository, nodes, args)

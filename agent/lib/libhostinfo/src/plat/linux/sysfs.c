@@ -165,6 +165,9 @@ int hi_linux_sysfs_walk(const char* root,
 			if(plat_dirent_hidden(de))
 				continue;
 
+			if(plat_dirent_type(de) < 0)
+				continue;
+
 			proc(de->d_name, arg);
 		}
 	} while(de != NULL);

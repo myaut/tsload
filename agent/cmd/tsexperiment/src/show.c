@@ -158,6 +158,7 @@ void tse_show_normal(experiment_t* exp) {
 		TSE_SHOW_JSON_PARAM_STRING(agent, "osname");
 		TSE_SHOW_JSON_PARAM_STRING(agent, "release");
 		TSE_SHOW_JSON_PARAM_STRING(agent, "machine_arch");
+		TSE_SHOW_JSON_PARAM_STRING(agent, "system");
 
 		fputs("\n", stdout);
 

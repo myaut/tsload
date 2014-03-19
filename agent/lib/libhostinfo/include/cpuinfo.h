@@ -19,6 +19,8 @@
 
 #define HI_CPU_CACHEID(level, type)		(level << 2 | type)
 
+#define HI_CPU_CACHE_TLB_LEVEL		-1
+
 typedef enum {
 	HI_CPU_CACHE_UNIFIED,
 	HI_CPU_CACHE_DATA,
@@ -65,7 +67,10 @@ typedef struct {
 	hi_cpu_cache_type_t c_type;
 	uint32_t	   		c_size;
 	int 				c_associativity;
-	int					c_line_size;
+	union {
+		int				line;
+		long			page[4];
+	} c_unit_size;
 } hi_cpu_cache_t;
 
 typedef struct hi_cpu_object {

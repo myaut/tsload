@@ -7,11 +7,15 @@
 
 #include <defs.h>
 
+#include <plat/sysfs.h>
+
 #include <stdio.h>
 #include <string.h>
 
 #include <unistd.h>
 #include <sys/utsname.h>
+
+#define SYS_DMI_PATH		"/sys/class/dmi/id/"
 
 #ifndef LSB_RELEASE_PATH
 #define LSB_RELEASE_PATH "/usr/bin/lsb_release"
@@ -20,13 +24,18 @@
 #define OSNAME_OK		0
 #define OSNAME_ERROR	1
 
-#define OSNAMELEN 	64
+#define OSNAMELEN 		64
+#define SYSNAMELEN		128
 
-char hi_linux_os_name[64];
+char hi_linux_os_name[OSNAMELEN];
 boolean_t hi_linux_release_read = B_FALSE;
+
+char hi_linux_sys_name[SYSNAMELEN];
+boolean_t hi_linux_sysname_found = B_FALSE;
 
 /* From posix implementation */
 struct utsname* hi_get_uname();
+
 static int read_lsb_release(void);
 static int read_redhat_release(void);
 static int read_suse_release(void);
@@ -47,6 +56,32 @@ PLATAPI const char* hi_get_os_name() {
 
 PLATAPI const char* hi_get_domainname() {
 	return hi_get_uname()->domainname;
+}
+
+PLATAPI const char* hi_get_sys_name() {
+	char vendor[64] = "";
+	char model[128] = "Unknown system";
+	int ret;
+
+	if(hi_linux_sysname_found)
+		return hi_linux_sys_name;
+
+	/* FIXME: DMI is x86-specific, should implement other platforms */
+
+	ret = hi_linux_sysfs_readstr(SYS_DMI_PATH, "sys_vendor", NULL, vendor, 64);
+	if(ret == HI_LINUX_SYSFS_OK) {
+		hi_linux_sysfs_fixstr(vendor);
+	}
+
+	hi_linux_sysfs_readstr(SYS_DMI_PATH, "product_name", NULL, model, 128);
+	if(ret == HI_LINUX_SYSFS_OK) {
+		hi_linux_sysfs_fixstr(model);
+	}
+
+	snprintf(hi_linux_sys_name, SYSNAMELEN, "%s %s", vendor, model);
+	hi_linux_sysname_found = B_TRUE;
+
+	return hi_linux_sys_name;
 }
 
 /*Parses lsb_release output*/

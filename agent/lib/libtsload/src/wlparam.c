@@ -317,6 +317,7 @@ int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl)
 				return WLPARAM_INVALID_PARAM;
 			}
 
+			++wlp;
 			continue;
 		}
 
@@ -363,7 +364,7 @@ int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl)
 			return ret;
 		}
 
-		wlp++;
+		++wlp;
 	}
 
 	return WLPARAM_JSON_OK;

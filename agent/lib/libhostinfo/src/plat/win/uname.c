@@ -7,6 +7,7 @@
 
 #include <defs.h>
 #include <uname.h>
+#include <plat/win/wmi.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -14,6 +15,7 @@
 #include <windows.h>
 
 #define UNAMELEN		64
+#define SYSNAMELEN		256
 
 LIBEXPORT PLATAPIDECL(hi_get_nodename) char hi_win_nodename[MAX_COMPUTERNAME_LENGTH + 1];
 LIBEXPORT PLATAPIDECL(hi_get_domainname) char hi_win_domainname[MAX_COMPUTERNAME_LENGTH + 1];
@@ -23,6 +25,9 @@ LIBEXPORT PLATAPIDECL(hi_get_os_release) char hi_win_os_release[UNAMELEN] = "?";
 LIBEXPORT PLATAPIDECL(hi_get_mach) char hi_win_mach[UNAMELEN] = "?";
 
 boolean_t hi_win_osinfo = B_FALSE;
+
+LIBEXPORT PLATAPIDECL(hi_get_sys_name) char hi_win_sys_name[SYSNAMELEN] = "Unknown system";
+boolean_t hi_win_sysname_found = B_FALSE;
 
 /**
  * See full example here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms724429%28v=vs.85%29.aspx
@@ -168,4 +173,36 @@ static void hi_win_get_osinfo(void) {
 			break;
 		}
 	}
+}
+
+PLATAPI const char* hi_get_sys_name() {
+	char vendor[64] = "";
+	char model[128] = "Unknown system";
+	int ret;
+
+	hi_wmi_t wmi;
+	hi_wmi_iter_t iter;
+
+	if(hi_win_sysname_found)
+		return hi_win_sys_name;
+
+	ret = hi_wmi_connect(&wmi, HI_WMI_ROOT_CIMV2);
+	if(ret == HI_WMI_OK) {
+		ret = hi_wmi_query(&wmi, &iter, L"WQL",
+						   L"SELECT Manufacturer,Model FROM Win32_ComputerSystem");
+
+		if(ret == HI_WMI_OK) {
+			if(hi_wmi_next(&iter)) {
+				hi_wmi_get_string(&iter, L"Manufacturer", vendor, 64);
+				hi_wmi_get_string(&iter, L"Model", model, 128);
+			}
+		}
+
+		hi_wmi_disconnect(&wmi);
+	}
+
+	snprintf(hi_win_sys_name, SYSNAMELEN, "%s %s", vendor, model);
+	hi_win_sysname_found = B_TRUE;
+
+	return hi_win_sys_name;
 }

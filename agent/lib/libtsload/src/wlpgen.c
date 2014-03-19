@@ -388,7 +388,7 @@ void* wlpgen_generate(struct workload* wl) {
 
 	int ret;
 
-	if(list_empty(&wl->wl_wlpgen_head)) {
+	if(wl->wl_type->wlt_rqparams_size == 0) {
 		return NULL;
 	}
 

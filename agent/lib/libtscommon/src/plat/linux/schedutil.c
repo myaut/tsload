@@ -112,7 +112,7 @@ static void sched_initialize_rt(sched_policy_t* policy) {
 }
 
 PLATAPI int sched_init() {
-	/* FIXME: Not all policies may be supported */
+	/* FIXME: Not all policies may be supported by particular Linux Kernel */
 
 	sched_initialize_rt(&sched_rr_policy);
 	sched_initialize_rt(&sched_fifo_policy);

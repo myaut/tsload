@@ -87,6 +87,7 @@ JSONNODE* tsload_get_hostinfo(void) {
 	json_push_back(node, json_new_a("osname", hi_get_os_name()));
 	json_push_back(node, json_new_a("release", hi_get_os_release()));
 	json_push_back(node, json_new_a("machine_arch", hi_get_mach()));
+	json_push_back(node, json_new_a("system", hi_get_sys_name()));
 
 	json_push_back(node, json_new_i("num_cpus", hi_cpu_num_cpus()));
 	json_push_back(node, json_new_i("num_cores", hi_cpu_num_cores()));

@@ -100,7 +100,7 @@ void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	cache->cache.c_type = cache_type;
 	cache->cache.c_size = lproc->Cache.Size;
 	cache->cache.c_associativity = lproc->Cache.Associativity;
-	cache->cache.c_line_size = lproc->Cache.LineSize;
+	cache->cache.c_unit_size.line = lproc->Cache.LineSize;
 
 	core = HI_CPU_PARENT(strand);
 	chip = HI_CPU_PARENT(core);

@@ -33,3 +33,8 @@ PLATAPI const char* hi_get_domainname() {
 PLATAPI const char* hi_get_mach() {
 	return mach;
 }
+
+/* Returns system model and vendor */
+PLATAPI const char* hi_get_sys_name() {
+	return "Unknown";
+}

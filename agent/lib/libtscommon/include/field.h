@@ -42,7 +42,7 @@
 
 #else
 
-/* FIXME: For gcc implement inlined construction ({...}) */
+/* TODO: For gcc implement inlined construction ({...}) */
 
 #define FIELD_IS_ALIGNED(value, type)		((((unsigned long) value) & (-sizeof(type))) == 0)
 

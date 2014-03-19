@@ -154,7 +154,7 @@ void hi_linux_proc_cache(const char* name, void* arg) {
 	cache->cache.c_size = size;
 	cache->cache.c_type = cache_type;
 	cache->cache.c_associativity = associativity;
-	cache->cache.c_line_size = line_size;
+	cache->cache.c_unit_size.line = line_size;
 
 	hi_cpu_dprintf("hi_linux_proc_cache: => level: %d type: %d size: %ld\n", level, cache_type, size);
 

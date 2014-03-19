@@ -15,11 +15,11 @@ static
 int cache_type_char(hi_cpu_cache_type_t type) {
 	switch(type) {
 	case HI_CPU_CACHE_DATA:
-		return 'D';
+		return 'd';
 	case HI_CPU_CACHE_INSTRUCTION:
-		return 'I';
+		return 'i';
 	case HI_CPU_CACHE_UNIFIED:
-		return 'U';
+		return ' ';
 	}
 
 	return '?';
@@ -29,6 +29,8 @@ void print_cpu_element(hi_object_t* parent, int indent) {
 	hi_object_child_t* child;
 	hi_cpu_object_t* object;
 	char indent_str[16];
+	int ci;
+	long page_size;
 
 	indent = min(indent, 15);
 	memset(indent_str, ' ', indent);
@@ -51,9 +53,26 @@ void print_cpu_element(hi_object_t* parent, int indent) {
 			printf("%s+----%-s\n", indent_str, object->hdr.name);
 			break;
 		case HI_CPU_CACHE:
-			printf("%s+----%-s L%d%c %d %d:%d\n", indent_str, object->hdr.name, object->cache.c_level,
-					cache_type_char(object->cache.c_type), object->cache.c_size,
-					object->cache.c_line_size, object->cache.c_associativity);
+			if(object->cache.c_level != HI_CPU_CACHE_TLB_LEVEL) {
+				printf("%s+----%-s L%d%c %d %d:%d\n", indent_str, object->hdr.name, object->cache.c_level,
+						cache_type_char(object->cache.c_type), object->cache.c_size,
+						object->cache.c_unit_size.line, object->cache.c_associativity);
+			}
+			else {
+				printf("%s+----%-s %cTLB %d %d sizes: ", indent_str, object->hdr.name,
+										cache_type_char(object->cache.c_type), object->cache.c_size,
+										object->cache.c_associativity);
+				for(ci = 0; ci < 4; ++ci) {
+					page_size = object->cache.c_unit_size.page[ci];
+
+					if(page_size == 0)
+						break;
+
+					printf(" %ld", page_size);
+				}
+
+				fputs("\n", stdout);
+			}
 			break;
 		}
 		print_cpu_element(child->object, indent + 5);

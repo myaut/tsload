@@ -19,6 +19,10 @@
 #define HI_TRACE_SYSFS		0x100
 #endif
 
+#ifdef PLAT_WIN
+#define HI_TRACE_WMI		0x100
+#endif
+
 #ifdef HOSTINFO_TRACE
 extern int hi_trace_flags;
 
@@ -37,6 +41,10 @@ extern int hi_trace_flags;
 
 #ifdef PLAT_LINUX
 #define hi_sysfs_dprintf( ... ) hi_trace_dprintf(HI_TRACE_SYSFS, __VA_ARGS__ )
+#endif
+
+#ifdef PLAT_WIN
+#define hi_wmi_dprintf( ... ) hi_trace_dprintf(HI_TRACE_WMI, __VA_ARGS__ )
 #endif
 
 

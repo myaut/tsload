@@ -310,7 +310,6 @@ static long experiment_generate_id(experiment_t* root) {
 
 	runid_file = fopen(runid_path, "r");
 	if(runid_file != NULL) {
-		/* FIXME: Locking on Windows*/
 		plat_flock(fileno(runid_file), LOCK_EX);
 
 		fgets(runid_str, 32, runid_file);

@@ -65,6 +65,7 @@ threads/sched 		file=sched.c
 # Tests for hostinfo
 ^hostinfo 			lib=libjson 	lib=libtscommon		lib=libhostinfo
 hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c  plat=linux
+hostinfo/wmi_proc		file=wmi_proc.c  plat=win
 
 # Tests for random generators
 ^random 			lib=libjson lib=libtscommon lib=libhostinfo lib=libtsload

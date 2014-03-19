@@ -15,6 +15,9 @@
 #include <sys/systeminfo.h>
 #include <sys/utsname.h>
 
+/* FIXME: smbios is x86-specific */
+#include <sys/smbios.h>
+
 /* Based on /etc/release
  *
  * First line of release file looks like:
@@ -27,12 +30,17 @@
 /* bootadm uses 80 as a constant */
 #define RELEASENAMELEN 		80
 
+#define SYSNAMELEN			256
+
 boolean_t hi_sol_release = B_FALSE;
 
 PLATAPIDECL(hi_get_os_name, hi_get_os_release) char hi_sol_os_name[RELEASENAMELEN];
 PLATAPIDECL(hi_get_os_name, hi_get_os_release) char hi_sol_os_release[RELEASENAMELEN];
 
 char hi_sol_domain_name[64];
+
+LIBEXPORT PLATAPIDECL(hi_get_sys_name) char hi_sol_sys_name[SYSNAMELEN] = "Unknown system";
+boolean_t hi_sol_sysname_found = B_FALSE;
 
 static void hi_sol_read_release(void);
 static void hi_sol_uname(void);
@@ -123,4 +131,38 @@ static void hi_sol_uname(void) {
 	strcpy(hi_sol_os_name, uname_data.release);
 
 	hi_sol_release = B_TRUE;
+}
+
+
+PLATAPI const char* hi_get_sys_name() {
+	smbios_hdl_t* shp;
+	smbios_system_t sys;
+	smbios_info_t info;
+	id_t id;
+
+	int err;
+
+	if(hi_sol_sysname_found)
+		return hi_sol_sys_name;
+
+	/* FIXME: smbios is x86-specific, should implement SPARC's "banner-name" from PICL root */
+
+	shp = smbios_open(NULL, SMB_VERSION, 0, &err);
+	if(shp == NULL)
+		goto end;
+
+	id = smbios_info_system(shp, &sys);
+	if(id != SMB_ERR) {
+		err = smbios_info_common(shp, id, &info);
+
+		if(err != SMB_ERR) {
+			snprintf(hi_sol_sys_name, SYSNAMELEN, "%s %s", info.smbi_manufacturer, info.smbi_product);
+		}
+	}
+
+	smbios_close(shp);
+
+end:
+	hi_sol_sysname_found = B_TRUE;
+	return hi_sol_sys_name;
 }

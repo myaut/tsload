@@ -75,6 +75,7 @@ int print_info(const char* topic) {
 	PRINT_INFO_IMPL(disk);
 	PRINT_INFO_IMPL(cpu);
 	PRINT_INFO_IMPL(sched);
+	PRINT_INFO_IMPL(vm);
 
 	return 1;
 }

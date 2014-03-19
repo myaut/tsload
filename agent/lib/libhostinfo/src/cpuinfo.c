@@ -88,8 +88,16 @@ void hi_cpu_object_add(hi_cpu_object_t* object) {
 				HI_CPU_PARENT(HI_CPU_PARENT(object))->id, HI_CPU_PARENT(object)->id, object->id);
 		break;
 	case HI_CPU_CACHE:
-		snprintf(object->hdr.name, HIOBJNAMELEN, "cache:%s:%d",
-				HI_CPU_PARENT_OBJ(object)->name, object->id);
+		{
+			hi_cpu_object_t* cache = HI_CPU_FROM_OBJ(object);
+			if(cache->cache.c_level != HI_CPU_CACHE_TLB_LEVEL) {
+				snprintf(object->hdr.name, HIOBJNAMELEN, "cache:l%d:%d",
+						cache->cache.c_level, object->id);
+			}
+			else {
+				snprintf(object->hdr.name, HIOBJNAMELEN, "cache:tlb:%d", object->id);
+			}
+		}
 		break;
 	}
 
@@ -286,10 +294,15 @@ JSONNODE* json_hi_cpu_format(struct hi_object_header* obj) {
 		json_push_back(jcpu, json_new_i("frequency", cpuobj->chip.cp_freq));
 		break;
 	case HI_CPU_CACHE:
-		json_push_back(jcpu, json_new_i("level", cpuobj->cache.c_level));
+		if(cpuobj->cache.c_level != HI_CPU_CACHE_TLB_LEVEL) {
+			json_push_back(jcpu, json_new_i("line_size", cpuobj->cache.c_unit_size.line));
+			json_push_back(jcpu, json_new_i("level", cpuobj->cache.c_level));
+		}
+		else {
+			/* TODO: Implement TLBs */
+		}
 		json_push_back(jcpu, json_new_i("size", cpuobj->cache.c_size));
 		json_push_back(jcpu, json_new_a("cache_type", json_hi_cpu_format_cache_type(cpuobj->cache.c_type)));
-		json_push_back(jcpu, json_new_i("line_size", cpuobj->cache.c_line_size));
 		json_push_back(jcpu, json_new_i("associativity", cpuobj->cache.c_associativity));
 		break;
 	}

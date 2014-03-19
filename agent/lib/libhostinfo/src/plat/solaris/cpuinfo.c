@@ -9,7 +9,7 @@
 #include <cpuinfo.h>
 
 #include <kstat.h>
-#include <picl.h>
+#include <plat/minipicl.h>
 #include <sys/lgrp_user.h>
 #include <string.h>
 
@@ -34,7 +34,16 @@
 			SM_INIT( .c_type, type ),			\
 			SM_INIT( .c_size, 0 ),				\
 			SM_INIT( .c_associativity, 0 ),		\
-			SM_INIT( .c_line_size, 0 ) }
+			SM_INIT( .c_unit_size.line, 0 ) }
+
+/* Do not use SM_INIT for page sizes because it have curly braces
+ * which are breaking gcc preprocessor */
+#define HI_SOL_CPU_TLB(type, ...)		\
+		{	SM_INIT( .c_level, HI_CPU_CACHE_TLB_LEVEL ), 		\
+			SM_INIT( .c_type, type ),			\
+			SM_INIT( .c_size, 0 ),				\
+			SM_INIT( .c_associativity, 0 ),		\
+			.c_unit_size.page = { __VA_ARGS__ , 0 } }
 
 struct hi_cpu_sol_cache {
 	char* 			    prefix;
@@ -44,12 +53,35 @@ struct hi_cpu_sol_cache {
 
 struct hi_cpu_sol_cache solaris_caches[] =
 {
+	/* TLB */
+	{ "itlb-4K", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION, 4 * SZ_KB) },
+	{ "dtlb-4K", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_DATA, 4 * SZ_KB) },
+	{ "itlb-2M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION, 2 * SZ_MB) },
+	{ "itlb-2M-4M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION, 2 * SZ_MB, 4 * SZ_MB) },
+	{ "itlb-4M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION, 4 * SZ_MB) },
+	{ "dtlb-2M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_DATA, 2 * SZ_MB) },
+	{ "dtlb0-2M-4M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_DATA, 2 * SZ_MB, 4 * SZ_MB) },
+	{ "itlb-4K-2M-4M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION,
+				4 * SZ_KB, 2 * SZ_MB, 4 * SZ_MB) },
+	{ "dtlb-4K-4M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_DATA, 4 * SZ_KB, 4 * SZ_MB) },
+
+	/* FIXME: support for shared TLB/L2 caches i.e:
+	 *
+	 * { "shared-l2-tlb-4k", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION, 4 * SZ_KB) },*/
+
+	/* Caches */
+
 	/* x86 & SPARC64 */
 	{ "l1-icache", B_FALSE, HI_SOL_CPU_CACHE(1, HI_CPU_CACHE_INSTRUCTION) },
 	{ "l1-dcache", B_FALSE, HI_SOL_CPU_CACHE(1, HI_CPU_CACHE_DATA) },
+	{ "sectored-l1-cache", B_FALSE, HI_SOL_CPU_CACHE(1, HI_CPU_CACHE_UNIFIED) },
+
+	{ "shared-l2-tlb-4k", B_FALSE, HI_SOL_CPU_CACHE(2, HI_CPU_CACHE_UNIFIED) },
 	{ "l2-cache", B_FALSE, HI_SOL_CPU_CACHE(2, HI_CPU_CACHE_UNIFIED) },
 	{ "sectored-l2-cache", B_FALSE, HI_SOL_CPU_CACHE(2, HI_CPU_CACHE_UNIFIED) },
+
 	{ "l3-cache", B_FALSE, HI_SOL_CPU_CACHE(3, HI_CPU_CACHE_UNIFIED) },
+	{ "sectored-l3-cache", B_FALSE, HI_SOL_CPU_CACHE(3, HI_CPU_CACHE_UNIFIED) },
 
 	/* UltraSPARC */
 	{ "icache", B_FALSE, HI_SOL_CPU_CACHE(1, HI_CPU_CACHE_INSTRUCTION) },
@@ -175,15 +207,19 @@ int hi_cpu_walk_cache(picl_nodehdl_t hdl, void *args) {
 		if(ret != PICL_SUCCESS)
 			continue;
 
-		snprintf(c_propname, 48, "%s-line-size", caches[cid].prefix);
-		caches[cid].cache.c_line_size = picl_get_uint_propval(hdl, c_propname, &ret);
-		if(ret != PICL_SUCCESS)
-			continue;
+		if(caches[cid].cache.c_level != HI_CPU_CACHE_TLB_LEVEL) {
+			snprintf(c_propname, 48, "%s-line-size", caches[cid].prefix);
+			caches[cid].cache.c_unit_size.line = picl_get_uint_propval(hdl, c_propname, &ret);
+			if(ret != PICL_SUCCESS)
+				continue;
+		}
 
 		hi_cpu_dprintf("hi_cpu_walk_cache: found cache %s\n", caches[cid].prefix);
 		caches[cid].found = B_TRUE;
 		last_cid = cid;
 	}
+
+	/* FIXME: for SPARC it's itlb-entries and dtlb-entries, need to add them too */
 
 	if(cache_args->shared_last_cache) {
 		if(cache_args->first_cpu)
