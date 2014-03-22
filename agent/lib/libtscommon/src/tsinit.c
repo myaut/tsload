@@ -6,6 +6,7 @@
  */
 
 #include <tsinit.h>
+#include <tuneit.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,15 +35,20 @@ int ts_init(struct subsystem** subsys_list, int count) {
 			tsi_subsys[i]->s_state = SS_ERROR;
 			tsi_subsys[i]->s_error_code = err;
 
+			tuneit_finalize();
+
 			fprintf(stderr, "Failure initializing %s, exiting\n", tsi_subsys[i]->s_name);
 			exit(err);
 
+			/* NOTREACHED */
 			return err;
 		}
 
 		tsi_subsys[i]->s_state = SS_OK;
 		tsi_subsys[i]->s_error_code = 0;
 	}
+
+	tuneit_finalize();
 
 	return 0;
 }

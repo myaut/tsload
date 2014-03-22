@@ -21,6 +21,7 @@
 #include <tsload.h>
 #include <list.h>
 #include <tpdisp.h>
+#include <tuneit.h>
 
 #include <assert.h>
 #include <string.h>
@@ -46,6 +47,8 @@ ts_time_t tp_max_quantum = TP_MAX_QUANTUM;
 
 boolean_t tp_collector_enabled = B_TRUE;
 ts_time_t tp_collector_interval = T_SEC / 2;
+
+int tp_max_threads = TPMAXTHREADS;
 
 /**
  * tunable: minimum time worker (or control thread) will sleep waiting for request arrival.
@@ -195,9 +198,9 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	int tid;
 	int ret;
 
-	if(num_threads > TPMAXTHREADS || num_threads == 0) {
+	if(num_threads > tp_max_threads || num_threads == 0) {
 		logmsg(LOG_WARN, "Failed to create thread_pool %s: maximum %d threads allowed (%d requested)",
-				name, TPMAXTHREADS, num_threads);
+				name, tp_max_threads, num_threads);
 		return NULL;
 	}
 
@@ -900,6 +903,20 @@ THREAD_END:
 }
 
 int tp_init(void) {
+	tuneit_set_int(int, tp_max_threads);
+	if(tp_max_threads < 1) {
+		tp_max_threads = TPMAXTHREADS;
+	}
+
+	tuneit_set_int(ts_time_t, tp_min_quantum);
+	tuneit_set_int(ts_time_t, tp_max_quantum);
+
+	tuneit_set_int(ts_time_t, tp_collector_interval);
+	tuneit_set_bool(tp_collector_enabled);
+
+	tuneit_set_int(ts_time_t, tp_worker_min_sleep);
+	tuneit_set_int(ts_time_t, tp_worker_overhead);
+
 	mutex_init(&tp_collect_mutex, "tp_collect_mutex");
 	cv_init(&tp_collect_cv, "tp_collect_cv");
 

@@ -36,6 +36,9 @@ DECLARE_FIELD_FUNCTIONS(uint64_t);
 DECLARE_FIELD_FUNCTIONS(float);
 DECLARE_FIELD_FUNCTIONS(double);
 
+/**
+ * Count of nodes on death row of tsfile. Reduces number of allocation/initializations.
+ */
 int	tsfile_nodes_count = 40;
 
 void tsfile_init_nodes(tsfile_t* file) {

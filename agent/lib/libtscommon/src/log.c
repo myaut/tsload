@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <threads.h>
+#include <tuneit.h>
 
 #include <errno.h>
 #include <sys/types.h>
@@ -26,8 +27,8 @@ LIBEXPORT char log_filename[LOGFNMAXLEN];
  * By default, debug and tracing are disabled
  * set log_debug or log_trace to 1 if you want to enable it
  * */
-LIBEXPORT int log_debug = 0;
-LIBEXPORT int log_trace	= 0;
+LIBEXPORT boolean_t log_debug = B_FALSE;
+LIBEXPORT boolean_t log_trace = B_FALSE;
 
 boolean_t log_initialized = B_FALSE;
 
@@ -80,6 +81,17 @@ int log_init() {
 	int ret;
 
 	mutex_init(&log_mutex, "log_mutex");
+
+	if(getenv("TS_DEBUG") != NULL) {
+		log_debug = B_TRUE;
+	}
+	if(getenv("TS_TRACE") != NULL) {
+		log_debug = B_TRUE;
+		log_trace = B_TRUE;
+	}
+
+	tuneit_set_bool(log_debug);
+	tuneit_set_bool(log_trace);
 
 	if(strcmp(log_filename, "-") == 0) {
 		log_file = stderr;

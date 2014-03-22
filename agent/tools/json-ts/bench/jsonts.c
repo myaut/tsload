@@ -13,9 +13,6 @@
 
 #define ITERATIONS	 500
 
-LIBIMPORT int log_debug;
-LIBIMPORT int log_trace;
-
 LIBIMPORT char log_filename[];
 
 extern boolean_t clnt_connected;
@@ -76,8 +73,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	strncpy(log_filename, "-", LOGFNMAXLEN);
-	log_debug = 1;
-	log_trace = 1;
 
 	strncpy(agent_hostname, argv[1], AGENTHOSTNAMELEN);
 	agent_register_methods(bench_table);

@@ -1485,6 +1485,8 @@ void mp_free(void* ptr) {
 }
 
 int mempool_init(void) {
+	/* FIXME: Add tuneables */
+
 	mp_segment = plat_mp_seg_alloc(mp_segment_size);
 
 	VALGRIND_CREATE_MEMPOOL(mp_segment, MEMPOOL_REDZONE_SIZE, B_FALSE);

@@ -21,8 +21,6 @@
 #include <stdlib.h>
 
 LIBIMPORT char log_filename[];
-LIBIMPORT int log_debug;
-LIBIMPORT int log_trace;
 
 tsf_backend_t* backend = NULL;
 
@@ -280,14 +278,6 @@ end:
 int main(int argc, char* argv[]) {
 	int err = 0;
 	int i;
-
-	if(getenv("TS_DEBUG") != NULL) {
-		log_debug = 1;
-	}
-	if(getenv("TS_TRACE") != NULL) {
-		log_debug = 1;
-		log_trace = 1;
-	}
 
 	parse_options_args(argc, argv);
 	strncpy(log_filename, "-", LOGFNMAXLEN);

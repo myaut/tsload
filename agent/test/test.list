@@ -46,6 +46,7 @@ tscommon/atomic		file=atomic.c
 tscommon/dirent		dir=dirent		use=dirent/test
 tscommon/paths		file=paths.c
 tscommon/cpumask	file=cpumask.c
+tscommon/tuneit		file=tuneit.c
 
 # Tests for network sockets
 ^netsock 			lib=libjson 	lib=libtscommon

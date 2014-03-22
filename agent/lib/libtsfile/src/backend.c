@@ -110,7 +110,9 @@ int tsf_json_add(tsf_backend_t* backend) {
 	JSONNODE* node;
 
 	/* Read everything from file into str
-	 * Couldn't memory map file because file may be stdin */
+	 * Couldn't memory map file because file may be stdin
+	 *
+	 * TODO: Rewrite this by allocating entire size of file */
 	while(feof(backend->file) == 0) {
 		read_len = fread(ptr, 1, tsf_json_fragment, backend->file);
 		if(read_len == 0)

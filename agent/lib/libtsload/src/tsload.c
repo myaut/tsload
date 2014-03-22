@@ -39,6 +39,7 @@ tsload_requests_report_func tsload_requests_report = NULL;
 
 extern ts_time_t tp_min_quantum;
 extern ts_time_t tp_max_quantum;
+extern int tp_max_threads;
 
 struct subsystem subsys[] = {
 	SUBSYSTEM("log", log_init, log_fini),
@@ -291,7 +292,7 @@ int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_
 	thread_pool_t* tp = NULL;
 	tp_disp_t* tpd = NULL;
 
-	if(num_threads > TPMAXTHREADS || num_threads == 0) {
+	if(num_threads > tp_max_threads || num_threads == 0) {
 		tsload_error_msg(TSE_INVALID_DATA, "Too much or zero threads requested for tp '%s' (%u, max: %u)", tp_name, num_threads,
 							TPMAXTHREADS);
 		return TSLOAD_ERROR;

@@ -94,7 +94,7 @@ hi_obj_subsys_t hi_obj_subsys[HI_SUBSYS_MAX] =
 };
 
 /* Last initialized subsystem. Needed for correct finish if hi_obj_init fails. */
-int max_subsys = 0;
+static int max_subsys = 0;
 
 static hi_obj_subsys_t* get_subsys(hi_obj_subsys_id_t sid) {
 	if(sid >= HI_SUBSYS_MAX)

@@ -9,6 +9,7 @@
 #include <plat/posixdecl.h>
 #include <mempool.h>
 #include <threads.h>
+#include <tuneit.h>
 
 #include <assert.h>
 
@@ -23,7 +24,12 @@ int tsfile_errno;
 			((header)->sb[(sbi)].count = new_count);		\
 			((header)->sb[(sbi)].time = tm_get_time())
 
+/**
+ * Enables synchronous writing into TSFiles
+ */
 boolean_t tsfile_sync_mode = B_FALSE;
+
+extern int tsfile_nodes_count;
 
 /**
  * TimeSeries File Format Library
@@ -520,6 +526,9 @@ int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array) {
 }
 
 int tsfile_init(void) {
+	tuneit_set_bool(tsfile_sync_mode);
+	tuneit_set_int(int, tsfile_nodes_count);
+
 	mp_cache_init(&tsfile_cache, tsfile_t);
 
 	return 0;

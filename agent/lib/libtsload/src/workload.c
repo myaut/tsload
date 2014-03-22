@@ -21,6 +21,7 @@
 #include <tstime.h>
 #include <etrace.h>
 #include <rqsched.h>
+#include <tuneit.h>
 
 #include <libjson.h>
 
@@ -922,6 +923,8 @@ fail:
 }
 
 int wl_init(void) {
+	tuneit_set_int(ts_time_t, wl_poll_interval);
+
 	hash_map_init(&workload_hash_map, "workload_hash_map");
 
 	squeue_init(&wl_requests, "wl-requests");

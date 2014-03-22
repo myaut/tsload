@@ -1,11 +1,5 @@
 TS Experiment - standalone agent to run TSLoad experiments 
 
-$ tsexperiment [global options] command [options and arguments]
-
-Where global options are:
-	-e <experiment_path>
-		Path to experiment root directory
-	-d|-t 
-		Enable debug or tracing
+$ tsexperiment [-e <experiment_path>] command [options and arguments]
 
 Subcommand is one of workload, wl, list, show, run, report or export.

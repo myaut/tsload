@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include <tsload.h>
 #include <tsversion.h>
+#include <tuneit.h>
 
 #include <tsfile.h>
 #include <hiobject.h>
@@ -32,9 +33,6 @@ boolean_t log_configured = B_FALSE;
 static char experiment_root_path[PATHMAXLEN];
 
 LIBIMPORT char log_filename[];
-LIBIMPORT int log_debug;
-LIBIMPORT int log_trace;
-
 LIBIMPORT int mod_type;
 
 LIBIMPORT char mod_search_path[];
@@ -89,7 +87,7 @@ void read_environ() {
 void parse_options(int argc, const char* argv[]) {
 	int c;
 
-	while((c = plat_getopt(argc, argv, "+e:dthv")) != -1) {
+	while((c = plat_getopt(argc, argv, "+e:X:hv")) != -1) {
 		switch(c) {
 		case 'h':
 			usage(0, "");
@@ -98,11 +96,8 @@ void parse_options(int argc, const char* argv[]) {
 			eflag = B_TRUE;
 			strncpy(experiment_root_path, optarg, PATHMAXLEN);
 			break;
-		case 't':
-			log_trace = 1;
-			/*FALLTHROUGH*/
-		case 'd':
-			log_debug = 1;
+		case 'X':
+			tuneit_add_option(optarg);
 			break;
 		case 'v':
 			print_ts_version("TS Experiment - standalone agent to run TSLoad experiments ");
