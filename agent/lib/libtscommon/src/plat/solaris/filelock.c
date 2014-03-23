@@ -21,9 +21,9 @@
 PLATAPI int plat_flock(int fd, int operation) {
 		int rc = 0;
 
-#if defined(__GNUC__) && defined(__sparc_v9__) || defined(__x86_64__)
+#if defined(__GNUC__) && (defined(__sparcv9) || defined(__x86_64__))
 		struct flock64 fl = {0};
-#elif defined(__GNUC__) && defined(__i386__)
+#elif defined(__GNUC__) && (defined(__sparcv8) || defined(__i386__))
 		struct flock fl = {0};
 #else
 #error "Unsupported architecture for Solaris build"
@@ -49,9 +49,9 @@ PLATAPI int plat_flock(int fd, int operation) {
 		}
 
 		fl.l_whence = SEEK_SET;
-#if defined(__GNUC__) && defined(__sparc_v9__) || defined(__x86_64__)
+#if defined(__GNUC__) && (defined(__sparcv9) || defined(__x86_64__))
 		rc = fcntl(fd, operation & LOCK_NB ? F_SETLK : F_SETLKW, &fl);
-#elif defined(__GNUC__) && defined(__i386__)
+#elif defined(__GNUC__) && (defined(__sparcv8) || defined(__i386__))
 		rc = fcntl(fd, operation & LOCK_NB ? F_SETLK64 : F_SETLKW64, &fl);
 #else
 #error "Unsupported architecture for Solaris build"

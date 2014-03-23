@@ -184,8 +184,8 @@ conf.CheckType('boolean_t', '#include <sys/types.h>\n')
 #----------------------------
 # tscommon checks
 
-if GetOption('debug'):
-    conf.Define('TS_LOCK_DEBUG', comment='--debug was enabled')
+if GetOption('trace'):
+    conf.Define('TS_LOCK_DEBUG', comment='--trace was enabled')
 
 # Get system id of thread
 if env.SupportedPlatform('linux'):
@@ -193,6 +193,9 @@ if env.SupportedPlatform('linux'):
 
 if env.SupportedPlatform('solaris'):
     conf.CheckDeclaration('_lwp_self', '#include <sys/lwp.h>')
+    conf.CheckDeclaration('pset_bind_lwp', '#include <sys/pset.h>')
+    
+    conf.CheckDeclaration('smbios_open', '#include <sys/smbios.h>')
 
 #----------------------------
 # hostinfo checks

@@ -190,9 +190,11 @@ if mach:
         if re.match('i\d86', mach) or mach == 'x86' or mach == 'sparc':
             env.Append(CCFLAGS = ["-m32"])
             env.Append(LINKFLAGS = ["-m32"])
+            env['DTRACEOPTS'] = '-32'
         else:
             env.Append(CCFLAGS = ["-m64"])
             env.Append(LINKFLAGS = ["-m64"])
+            env['DTRACEOPTS'] = '-64'
 
 # Determine build flags (debug/release)
 if env['DEBUG']:

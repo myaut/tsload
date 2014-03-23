@@ -22,7 +22,7 @@ elif env.SupportedPlatform('linux') or env.SupportedPlatform('solaris') and env[
     env.Append(BUILDERS = {'EtraceBuilder': EtraceBuilder})
     
     if env.SupportedPlatform('solaris'):
-        DTraceBuilder = Builder(action = 'dtrace -xnolibs -G -o $TARGET -s $SOURCES',
+        DTraceBuilder = Builder(action = 'dtrace -xnolibs -G $DTRACEOPTS -o $TARGET -s $SOURCES',
                                 suffix = '.o')
         env.Append(BUILDERS = {'DTraceBuilder': DTraceBuilder})
     
@@ -61,7 +61,7 @@ def PreprocessETrace(self, sources, target):
                                              [man, obj_file])
             dtrace_file[0].attributes.shared = True
             
-            etrace_files.append(dtrace_file)
+            etrace_files.append(dtrace_file[0])
         
         man_files.append(man)
             

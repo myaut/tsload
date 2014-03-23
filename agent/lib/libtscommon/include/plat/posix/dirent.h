@@ -8,6 +8,8 @@
 #ifndef PLAT_POSIX_DIRENT_H_
 #define PLAT_POSIX_DIRENT_H_
 
+#include <pathutil.h>
+
 #include <sys/types.h>
 #include <dirent.h>
 
@@ -22,7 +24,7 @@ typedef struct {
 
 	DIR* d_dirp;
 
-	char 		  d_path[MAXNAMLEN];
+	char 		  d_path[PATHMAXLEN];
 } plat_dir_t;
 
 #endif /* PLAT_POSIX_DIRENT_H_ */

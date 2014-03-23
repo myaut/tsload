@@ -11,7 +11,8 @@
 #include <defs.h>
 
 #define	PICLD_DOOR_VERSION	1
-#define	PICLD_DOOR	"/system/volatile/picld_door"
+#define	PICLD_DOOR_11	"/system/volatile/picld_door"
+#define	PICLD_DOOR_10	"/var/run/picld_door"
 #define	PICLD_DOOR_COOKIE	((void *)(0xdeaffeed ^ PICLD_DOOR_VERSION))
 
 typedef enum {

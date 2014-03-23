@@ -129,6 +129,9 @@ PLATAPI int sched_set_affinity(thread_t* thread , cpumask_t* mask) {
 			return SCHED_ERROR;
 	}
 	else {
+#ifndef HAVE_DECL_PSET_BIND_LWP
+		return SCHED_NOT_SUPPORTED;
+#else
 		ret = pset_create(&pset);
 
 		if(ret == -1) {
@@ -157,6 +160,7 @@ PLATAPI int sched_set_affinity(thread_t* thread , cpumask_t* mask) {
 		}
 
 		thread->t_sched_impl.pset = pset;
+#endif
 	}
 
 	return SCHED_OK;

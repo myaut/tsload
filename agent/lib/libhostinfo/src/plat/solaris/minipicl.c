@@ -342,10 +342,14 @@ int picl_initialize(void) {
 	uint32_t clrev = PICLD_DOOR_VERSION;
 	int32_t srvrev;
 
-	picl_door = open(PICLD_DOOR, O_RDONLY);
+	picl_door = open(PICLD_DOOR_11, O_RDONLY);
 
 	if(picl_door < 0) {
-		return PICL_NOTINITIALIZED;
+		picl_door = open(PICLD_DOOR_10, O_RDONLY);
+
+		if(picl_door < 0) {
+			return PICL_NOTINITIALIZED;
+		}
 	}
 
 	err = minipicl_call(PICL_CNUM_INIT,

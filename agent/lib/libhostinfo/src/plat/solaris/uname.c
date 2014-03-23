@@ -146,6 +146,7 @@ PLATAPI const char* hi_get_sys_name() {
 		return hi_sol_sys_name;
 
 	/* FIXME: smbios is x86-specific, should implement SPARC's "banner-name" from PICL root */
+#ifdef HAVE_SMBIOS_OPEN
 
 	shp = smbios_open(NULL, SMB_VERSION, 0, &err);
 	if(shp == NULL)
@@ -161,6 +162,7 @@ PLATAPI const char* hi_get_sys_name() {
 	}
 
 	smbios_close(shp);
+#endif
 
 end:
 	hi_sol_sysname_found = B_TRUE;

@@ -127,6 +127,7 @@ void log_gettime(char* buf, int sz) {
 	time_t rawtime;
 	struct tm* timeinfo;
 
+	/* Non-reenterable, but protected by upper mutex (log_mutex) */
 	time ( &rawtime );
 	timeinfo = localtime ( &rawtime );
 
@@ -157,9 +158,9 @@ int logmsg_src(int severity, const char* source, const char* format, ...)
 	    severity > LOG_TRACE || severity < 0)
 			return -1;
 
-	log_gettime(time, 64);
-
 	mutex_lock(&log_mutex);
+
+	log_gettime(time, 64);
 
 	ret = fprintf(log_file, "%s [%s:%4s] ", time, source, log_severity[severity]);
 

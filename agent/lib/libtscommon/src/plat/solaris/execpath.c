@@ -9,6 +9,8 @@
 #include <pathutil.h>
 
 #include <stdlib.h>
+#include <string.h>
+
 #include <unistd.h>
 
 PLATAPIDECL(plat_execpath) char cur_execpath[PATHMAXLEN];
@@ -25,8 +27,13 @@ PLATAPI const char* plat_execpath(void) {
 	    (getcwd(cur_workdir, PATHMAXLEN) == NULL))
 			return NULL;
 
-	path_join(cur_execpath, PATHMAXLEN,
-			  cur_workdir, execname, NULL);
+	if(execname[0] != '/') {
+		path_join(cur_execpath, PATHMAXLEN,
+				  cur_workdir, execname, NULL);
+	}
+	else {
+		strncpy(cur_execpath, execname, PATHMAXLEN);
+	}
 
 	have_execpath = B_TRUE;
 	return cur_execpath;
