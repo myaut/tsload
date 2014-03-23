@@ -2,6 +2,7 @@ from pathutil import *
 from buildstr import GenerateBuildFile
 from SCons.Errors import StopError
 import SCons.SConf
+import sys
 
 Import('env')
 
@@ -257,6 +258,9 @@ if env.SupportedPlatform('posix'):
     if not conf.CheckDeclaration('inet_aton', '''#include <arpa/inet.h>'''):
         raise StopError('inet_aton() is missing')
     
+    if not conf.CheckDeclaration('inet_ntop', '''#include <arpa/inet.h>'''):
+        raise StopError('inet_ntop() is missing')
+    
 if env.SupportedPlatform('win'):
     if not conf.CheckDeclaration('WSAStartup', '#include <winsock2.h>'):
         raise StopError('WinSock are not implemented')
@@ -271,6 +275,17 @@ if env.SupportedPlatform('linux') or env.SupportedPlatform('solaris'):
 # hostinfo checks?
 if GetOption('trace'):
     conf.Define('HOSTINFO_TRACE', comment='--trace was enabled')
+
+#------------------------------
+# Module checks
+# HTTP:
+if conf.CheckDeclaration('curl_easy_perform', '#include <curl/curl.h>') and conf.CheckLib('curl'):
+    env['HAVE_CURL'] = True
+else:
+    env['HAVE_CURL'] = False
+    print >> sys.stderr, 'WARNING: libcurl missing, building of `http` module would be disabled'
+
+#==============================
 
 env.Alias('configure', gen_config)
 

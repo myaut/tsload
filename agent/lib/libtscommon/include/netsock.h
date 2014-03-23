@@ -69,6 +69,15 @@
 #define NSK_RECV_NO_DATA		-2
 #define NSK_RECV_ERROR			-3
 
+/**
+ * @name nsk_addr_to_string() flags
+ *
+ * @value NSK_ADDR_FLAG_DEFAULT  no flags
+ * @value NSK_ADDR_FLAG_SERVICES resolve flags using /etc/services (not implemented)
+ */
+#define NSK_ADDR_FLAG_DEFAULT	0x00
+#define NSK_ADDR_FLAG_SERVICES	0x01
+
 #define NSK_DEFAULT_BACKLOG		5
 
 /**
@@ -89,6 +98,19 @@ LIBEXPORT PLATAPI int nsk_resolve(const char* host, nsk_host_entry* he);
  * @param port  port number
  */
 LIBEXPORT PLATAPI int nsk_setaddr(nsk_addr* sa, nsk_host_entry* he, unsigned short port);
+
+
+/**
+ * Converts socket address into string <IP>:<port>
+ *
+ * @param sa	socket address object
+ * @param buf	destination buffer
+ * @param buflen length of destination buffer
+ * @param default_port if port inside sa equals this value, port is not printed to buffer
+ * @param flags	see below
+ */
+LIBEXPORT PLATAPI int nsk_addr_to_string(nsk_addr* sa, char* buf, size_t buflen,
+										 int default_port, int flags);
 
 /**
  * Set up socket and connect to remote node

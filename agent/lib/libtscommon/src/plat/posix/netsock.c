@@ -14,6 +14,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <errno.h>
 #include <poll.h>
@@ -71,6 +72,21 @@ PLATAPI int nsk_setaddr(nsk_addr* sa, nsk_host_entry* he, unsigned short port) {
 	sa->sin_addr = *((struct in_addr*) he->h_addr_list[0]);
 
 	memset(sa->sin_zero, 0, sizeof(sa->sin_zero));
+
+	return NSK_OK;
+}
+
+PLATAPI int nsk_addr_to_string(nsk_addr* sa, char* buf, size_t buflen, int default_port, int flags) {
+	int ret;
+	size_t len;
+
+	if(inet_ntop(AF_INET, (struct in_addr*) &sa->sin_addr, buf, buflen) == NULL)
+		return NSK_ERR_RESOLVE;
+
+	if(sa->sin_port != htons(default_port)) {
+		len = strlen(buf);
+		snprintf(buf + len, buflen - len, ":%d", ntohs(sa->sin_port));
+	}
 
 	return NSK_OK;
 }

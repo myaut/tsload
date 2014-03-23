@@ -125,10 +125,14 @@ void wlpgen_destroy_pmap(wlp_generator_t* gen, int pcount, wlpgen_probability_t*
 	if(wlp_get_base_type(gen->wlp) == WLP_RAW_STRING) {
 		for(pid = 0; pid < pcount; ++pid) {
 			probability = pmap + pid;
-			mp_free(probability->value.string);
 
-			for(vi = 0; vi < probability->length; ++vi) {
-				mp_free(probability->valarray[vi].string);
+			if(probability->length != 0) {
+				for(vi = 0; vi < probability->length; ++vi) {
+					mp_free(probability->valarray[vi].string);
+				}
+			}
+			else {
+				mp_free(probability->value.string);
 			}
 		}
 	}
@@ -300,7 +304,7 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 			ret = json_wlpgen_param_proc(*i_value, gen, &pmap[pid].value);
 		}
 		else if(i_valarray != i_el_end && json_type(*i_valarray) == JSON_ARRAY) {
-			ret = json_wlpgen_proc_parray(*i_valarray, gen, pmap);
+			ret = json_wlpgen_proc_parray(*i_valarray, gen, &pmap[pid]);
 		}
 		else {
 			tsload_error_msg(TSE_MESSAGE_FORMAT,
