@@ -183,9 +183,14 @@ For parameters with request scope you may specify random generator options to ma
 ```
 {
 	(in) "probability": [number] Probability of this element,
-	(in) "value": [ANY] Chosen value
+	(in, opt) "value": [ANY] Chosen value
+	(in, opt) "valarray": [
+		[ANY] value #1, ...
+	]
 }
 ```
+
+`value` and `valarray` parameters are mutually exclusive.
 
 ### Random generator
 

@@ -36,7 +36,7 @@
 					},
 					"pmap": [
 						{ "probability": 0.2,
-						  "value": 30000 },
+						  "valarray": [30000, 31000, 32000, 33000, 34000] },
 						{ "probability": 0.55,
 						  "value": 40000 },
 						{ "probability": 0.25,

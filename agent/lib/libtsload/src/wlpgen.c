@@ -16,6 +16,7 @@
 
 #include <math.h>
 #include <float.h>
+#include <assert.h>
 
 /**
  * #### Workload parameter generators
@@ -117,10 +118,25 @@ void wlpgen_destroy_all(struct workload* wl) {
 
 void wlpgen_destroy_pmap(wlp_generator_t* gen, int pcount, wlpgen_probability_t* pmap) {
 	int pid;
+	int vi;
+
+	wlpgen_probability_t* probability;
 
 	if(wlp_get_base_type(gen->wlp) == WLP_RAW_STRING) {
 		for(pid = 0; pid < pcount; ++pid) {
-			mp_free(pmap[pid].value.string);
+			probability = pmap + pid;
+			mp_free(probability->value.string);
+
+			for(vi = 0; vi < probability->length; ++vi) {
+				mp_free(probability->valarray[vi].string);
+			}
+		}
+	}
+
+	for(pid = 0; pid < pcount; ++pid) {
+		probability = pmap + pid;
+		if(probability->length > 0) {
+			mp_free(probability->valarray);
 		}
 	}
 
@@ -199,6 +215,34 @@ int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) {
 	return ret;
 }
 
+int json_wlpgen_proc_parray(JSONNODE* node, wlp_generator_t* gen, wlpgen_probability_t* pmap) {
+	JSONNODE_ITERATOR i_el, i_end;
+	int ret = WLPARAM_INVALID_PMAP;
+	int vi = 0;
+
+	if(json_size(node) == 0) {
+		return WLPARAM_INVALID_PMAP;
+	}
+
+	i_end = json_end(node);
+	i_el = json_begin(node);
+
+	pmap->length = json_size(node);
+	pmap->valarray = mp_malloc(sizeof(wlpgen_value_t) * pmap->length);
+
+	while(i_el != i_end) {
+		ret = json_wlpgen_param_proc(*i_el, gen, &pmap->valarray[vi]);
+
+		if(ret != WLPARAM_JSON_OK)
+			return ret;
+
+		++vi;
+		++i_el;
+	}
+
+	return ret;
+}
+
 int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 	wlpgen_randgen_t* randgen = &gen->generator.randgen;
 	int pid = 0, pcount;
@@ -207,7 +251,7 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 	int ret;
 
 	JSONNODE_ITERATOR i_el, i_end;
-	JSONNODE_ITERATOR i_value, i_probability, i_el_end;
+	JSONNODE_ITERATOR i_value, i_valarray, i_probability, i_el_end;
 
 	if(json_type(node) != JSON_ARRAY) {
 		tsload_error_msg(TSE_MESSAGE_FORMAT,
@@ -233,12 +277,12 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 		i_el_end = json_end(*i_el);
 		i_probability = json_find(*i_el, "probability");
 		i_value = json_find(*i_el, "value");
+		i_valarray = json_find(*i_el, "valarray");
 
-		if(i_probability == i_el_end ||
-				i_value == i_el_end ||
+		if(i_probability == i_el_end  ||
 				json_type(*i_probability) != JSON_NUMBER) {
 			tsload_error_msg(TSE_MESSAGE_FORMAT,
-							 WLP_ERROR_PREFIX ": pmap element #%d is invalid",
+							 WLP_ERROR_PREFIX ": pmap element #%d - missing probability",
 							 gen->wlp->name, pid);
 			wlpgen_destroy_pmap(gen, pid, pmap);
 			return WLPARAM_INVALID_PMAP;
@@ -247,7 +291,24 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 		probability = json_as_float(*i_probability);
 		total += probability;
 
-		ret = json_wlpgen_param_proc(*i_value, gen, &pmap[pid].value);
+		/* There are two levels of probability map values. Basically, pmap is O(n), because
+		 * there is cycle that used in wlpgen_gen_pmap() Second level (array) allows to pick
+		 * value with equal probabilities for O(1) complexity times and represented by valarray.  */
+		if(i_value != i_el_end) {
+			pmap[pid].length = 0;
+			pmap[pid].valarray = NULL;
+			ret = json_wlpgen_param_proc(*i_value, gen, &pmap[pid].value);
+		}
+		else if(i_valarray != i_el_end && json_type(*i_valarray) == JSON_ARRAY) {
+			ret = json_wlpgen_proc_parray(*i_valarray, gen, pmap);
+		}
+		else {
+			tsload_error_msg(TSE_MESSAGE_FORMAT,
+							 WLP_ERROR_PREFIX ": pmap element #%d - neither 'value' nor 'valarray' was defined",
+							 gen->wlp->name, pid);
+			wlpgen_destroy_pmap(gen, pid, pmap);
+			return WLPARAM_INVALID_PMAP;
+		}
 
 		if(ret != WLPARAM_JSON_OK) {
 			tsload_error_msg(TSE_INVALID_DATA,
@@ -311,27 +372,52 @@ void wlpgen_gen_value(wlp_generator_t* gen, wlpgen_value_t* value, void* param) 
 	}
 }
 
-void wlpgen_gen_pmap(wlp_generator_t* gen, wlpgen_randgen_t* randgen, void* param) {
-	wlpgen_probability_t* probability;
+void wlpgen_gen_pmap_value(wlp_generator_t* gen, double val, wlpgen_probability_t* probability, void* param) {
+	int vi;
 
+	if(probability->length == 0) {
+		wlpgen_gen_value(gen, &probability->value, param);
+	}
+	else {
+		/* Normalize value to [0.0; 1.0] then pick element from array */
+		val /= probability->probability;
+		vi = (int) (val * probability->length);
+
+		assert(vi < probability->length);
+
+		wlpgen_gen_value(gen, &probability->valarray[vi], param);
+	}
+}
+
+void wlpgen_gen_pmap(wlp_generator_t* gen, wlpgen_randgen_t* randgen, void* param) {
 	double val = rg_generate_double(randgen->rg);
 	int pid;
 
+	wlpgen_probability_t* probability;
+
+	/* `val` is in [0.0; 1.0)
+	 * If val is below than current probability then pick pmap element
+	 * Otherwise, reduce val by current probability then try next element
+	 *
+	 * Assuming that S is sum of probabilities for elements 1..n-1,
+	 * p is probability for current element and v is generated value,
+	 * element n would be picked if v < (S + p) and v >= S
+	 *
+	 * We do not keep S, but substruct it from v each time: v' < p  */
 	for(pid = 0; pid < randgen->pcount; ++pid) {
 		probability = &randgen->pmap[pid];
 
 		if(val < probability->probability) {
-			wlpgen_gen_value(gen, &probability->value, param);
+			wlpgen_gen_pmap_value(gen, val, probability, param);
 			return;
 		}
 
 		val -= probability->probability;
 	}
 
-	/* no match - maybe small calculations error -> use
-	 * last pmap element */
+	/* no match - maybe small calculations error -> use last pmap element */
 	probability = &randgen->pmap[randgen->pcount - 1];
-	wlpgen_gen_value(gen, &probability->value, param);
+	wlpgen_gen_pmap_value(gen, val, probability, param);
 }
 
 void wlpgen_gen_random(wlp_generator_t* gen, void* param) {

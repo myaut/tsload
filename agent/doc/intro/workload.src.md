@@ -107,7 +107,8 @@ Good, but not enough. First of all, despite `access` variable says that transfer
 TSLoad have three possibilities to create random-generated request parameters:
 	* __Random generator__. Because they are uniformally distributed, they are good for generating integers which distribution is irrelevant - in our case it is `offset` variable. But do not forget to modulo offset by mempool_size if you write such module or you will get "Segmentation fault"
 	* __Random variator__. They use random generators and variate their number according to selected distribution. Obvious candidate to do so is `cycles` parameter which is related to duration of executing requests. By creating exponential variator for cycles parameter we will make our workload closer to M/M/n queue. 
-	* __Probability map__. It also uses random generator, but to generate discrete values with different probabilities. So we could modify `instruction` parameter to create mix of instructions. 
+	* __Probability map__. It also uses random generator, but to generate discrete values with different probabilities. So we could modify `instruction` parameter to create mix of instructions. Also it is possible to create `valarray` - in that case all elements in it will have equal probabilities. This is better because algorithm of picking element from valarray is O(1) while picking element from pmap costs O(n).
+	 
 	
 So our new configuration would look like:
 
@@ -131,7 +132,7 @@ So our new configuration would look like:
 				"randgen" : { "class" : "lcg" },
 				"pmap": [
 					{
-                       "value": "cmp", 
+                       "valarray": ["cmp", "sum", "mul"], 
                        "probability": 0.2
                     }, 
                     {
@@ -147,6 +148,8 @@ So our new configuration would look like:
 		}
 		...
 ``` 
+
+In this example `cmp` have probability of 0.2 / 3 = ~0.067, `sum` - 0.2 + (0.2 / 3) = 0.267 and `mul` - 0.0667. 
 
 LCG is a abbreviation for [Linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator).
 

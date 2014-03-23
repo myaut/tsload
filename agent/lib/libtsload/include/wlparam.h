@@ -197,6 +197,10 @@ typedef union wlpgen_value {
 
 typedef struct {
 	wlpgen_value_t  value;
+
+	wlpgen_value_t* valarray;
+	int				length;
+
 	double probability;
 } wlpgen_probability_t;
 
