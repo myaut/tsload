@@ -19,8 +19,6 @@
 
 #include <http.h>
 
-#include <curl/curl.h>
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -69,6 +67,9 @@ MODEXPORT int http_wl_config(workload_t* wl) {
 	nsk_host_entry he;
 	nsk_addr addr;
 
+	unsigned num_workers = wl->wl_tp->tp_num_threads;
+	int wid;
+
 	/* Preliminary resolve hostname to reduce pressure on DNS server
 	 * (in some cases HTTP benchmark became DNS benchmark)
 	 *
@@ -95,19 +96,34 @@ MODEXPORT int http_wl_config(workload_t* wl) {
 		return 1;
 	}
 
+	hd->curl = mp_malloc(sizeof(CURL*) * num_workers);
+	hd->num_workers = num_workers;
+	for(wid = 0; wid < num_workers; ++wid) {
+		hd->curl[wid] = curl_easy_init();
+	}
+
 	wl->wl_private = hd;
 
 	return 0;
 }
 
 MODEXPORT int http_wl_unconfig(workload_t* wl) {
+	struct http_data* hd = (struct http_data*) wl->wl_private;
+
+	unsigned num_workers = hd->num_workers;
+	int wid;
+
+	for(wid = 0; wid < num_workers; ++wid) {
+		curl_easy_cleanup(hd->curl[wid]);
+	}
+
 	mp_free(wl->wl_private);
 
 	return 0;
 }
 
 MODEXPORT int http_run_request(request_t* rq) {
-  CURL *curl;
+  CURL* curl;
   CURLcode res;
   long status;
 
@@ -119,7 +135,8 @@ MODEXPORT int http_run_request(request_t* rq) {
 
   snprintf(url, MAXURILEN, "http://%s%s", hd->serveraddr, hrq->uri);
 
-  curl = curl_easy_init();
+  curl = hd->curl[rq->rq_thread_id];
+
   if(curl) {
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -139,8 +156,6 @@ MODEXPORT int http_run_request(request_t* rq) {
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
 		hrq->status = status;
 	}
-
-	curl_easy_cleanup(curl);
 
 	return 0;
   }

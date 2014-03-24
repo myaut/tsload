@@ -11,6 +11,8 @@
 #include <netsock.h>
 #include <wlparam.h>
 
+#include <curl/curl.h>
+
 #include <stdio.h>
 
 #define MAXHOSTNAMELEN	256
@@ -28,7 +30,10 @@ struct http_workload {
 
 struct http_data {
 	wlp_string_t 	serveraddr[MAXHOSTNAMELEN];
-	FILE*			fnull;
+	FILE* fnull;
+
+	CURL** curl;
+	unsigned num_workers;
 };
 
 struct http_request {
