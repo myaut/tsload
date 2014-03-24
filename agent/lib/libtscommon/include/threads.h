@@ -28,6 +28,7 @@
 
 #define cv_init				ts_cv_init
 #define cv_wait				ts_cv_wait
+#define cv_wait_timed		ts_cv_wait_timed
 #define cv_notify_one		ts_cv_notify_one
 #define cv_notify_all		ts_cv_notify_all
 #define cv_destroy			ts_cv_destroy

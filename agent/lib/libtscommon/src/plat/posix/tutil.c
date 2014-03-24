@@ -59,6 +59,8 @@ PLATAPI void plat_cv_wait_timed(plat_thread_cv_t* cv, plat_thread_mutex_t* mutex
 	else {
 		struct timespec ts;
 
+		timeout += tm_get_time();
+
 		ts.tv_sec = TS_TIME_SEC(timeout);
 		ts.tv_nsec = timeout - (ts.tv_sec * T_SEC);
 
