@@ -20,13 +20,14 @@
 struct module;
 struct workload;
 struct request;
+struct workload_step;
 
 /**
  * @module Workload types
  */
 
 typedef int (* wlt_wl_config_func)(struct workload* wl);
-typedef int (* wlt_wl_step_func)(struct workload* wl, unsigned num_requests);
+typedef int (* wlt_wl_step_func)(struct workload_step* wls);
 typedef int (* wlt_run_request_func)(struct request* wl);
 
 /**

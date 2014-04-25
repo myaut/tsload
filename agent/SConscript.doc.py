@@ -13,6 +13,8 @@ if doc_format == 'html':
     doc_suffix = '.html'
 elif doc_format == 'markdown':
     doc_suffix = '.md'
+elif doc_format == 'latex':
+    doc_suffix = '.tex'    
 else:
     raise StopError("Invalid documentation format '%s'" % doc_format)
 

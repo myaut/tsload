@@ -2,7 +2,9 @@ import string
 
 from tsdoc.blocks import *
 
-class MarkdownPrinter:
+class MarkdownPrinter(Printer):
+    single_doc = False
+    
     def __init__(self):
         pass    
     

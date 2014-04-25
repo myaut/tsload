@@ -1,7 +1,7 @@
 import os
 import sys
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from tsdoc import TSDoc
 from tsdoc.page import TSDocPage, MarkdownPage, IndexPage
@@ -9,6 +9,7 @@ from tsdoc.page import TSDocPage, MarkdownPage, IndexPage
 from tsdoc.blocks import Link
 from tsdoc.blocks.markdown import MarkdownPrinter
 from tsdoc.blocks.html import HTMLPrinter
+from tsdoc.blocks.latex import LatexPrinter
 
 # Main code
 
@@ -28,10 +29,13 @@ if doc_format == 'html':
 elif doc_format == 'markdown':
     doc_suffix = '.md'
     printer = MarkdownPrinter()
+elif doc_format == 'latex':
+    doc_suffix = '.tex'
+    printer = LatexPrinter()
 else:
     raise ValueError("Invalid documentation format '%s'" % doc_format)
 
-pages = defaultdict(dict)
+pages = defaultdict(OrderedDict)
 tsdoc_pages = []
 
 print 'Parsing ', 

@@ -4,8 +4,8 @@ from StringIO import StringIO
 
 from tsdoc.blocks import *
 
-class HTMLPrinter:
-    TAB_STOPS = 4
+class HTMLPrinter(Printer):
+    single_doc = False
     
     NAV_HOME_TEXT = 'Home'
     
@@ -67,29 +67,6 @@ class HTMLPrinter:
                 nav_links.append(nav_code)
         
         return nav_home + '\n'.join(nav_links) 
-    
-    def _fix_tab_stops(self, text):
-        lines = []
-        for line in text.split('\n'):
-            start_idx = idx = 0
-            new_line = ''
-            
-            while idx != -1:
-                idx = line.find('\t', start_idx)
-                if idx > 0:
-                    if line[idx - 1] == '\t':
-                        count = HTMLPrinter.TAB_STOPS
-                    else:
-                        count = HTMLPrinter.TAB_STOPS - idx % HTMLPrinter.TAB_STOPS
-                    new_line += line[start_idx:idx] + " " * count
-                    start_idx = idx + 1
-                else:
-                    break
-                
-            new_line += line[start_idx:]
-            lines.append(new_line)
-        
-        return '\n'.join(lines)
     
     def _html_filter(self, block, s):
         if isinstance(block, Code):
@@ -181,7 +158,7 @@ class HTMLPrinter:
                         
                     text = '<%s%s>' % (tag, attr_str) + text + '</%s>' % (tag)                
                 
-                text = text.replace('\t', ' ' * HTMLPrinter.TAB_STOPS)
+                text = text.replace('\t', ' ' * Printer.TAB_STOPS)
                 
                 # if not in_code:
                 #    self.stream.write('\n' + ' ' * indent)

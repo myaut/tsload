@@ -3,7 +3,7 @@ import sys
 
 from pprint import pprint
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from tsdoc import *
 from tsdoc.blocks import *
@@ -406,7 +406,7 @@ class IndexPage(MarkdownPage):
                     ref_link, ref_part = refs[name]
                     
                     linkobj = Link(name, Link.INTERNAL, ref_link)
-                    entry = [linkobj, ', ', ref_part.ref_class, '\n']
+                    entry = [linkobj, ', ', ref_part.ref_class, LineBreak()]
                     
                     block.extend(entry)
                     
@@ -451,7 +451,13 @@ class IndexPage(MarkdownPage):
             
             # Generate real paths 
             if self.is_external:
+                pages = self.pages
+                
+                self.pages = OrderedDict()                
                 self.pages['__index__'] = self
+                
+                for name, page in pages.items():
+                    self.pages[name] = page
             else:
                 # Main index file is real, so assume it's 
                 # doc_path, so gen_link_to will think that it is 
@@ -475,11 +481,16 @@ class IndexPage(MarkdownPage):
             # Substitute links with references to pages
             self._xref()
             
-            for page in pages:
-                print 'Generating %s...' % page.doc_path
-                
-                stream = file(page.doc_path, 'w')
-                printer.do_print(stream, self.header, page)
+            if printer.single_doc:
+                if self.is_external:
+                    stream = file(self.doc_path, 'w')
+                    printer.do_print_pages(stream, self.header, pages)
+            else:    
+                for page in pages:
+                    print 'Generating %s...' % page.doc_path
+                    
+                    stream = file(page.doc_path, 'w')
+                    printer.do_print(stream, self.header, page)
         
         def find_page(self, link):
             docspace_name, name = link.where.split('/')            
@@ -637,12 +648,22 @@ class IndexPage(MarkdownPage):
                 self.blocks.append(Paragraph([hobj, list]))
         
         # Generate index itself
-        print 'Generating index...'
+        if not printer.single_doc:
+            print 'Generating index...'
         
-        self.prep_print()
-        
-        stream = file(self.doc_path, 'w')
-        printer.do_print(stream, self.header, self)
+            self.prep_print()
+            
+            stream = file(self.doc_path, 'w')
+            printer.do_print(stream, self.header, self)
+        else:
+            pages = []
+            
+            for docspace in self.docspaces:
+                if not docspace.is_external:
+                    pages.extend(docspace.pages.values())
+                
+            stream = file(self.doc_path, 'w')
+            printer.do_print_pages(stream, self.header, pages)
     
     def _process_index(self):
         # 1st pass - split index page into smaller indexes

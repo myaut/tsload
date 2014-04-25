@@ -110,7 +110,7 @@ static void control_prepare_step(thread_pool_t* tp, workload_t* wl) {
 	wl_notify(wl, WLS_RUNNING, 0, "%d requests", step->wls_rq_count);
 
 	if(wl->wl_type->wlt_wl_step) {
-		wl->wl_type->wlt_wl_step(wl, step->wls_rq_count);
+		wl->wl_type->wlt_wl_step(step);
 	}
 
 	if(wl->wl_type->wlt_run_request) {

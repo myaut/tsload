@@ -30,6 +30,10 @@ int a = 777;
 
 import sys
 
+class LineBreak(object):
+    def __str__(self):
+        return '\n'
+
 class Text(object):
     def __init__(self, text):
         self.text = text
@@ -175,3 +179,35 @@ def pprint_block(block, stream = sys.stdout, indent = 0):
     
     do_print(')\n')
         
+        
+class Printer:
+    TAB_STOPS = 4
+    
+    def _fix_tab_stops(self, text):
+        lines = []
+        for line in text.split('\n'):
+            start_idx = idx = 0
+            new_line = ''
+            
+            while idx != -1:
+                idx = line.find('\t', start_idx)
+                if idx > 0:
+                    if line[idx - 1] == '\t':
+                        count = Printer.TAB_STOPS
+                    else:
+                        count = Printer.TAB_STOPS - idx % Printer.TAB_STOPS
+                    new_line += line[start_idx:idx] + " " * count
+                    start_idx = idx + 1
+                else:
+                    break
+                
+            new_line += line[start_idx:]
+            lines.append(new_line)
+        
+        return '\n'.join(lines)        
+    
+    def do_print(self, stream, header, page):
+        pass
+    
+    def do_print_pages(self, stream, header, pages):
+        pass
