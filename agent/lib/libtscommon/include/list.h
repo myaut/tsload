@@ -259,6 +259,17 @@ STATIC_INLINE int list_is_first(const list_node_t *node,
 }
 
 /**
+ * list_is_head - tests whether node is the list head
+ * @param node  the entry to test
+ * @param head  the head of the list
+ */
+STATIC_INLINE int list_is_head(const list_node_t *node,
+				const list_head_t *head)
+{
+	return node == &(head->l_head);
+}
+
+/**
  * list_empty - tests whether a list is empty
  * @param head  the list to test.
  */

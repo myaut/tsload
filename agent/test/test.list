@@ -48,6 +48,14 @@ tscommon/paths		file=paths.c
 tscommon/cpumask	file=cpumask.c
 tscommon/tuneit		file=tuneit.c
 
+# Tests for libtsjson
+^json		    lib=libjson 	lib=libtscommon		lib=libtsjson	\
+				file=main.c
+json/string			file=string.c
+json/number			file=number.c
+json/object			file=object.c
+json/writer			file=writer.c
+
 # Tests for network sockets
 ^netsock 			lib=libjson 	lib=libtscommon
 netsock/netsock		file=netsock.c

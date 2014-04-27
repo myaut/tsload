@@ -158,6 +158,7 @@ SConscript('SConscript.doc.py', 'env')
 build_items = [ # tsload-core
                ('lib', 'libjson'),
                ('lib', 'libtscommon'),
+               ('lib', 'libtsjson'),
                ('lib', 'libhostinfo'),
                ('lib', 'libtsfile'),
                ('lib', 'libtsload'),               

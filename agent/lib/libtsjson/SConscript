@@ -1,0 +1,14 @@
+tgtroot = 'tsload-core'
+target = 'libtsjson'
+
+Import('env')
+
+lib = env.Clone()
+
+# lib.PreparePlatform()
+lib.AddDeps(('lib', 'libtscommon'))
+
+objects = lib.CompileSharedLibrary()
+library = lib.LinkSharedLibrary(target, objects)
+
+lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
