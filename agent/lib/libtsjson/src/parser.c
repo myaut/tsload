@@ -7,6 +7,7 @@
 
 #include <mempool.h>
 #include <list.h>
+#include <ilog2.h>
 
 #include <json.h>
 #include <jsonimpl.h>
@@ -35,22 +36,52 @@ int json_parse_value(struct json_parser* parser, json_buffer_t* buf, json_node_t
 #define INC_STATE()					\
 	++parser->index
 
+static char json_whitespace_table[256] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 1, 1, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+#define JSON_NOTSPACE	0
+#define JSON_NEWLINE	2
+#define JSON_SPACE		1
+
 /**
  * Skip whitespace characters.
  * @return B_TRUE if there are still symbols inside buffer
  */
+
 static boolean_t skip_whitespace(struct json_parser* parser, json_buffer_t* buf) {
 	int idx; char* data;
+	char mode = JSON_SPACE;
+
 	GET_STATE(idx, data);
 
-	while(idx < buf->size && isspace(*data)) {
-		if(*data == '\n') {
+	while(idx < buf->size) {
+		mode = json_whitespace_table[(unsigned char) *data];
+
+		if(mode == JSON_NEWLINE) {
 			++parser->lineno;
 			parser->newline = idx;
 		}
 
-		++data;
-		++idx;
+		if(mode == JSON_NOTSPACE)
+			break;
+
+		++data; ++idx;
 	}
 
 	PUT_STATE(idx, data);

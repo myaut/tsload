@@ -10,7 +10,7 @@ if not lib['DEBUG']:
 
 if lib['CXX'] == 'gcc':
     lib.Append(LIBS = ['stdc++'])
-    lib.Append(CXXFLAGS = ['-Os', '-ffast-math'])
+    lib.Append(CXXFLAGS = ['-O2', '-ffast-math'])
 elif lib['CXX'] == 'cl':
     # To disallow C++ exceptions pass C++ code in libJSON and go to C code in other libraries
     lib.Append(CXXFLAGS = ['/EHsc'])

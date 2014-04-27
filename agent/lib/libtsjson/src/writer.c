@@ -22,6 +22,17 @@
 
 int json_write_node_indent = 2;
 
+char json_escape_table[128] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
 int json_write_string(json_str_t str, struct json_writer* writer, void* state) {
 	const char* s = str;
 	const char* p = str;
@@ -32,56 +43,58 @@ int json_write_string(json_str_t str, struct json_writer* writer, void* state) {
 	writer->write_byte(state, '"');
 
 	while(*p) {
-		switch(*p) {
-		case '"':
-			ESCAPE_CHARACTER("\\\"");
-			break;
-		case '\\':
-			ESCAPE_CHARACTER("\\\\");
-			break;
-		case '/':
-			ESCAPE_CHARACTER("\\/");
-			break;
-		case '\n':
-			ESCAPE_CHARACTER("\\n");
-			break;
-		case '\t':
-			ESCAPE_CHARACTER("\\t");
-			break;
-		case '\r':
-			ESCAPE_CHARACTER("\\r");
-			break;
-		case '\f':
-			ESCAPE_CHARACTER("\\f");
-			break;
-		case '\b':
-			ESCAPE_CHARACTER("\\b");
-			break;
-		default:
-			if(*p > 0x80) {
-				/* Unicode */
-				u = 0;
-				if((*p & 0xe0) == 0xe0) {
-					/* n = 3 */
-					if((p[1] & 0x80) != 0x80 || (p[2] & 0x80) != 0x80)
-						goto unicode1;
-					u =  ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | (p[2] & 0x3f);
-					p += 2;
-				}
-				else if((*p & 0xc0) == 0xc0) {
-					/* n = 2 */
-					if((p[1] & 0x80) != 0x80)
-						goto unicode1;
-					u = ((p[0] & 0x1f) << 6) | (p[1] & 0x3f);
-					++p;
-				}
-				else {
+		if(*p > 0x80) {
+			/* Unicode */
+			u = 0;
+			if((*p & 0xe0) == 0xe0) {
+				/* n = 3 */
+				if((p[1] & 0x80) != 0x80 || (p[2] & 0x80) != 0x80)
 					goto unicode1;
-				}
-				snprintf(us, 8, "\\u%04lx", u);
-				ESCAPE_CHARACTER(us);
+				u =  ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | (p[2] & 0x3f);
+				p += 2;
 			}
-			break;
+			else if((*p & 0xc0) == 0xc0) {
+				/* n = 2 */
+				if((p[1] & 0x80) != 0x80)
+					goto unicode1;
+				u = ((p[0] & 0x1f) << 6) | (p[1] & 0x3f);
+				++p;
+			}
+			else {
+				goto unicode1;
+			}
+			snprintf(us, 8, "\\u%04lx", u);
+			ESCAPE_CHARACTER(us);
+		}
+		else if(json_escape_table[*p] == 1) {
+			switch(*p) {
+			case '"':
+				ESCAPE_CHARACTER("\\\"");
+				break;
+			case '\\':
+				ESCAPE_CHARACTER("\\\\");
+				break;
+			case '/':
+				ESCAPE_CHARACTER("\\/");
+				break;
+			case '\n':
+				ESCAPE_CHARACTER("\\n");
+				break;
+			case '\t':
+				ESCAPE_CHARACTER("\\t");
+				break;
+			case '\r':
+				ESCAPE_CHARACTER("\\r");
+				break;
+			case '\f':
+				ESCAPE_CHARACTER("\\f");
+				break;
+			case '\b':
+				ESCAPE_CHARACTER("\\b");
+				break;
+			default:
+				break;
+			}
 		}
 
 		++p;

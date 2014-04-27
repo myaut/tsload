@@ -9,6 +9,7 @@
 #define JSONIMPL_H_
 
 #include <defs.h>
+#include <atomic.h>
 
 #include <json.h>
 
@@ -31,8 +32,17 @@ struct json_writer {
 
 int json_write_impl(json_node_t* node, struct json_writer* writer, void* state, boolean_t formatted, int indent);
 
-void json_buf_hold(json_buffer_t* buf);
-void json_buf_rele(json_buffer_t* buf);
+void json_buf_free(json_buffer_t* buf);
+
+STATIC_INLINE void json_buf_hold(json_buffer_t* buf) {
+	atomic_inc(&buf->ref_count);
+}
+
+STATIC_INLINE json_buf_rele(json_buffer_t* buf) {
+	if(atomic_dec(&buf->ref_count) == 1l) {
+		json_buf_free(buf);
+	}
+}
 
 json_str_t json_str_reference(json_buffer_t* buf, int from, int to);
 void json_str_free(json_str_t json_str, json_buffer_t* buf);

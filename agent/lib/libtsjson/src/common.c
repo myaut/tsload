@@ -38,15 +38,9 @@ json_buffer_t* json_buf_create(char* data, size_t sz) {
 	return buf;
 }
 
-void json_buf_hold(json_buffer_t* buf) {
-	atomic_inc(&buf->ref_count);
-}
-
-void json_buf_rele(json_buffer_t* buf) {
-	if(atomic_dec(&buf->ref_count) == 1l) {
-		mp_free(buf->buffer);
-		mp_cache_free(&json_buffer_mp, buf);
-	}
+void json_buf_free(json_buffer_t* buf) {
+	mp_free(buf->buffer);
+	mp_cache_free(&json_buffer_mp, buf);
 }
 
 /**

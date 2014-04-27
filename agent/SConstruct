@@ -172,6 +172,8 @@ build_items = [ # tsload-core
                # ('lib', 'libtsagent'),
                # ('cmd', 'tsgenuuid'),               
                # ('cmd', 'tsloadd'),
+               
+               ('tools', 'bench/libjson')
                ]
 
 # ------------

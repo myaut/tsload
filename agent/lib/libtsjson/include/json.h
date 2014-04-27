@@ -18,6 +18,7 @@
 #define json_as_float		ts_json_as_float
 #define json_size			ts_json_size
 #define json_name			ts_json_name
+#define json_type			ts_json_type
 
 #define JSONERRLEN			256
 
@@ -160,7 +161,7 @@ STATIC_INLINE json_node_t* json_next(json_node_t* node, int* id) {
 #define json_for_each(parent, node, id) 			\
 			for(node = json_first(parent, &id);		\
 				!json_is_end(parent, node, &id);	\
-				json_next(node, &id))
+				node = json_next(node, &id))
 
 /**
  * Checks if JSON node is empty. Doesn't do any of typechecking.
@@ -175,6 +176,10 @@ STATIC_INLINE size_t json_size(json_node_t* node) {
 
 STATIC_INLINE const char* json_name(json_node_t* node) {
 	return (const char*) node->jn_name;
+}
+
+STATIC_INLINE json_type_t json_type(json_node_t* node) {
+	return node->jn_type;
 }
 
 LIBEXPORT json_node_t* json_find_opt(json_node_t* parent, const char* name);
