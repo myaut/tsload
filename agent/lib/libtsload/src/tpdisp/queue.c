@@ -163,8 +163,14 @@ void tpd_control_report_queue(thread_pool_t* tp) {
 		mutex_lock(&worker->w_rq_mutex);
 
 		if(tp->tp_discard) {
-			/* Discard unfinished requests - simply reinitialize worker's queue */
-			list_head_reset(&worker->w_rq_head);
+			/* Discard unfinished requests - simply reinitialize worker's queue but wait
+			 * until it will finish current request
+			 *
+			 * FIXME: While we wait for one worker, another may start new request */
+			if(!list_empty(&worker->w_rq_head)) {
+				list_head_reset(&worker->w_rq_head);
+				cv_wait(&worker->w_rq_cv, &worker->w_rq_mutex);
+			}
 		}
 		else {
 			/* There is at least one request on worker's queue, let it finish
