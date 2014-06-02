@@ -1,11 +1,22 @@
+
 /*
- * list.h
- *
- *  Created on: 09.12.2012
- *      Author: myaut
- *
- *  Based on lists implementation for Linux kernel.
- */
+    This file is part of TSLoad.
+    Copyright 2012-2014, Sergey Klyaus, ITMO University
+
+    TSLoad is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation version 3.
+
+    TSLoad is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
+*/  
+
+
 
 #ifndef TS_LIST_H
 #define TS_LIST_H
@@ -764,3 +775,4 @@ STATIC_INLINE void list_merge(list_head_t *head, list_head_t *list1,
 	n = list_entry(pos->member.next, type, member)
 
 #endif
+

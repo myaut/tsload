@@ -1,9 +1,22 @@
+
 /*
- * csv.h
- *
- *  Created on: Jan 16, 2014
- *      Author: myaut
- */
+    This file is part of TSLoad.
+    Copyright 2014, Sergey Klyaus, ITMO University
+
+    TSLoad is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation version 3.
+
+    TSLoad is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
+*/    
+
+
 
 #ifndef CSV_H_
 #define CSV_H_
@@ -81,3 +94,4 @@ void csv_write_header(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, i
 void csv_write_entry(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, int bcount, void* entry);
 
 #endif /* CSV_H_ */
+

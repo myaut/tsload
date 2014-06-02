@@ -1,9 +1,22 @@
+
 /*
- * fnutil.h
- *
- *  Created on: 29.12.2012
- *      Author: myaut
- */
+    This file is part of TSLoad.
+    Copyright 2012-2014, Sergey Klyaus, ITMO University
+
+    TSLoad is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation version 3.
+
+    TSLoad is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
+*/  
+
+
 
 #ifndef FNUTIL_H_
 #define FNUTIL_H_
@@ -66,3 +79,4 @@ STATIC_INLINE char* path_basename(path_split_iter_t* iter, const char* path) {
 LIBEXPORT char* path_remove(char* result, size_t len, const char* abspath, const char* path);
 
 #endif /* FNUTIL_H_ */
+
