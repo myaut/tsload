@@ -14,7 +14,9 @@ if doc_format == 'html':
 elif doc_format == 'markdown':
     doc_suffix = '.md'
 elif doc_format == 'latex':
-    doc_suffix = '.tex'    
+    doc_suffix = '.tex'
+elif doc_format == 'creole':
+    doc_suffix = '.creole'            
 else:
     raise StopError("Invalid documentation format '%s'" % doc_format)
 
