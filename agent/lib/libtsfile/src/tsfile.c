@@ -11,18 +11,22 @@
 #include <threads.h>
 #include <tuneit.h>
 
+#include <json.h>
+
 #include <assert.h>
+
+#include <string.h>
 
 mp_cache_t	tsfile_cache;
 
 tsfile_error_msg_func tsfile_error_msg = NULL;
 int tsfile_errno;
 
-#define TSFILE_SB_GET_COUNT(header, sbi)					\
+#define TSFILE_SB_GET_COUNT(header, sbi)					 		\
 			((header)->sb[(sbi)].count)
-#define TSFILE_SB_SET_COUNT(header, sbi, new_count)			\
-			((header)->sb[(sbi)].count = new_count);		\
-			((header)->sb[(sbi)].time = tm_get_time())
+#define TSFILE_SB_SET_COUNT(header, sbi, new_count, sb_diff) 		\
+			((header)->sb[(sbi)].count = new_count);		 		\
+			((header)->sb[(sbi)].time = sb_diff + tm_get_time())
 
 /**
  * Enables synchronous writing into TSFiles
@@ -46,7 +50,7 @@ extern int tsfile_nodes_count;
  *
  * API is MT-safe, but doesn't lock files, so they may be opened from different processes.
  *
- * Since tsfile reuses JSON nodes it allocates, do not throw them away using json_delete,
+ * Since tsfile reuses JSON nodes it allocates, do not throw them away using json_node_destroy,
  * use json_tsfile_put()/json_tsfile_put_array() functions instead.
  *
  * Library may be used in both agent and standalone context, but you need to override
@@ -223,7 +227,7 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 	header->version = TSFILE_VERSION;
 
 	memset(&header->sb[1], 0, sizeof(tsfile_sb_t) * (SBCOUNT - 1));
-	TSFILE_SB_SET_COUNT(header, 0, 0);
+	TSFILE_SB_SET_COUNT(header, 0, 0, 0);
 
 	memset(&header->schema, 0, sizeof(tsfile_schema_t));
 	memcpy(&header->schema, schema, schema_size);
@@ -241,6 +245,7 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 
 	file->header = header;
 	file->cur_sb = 0ul;
+	file->sb_diff = 0;
 
 	mutex_init(&file->mutex, "tsfile-%x", file);
 
@@ -258,6 +263,8 @@ tsfile_t* tsfile_open(const char* filename, tsfile_schema_t* schema) {
 
 	if(file == NULL)
 		return NULL;
+
+	file->sb_diff = 0;
 
 	header = mp_malloc(TSFILE_HEADER_SIZE);
 
@@ -295,6 +302,7 @@ tsfile_t* tsfile_open(const char* filename, tsfile_schema_t* schema) {
 
 	if(header->sb[cur_sb].time > cur_time) {
 		tsfile_error_msg(TSE_INTERNAL_ERROR, "Superblock timestamp %lld is in future");
+		file->sb_diff = header->sb[cur_sb].time - cur_time;
 	}
 
 	file->cur_sb = cur_sb;
@@ -344,7 +352,7 @@ int tsfile_add(tsfile_t* file, void* entries, unsigned count) {
 
 	/* Update superblock */
 	file->cur_sb = (file->cur_sb + 1) & SBMASK;
-	TSFILE_SB_SET_COUNT(file->header, file->cur_sb, cur_count + count);
+	TSFILE_SB_SET_COUNT(file->header, file->cur_sb, cur_count + count, file->sb_diff);
 
 	/* Rewrite header (only first 512 bytes actually) */
 	if(lseek(file->fd, 0, SEEK_SET) == ((off_t)-1) ||
@@ -402,12 +410,12 @@ int tsfile_get_entries(tsfile_t* file, void* entries, unsigned start, unsigned e
 	return tsfile_errno;
 }
 
-JSONNODE* json_tsfile_get(tsfile_t* file, unsigned number) {
-	JSONNODE** nodes = NULL;
+json_node_t* json_tsfile_get(tsfile_t* file, unsigned number) {
+	json_node_t** nodes = NULL;
 	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entry = mp_malloc(entry_size);
 
-	JSONNODE* node = NULL;
+	json_node_t* node = NULL;
 
 	if(tsfile_get_entries(file, entry, number, number + 1) != TSFILE_OK) {
 		goto end;
@@ -426,11 +434,11 @@ end:
 	return node;
 }
 
-void json_tsfile_put(tsfile_t* file, JSONNODE* node) {
+void json_tsfile_put(tsfile_t* file, json_node_t* node) {
 	tsfile_put_node(file, node);
 }
 
-int json_tsfile_add(tsfile_t* file, JSONNODE* node) {
+int json_tsfile_add(tsfile_t* file, json_node_t* node) {
 	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entry = mp_malloc(entry_size);
 
@@ -443,9 +451,9 @@ int json_tsfile_add(tsfile_t* file, JSONNODE* node) {
 	return ret;
 }
 
-JSONNODE* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end) {
-	JSONNODE** nodes = NULL;
-	JSONNODE* node_array = NULL;
+json_node_t* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end) {
+	json_node_t** nodes = NULL;
+	json_node_t* node_array = NULL;
 	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entries = NULL;
 	void* entry;
@@ -463,13 +471,13 @@ JSONNODE* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end) {
 	}
 
 	nodes = tsfile_get_nodes(file, count);
-	node_array = json_new(JSON_ARRAY);
+	node_array = json_new_array();
 
 	for(ni = 0; ni < count; ++ni) {
 		entry = ((char*) entries) + entry_size * ni;
 		tsfile_fill_node(file, nodes[ni], entry);
 
-		json_push_back(node_array, nodes[ni]);
+		json_add_node(node_array, NULL, nodes[ni]);
 	}
 
 end:
@@ -479,26 +487,25 @@ end:
 	return node_array;
 }
 
-void json_tsfile_put_array(tsfile_t* file, JSONNODE* node_array) {
+void json_tsfile_put_array(tsfile_t* file, json_node_t* node_array) {
 	int size = json_size(node_array);
 	int i;
-	JSONNODE* node;
+	json_node_t* node;
 
 	for(i = 0; i < size; ++i) {
-		node = json_pop_back_at(node_array, 0);
+		node = json_popitem(node_array, 0);
 
 		if(!tsfile_put_node(file, node)) {
 			/* Filled "death row" array. Abandon other nodes
-			 * They will be deallocated in json_delete() call below */
+			 * They will be deallocated in json_node_destroy() call below */
 			break;
 		}
 	}
 
-	json_delete(node_array);
+	json_node_destroy(node_array);
 }
 
-int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array) {
-	JSONNODE_ITERATOR i_end, i_node;
+int json_tsfile_add_array(tsfile_t* file, json_node_t* node_array) {
 	unsigned long entry_size = file->header->schema.hdr.entry_size;
 	void* entries = NULL;
 	void* entry;
@@ -506,17 +513,15 @@ int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array) {
 	int ni = 0;
 	int ret;
 
+	json_node_t* node = json_first(node_array, &ni);
+
 	entries = mp_malloc(entry_size * count);
 
-	i_node = json_begin(node_array);
-	i_end = json_end(node_array);
-
-	while(i_node != i_end) {
+	while(!json_is_end(node_array, node, &ni)) {
 		entry = ((char*) entries) + entry_size * ni;
-		tsfile_fill_entry(file, *i_node, entry);
+		tsfile_fill_entry(file, node, entry);
 
-		++i_node;
-		++ni;
+		node = json_next(node, &ni);
 	}
 
 	ret = tsfile_add(file, entries, count);

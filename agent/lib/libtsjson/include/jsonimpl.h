@@ -38,7 +38,7 @@ STATIC_INLINE void json_buf_hold(json_buffer_t* buf) {
 	atomic_inc(&buf->ref_count);
 }
 
-STATIC_INLINE json_buf_rele(json_buffer_t* buf) {
+STATIC_INLINE void json_buf_rele(json_buffer_t* buf) {
 	if(atomic_dec(&buf->ref_count) == 1l) {
 		json_buf_free(buf);
 	}

@@ -17,8 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef char* (*json_write_func)(const JSONNODE* node);
-
 size_t tsf_json_fragment  = 4096;
 size_t tsf_json_min_alloc = 16384;
 
@@ -50,9 +48,8 @@ int tsf_json_set(tsf_backend_t* backend, const char* option) {
 	return 0;
 }
 
-int tsf_json_get_impl(tsf_backend_t* backend, int start, int end, json_write_func func) {
-	char* str;
-	JSONNODE* node;
+int tsf_json_get_impl(tsf_backend_t* backend, int start, int end, boolean_t formatted) {
+	json_node_t* node;
 	int ret = 0;
 
 	struct tsf_json_backend* json = (struct tsf_json_backend*) backend->private;
@@ -70,15 +67,7 @@ int tsf_json_get_impl(tsf_backend_t* backend, int start, int end, json_write_fun
 		return 1;
 	}
 
-	str = func(node);
-
-	if(str == NULL) {
-		ret = 1;
-	}
-	else {
-		fputs(str, backend->file);
-		json_free(str);
-	}
+	json_write_file(node, backend->file, formatted);
 
 	if(json->json_print_one) {
 		json_tsfile_put(backend->ts_file, node);
@@ -91,23 +80,26 @@ int tsf_json_get_impl(tsf_backend_t* backend, int start, int end, json_write_fun
 }
 
 int tsf_json_get(tsf_backend_t* backend, int start, int end) {
-	return tsf_json_get_impl(backend, start, end, json_write_formatted);
+	return tsf_json_get_impl(backend, start, end, B_TRUE);
 }
 
 int tsf_jsonraw_get(tsf_backend_t* backend, int start, int end) {
-	return tsf_json_get_impl(backend, start, end, json_write);
+	return tsf_json_get_impl(backend, start, end, B_FALSE);
 }
 
 int tsf_json_add(tsf_backend_t* backend) {
 	size_t size = tsf_json_min_alloc;
 	size_t length = 0;
 	size_t read_len;
-	char* str = malloc(tsf_json_min_alloc);
+	char* str = mp_malloc(tsf_json_min_alloc);
 	char* ptr = str;
 
 	int err = 0;
 
-	JSONNODE* node;
+	json_buffer_t* buf;
+	json_node_t* node;
+
+	int count;
 
 	/* Read everything from file into str
 	 * Couldn't memory map file because file may be stdin
@@ -123,7 +115,7 @@ int tsf_json_add(tsf_backend_t* backend) {
 
 		if((size - length - 1) < tsf_json_fragment) {
 			size += tsf_json_fragment;
-			str = realloc(str, size);
+			str = mp_realloc(str, size);
 			ptr = str + length;
 
 			if(str == NULL) {
@@ -135,13 +127,17 @@ int tsf_json_add(tsf_backend_t* backend) {
 
 	str[length + 1] = '\0';
 
-	node = json_parse(str);
-	free(str);
+	json_errno_clear();
 
-	if(node == NULL) {
-		logmsg(LOG_CRIT, "Couldn't parse JSON");
+	buf = json_buf_create(str, length, B_TRUE);
+	err = json_parse(buf, &node);
+
+	if(err != 0) {
+		logmsg(LOG_CRIT, "Couldn't parse JSON: %s", json_error_message());
 		return 1;
 	}
+
+	count = json_size(node);
 
 	if(json_type(node) == JSON_ARRAY) {
 		err = json_tsfile_add_array(backend->ts_file, node);
@@ -149,13 +145,16 @@ int tsf_json_add(tsf_backend_t* backend) {
 	else {
 		err = json_tsfile_add(backend->ts_file, node);
 	}
-	json_delete(node);
+
+	json_node_destroy(node);
 
 	if(err != TSFILE_OK) {
 		logmsg(LOG_CRIT, "Failed to add JSON entries. Error: %s",
 			   tsfile_error_str[-tsfile_errno]);
 		return 1;
 	}
+
+	logmsg(LOG_INFO, "Added %d JSON entries to TSFile", count);
 
 	return 0;
 }

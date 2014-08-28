@@ -11,24 +11,28 @@
 #include <json.h>
 #include <jsonimpl.h>
 
+#include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <assert.h>
 
 mp_cache_t		json_node_mp;
 mp_cache_t		json_buffer_mp;
 
-json_buffer_t* json_buf_create(char* data, size_t sz) {
+json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse) {
 	json_buffer_t* buf;
 	char* buffer;
 
-	/* TODO: Use mempool cache for this
-	 * TODO: json_buf_create with reusable (not copied data) */
+	if(reuse) {
+		buffer = data;
+	}
+	else {
+		buffer = mp_malloc(sz);
+		if(!buffer)
+			return NULL;
 
-	buffer = mp_malloc(sz);
-	if(!buffer)
-		return NULL;
-
-	memcpy(buffer, data, sz);
+		memcpy(buffer, data, sz);
+	}
 
 	buf = mp_cache_alloc(&json_buffer_mp);
 	buf->buffer = buffer;
@@ -36,6 +40,40 @@ json_buffer_t* json_buf_create(char* data, size_t sz) {
 	buf->ref_count = (atomic_t) 0l;
 
 	return buf;
+}
+
+json_buffer_t* json_buf_from_file(const char* path) {
+	FILE* file = fopen(path, "r");
+
+	size_t filesize;
+	size_t result;
+	char* data;
+
+	/* TODO: mmapped buffers */
+
+	if(file == NULL) {
+		json_set_error_str(errno, "Failed to open JSON file '%s'", path);
+		return NULL;
+	}
+
+	/* Read schema into array */
+	fseek(file, 0, SEEK_END);
+	filesize = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	data = mp_malloc(filesize  + 1);
+	result = fread(data, 1, filesize, file);
+	data[filesize] = '\0';
+
+	fclose(file);
+
+	if(result < filesize) {
+		json_set_error_str(errno, "Failed to read JSON file '%s'", path);
+		mp_free(data);
+		return NULL;
+	}
+
+	return json_buf_create(data, filesize, B_TRUE);
 }
 
 void json_buf_free(json_buffer_t* buf) {

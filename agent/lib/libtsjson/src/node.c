@@ -101,8 +101,10 @@ json_node_t* json_find(json_node_t* parent, const char* name) {
 /**
  * Get child by id.
  *
- * If id is out of bounds sets errno to JSON_NOT_FOUN
+ * If id is out of bounds sets errno to JSON_NOT_FOUND
  * If parent is not JSON_NODE or JSON_ARRAY, sets errno to JSON_INVALID_TYPE
+ *
+ * @see json_popitem
  */
 json_node_t* json_getitem(json_node_t* parent, int id) {
 	json_node_t* node;
@@ -129,6 +131,21 @@ json_node_t* json_getitem(json_node_t* parent, int id) {
 	/* jn_children_count is out of sync?? */
 	json_set_error(JSON_INTERNAL_ERROR);
 	return NULL;
+}
+
+/**
+ * Gets child by id and extracts it from node
+ *
+ * @see json_getitem
+ */
+json_node_t* json_popitem(json_node_t* parent, int id) {
+	json_node_t* node = json_getitem(parent, id);
+
+	if(node != NULL) {
+		list_del(&node->jn_child_node);
+	}
+
+	return node;
 }
 
 /* Getters with type checking
@@ -284,6 +301,40 @@ json_node_t* json_new_array(void) {
 
 json_node_t* json_new_node(void) {
 	return json_node_create(NULL, JSON_NODE);
+}
+
+void json_set_integer(json_node_t* node, int64_t val) {
+	if(node->jn_type == JSON_NUMBER && node->jn_is_integer) {
+		node->jn_data.i = val;
+	}
+
+	json_set_error(JSON_INVALID_TYPE);
+}
+
+void json_set_double(json_node_t* node, double val) {
+	if(node->jn_type == JSON_NUMBER && !node->jn_is_integer) {
+		node->jn_data.d = val;
+	}
+}
+
+void json_set_string(json_node_t* node, json_str_t val) {
+	if(node->jn_type == JSON_STRING) {
+		if(node->jn_data.s != NULL) {
+			json_str_free(node->jn_data.s, NULL);
+		}
+
+		node->jn_data.s = val;
+	}
+
+	json_set_error(JSON_INVALID_TYPE);
+}
+
+void json_set_boolean(json_node_t* node, boolean_t val) {
+	if(node->jn_type == JSON_BOOLEAN) {
+		node->jn_data.b = val;
+	}
+
+	json_set_error(JSON_INVALID_TYPE);
 }
 
 int json_add_node(json_node_t* parent, json_str_t name, json_node_t* node) {

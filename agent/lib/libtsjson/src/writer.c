@@ -34,8 +34,8 @@ char json_escape_table[128] = {
 };
 
 int json_write_string(json_str_t str, struct json_writer* writer, void* state) {
-	const char* s = str;
-	const char* p = str;
+	const char* s = (const char*) str;
+	const char* p = (const char*) str;
 
 	unsigned long u;
 	char us[8];
@@ -66,7 +66,7 @@ int json_write_string(json_str_t str, struct json_writer* writer, void* state) {
 			snprintf(us, 8, "\\u%04lx", u);
 			ESCAPE_CHARACTER(us);
 		}
-		else if(json_escape_table[*p] == 1) {
+		else if(json_escape_table[(unsigned char) *p] == 1) {
 			switch(*p) {
 			case '"':
 				ESCAPE_CHARACTER("\\\"");
@@ -343,6 +343,55 @@ int json_write_buf(json_node_t* node, char* buf, size_t len, boolean_t formatted
 
 	if(state.len < (state.sz - 1))
 		*state.ptr = '\0';
+
+	return ret;
+}
+
+/* FILE writer - write to stdio FILE
+ * -------------------------- */
+
+struct json_file_state {
+	FILE* file;
+};
+
+static int json_writer_error_file(void* state) {
+	struct json_file_state* file = (struct json_file_state*) state;
+
+	if(ferror(file->file) != 0)
+		return JSON_FILE_ERROR;
+
+	return JSON_OK;
+}
+
+static void json_write_byte_file(void* state, char byte) {
+	struct json_file_state* file = (struct json_file_state*) state;
+	fputc(byte, file->file);
+}
+
+static void json_write_string_file(void* state, const char* str) {
+	struct json_file_state* file = (struct json_file_state*) state;
+	fputs(str, file->file);
+}
+
+static void json_write_byte_array_file(void* state, const char* array, size_t sz) {
+	struct json_file_state* file = (struct json_file_state*) state;
+	fwrite(array, sz, 1, file->file);
+}
+
+struct json_writer json_writer_file = {
+	json_writer_error_file,
+	json_write_byte_file,
+	json_write_string_file,
+	json_write_byte_array_file
+};
+
+int json_write_file(json_node_t* node, FILE* file, boolean_t formatted) {
+	struct json_file_state state;
+	int ret;
+
+	state.file = file;
+
+	ret = json_write_impl(node, &json_writer_file, &state, formatted, 0);
 
 	return ret;
 }

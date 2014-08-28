@@ -9,8 +9,9 @@
 #include <mempool.h>
 #include <field.h>
 
-#include <libjson.h>
+#include <json.h>
 
+#include <string.h>
 #include <assert.h>
 
 /**
@@ -45,7 +46,7 @@ void tsfile_init_nodes(tsfile_t* file) {
 	file->node_count = 0;
 	file->node_first = 0;
 
-	file->node_cache = mp_malloc(sizeof(JSONNODE*) * tsfile_nodes_count);
+	file->node_cache = mp_malloc(sizeof(json_node_t*) * tsfile_nodes_count);
 
 	mutex_init(&file->node_mutex, "tsfile-n-%x", file);
 }
@@ -59,7 +60,7 @@ void tsfile_destroy_nodes(tsfile_t* file) {
 			if(j == tsfile_nodes_count)
 				j = 0;
 
-			json_delete(file->node_cache[j]);
+			json_node_destroy(file->node_cache[j]);
 	}
 
 	mp_free(file->node_cache);
@@ -67,35 +68,36 @@ void tsfile_destroy_nodes(tsfile_t* file) {
 	mutex_destroy(&file->node_mutex);
 }
 
-JSONNODE* tsfile_create_node(tsfile_t* file) {
-	JSONNODE* node = json_new(JSON_NODE);
-	JSONNODE* field;
+json_node_t* tsfile_create_node(tsfile_t* file) {
+	json_node_t* node = json_new_node();
+	json_node_t* field;
 	tsfile_schema_t* schema = &file->header->schema;
 	int fi;
 
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		switch(schema->fields[fi].type) {
 		case TSFILE_FIELD_BOOLEAN:
-			field = json_new(JSON_BOOL);
+			field = json_new_boolean(B_FALSE);
 		break;
 		case TSFILE_FIELD_INT:
+			field = json_new_integer(-1);
+			break;
 		case TSFILE_FIELD_FLOAT:
-			field = json_new(JSON_NUMBER);
+			field = json_new_double(0.0);
 		break;
 		case TSFILE_FIELD_STRING:
-			field = json_new(JSON_STRING);
+			field = json_new_string(JSON_STR(""));
 		break;
 		}
 
-		json_set_name(field, schema->fields[fi].name);
-		json_push_back(node, field);
+		json_add_node(node, json_str_create(schema->fields[fi].name), field);
 	}
 
 	return node;
 }
 
-JSONNODE** tsfile_get_nodes(tsfile_t* file, int count) {
-	JSONNODE** nodes = mp_malloc(sizeof(JSONNODE*) * count);
+json_node_t** tsfile_get_nodes(tsfile_t* file, int count) {
+	json_node_t** nodes = mp_malloc(sizeof(json_node_t*) * count);
 	int i;
 
 	/* Try to claim nodes from node_cache */
@@ -122,7 +124,7 @@ JSONNODE** tsfile_get_nodes(tsfile_t* file, int count) {
 	return nodes;
 }
 
-boolean_t tsfile_put_node(tsfile_t* file, JSONNODE* node) {
+boolean_t tsfile_put_node(tsfile_t* file, json_node_t* node) {
 	boolean_t cached = B_FALSE;
 
 	mutex_lock(&file->node_mutex);
@@ -142,46 +144,45 @@ boolean_t tsfile_put_node(tsfile_t* file, JSONNODE* node) {
 	mutex_unlock(&file->node_mutex);
 
 	if(!cached) {
-		json_delete(node);
+		json_node_destroy(node);
 	}
 
 	return cached;
 }
 
-void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
+void tsfile_fill_node(tsfile_t* file, json_node_t* node, void* entry) {
 	/* TODO: endianess conversion */
-	JSONNODE_ITERATOR i_field, i_end;
+	int id = 0;
+	json_node_t* field = json_first(node, &id);
 
 	tsfile_schema_t* schema = &file->header->schema;
 	int fi;
 
 	void* value;
 
-	i_field = json_begin(node);
-	i_end = json_end(node);
-
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		value = ((char*) entry) + schema->fields[fi].offset;
-		assert(i_field != i_end);
+
+		assert(!json_is_end(node, field, &id));
 
 		switch(schema->fields[fi].type) {
 		case TSFILE_FIELD_BOOLEAN:
-			json_set_b(*i_field, FIELD_GET_VALUE(boolean_t, value));
+			json_set_boolean(field, FIELD_GET_VALUE(boolean_t, value));
 		break;
 		case TSFILE_FIELD_INT:
 		{
 			switch(schema->fields[fi].size) {
 			case 1:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint8_t, value));
+				json_set_integer(field, FIELD_GET_VALUE(uint8_t, value));
 			break;
 			case 2:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint16_t, value));
+				json_set_integer(field, FIELD_GET_VALUE(uint16_t, value));
 			break;
 			case 4:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint32_t, value));
+				json_set_integer(field, FIELD_GET_VALUE(uint32_t, value));
 			break;
 			case 8:
-				json_set_i(*i_field, FIELD_GET_VALUE(uint64_t, value));
+				json_set_integer(field, FIELD_GET_VALUE(uint64_t, value));
 			break;
 			}
 		}
@@ -190,27 +191,25 @@ void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry) {
 		{
 			switch(schema->fields[fi].size) {
 			case sizeof(float):
-				json_set_f(*i_field, FIELD_GET_VALUE(float, value));
+				json_set_double(field, FIELD_GET_VALUE(float, value));
 			break;
 			case sizeof(double):
-				json_set_f(*i_field, FIELD_GET_VALUE(double, value));
+				json_set_double(field, FIELD_GET_VALUE(double, value));
 			break;
 			}
 		}
 		break;
 		case TSFILE_FIELD_STRING:
-			json_set_a(*i_field, (char*) value);
+			json_set_string(field, json_str_create(value));
 		break;
 		}
 
-		++i_field;
+		field = json_next(field, &id);
 	}
 }
 
-int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry) {
+int tsfile_fill_entry(tsfile_t* file, json_node_t* node, void* entry) {
 	/* TODO: endianess conversion */
-	JSONNODE_ITERATOR i_field, i_end;
-
 	tsfile_schema_t* schema = &file->header->schema;
 	tsfile_field_t* field;
 	int fi;
@@ -218,35 +217,35 @@ int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry) {
 	void* value;
 	char* str;
 
-	i_end = json_end(node);
+	json_node_t* j_field;
 
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		field = &schema->fields[fi];
 		value = ((char*) entry) + field->offset;
 
-		i_field = json_find(node, field->name);
-		if(i_field == i_end) {
+		j_field = json_find(node, field->name);
+		if(j_field == NULL) {
 			return -1;
 		}
 
 		switch(field->type) {
 		case TSFILE_FIELD_BOOLEAN:
-			FIELD_PUT_VALUE(boolean_t, value, json_as_bool(*i_field));
+			FIELD_PUT_VALUE(boolean_t, value, json_as_boolean(j_field));
 		break;
 		case TSFILE_FIELD_INT:
 		{
 			switch(schema->fields[fi].size) {
 			case 1:
-				FIELD_PUT_VALUE(uint8_t, value, json_as_int(*i_field));
+				FIELD_PUT_VALUE(uint8_t, value, json_as_integer(j_field));
 			break;
 			case 2:
-				FIELD_PUT_VALUE(uint16_t, value, json_as_int(*i_field));
+				FIELD_PUT_VALUE(uint16_t, value, json_as_integer(j_field));
 			break;
 			case 4:
-				FIELD_PUT_VALUE(uint32_t, value, json_as_int(*i_field));
+				FIELD_PUT_VALUE(uint32_t, value, json_as_integer(j_field));
 			break;
 			case 8:
-				FIELD_PUT_VALUE(uint64_t, value, json_as_int(*i_field));
+				FIELD_PUT_VALUE(uint64_t, value, json_as_integer(j_field));
 			break;
 			}
 		}
@@ -255,18 +254,16 @@ int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry) {
 		{
 			switch(schema->fields[fi].size) {
 			case sizeof(float):
-				FIELD_PUT_VALUE(float, value, json_as_float(*i_field));
+				FIELD_PUT_VALUE(float, value, json_as_float(j_field));
 			break;
 			case sizeof(double):
-				FIELD_PUT_VALUE(double, value, json_as_float(*i_field));
+				FIELD_PUT_VALUE(double, value, json_as_float(j_field));
 			break;
 			}
 		}
 		break;
 		case TSFILE_FIELD_STRING:
-			str = json_as_string(*i_field);
-			strncpy(value, str, field->size);
-			json_free(str);
+			strncpy(value, json_as_string(j_field), field->size);
 		break;
 		}
 	}

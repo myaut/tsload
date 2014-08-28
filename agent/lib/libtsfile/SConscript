@@ -4,7 +4,7 @@ target = 'libtsfile'
 Import('env')
 
 lib = env.Clone()
-lib.AddDeps(('lib', 'libjson'), ('lib', 'libtscommon'))
+lib.AddDeps(('lib', 'libjson'), ('lib', 'libtscommon'), ('lib', 'libtsjson'))
 
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)

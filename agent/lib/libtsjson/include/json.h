@@ -19,6 +19,7 @@
 #define json_size			ts_json_size
 #define json_name			ts_json_name
 #define json_type			ts_json_type
+#define json_find			ts_json_find
 
 #define JSONERRLEN			256
 
@@ -109,6 +110,7 @@ typedef struct json_node {
 /* Writer common errors */
 #define JSON_INVALID_UNICODE_CHR	-31
 #define JSON_BUFFER_OVERFLOW		-32
+#define JSON_FILE_ERROR				-33
 
 typedef struct json_error_state {
 	int   je_error;
@@ -124,10 +126,12 @@ typedef struct json_error_state {
 #define JSON_BUFFER(str)	json_buf_create(str, sizeof(str))
 
 LIBEXPORT json_str_t json_str_create(const char* str);
-LIBEXPORT json_buffer_t* json_buf_create(char* data, size_t sz);
+LIBEXPORT json_buffer_t* json_buf_from_file(const char* path);
+LIBEXPORT json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse);
 
 LIBEXPORT int json_errno(void);
 LIBEXPORT void json_errno_clear(void);
+LIBEXPORT const char* json_error_message();
 LIBEXPORT json_error_state_t* json_get_error(void);
 
 /**
@@ -185,6 +189,7 @@ STATIC_INLINE json_type_t json_type(json_node_t* node) {
 LIBEXPORT json_node_t* json_find_opt(json_node_t* parent, const char* name);
 LIBEXPORT json_node_t* json_find(json_node_t* parent, const char* name);
 LIBEXPORT json_node_t* json_getitem(json_node_t* parent, int id);
+LIBEXPORT json_node_t* json_popitem(json_node_t* parent, int id);
 
 LIBEXPORT int64_t json_get_integer(json_node_t* parent, const char* name, int64_t def);
 LIBEXPORT double json_get_double(json_node_t* parent, const char* name, double def);
@@ -201,8 +206,26 @@ LIBEXPORT json_node_t* json_new_boolean(boolean_t val);
 LIBEXPORT json_node_t* json_new_array(void);
 LIBEXPORT json_node_t* json_new_node(void);
 
+LIBEXPORT void json_set_integer(json_node_t* node, int64_t val);
+LIBEXPORT void json_set_double(json_node_t* node, double val);
+LIBEXPORT void json_set_string(json_node_t* node, json_str_t val);
+LIBEXPORT void json_set_boolean(json_node_t* node, boolean_t val);
+
 LIBEXPORT int json_add_node(json_node_t* parent, json_str_t name, json_node_t* node);
 LIBEXPORT int json_remove_node(json_node_t* parent, json_node_t* node);
+
+STATIC_INLINE int json_add_integer(json_node_t* parent, json_str_t name, int64_t val) {
+	return json_add_node(parent, name, json_new_integer(val));
+}
+STATIC_INLINE int json_add_double(json_node_t* parent, json_str_t name, double val) {
+	return json_add_node(parent, name, json_new_double(val));
+}
+STATIC_INLINE int json_add_string(json_node_t* parent, json_str_t name, json_str_t val) {
+	return json_add_node(parent, name, json_new_string(val));
+}
+STATIC_INLINE int json_add_boolean(json_node_t* parent, json_str_t name, boolean_t val) {
+	return json_add_node(parent, name, json_new_boolean(val));
+}
 
 LIBEXPORT void json_node_destroy(json_node_t* node);
 
@@ -210,6 +233,7 @@ LIBEXPORT int json_parse(json_buffer_t* buf, json_node_t** root);
 
 LIBEXPORT long json_write_count(json_node_t* node, boolean_t formatted);
 LIBEXPORT int json_write_buf(json_node_t* node, char* buf, size_t len, boolean_t formatted);
+LIBEXPORT int json_write_file(json_node_t* node, FILE* file, boolean_t formatted);
 
 LIBEXPORT int json_init(void);
 LIBEXPORT void json_fini(void);

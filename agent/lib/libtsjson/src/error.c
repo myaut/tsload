@@ -43,6 +43,8 @@ int json_set_error_va(struct json_parser* parser, int error, const char* fmt, va
 	json_error_handler_t* hdl = tkey_get(&json_error);
 	json_error_state_t* state;
 
+	size_t count = 0;
+
 	if(hdl == NULL) {
 		hdl = mp_malloc(sizeof(json_error_handler_t));
 
@@ -65,7 +67,14 @@ int json_set_error_va(struct json_parser* parser, int error, const char* fmt, va
 	state->je_error = error;
 
 	if(fmt) {
-		vsnprintf(state->je_message, JSONERRLEN, fmt, va);
+		count = vsnprintf(state->je_message, JSONERRLEN, fmt, va);
+
+		if(parser) {
+			char msg2[20];
+			snprintf(msg2, 20, " at %d:%d", state->je_line, state->je_char);
+
+			strncat(state->je_message, msg2, JSONERRLEN - count);
+		}
 	}
 	else if(-error < json_error_msg_count) {
 		strncpy(state->je_message, json_error_msg[-error], JSONERRLEN);
@@ -96,6 +105,19 @@ int json_errno(void) {
 		return JSON_OK;
 
 	return hdl->state.je_error;
+}
+
+/**
+ * Returns JSON error message
+ */
+const char* json_error_message() {
+	json_error_handler_t* hdl = tkey_get(&json_error);
+
+	if(hdl == NULL || hdl->state.je_error == JSON_OK) {
+		return "OK";
+	}
+
+	return hdl->state.je_message;
 }
 
 /**

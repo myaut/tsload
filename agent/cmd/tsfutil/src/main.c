@@ -13,6 +13,8 @@
 #include <pathutil.h>
 #include <tsinit.h>
 
+#include <json.h>
+
 #include <tsfile.h>
 #include <tsfutil.h>
 
@@ -41,6 +43,7 @@ LIBEXPORT struct subsystem subsys[] = {
 	SUBSYSTEM("log", log_init, log_fini),
 	SUBSYSTEM("mempool", mempool_init, mempool_fini),
 	SUBSYSTEM("threads", threads_init, threads_fini),
+	SUBSYSTEM("json", json_init, json_fini),
 	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini)
 };
 
