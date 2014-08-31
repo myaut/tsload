@@ -62,7 +62,7 @@ void tsjson_parse_bench(char* data, int iterations, size_t sz) {
 	start = tm_get_clock();
 
 	for(i = 0; i < iterations; ++i) {
-		json_parse(json_buf_create(data, sz), &nodes[i]);
+		json_parse(json_buf_create(data, sz, B_FALSE), &nodes[i]);
 		tsjson_walk(nodes[i]);
 	}
 

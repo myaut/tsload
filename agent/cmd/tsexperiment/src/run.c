@@ -114,7 +114,8 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 	struct exp_create_steps_context* ctx = (struct exp_create_steps_context*) context;
 	exp_workload_t* ewl = (exp_workload_t*) item;
 
-	JSONNODE_ITERATOR i_end, i_file, i_const_rqs, i_const_steps;
+	json_node_t* file;
+
 	char* step_fn;
 	char step_path[PATHMAXLEN];
 	char step_dest_path[PATHMAXLEN];
@@ -123,6 +124,8 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 	unsigned num_requests;
 
 	steps_generator_t* sg = NULL;
+
+	int error;
 
 	if(ewl->wl_is_chained) {
 		/* Chained workloads shouldn't have steps */
@@ -135,14 +138,18 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 		return HM_WALKER_STOP;
 	}
 
-	i_end = json_end(ewl->wl_steps_cfg);
-	i_file = json_find(ewl->wl_steps_cfg, "file");
+	error = json_get_string(ewl->wl_steps_cfg, "file", &step_fn);
 
-	if(i_file != i_end) {
-		step_fn = json_as_string(*i_file);
+	if(error != JSON_NOT_FOUND) {
+		if(error == JSON_INVALID_TYPE) {
+			tse_run_fprintf(ctx->exp, "Error parsing step parameters for workload '%s': %s\n",
+					ewl->wl_name, json_error_message());
+			ctx->error = -4;
+			return HM_WALKER_STOP;
+		}
+
 		path_join(step_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_basedir, step_fn, NULL);
 		path_join(step_dest_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_directory, step_fn, NULL);
-		json_free(step_fn);
 
 		sg = step_create_file(step_path, step_dest_path);
 
@@ -158,20 +165,18 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 		}
 	}
 	else {
-		i_const_rqs = json_find(ewl->wl_steps_cfg, "num_requests");
-		i_const_steps = json_find(ewl->wl_steps_cfg, "num_steps");
+		int error1 = json_get_integer_u(ewl->wl_steps_cfg, "num_requests", &num_requests);
+		int error2 = json_get_integer_l(ewl->wl_steps_cfg, "num_steps", &num_steps);
 
-		if(i_const_rqs != i_end && i_const_steps != i_end) {
-			num_steps = json_as_int(*i_const_steps);
-			num_requests = json_as_int(*i_const_rqs);
-
+		if(error1 == JSON_OK && error2 == JSON_OK) {
 			sg = step_create_const(num_steps, num_requests);
 
 			tse_run_fprintf(ctx->exp, "Created const steps generator for workload '%s' with N=%ld R=%u\n",
 						 	ewl->wl_name, num_steps, num_requests);
 		}
 		else {
-			tse_run_fprintf(ctx->exp, "Not found steps parameters for workload '%s'\n", ewl->wl_name);
+			tse_run_fprintf(ctx->exp, "Error parsing step parameters for workload '%s': %s\n",
+							ewl->wl_name, json_error_message());
 			ctx->error = -2;
 			return HM_WALKER_STOP;
 		}
@@ -310,7 +315,8 @@ int tse_run_tp_configure_walk(hm_item_t* item, void* context) {
 	JSONNODE* trace_tp_disp = NULL;
 
 	if(exp->exp_trace_mode) {
-		experiment_cfg_add(etp->tp_disp, NULL, json_new_a("type", "trace"), B_TRUE);
+		experiment_cfg_add(etp->tp_disp, NULL, JSON_STR("type"),
+						   json_new_string(JSON_STR("trace")), B_TRUE);
 	}
 
 	ret = tsload_create_threadpool(etp->tp_name, etp->tp_num_threads, etp->tp_quantum,
@@ -569,8 +575,8 @@ void experiment_run(experiment_t* exp) {
 	start_time_str[0] = '\0';
 	tm_datetime_print(start_time, start_time_str, 32);
 
-	experiment_cfg_add(exp->exp_config, NULL,
-				       json_new_i("start_time", start_time), B_TRUE);
+	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("start_time"),
+				       json_new_integer(start_time), B_TRUE);
 
 	tse_run_fprintf(exp, "\n=== STARTING WORKLOADS @%s === \n", start_time_str);
 
@@ -624,7 +630,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	experiment_t* base = NULL;
 	experiment_t* exp = NULL;
 
-	JSONNODE* hostinfo;
+	json_node_t* hostinfo;
 
 	exp_name[0] = '\0';
 
@@ -714,12 +720,11 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	experiment_run(exp);
 
 	/* Rewrite experiment config with updated information */
-	experiment_cfg_add(exp->exp_config, NULL,
-			           json_new_i("status", exp->exp_status), B_TRUE);
+	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("status"),
+			           json_new_integer(exp->exp_status), B_TRUE);
 
 	hostinfo = tsload_get_hostinfo();
-	json_set_name(hostinfo, "agent");
-	experiment_cfg_add(exp->exp_config, NULL, hostinfo, B_TRUE);
+	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("agent"), hostinfo, B_TRUE);
 
 	err = experiment_write(exp);
 	if(err != EXPERIMENT_WRITE_OK) {
@@ -765,7 +770,7 @@ int tse_prepare_experiment(experiment_t* exp, experiment_t* base) {
 
 	err = experiment_process_config(exp);
 	if(err != EXP_CONFIG_OK) {
-		fprintf(stderr, "Couldn't process experiment config. Error: %d\n", err);
+		fprintf(stderr, "Couldn't process experiment config. Error: %s\n", exp->exp_error_msg);
 		return CMD_ERROR;
 	}
 

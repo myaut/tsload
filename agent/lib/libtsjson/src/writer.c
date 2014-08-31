@@ -152,11 +152,6 @@ int json_write_impl(json_node_t* node, struct json_writer* writer, void* state, 
 		indent_str = mp_malloc(indent);
 		memset(indent_str, ' ', indent);
 
-		if(formatted && indent > json_write_node_indent) {
-			writer->write_byte_array(state, indent_str, orig_indent);
-			writer->write_byte(state, '\n');
-		}
-
 		writer->write_byte(state, is_node? '{' : '[');
 
 		if(formatted)

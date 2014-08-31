@@ -1,7 +1,5 @@
 STATIC_INLINE tsobj_node_t* tsobj_first(tsobj_node_t* parent, int* id);
-
 STATIC_INLINE boolean_t tsobj_is_end(tsobj_node_t* parent, tsobj_node_t* node, int* id);
-
 STATIC_INLINE tsobj_node_t* tsobj_next(tsobj_node_t* node, int* id);
 
 /**
@@ -17,12 +15,12 @@ STATIC_INLINE tsobj_node_t* tsobj_find(tsobj_node_t* parent, const char* name);
 STATIC_INLINE tsobj_node_t* tsobj_getitem(tsobj_node_t* parent, int id);
 STATIC_INLINE tsobj_node_t* tsobj_popitem(tsobj_node_t* parent, int id);
 
-STATIC_INLINE int64_t tsobj_get_integer(tsobj_node_t* parent, const char* name, int64_t def);
-STATIC_INLINE double tsobj_get_double(tsobj_node_t* parent, const char* name, double def);
-STATIC_INLINE const char* tsobj_get_string(tsobj_node_t* parent, const char* name, const char* def);
-STATIC_INLINE boolean_t tsobj_get_boolean(tsobj_node_t* parent, const char* name, boolean_t def);
-STATIC_INLINE tsobj_node_t* tsobj_get_node(tsobj_node_t* parent, const char* name);
-STATIC_INLINE tsobj_node_t* tsobj_get_array(tsobj_node_t* parent, const char* name);
+STATIC_INLINE int tsobj_get_integer_i64(tsobj_node_t* parent, const char* name, int64_t* val);
+STATIC_INLINE int tsobj_get_double(tsobj_node_t* parent, const char* name, double* val);
+STATIC_INLINE int tsobj_get_string(tsobj_node_t* parent, const char* name, char** val);
+STATIC_INLINE int tsobj_get_boolean(tsobj_node_t* parent, const char* name, boolean_t* val);
+STATIC_INLINE int tsobj_get_array(tsobj_node_t* parent, const char* name, tsobj_node_t** val);
+STATIC_INLINE int tsobj_get_node(tsobj_node_t* parent, const char* name, tsobj_node_t** val);
 
 STATIC_INLINE tsobj_node_t* tsobj_new_null(void);
 STATIC_INLINE tsobj_node_t* tsobj_new_integer(int64_t val);

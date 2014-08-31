@@ -12,8 +12,11 @@ def InstallExperiment(experiment_name):
         cmd.Depends(tsexperiment,  file)
         cmd.InstallTarget(tgtroot, PathJoin(cmd['INSTALL_VAR'], experiment_name), file)
 
-cmd.AddDeps(('lib', 'libtscommon'), 
-            ('lib', 'libjson'),
+cmd.Macroses('NO_JSON')
+
+cmd.AddDeps(('lib', 'libjson'),
+            ('lib', 'libtscommon'),
+            ('lib', 'libtsjson'),
             ('lib', 'libtsfile'),  
             ('lib', 'libhostinfo'), 
             ('lib', 'libtsload'))

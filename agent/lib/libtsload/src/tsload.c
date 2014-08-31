@@ -52,15 +52,21 @@ struct subsystem subsys[] = {
 	SUBSYSTEM("netsock", nsk_init, nsk_fini),
 };
 
+#if 1
+typedef void* hm_json_formatter;
+#endif
+
 static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func walker,
 								  hashmap_t* hm, hm_json_formatter formatter) {
 	switch(op) {
 	case TSLOAD_WALK_FIND:
 		return hash_map_find(hm, arg);
+#if 0
 	case TSLOAD_WALK_JSON:
 		return json_hm_format_bykey(hm, formatter, arg);
 	case TSLOAD_WALK_JSON_ALL:
 		return json_hm_format_all(hm, formatter);
+#endif
 	case TSLOAD_WALK_WALK:
 		return hash_map_walk(hm, walker, arg);
 	}

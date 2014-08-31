@@ -132,6 +132,24 @@ void json_str_free(json_str_t json_str, json_buffer_t* buf) {
 	assert(tag == JSON_STR_CONST);
 }
 
+json_str_t json_str_copy(json_str_t json_str, json_buffer_t* buf) {
+	const char* str = (const char*) json_str;
+	char tag = str[-1];
+
+	if(tag == JSON_STR_DYNAMIC) {
+		return json_str_create(JSON_C_STR(json_str));
+	}
+
+	if(tag == JSON_STR_REFERENCE) {
+		json_buf_hold(buf);
+		return json_str;
+	}
+
+	assert(tag == JSON_STR_CONST);
+
+	return json_str;
+}
+
 /**
  * Create a raw JSON node object.
  *
@@ -158,6 +176,36 @@ json_node_t* json_node_create(json_buffer_t* buf, json_type_t type) {
 	list_node_init(&node->jn_child_node);
 
 	return node;
+}
+
+json_node_t* json_node_create_copy(json_node_t* node) {
+	json_node_t* copy = mp_cache_alloc(&json_node_mp);
+
+	if(!copy)
+		return NULL;
+
+	copy->jn_parent = NULL;
+
+	copy->jn_buf	= node->jn_buf;
+	copy->jn_name	= (node->jn_name != NULL)
+			? json_str_copy(node->jn_name, node->jn_buf)
+			: NULL;
+
+	copy->jn_is_integer = node->jn_is_integer;
+	copy->jn_type 	= node->jn_type;
+
+	copy->jn_children_count = 0;
+	list_head_init(&copy->jn_child_head, "jn_child_head");
+	list_node_init(&copy->jn_child_node);
+
+	if(copy->jn_type == JSON_STRING) {
+		copy->jn_data.s = json_str_copy(node->jn_data.s, node->jn_buf);
+	}
+	else {
+		memcpy(&copy->jn_data, &node->jn_data, sizeof(node->jn_data));
+	}
+
+	return copy;
 }
 
 void json_node_destroy(json_node_t* node) {

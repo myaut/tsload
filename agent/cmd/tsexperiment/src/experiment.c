@@ -20,6 +20,8 @@
 #include <tstime.h>
 #include <filelock.h>
 
+#include <json.h>
+
 #include <experiment.h>
 
 #include <stdio.h>
@@ -28,7 +30,7 @@
 
 static char* strrchr_y(const char* s, int c) {
 	/* TODO: fallback to libc if possible. */
-	char* from = s + strlen(s);
+	const char* from = s + strlen(s);
 
     do {
         if(from == s)
@@ -66,39 +68,25 @@ tsfile_schema_t request_schema = {
  */
 static int experiment_read_config(experiment_t* exp) {
 	int ret = EXP_LOAD_OK;
-	char* data;
-	size_t length;
-	FILE* file;
+	json_buffer_t* buf;
+
+	int err;
 
 	char experiment_filename[PATHMAXLEN];
 
 	path_join(experiment_filename, PATHMAXLEN,
 			  exp->exp_root, exp->exp_directory, EXPERIMENT_FILENAME, NULL);
 
-	file = fopen(experiment_filename, "r");
+	buf = json_buf_from_file(experiment_filename);
 
-	if(!file) {
+	if(buf == NULL) {
 		logmsg(LOG_CRIT, "Couldn't open workload file %s", experiment_filename);
 		return EXP_LOAD_ERR_OPEN_FAIL;
 	}
 
-	/* Get length of file than rewind */
-	fseek(file, 0, SEEK_END);
-	length = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	err = json_parse(buf, &exp->exp_config);
 
-	/* Read data from file */
-	data = mp_malloc(length + 1);
-	fread(data, length, 1, file);
-	data[length] = '\0';
-
-	/* Parse JSON */
-	exp->exp_config = json_parse(data);
-
-	mp_free(data);
-	fclose(file);
-
-	if(exp->exp_config == NULL) {
+	if(err != JSON_OK) {
 		logmsg(LOG_CRIT, "JSON parse error of file %s", experiment_filename);
 		ret = EXP_LOAD_ERR_BAD_JSON;
 	}
@@ -129,6 +117,8 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 	exp->exp_log = NULL;
 
 	exp->exp_error = 0;
+	exp->exp_error_msg[0] = '\0';
+
 	exp->exp_status = EXPERIMENT_NOT_CONFIGURED;
 
 	exp->exp_trace_mode = B_FALSE;
@@ -149,6 +139,10 @@ static exp_threadpool_t* exp_tp_create(const char* name) {
 	etp->tp_status = EXPERIMENT_NOT_CONFIGURED;
 
 	return etp;
+}
+
+static void exp_tp_destroy(exp_threadpool_t* etp) {
+	mp_free(etp);
 }
 
 int exp_tp_destroy_walker(hm_item_t* obj, void* ctx) {
@@ -191,9 +185,7 @@ static exp_workload_t* exp_wl_create(const char* name) {
 	 return ewl;
 }
 
-int exp_wl_destroy_walker(hm_item_t* obj, void* ctx) {
-	exp_workload_t* ewl = (exp_workload_t*) obj;
-
+static void exp_wl_destroy(exp_workload_t* ewl) {
 	if(ewl->wl_file != NULL) {
 		tsfile_close(ewl->wl_file);
 	}
@@ -203,6 +195,12 @@ int exp_wl_destroy_walker(hm_item_t* obj, void* ctx) {
 	}
 
 	mp_free(ewl);
+}
+
+int exp_wl_destroy_walker(hm_item_t* obj, void* ctx) {
+	exp_workload_t* ewl = (exp_workload_t*) obj;
+
+	exp_wl_destroy(ewl);
 
 	return HM_WALKER_CONTINUE | HM_WALKER_REMOVE;
 }
@@ -221,9 +219,8 @@ int exp_wl_destroy_walker(hm_item_t* obj, void* ctx) {
  */
 experiment_t* experiment_load_dir(const char* root_path, int runid, const char* dir) {
 	experiment_t* exp = mp_malloc(sizeof(experiment_t));
-	JSONNODE* status;
-	JSONNODE* name;
-	char* name_str;
+	json_node_t* status;
+	json_node_t* name;
 
 	experiment_init(exp, root_path, runid, dir);
 
@@ -233,16 +230,14 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 	}
 
 	/* Fetch status & name if possibles */
-	status = experiment_cfg_find(exp->exp_config, "status", NULL);
+	status = experiment_cfg_find(exp->exp_config, "status", NULL, JSON_NUMBER_INTEGER);
 	if(status != NULL) {
-		exp->exp_status = json_as_int(status);
+		exp->exp_status = json_as_integer(status);
 	}
 
-	name = experiment_cfg_find(exp->exp_config, "name", NULL);
+	name = experiment_cfg_find(exp->exp_config, "name", NULL, JSON_STRING);
 	if(name != NULL) {
-		name_str = json_as_string(name);
-		strncpy(exp->exp_name, name_str, EXPNAMELEN);
-		json_free(name_str);
+		strncpy(exp->exp_name, json_as_string(name), EXPNAMELEN);
 	}
 
 	return exp;
@@ -355,8 +350,8 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	experiment_t* exp = NULL;
 	char dir[PATHPARTMAXLEN];
 
-	char* cfg_name = NULL;
-	JSONNODE* j_name;
+	const char* cfg_name = NULL;
+	json_node_t* j_name;
 
 	if(runid == -1) {
 		logmsg(LOG_CRIT, "Couldn't allocate runid for experiment!");
@@ -367,7 +362,7 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 		base = root;
 
 	if(name == NULL) {
-		j_name = json_get(base->exp_config, "name");
+		j_name = json_find_opt(base->exp_config, "name");
 		if(j_name == NULL) {
 			logmsg(LOG_CRIT, "Neither command-line name nor name from config was provided");
 			return NULL;
@@ -384,13 +379,10 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	strcpy(exp->exp_basedir, base->exp_directory);
 	strcpy(exp->exp_name, name);
 
-	exp->exp_config = json_copy(base->exp_config);
+	exp->exp_config = json_copy_node(base->exp_config);
 
-	experiment_cfg_add(exp->exp_config, NULL, json_new_a("name", name), B_TRUE);
-
-	if(cfg_name != NULL) {
-		json_free(cfg_name);
-	}
+	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("name"),
+					   json_new_string(json_str_create(name)), B_TRUE);
 
 	return exp;
 }
@@ -410,7 +402,7 @@ void experiment_destroy(experiment_t* exp) {
 	}
 
 	if(exp->exp_config != NULL) {
-		json_delete(exp->exp_config);
+		json_node_destroy(exp->exp_config);
 	}
 
 	if(exp->exp_log != NULL) {
@@ -479,9 +471,12 @@ int experiment_write(experiment_t* exp) {
 		return EXPERIMENT_WRITE_FILE_ERROR;
 	}
 
-	data = json_write_formatted(exp->exp_config);
-	fputs(data, file);
-	json_free(data);
+	if(json_write_file(exp->exp_config, file, B_TRUE) != JSON_OK) {
+		logmsg(LOG_WARN, "Failed to write experiment's config '%s': %s",
+				path, json_error_message());
+
+		return EXPERIMENT_WRITE_FILE_ERROR;
+	}
 
 	fclose(file);
 
@@ -586,8 +581,8 @@ experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, voi
  *
  * @return Returns found node or NULL if nothing was found
  */
-JSONNODE* experiment_cfg_find(JSONNODE* node, const char* name, JSONNODE** parent) {
-	JSONNODE_ITERATOR i_iter, i_end;
+json_node_t* experiment_cfg_find(json_node_t* node, const char* name, json_node_t** parent, json_type_t type) {
+	json_node_t* iter;
 
 	char node_name[PATHPARTMAXLEN];
 	const char* next = NULL;
@@ -618,13 +613,15 @@ JSONNODE* experiment_cfg_find(JSONNODE* node, const char* name, JSONNODE** paren
 		}
 
 		if(json_type(node) == JSON_NODE) {
-			i_end = json_end(node);
-			i_iter = json_find(node, node_name);
+			if(next != NULL)
+				iter = json_find_opt(node, node_name);
+			else
+				iter = json_find_bytype(node, node_name, type);
 
-			if(i_iter == i_end)
+			if(iter == NULL)
 				return NULL;
 
-			node = *i_iter;
+			node = iter;
 		}
 		else if(json_type(node) == JSON_ARRAY) {
 			itemid = strtol(node_name, NULL, 10);
@@ -632,7 +629,7 @@ JSONNODE* experiment_cfg_find(JSONNODE* node, const char* name, JSONNODE** paren
 			if(itemid == -1)
 				return NULL;
 
-			node = json_at(node, itemid);
+			node = json_getitem(node, itemid);
 		}
 		else {
 			node = NULL;
@@ -644,15 +641,13 @@ JSONNODE* experiment_cfg_find(JSONNODE* node, const char* name, JSONNODE** paren
 	return node;
 }
 
-int experiment_cfg_walk_impl(JSONNODE* parent, experiment_cfg_walk_func pre, experiment_cfg_walk_func post,
-							 void* context, const char* parent_path, JSONNODE** child) {
+int experiment_cfg_walk_impl(json_node_t* parent, experiment_cfg_walk_func pre, experiment_cfg_walk_func post,
+							 void* context, const char* parent_path, json_node_t** child) {
 	char node_path[PATHMAXLEN];
 	size_t length = 0;
 	int itemid = 0;
 
-	JSONNODE_ITERATOR i_iter, i_end;
-	JSONNODE* node;
-	char* name;
+	json_node_t* node;
 
 	int ret;
 
@@ -660,14 +655,9 @@ int experiment_cfg_walk_impl(JSONNODE* parent, experiment_cfg_walk_func pre, exp
 		length = snprintf(node_path, PATHMAXLEN, "%s:", parent_path);
 	}
 
-	for(i_iter = json_begin(parent), i_end = json_end(parent);
-			i_iter != i_end; ++i_iter) {
-		node = *i_iter;
-
+	json_for_each(parent, node, itemid) {
 		if(json_type(parent) == JSON_NODE) {
-			name = json_name(node);
-			strncpy(node_path + length, name, PATHMAXLEN - length);
-			json_free(name);
+			strncpy(node_path + length, json_name(node), PATHMAXLEN - length);
 		}
 		else if(json_type(parent) == JSON_ARRAY) {
 			snprintf(node_path + length, PATHMAXLEN - length, "%d", itemid);
@@ -691,8 +681,6 @@ int experiment_cfg_walk_impl(JSONNODE* parent, experiment_cfg_walk_func pre, exp
 		case EXP_WALK_BREAK:
 			return EXP_WALK_BREAK;
 		}
-
-		++itemid;
 	}
 
 	return EXP_WALK_CONTINUE;
@@ -711,9 +699,9 @@ int experiment_cfg_walk_impl(JSONNODE* parent, experiment_cfg_walk_func pre, exp
  *
  * @return If walker returns EXP_WALK_RETURN, node which triggered it, or NULL.
  */
-JSONNODE* experiment_cfg_walk(JSONNODE* config, experiment_cfg_walk_func pre,
+json_node_t* experiment_cfg_walk(json_node_t* config, experiment_cfg_walk_func pre,
 		                      experiment_cfg_walk_func post, void* context) {
-	JSONNODE* child = NULL;
+	json_node_t* child = NULL;
 
 	experiment_cfg_walk_impl(config, pre, post, context, NULL, &child);
 
@@ -729,29 +717,26 @@ JSONNODE* experiment_cfg_walk(JSONNODE* config, experiment_cfg_walk_func pre,
  *
  * @return EXP_CONFIG_OK or one of EXP_CONFIG_* errors.
  */
-int experiment_cfg_set(JSONNODE* config, const char* name, const char* value) {
-	JSONNODE* node = experiment_cfg_find(config, name, NULL);
+int experiment_cfg_set(json_node_t* config, const char* name, const char* value) {
+	json_node_t* node = experiment_cfg_find(config, name, NULL, JSON_ANY);
 
 	if(node == NULL)
 		return EXP_CONFIG_NOT_FOUND;
 
 	switch(json_type(node)) {
 	case JSON_STRING:
-		json_set_a(node, value);
+		json_set_string(node, json_str_create(value));
 		return EXP_CONFIG_OK;
 	case JSON_NUMBER:
-		/* Act like libjson: provide both numbers (integer & float),
-		 * Than consumer of this node call json_as_i or json_as_f and
-		 * get correct value */
-		json_set_i(node, strtoll(value, NULL, 10));
-		json_set_f(node, atof(value));
+		if(json_set_number(node, value))
+			return EXP_CONFIG_INVALID_VALUE;
 		return EXP_CONFIG_OK;
-	case JSON_BOOL:
+	case JSON_BOOLEAN:
 		if(strcmp(value, "true") == 0) {
-			json_set_b(node, B_TRUE);
+			json_set_boolean(node, B_TRUE);
 		}
 		else if(strcmp(value, "false") == 0) {
-			json_set_b(node, B_FALSE);
+			json_set_boolean(node, B_FALSE);
 		}
 		else {
 			return EXP_CONFIG_INVALID_VALUE;
@@ -772,13 +757,13 @@ int experiment_cfg_set(JSONNODE* config, const char* name, const char* value) {
  *
  * @return EXP_CONFIG_OK or one of EXP_CONFIG_* errors.
  */
-int experiment_cfg_add(JSONNODE* config, const char* parent_name, JSONNODE* node, boolean_t replace) {
-	JSONNODE* parent = config;
-	JSONNODE_ITERATOR i_iter, i_end;
-	char* name;
+int experiment_cfg_add(json_node_t* config, const char* parent_name, json_str_t name,
+					   json_node_t* node, boolean_t replace) {
+	json_node_t* parent = config;
+	json_node_t* iter;
 
 	if(parent_name) {
-		parent = experiment_cfg_find(config, parent_name, NULL);
+		parent = experiment_cfg_find(config, parent_name, NULL, JSON_ANY);
 
 		if(parent == NULL)
 			return EXP_CONFIG_NOT_FOUND;
@@ -789,19 +774,16 @@ int experiment_cfg_add(JSONNODE* config, const char* parent_name, JSONNODE* node
 	}
 
 	/* Check if node not yet exists */
-	name = json_name(node);
-	i_end = json_end(parent);
-	i_iter = json_find(parent, name);
-	json_free(name);
+	iter = json_find_opt(parent, JSON_C_STR(name));
 
-	if(i_iter != i_end) {
+	if(iter == NULL) {
 		if(!replace)
 			return EXP_CONFIG_DUPLICATE;
 
-		json_erase(parent, i_iter);
+		json_remove_node(parent, node);
 	}
 
-	json_push_back(parent, node);
+	json_add_node(parent, name, node);
 
 	return EXP_CONFIG_OK;
 }
@@ -810,228 +792,59 @@ int experiment_cfg_add(JSONNODE* config, const char* parent_name, JSONNODE* node
  * experiment_process_config()
  * --------------------------- */
 
-#define EXP_CONFIG_NONE					0
-#define EXP_CONFIG_THREADPOOLS			1
-#define EXP_CONFIG_WORKLOADS			2
-#define EXP_CONFIG_STEPS				3
-#define EXP_CONFIG_WL_CHAIN				4
+static int exp_tp_proc(json_node_t* node, exp_threadpool_t* etp) {
+	if(json_get_integer_u(node, "num_threads", &etp->tp_num_threads) != JSON_OK)
+		return -1;
 
-struct exp_config_context {
-	experiment_t* exp;
+	if(json_get_integer_tm(node, "quantum", &etp->tp_quantum) != JSON_OK)
+		return -2;
 
-	int mode;
-	JSONNODE* node;
+	if(json_get_node(node, "disp", &etp->tp_disp) != JSON_OK)
+		return -3;
 
-	int error;
+	if(json_get_boolean(node, "discard", &etp->tp_discard) == JSON_INVALID_TYPE)
+		return -4;
 
-	union {
-		exp_threadpool_t* tp;
-		exp_workload_t* wl;
-	} data;
-	boolean_t add;
-};
+	if(json_get_node(node, "sched", &etp->tp_sched) == JSON_INVALID_TYPE)
+		return -5;
 
-static int exp_tp_proc_param(const char* node_name, JSONNODE* node, struct exp_config_context* ctx) {
-	 exp_threadpool_t* etp = ctx->data.tp;
-
-	 /**
-	  * We don't any additional checks of node type here.
-	  * If json_as_int find non-number node, it will return 0,
-	  * which would be recognised by tsload layer as error
-	  * (but error messages may be confusing).  */
-
-	if(strcmp(node_name, "num_threads") == 0) {
-		etp->tp_num_threads = json_as_int(node);
-	}
-	else if(strcmp(node_name, "quantum") == 0) {
-		etp->tp_quantum = json_as_int(node);
-	}
-	else if(strcmp(node_name, "discard") == 0) {
-		etp->tp_discard = json_as_bool(node);
-	}
-	else if(strcmp(node_name, "disp") == 0) {
-		etp->tp_disp = node;
-		return EXP_WALK_NEXT;
-	}
-	else if(strcmp(node_name, "sched") == 0) {
-		etp->tp_sched = node;
-		return EXP_WALK_NEXT;
-	}
-
-	return EXP_WALK_CONTINUE;
+	return 0;
 }
 
-static int exp_wl_proc_param(const char* node_name, JSONNODE* node, struct exp_config_context* ctx) {
-	exp_workload_t* ewl = ctx->data.wl;
-	char* str = NULL;
+static int exp_wl_proc(json_node_t* node, exp_workload_t* ewl) {
+	int tp_error = 0;
+	json_node_t* chain = NULL;
 
-	if(strcmp(node_name, "wltype") == 0) {
-		str = json_as_string(node);
-		strncpy(ewl->wl_type, str, WLTNAMELEN);
-		json_free(str);
-	}
-	else if(strcmp(node_name, "workload") == 0) {
-		if(ctx->mode == EXP_CONFIG_WL_CHAIN) {
-			str = json_as_string(node);
-			strncpy(ewl->wl_chain_name, str, WLTNAMELEN);
-			json_free(str);
-		}
-	}
-	else if(strcmp(node_name, "threadpool") == 0) {
-		str = json_as_string(node);
-		strncpy(ewl->wl_tp_name, str, WLTNAMELEN);
-		json_free(str);
-	}
-	else if(strcmp(node_name, "deadline") == 0) {
-		ewl->wl_deadline = json_as_int(node);
-	}
-	else if(strcmp(node_name, "rqsched") == 0) {
-		ewl->wl_rqsched = node;
-		return EXP_WALK_NEXT;
-	}
-	else if(strcmp(node_name, "params") == 0) {
-		ewl->wl_params = node;
-		return EXP_WALK_NEXT;
-	}
-	else if(strcmp(node_name, "chain") == 0) {
-		ewl->wl_chain = node;
-		ctx->mode = EXP_CONFIG_WL_CHAIN;
+	if(json_get_string_copy(node, "wltype", ewl->wl_type, WLTNAMELEN) != JSON_OK)
+		return -1;
 
+	tp_error = json_get_string_copy(node, "threadpool", ewl->wl_tp_name, TPNAMELEN);
+	if(tp_error == JSON_INVALID_TYPE)
+		return -2;
+
+	if(json_get_node(node, "chain", &chain) == JSON_INVALID_TYPE)
+		return -3;
+
+	if(json_get_integer_tm(node, "deadline", &ewl->wl_deadline) == JSON_INVALID_TYPE)
+		return -4;
+
+	if(json_get_node(node, "params", &ewl->wl_params) != JSON_OK)
+		return -5;
+
+	if(chain != NULL) {
+		if(json_get_string_copy(chain, "workload", ewl->wl_chain_name, WLTNAMELEN) != JSON_OK)
+				return -1;
 		ewl->wl_is_chained = B_TRUE;
 	}
-
-	return EXP_WALK_CONTINUE;
-}
-
-static int exp_cfg_proc_walk_pre(const char* name, JSONNODE* parent, JSONNODE* node, void* context) {
-	struct exp_config_context* ctx = (struct exp_config_context*) context;
-	char* node_name = strrchr_y(name, ':');
-
-	if(node_name == NULL) {
-		node_name = name;
-	}
 	else {
-		++node_name;
+		if(tp_error != JSON_OK)
+			return -2;
+
+		if(json_get_node(node, "rqsched", &ewl->wl_rqsched) != JSON_OK)
+			return -7;
 	}
 
-	if(strcmp(name, "name") == 0) {
-		char* str = json_as_string(node);
-		strncpy(ctx->exp->exp_name, str, EXPNAMELEN);
-		json_free(str);
-	}
-	else if(strcmp(name, "threadpools") == 0) {
-		ctx->mode = EXP_CONFIG_THREADPOOLS;
-	}
-	else if(strcmp(name, "workloads") == 0) {
-		ctx->mode = EXP_CONFIG_WORKLOADS;
-	}
-	else if(strcmp(name, "steps") == 0) {
-		ctx->mode = EXP_CONFIG_STEPS;
-	}
-	else if(ctx->mode != EXP_CONFIG_NONE) {
-		if(ctx->node == NULL) {
-			ctx->node = node;
-
-			if(ctx->mode == EXP_CONFIG_THREADPOOLS) {
-				ctx->data.tp = exp_tp_create(node_name);
-				ctx->add = B_TRUE;
-			}
-			else {
-				 /* Workloads are defined inside two subnodes: steps and workloads
-				  * So check if workload already have been created */
-				 exp_workload_t* ewl = hash_map_find(ctx->exp->exp_workloads, node_name);
-
-				 if(ewl == NULL) {
-					 ewl = exp_wl_create(node_name);
-					 ctx->add = B_TRUE;
-				 }
-				 else {
-					 ctx->add = B_FALSE;
-				 }
-
-				 if(ctx->mode == EXP_CONFIG_STEPS) {
-					 ewl->wl_steps_cfg = node;
-				 }
-
-				 ctx->data.wl = ewl;
-			}
-		}
-		else {
-			if(ctx->mode == EXP_CONFIG_THREADPOOLS) {
-				return exp_tp_proc_param(node_name, node, ctx);
-			}
-			else if(ctx->mode == EXP_CONFIG_WORKLOADS || ctx->mode == EXP_CONFIG_WL_CHAIN) {
-				return exp_wl_proc_param(node_name, node, ctx);
-			}
-		}
-	}
-
-	return EXP_WALK_CONTINUE;
-}
-
-static int exp_cfg_proc_walk_post(const char* name, JSONNODE* parent, JSONNODE* node, void* context) {
-	struct exp_config_context* ctx = (struct exp_config_context*) context;
-	char* node_name = strrchr_y(name, ':');
-
-	if(node_name == NULL) {
-		node_name = name;
-	}
-	else {
-		++node_name;
-	}
-
-	if(ctx->node == NULL) {
-		ctx->mode = EXP_CONFIG_NONE;
-	}
-	else if(ctx->node == node) {
-		if(ctx->mode == EXP_CONFIG_THREADPOOLS) {
-			if(hash_map_insert(ctx->exp->exp_threadpools, ctx->data.tp) != HASH_MAP_OK) {
-				ctx->error = EXP_CONFIG_DUPLICATE;
-				return EXP_WALK_BREAK;
-			}
-			ctx->data.tp = NULL;
-		}
-		else {
-			if(ctx->add) {
-				if(hash_map_insert(ctx->exp->exp_workloads, ctx->data.wl) != HASH_MAP_OK) {
-					ctx->error = EXP_CONFIG_DUPLICATE;
-					return EXP_WALK_BREAK;
-				}
-			}
-			ctx->data.wl = NULL;
-		}
-		ctx->node = NULL;
-	}
-
-	if(ctx->mode == EXP_CONFIG_WL_CHAIN && strcmp(node_name, "chain") == 0)  {
-		ctx->mode = EXP_CONFIG_WORKLOADS;
-	}
-
-	return EXP_WALK_CONTINUE;
-}
-
-int exp_wl_chain_walker(hm_item_t* obj, void* context) {
-	exp_workload_t* ewl = (exp_workload_t*) obj;
-	exp_workload_t* parent;
-	struct exp_config_context* ctx = (struct exp_config_context*) context;
-
-	if(ewl->wl_is_chained) {
-		parent = hash_map_find_nolock(ctx->exp->exp_workloads, ewl->wl_chain_name);
-
-		if(parent == NULL) {
-			ctx->error = EXP_CONFIG_NOT_FOUND;
-			return HM_WALKER_STOP;
-		}
-
-		if(parent->wl_chain_next != NULL) {
-			ctx->error = EXP_CONFIG_DUPLICATE;
-			return HM_WALKER_STOP;
-		}
-
-		parent->wl_chain_next = ewl;
-	}
-
-	return HM_WALKER_CONTINUE;
+	return 0;
 }
 
 /**
@@ -1041,25 +854,85 @@ int exp_wl_chain_walker(hm_item_t* obj, void* context) {
  * @return EXP_CONFIG_OK if everything went fine
  */
 int experiment_process_config(experiment_t* exp) {
-	struct exp_config_context ctx;
+	json_node_t *workloads, *threadpools, *steps;
+	json_node_t *workload, *threadpool, *step;
+	int id;
 
-	ctx.exp = exp;
-	ctx.mode = EXP_CONFIG_NONE;
-	ctx.node = NULL;
-	ctx.error = EXP_CONFIG_OK;
-	ctx.data.wl = NULL;
-	ctx.add = B_FALSE;
+	int error = 0;
+	int ret = EXP_CONFIG_OK;
+
+	if(json_get_node(exp->exp_config, "workloads", &workloads) != JSON_OK) {
+		goto bad_json;
+	}
+
+	if(json_get_node(exp->exp_config, "threadpools", &threadpools) != JSON_OK) {
+		goto bad_json;
+	}
+
+	if(json_get_node(exp->exp_config, "steps", &steps) != JSON_OK) {
+		goto bad_json;
+	}
 
 	exp->exp_workloads = hash_map_create(&exp_workload_hash_map, "wl-%s", exp->exp_name);
 	exp->exp_threadpools = hash_map_create(&exp_tp_hash_map, "tp-%s", exp->exp_name);
 
-	experiment_cfg_walk(exp->exp_config, exp_cfg_proc_walk_pre, exp_cfg_proc_walk_post, &ctx);
+	json_for_each(workloads, workload, id) {
+		exp_workload_t* ewl = exp_wl_create(json_name(workload));
+		error = exp_wl_proc(workload, ewl);
 
-	if(ctx.error == EXP_CONFIG_OK) {
-		hash_map_walk(exp->exp_workloads, exp_wl_chain_walker, &ctx);
+		if(error != 0) {
+			snprintf(exp->exp_error_msg, EXPERRLEN, "workload '%s': %s",
+					json_name(workload), json_error_message());
+
+			return EXP_CONFIG_BAD_JSON;
+		}
+
+		if(hash_map_insert(exp->exp_workloads, ewl) != HASH_MAP_OK) {
+			snprintf(exp->exp_error_msg, EXPERRLEN, "workload '%s' already exists",
+					json_name(workload));
+
+			exp_wl_destroy(ewl);
+			return EXP_CONFIG_DUPLICATE;
+		}
 	}
 
-	return ctx.error;
+	json_for_each(threadpools, threadpool, id) {
+		exp_threadpool_t* etp = exp_tp_create(json_name(threadpool));
+		error = exp_tp_proc(threadpool, etp);
+
+		if(error != 0) {
+			snprintf(exp->exp_error_msg, EXPERRLEN, "threadpool '%s': %s",
+					json_name(threadpool), json_error_message());
+
+			return EXP_CONFIG_BAD_JSON;
+		}
+
+		if(hash_map_insert(exp->exp_threadpools, etp) != HASH_MAP_OK) {
+			snprintf(exp->exp_error_msg, EXPERRLEN, "threadpool '%s' already exists",
+					 json_name(threadpool));
+
+			exp_tp_destroy(etp);
+			return EXP_CONFIG_DUPLICATE;
+		}
+	}
+
+	json_for_each(steps, step, id) {
+		exp_workload_t* ewl = hash_map_find(exp->exp_workloads, json_name(step));
+
+		if(ewl == NULL) {
+			return EXP_CONFIG_NOT_FOUND;
+		}
+
+		ewl->wl_steps_cfg = step;
+	}
+
+	return EXP_CONFIG_OK;
+
+bad_json:
+	snprintf(exp->exp_error_msg, EXPERRLEN, "missing config node: %s",
+			 json_error_message());
+
+	return EXP_CONFIG_BAD_JSON;
 }
 
 /* ---------------------------

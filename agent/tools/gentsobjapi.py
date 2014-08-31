@@ -97,6 +97,8 @@ class APIFunction:
         for ptype, pname in self.params:
             if ptype == 'tsobj_node_t*':
                 jsonparams.append('(json_node_t*) ' + pname)
+            elif ptype == 'tsobj_node_t**':
+                jsonparams.append('(json_node_t**) ' + pname)
             else:
                 jsonparams.append(pname)
             params.append(pname)

@@ -48,6 +48,7 @@ json_str_t json_str_reference(json_buffer_t* buf, int from, int to);
 void json_str_free(json_str_t json_str, json_buffer_t* buf);
 
 json_node_t* json_node_create(json_buffer_t* buf, json_type_t type);
+json_node_t* json_node_create_copy(json_node_t* node);
 
 int json_set_error_va(struct json_parser* parser, int error, const char* fmt, va_list va);
 
@@ -84,5 +85,7 @@ STATIC_INLINE int json_set_error_str(int errno, const char* fmt, ...) {
 
 int json_init_errors(void);
 void json_destroy_errors(void);
+
+int json_parse_number(struct json_parser* parser, json_buffer_t* buf, json_node_t** object);
 
 #endif /* JSONIMPL_H_ */

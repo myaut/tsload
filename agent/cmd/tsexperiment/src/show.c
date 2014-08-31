@@ -10,8 +10,6 @@
 #include <getopt.h>
 #include <tstime.h>
 
-#include <libjson.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,20 +18,23 @@
 #define SHOW_LIST		2
 
 void tse_show_json(experiment_t* exp) {
-	char* json = json_write_formatted(exp->exp_config);
-
-	if(json) {
-		fputs(json, stdout);
-	}
-
-	json_free(json);
+	json_write_file(exp->exp_config, stdout, B_TRUE);
 }
 
-int tse_show_list_walk(const char* name, JSONNODE* parent, JSONNODE* node, void* context) {
-	if(json_type(node) != JSON_NODE && json_type(node) != JSON_ARRAY) {
-		char* value = json_as_string(node);
-		printf("%s=%s\n", name, value);
-		json_free(value);
+int tse_show_list_walk(const char* name, json_node_t* parent, json_node_t* node, void* context) {
+	switch(json_type_hinted(node)) {
+	case JSON_STRING:
+		printf("%s=%s\n", name, json_as_string(node));
+		break;
+	case JSON_NUMBER_INTEGER:
+		printf("%s=%" PRId64 "\n", name, json_as_integer(node));
+		break;
+	case JSON_NUMBER_FLOAT:
+		printf("%s=%f\n", name, json_as_float(node));
+		break;
+	case JSON_BOOLEAN:
+		printf("%s=%s\n", name, (json_as_boolean(node))? "true" : "false");
+		break;
 	}
 
 	return EXP_WALK_CONTINUE;
@@ -42,23 +43,20 @@ int tse_show_list_walk(const char* name, JSONNODE* parent, JSONNODE* node, void*
 #define TSE_SHOW_PARAM(fmt, name, param)		\
 	printf("%-12s : " fmt "\n", name, param)
 
-#define TSE_SHOW_JSON_PARAM_STRING(agent, name)				\
-	{														\
-		JSONNODE* param = json_get(agent, name);			\
-		if(param != NULL) {									\
-			char* str = json_as_string(param);				\
-			TSE_SHOW_PARAM("%s", name, str);				\
-			json_free(str);									\
-		}													\
+#define TSE_SHOW_JSON_PARAM_STRING(agent, name)								\
+	{																		\
+		json_node_t* param = json_find_bytype(agent, name, JSON_STRING);	\
+		if(param != NULL) {													\
+			TSE_SHOW_PARAM("%s", name, json_as_string(param));				\
+		}																	\
 	}
 
-#define TSE_SHOW_JSON_PARAM_INT(agent, name)				\
-	{														\
-		JSONNODE* param = json_get(agent, name);			\
-		if(param != NULL) {									\
-			TSE_SHOW_PARAM("%lld", name, 					\
-				(long long) json_as_int(param));			\
-		}													\
+#define TSE_SHOW_JSON_PARAM_INT(agent, name)										\
+	{																				\
+		json_node_t* param = json_find_bytype(agent, name, JSON_NUMBER_INTEGER);	\
+		if(param != NULL) {															\
+			TSE_SHOW_PARAM("%lld", name, (long long) json_as_integer(param));		\
+		}																			\
 	}
 
 int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
@@ -67,24 +65,13 @@ int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
 	char quantum[40];
 
 	if(etp->tp_disp != NULL) {
-		JSONNODE_ITERATOR i_type, i_end;
-
-		i_type = json_find(etp->tp_disp, "type");
-		i_end = json_end(etp->tp_disp);
-
-		if(i_type != i_end) {
-			disp = json_as_string(*i_type);
-		}
+		json_get_string(etp->tp_disp, "type", &disp);
 	}
 
 	tm_human_print(etp->tp_quantum, quantum, 40);
 
 	printf("%-16s %-6d %-8s %-12s\n", etp->tp_name,
 				etp->tp_num_threads, quantum, (disp == NULL)? "???" : disp);
-
-	if(disp != NULL) {
-		json_free(disp);
-	}
 
 	return HM_WALKER_CONTINUE;
 }
@@ -94,14 +81,7 @@ int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 	char* rqsched = NULL;
 
 	if(ewl->wl_rqsched != NULL) {
-		JSONNODE_ITERATOR i_type, i_end;
-
-		i_type = json_find(ewl->wl_rqsched, "type");
-		i_end = json_end(ewl->wl_rqsched);
-
-		if(i_type != i_end) {
-			rqsched = json_as_string(*i_type);
-		}
+		json_get_string(ewl->wl_rqsched, "type", &rqsched);
 	}
 
 	if(ewl->wl_tp_name[0] != '\0') {
@@ -116,30 +96,26 @@ int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 		printf("%16s [ERROR]\n", ewl->wl_name);
 	}
 
-	if(rqsched != NULL) {
-		json_free(rqsched);
-	}
-
 	return HM_WALKER_CONTINUE;
 }
 
 void tse_show_normal(experiment_t* exp) {
-	JSONNODE* agent;
-	JSONNODE* start_time;
+	json_node_t* agent;
+	json_node_t* start_time;
 
 	int err = experiment_process_config(exp);
 	if(err != EXP_CONFIG_OK) {
-		fprintf(stderr, "Error processing config for experiment '%s'", exp->exp_directory);
+		fprintf(stderr, "Error processing config for experiment '%s': %s\n",
+					exp->exp_directory, exp->exp_error_msg);
 		return;
 	}
-
-	agent = experiment_cfg_find(exp->exp_config, "agent", NULL);
 
 	TSE_SHOW_PARAM("%s", "name", exp->exp_name);
 	TSE_SHOW_PARAM("%s", "root", exp->exp_root);
 	TSE_SHOW_PARAM("%s", "directory", exp->exp_directory);
 	TSE_SHOW_PARAM("%d", "runid", exp->exp_runid);
 
+	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL, JSON_NUMBER_INTEGER);
 	if(start_time != NULL) {
 		char date[32];
 		tse_exp_print_start_time(exp, date, 32);
@@ -148,6 +124,7 @@ void tse_show_normal(experiment_t* exp) {
 
 	TSE_SHOW_PARAM("%s", "status", tse_exp_get_status_str(exp));
 
+	agent = experiment_cfg_find(exp->exp_config, "agent", NULL, JSON_NODE);
 	if(agent != NULL) {
 		TSE_SHOW_JSON_PARAM_INT(agent, "agent_pid");
 
