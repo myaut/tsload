@@ -27,8 +27,6 @@ if lib.SupportedPlatform('solaris'):
 # Process PLATAPIs
 lib.PreparePlatform()
 
-lib.AddDeps(('lib', 'libjson'))
-
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)
 
