@@ -204,7 +204,7 @@ LIBEXPORT json_node_t* json_new_double(double val);
 LIBEXPORT json_node_t* json_new_string(json_str_t val);
 LIBEXPORT json_node_t* json_new_boolean(boolean_t val);
 LIBEXPORT json_node_t* json_new_array(void);
-LIBEXPORT json_node_t* json_new_node(void);
+LIBEXPORT json_node_t* json_new_node(const char* node_class);
 
 LIBEXPORT void json_set_integer(json_node_t* node, int64_t val);
 LIBEXPORT void json_set_double(json_node_t* node, double val);

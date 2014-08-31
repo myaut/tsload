@@ -214,8 +214,8 @@ static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* nod
 }
 
 json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema) {
-	json_node_t* node = json_new_node();
-	json_node_t* fields = json_new_node();
+	json_node_t* node = json_new_node(NULL);
+	json_node_t* fields = json_new_node(NULL);
 
 	json_node_t* field_node = NULL;
 	tsfile_field_t* field;
@@ -228,7 +228,7 @@ json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema) {
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		field = &schema->fields[fi];
 
-		field_node = json_new_node();
+		field_node = json_new_node(NULL);
 
 		if(field->type == TSFILE_FIELD_BOOLEAN) {
 			json_add_string(field_node, JSON_STR("type"), JSON_STR("bool"));

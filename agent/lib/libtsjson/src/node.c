@@ -299,7 +299,7 @@ json_node_t* json_new_array(void) {
 	return json_node_create(NULL, JSON_ARRAY);
 }
 
-json_node_t* json_new_node(void) {
+json_node_t* json_new_node(const char* node_class) {
 	return json_node_create(NULL, JSON_NODE);
 }
 

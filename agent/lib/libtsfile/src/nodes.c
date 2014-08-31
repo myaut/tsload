@@ -69,7 +69,7 @@ void tsfile_destroy_nodes(tsfile_t* file) {
 }
 
 json_node_t* tsfile_create_node(tsfile_t* file) {
-	json_node_t* node = json_new_node();
+	json_node_t* node = json_new_node(NULL);
 	json_node_t* field;
 	tsfile_schema_t* schema = &file->header->schema;
 	int fi;
