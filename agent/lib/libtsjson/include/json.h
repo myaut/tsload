@@ -108,7 +108,6 @@ typedef struct json_node {
  * JSON error codes
  */
 #define JSON_OK					0
-
 #define JSON_INTERNAL_ERROR		-1
 #define JSON_INVALID_TYPE		-2
 #define JSON_NOT_FOUND			-3
@@ -129,6 +128,13 @@ typedef struct json_node {
 #define JSON_BUFFER_OVERFLOW		-32
 #define JSON_FILE_ERROR				-33
 
+/**
+ * Hook for TSObj - catches JSON errors and passes them to TSObj
+ * (note: parser errors are ignored)
+ */
+typedef int (*json_error_msg_func)(int errno, const char* format, va_list va);
+LIBIMPORT json_error_msg_func json_error_msg;
+
 typedef struct json_error_state {
 	int   je_error;
 	char  je_message[JSONERRLEN];
@@ -140,7 +146,7 @@ typedef struct json_error_state {
 /**
  * Macro from compile-time buffer creation. Used by tests mostly.
  */
-#define JSON_BUFFER(str)	json_buf_create(str, sizeof(str))
+#define JSON_BUFFER(str)	json_buf_create(str, sizeof(str), B_FALSE)
 
 LIBEXPORT json_str_t json_str_create(const char* str);
 LIBEXPORT json_buffer_t* json_buf_from_file(const char* path);
@@ -310,21 +316,5 @@ LIBEXPORT int json_write_file(json_node_t* node, FILE* file, boolean_t formatted
 
 LIBEXPORT int json_init(void);
 LIBEXPORT void json_fini(void);
-
-
-typedef json_node_t* (*hm_json_formatter)(hm_item_t* object);
-typedef json_str_t (*hm_json_key_formatter)(hm_item_t* object);
-
-struct hm_fmt_context {
-	hashmap_t* hm;
-	json_node_t* node;
-	hm_json_formatter formatter;
-	hm_json_key_formatter key_formatter;
-};
-
-LIBEXPORT json_node_t* json_hm_format_bykey(hashmap_t* hm, hm_json_formatter formatter, void* key);
-LIBEXPORT json_node_t* json_hm_format_all(hashmap_t* hm, hm_json_formatter formatter,
-		hm_json_key_formatter key_formatter);
-
 
 #endif /* JSON_H_ */

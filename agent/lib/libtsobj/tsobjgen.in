@@ -1,3 +1,5 @@
+STATIC_INLINE tsobj_str_t tsobj_str_create(const char* str);
+
 STATIC_INLINE tsobj_node_t* tsobj_first(tsobj_node_t* parent, int* id);
 STATIC_INLINE boolean_t tsobj_is_end(tsobj_node_t* parent, tsobj_node_t* node, int* id);
 STATIC_INLINE tsobj_node_t* tsobj_next(tsobj_node_t* node, int* id);

@@ -61,12 +61,21 @@ void test_object_node(void) {
 	json_buffer_t* buf = JSON_BUFFER(" { \"b\":true,  \"_int\":  10,   \"str\":\"hi!\" } ");
 	json_node_t* obj;
 
+	boolean_t b = B_FALSE;
+	int i = -1;
+	char* s = "bye!";
+
 	assert(json_parse(buf, &obj) == JSON_OK);
 	assert(json_size(obj) == 3);
 
-	assert(json_get_boolean(obj, "b", B_FALSE) == B_TRUE);
-	assert(json_get_integer(obj, "_int", -1) == 10);
-	assert(strcmp(json_get_string(obj, "str", ""), "hi!") == 0);
+	assert(json_get_boolean(obj, "b", &b) == JSON_OK);
+	assert(b == B_TRUE);
+
+	assert(json_get_integer_i(obj, "_int", &i) == JSON_OK);
+	assert(i == 10);
+
+	assert(json_get_string(obj, "str", &s) == JSON_OK);
+	assert(strcmp(s, "hi!") == 0);
 
 	json_node_destroy(obj);
 }

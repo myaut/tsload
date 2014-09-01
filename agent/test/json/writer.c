@@ -14,7 +14,7 @@
 #define WRITER_SIMPLE_RESULT		"{\"i\":12790}"
 void test_writer_simple(void) {
 	char buf[32] = {'a'};
-	json_node_t* node = json_new_node();
+	json_node_t* node = json_new_node(NULL);
 
 	json_add_node(node, JSON_STR("i"), json_new_integer(12790));
 
@@ -31,7 +31,7 @@ void test_writer_simple(void) {
 #define WRITER_FORMATTED		"{\n  \"i\": 65536,\n  \"xx\": \"\\t\"\n}\n"
 void test_writer_formatted(void) {
 	char buf[40] = {'a'};
-	json_node_t* node = json_new_node();
+	json_node_t* node = json_new_node(NULL);
 
 	json_add_node(node, JSON_STR("i"), json_new_integer(65536));
 	json_add_node(node, JSON_STR("xx"), json_new_string(JSON_STR("\t")));
