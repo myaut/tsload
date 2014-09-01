@@ -44,7 +44,6 @@ LIBEXPORT struct subsystem pre_subsys[] = {
 };
 
 LIBEXPORT struct subsystem post_subsys[] = {
-	SUBSYSTEM("json", json_init, json_fini),
 	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini),
 	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini)
 };

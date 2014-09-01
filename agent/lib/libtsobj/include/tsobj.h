@@ -22,6 +22,7 @@
 #include <defs.h>
 
 #include <json.h>
+#include <errcode.h>
 
 /**
  * @module TSObject
@@ -58,6 +59,21 @@ LIBEXPORT int tsobj_errno(void);
 LIBEXPORT void tsobj_errno_clear(void);
 LIBEXPORT const char* tsobj_error_message();
 LIBEXPORT tsobj_error_state_t* tsobj_get_error(void);
+
+STATIC_INLINE ts_errcode_t tsobj_error_code() {
+	int error = tsobj_errno();
+
+	switch(error) {
+	case TSOBJ_INVALID_TYPE:
+		return TSE_INVALID_TYPE;
+	case TSOBJ_NOT_FOUND:
+		return TSE_MISSING_ATTRIBUTE;
+	case TSOBJ_OK:
+		return TSE_OK;
+	}
+
+	return TSE_INTERNAL_ERROR;
+}
 
 #define TSOBJ_STR				JSON_STR
 #define TSOBJ_C_STR				JSON_C_STR

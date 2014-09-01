@@ -8,6 +8,14 @@
 #define LOG_SOURCE ""
 #include <log.h>
 
+#ifndef NO_JSON
+LIBEXPORT int json_init(void);
+LIBEXPORT void json_fini(void);
+
+LIBEXPORT int tsobj_init(void);
+LIBEXPORT void tsobj_fini(void);
+#endif
+
 #include <defs.h>
 #include <threads.h>
 #include <mempool.h>
@@ -50,6 +58,8 @@ struct subsystem subsys[] = {
 	SUBSYSTEM("workload", wl_init, wl_fini),
 	SUBSYSTEM("threadpool", tp_init, tp_fini),
 	SUBSYSTEM("netsock", nsk_init, nsk_fini),
+	SUBSYSTEM("json", json_init, json_fini),
+	SUBSYSTEM("tsobj", tsobj_init, tsobj_fini),
 };
 
 #if 1

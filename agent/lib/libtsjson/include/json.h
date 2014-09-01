@@ -17,7 +17,6 @@
 /* Hide json_ while libjson is in project */
 #define json_parse			ts_json_parse
 #define json_as_string		ts_json_as_string
-#define json_as_float		ts_json_as_float
 #define json_size			ts_json_size
 #define json_name			ts_json_name
 #define json_type			ts_json_type
@@ -163,7 +162,8 @@ LIBEXPORT json_error_state_t* json_get_error(void);
 LIBEXPORT const char* json_as_string(json_node_t* node);
 LIBEXPORT boolean_t json_as_boolean(json_node_t* node);
 LIBEXPORT int64_t json_as_integer(json_node_t* node);
-LIBEXPORT double json_as_float(json_node_t* node);
+LIBEXPORT double json_as_double(json_node_t* node);
+LIBEXPORT double json_as_double_n(json_node_t* node);
 
 LIBEXPORT json_node_t* json_first(json_node_t* parent, int* id);
 STATIC_INLINE boolean_t json_is_end(json_node_t* parent, json_node_t* node, int* id) {
@@ -229,6 +229,7 @@ LIBEXPORT json_node_t* json_popitem(json_node_t* parent, int id);
 
 LIBEXPORT int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val);
 LIBEXPORT int json_get_double(json_node_t* parent, const char* name, double* val);
+LIBEXPORT int json_get_double_n(json_node_t* parent, const char* name, double* val);
 LIBEXPORT int json_get_string(json_node_t* parent, const char* name, char** val);
 LIBEXPORT int json_get_boolean(json_node_t* parent, const char* name, boolean_t* val);
 LIBEXPORT int json_get_array(json_node_t* parent, const char* name, json_node_t** val);

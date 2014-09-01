@@ -46,7 +46,7 @@ void test_number_float_frac(void) {
 	json_node_t* num;
 
 	assert(json_parse(buf, &num) == JSON_OK);
-	assert(json_as_float(num) == -123.456);
+	assert(json_as_double(num) == -123.456);
 
 	json_node_destroy(num);
 }
@@ -56,7 +56,7 @@ void test_number_float_exp(void) {
 	json_node_t* num;
 
 	assert(json_parse(buf, &num) == JSON_OK);
-	assert(json_as_float(num) == -0.456E+10);
+	assert(json_as_double(num) == -0.456E+10);
 
 	json_node_destroy(num);
 }
@@ -70,6 +70,16 @@ void test_number_float_inval(void) {
 	dump_error();
 }
 
+void test_number_float_int(void) {
+	json_buffer_t* buf = JSON_BUFFER("  -123  ");
+	json_node_t* num;
+
+	assert(json_parse(buf, &num) == JSON_OK);
+	assert(json_as_double_n(num) == -123.0);
+
+	json_node_destroy(num);
+}
+
 int json_test_main(void) {
 	test_number_int();
 	test_number_int_inval();
@@ -78,6 +88,7 @@ int json_test_main(void) {
 	test_number_float_frac();
 	test_number_float_exp();
 	test_number_float_inval();
+	test_number_float_int();
 
 	return 0;
 }

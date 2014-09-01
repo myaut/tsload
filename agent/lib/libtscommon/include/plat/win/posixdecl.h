@@ -26,6 +26,7 @@
 #define access	_access
 #define mkdir   _mkdir
 #define fileno	_fileno
+#define getcwd  _getcwd
 
 /* See http://msdn.microsoft.com/en-us/library/1w06ktdy%28v=vs.71%29.aspx */
 #define 	F_OK	00

@@ -369,3 +369,4 @@ int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl)
 
 	return WLPARAM_JSON_OK;
 }
+

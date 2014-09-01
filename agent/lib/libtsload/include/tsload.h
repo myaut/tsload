@@ -17,12 +17,6 @@
 #include <tsinit.h>
 #include <tstime.h>
 
-#ifndef NO_JSON
-#include <libjson.h>
-#else
-#define JSONNODE void
-#endif
-
 /**
  * @module TSLoad high-level API
  *

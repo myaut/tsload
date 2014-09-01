@@ -31,8 +31,20 @@ int64_t json_as_integer(json_node_t* node) {
 	return -1;
 }
 
-double json_as_float(json_node_t* node) {
+double json_as_double(json_node_t* node) {
 	if(node->jn_type == JSON_NUMBER && !node->jn_is_integer) {
+		return node->jn_data.d;
+	}
+
+	json_set_error(JSON_INVALID_TYPE);
+	return 0.0;
+}
+
+double json_as_double_n(json_node_t* node) {
+	if(node->jn_type == JSON_NUMBER) {
+		if(node->jn_is_integer)
+			return (double) node->jn_data.i;
+
 		return node->jn_data.d;
 	}
 
@@ -231,6 +243,23 @@ int json_get_double(json_node_t* parent, const char* name, double* val) {
 	}
 
 	*val = node->jn_data.d;
+	return JSON_OK;
+}
+
+int json_get_double_n(json_node_t* parent, const char* name, double* val) {
+	json_node_t* node = json_find_bytype(parent, name, JSON_NUMBER);
+
+	if(node == NULL) {
+		return json_errno();
+	}
+
+	if(node->jn_is_integer) {
+		*val = (double) node->jn_data.i;
+	}
+	else {
+		*val = node->jn_data.d;
+	}
+
 	return JSON_OK;
 }
 

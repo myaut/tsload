@@ -82,5 +82,13 @@ hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c  plat=linux
 hostinfo/wmi_proc		file=wmi_proc.c  plat=win
 
 # Tests for random generators
-^random 			lib=libjson lib=libtscommon lib=libhostinfo lib=libtsload
+^random 			lib=libjson 	lib=libtscommon		lib=libtsjson 	\
+					lib=libtsobj	lib=libtsload		lib=libhostinfo
 random/chisquare	file=chisquare.c lib=m maxtime=3
+
+# Tests for libtsload object creation
+^tsload		    lib=libjson 	lib=libtscommon		lib=libtsjson 	\
+				lib=libtsobj	lib=libtsload		lib=libhostinfo	\
+				file=main.c		use=mod
+tsload/o_randgen	file=o_randgen.c
+
