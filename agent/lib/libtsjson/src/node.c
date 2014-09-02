@@ -22,48 +22,87 @@ static const char* json_type_names[] = {
 	"N_DOUBLE"
 };
 
-int64_t json_as_integer(json_node_t* node) {
-	if(node->jn_type == JSON_NUMBER && node->jn_is_integer) {
-		return node->jn_data.i;
+int json_check_type(json_node_t* node, json_type_t type) {
+	boolean_t is_integer;
+	boolean_t check_number;
+
+	if(node == NULL) {
+		return JSON_NOT_FOUND;
 	}
 
-	json_set_error(JSON_INVALID_TYPE);
-	return -1;
+	if(type == JSON_ANY) {
+		return JSON_OK;
+	}
+
+	if(type == JSON_NUMBER_INTEGER) {
+		is_integer = B_TRUE;
+		check_number = B_TRUE;
+		type = JSON_NUMBER;
+	}
+	else if(type == JSON_NUMBER_FLOAT) {
+		is_integer = B_FALSE;
+		check_number = B_TRUE;
+		type = JSON_NUMBER;
+	}
+	else {
+		is_integer = B_FALSE;
+		check_number = B_FALSE;
+	}
+
+	if(unlikely(node->jn_type != type)) {
+		json_set_error_str(JSON_INVALID_TYPE, "VALUE '%s' have wrong type: %s (%s was expected)",
+							 (node->jn_name == NULL) ? "(root)" : node->jn_name,
+							 json_type_names[node->jn_type], json_type_names[type]);
+		return JSON_INVALID_TYPE;
+	}
+
+	if(check_number && unlikely(node->jn_is_integer != is_integer)) {
+		json_set_error_str(JSON_INVALID_TYPE, "VALUE '%s' have wrong number type: %s was expected",
+							(node->jn_name == NULL) ? "(root)" : node->jn_name,
+							 is_integer? "integer" : "float");
+		return JSON_INVALID_TYPE;
+	}
+
+	return JSON_OK;
+}
+
+int64_t json_as_integer(json_node_t* node) {
+	if(json_check_type(node, JSON_NUMBER_INTEGER) != JSON_OK) {
+		return -1;
+	}
+
+	return node->jn_data.i;
 }
 
 double json_as_double(json_node_t* node) {
-	if(node->jn_type == JSON_NUMBER && !node->jn_is_integer) {
-		return node->jn_data.d;
+	if(json_check_type(node, JSON_NUMBER_FLOAT) != JSON_OK) {
+		return 0.0;
 	}
 
-	json_set_error(JSON_INVALID_TYPE);
-	return 0.0;
+	return node->jn_data.d;
 }
 
 double json_as_double_n(json_node_t* node) {
-	if(node->jn_type == JSON_NUMBER) {
-		if(node->jn_is_integer)
-			return (double) node->jn_data.i;
-
-		return node->jn_data.d;
+	if(json_check_type(node, JSON_NUMBER) != JSON_OK) {
+		return 0.0;
 	}
 
-	json_set_error(JSON_INVALID_TYPE);
-	return 0.0;
+	if(node->jn_is_integer)
+		return (double) node->jn_data.i;
+
+	return node->jn_data.d;
 }
 
 const char* json_as_string(json_node_t* node) {
-	if(node->jn_type != JSON_STRING) {
-		json_set_error(JSON_INVALID_TYPE);
+	if(json_check_type(node, JSON_STRING) != JSON_OK) {
 		return NULL;
 	}
 
-	return (const char*) node->jn_data.s;
+	return node->jn_data.s;
 }
 
 boolean_t json_as_boolean(json_node_t* node) {
-	if(node->jn_type != JSON_BOOLEAN) {
-		json_set_error(JSON_INVALID_TYPE);
+	if(json_check_type(node, JSON_BOOLEAN) != JSON_OK) {
 		return B_FALSE;
 	}
 
@@ -123,55 +162,6 @@ json_node_t* json_find(json_node_t* parent, const char* name) {
 }
 
 /**
- * Find child by name and check its type
- *
- * If node is not found, sets errno to JSON_NOT_FOUND.
- * If node type is not match type, sets errno to JSON_INVALID_TYPE
- * If parent is not JSON_NODE, sets errno to JSON_INVALID_TYPE
- */
-json_node_t* json_find_bytype(json_node_t* parent, const char* name, json_type_t type) {
-	json_node_t* node = json_find(parent, name);
-
-	if(type == JSON_ANY) {
-		return node;
-	}
-
-	if(node != NULL) {
-		boolean_t is_integer;
-		boolean_t check_number;
-
-		if(type == JSON_NUMBER_INTEGER) {
-			is_integer = B_TRUE;
-			check_number = B_TRUE;
-			type = JSON_NUMBER;
-		}
-		else if(type == JSON_NUMBER_FLOAT) {
-			is_integer = B_FALSE;
-			check_number = B_TRUE;
-			type = JSON_NUMBER;
-		}
-		else {
-			is_integer = B_FALSE;
-			check_number = B_FALSE;
-		}
-
-		if(unlikely(node->jn_type != type)) {
-			json_set_error_str(JSON_INVALID_TYPE, "VALUE '%s' have wrong type: %s (%s was expected)",
-							   	   	   name, json_type_names[node->jn_type], json_type_names[type]);
-			return NULL;
-		}
-
-		if(check_number && unlikely(node->jn_is_integer != is_integer)) {
-			json_set_error_str(JSON_INVALID_TYPE, "VALUE '%s' have wrong number type: %s was expected",
-										name, is_integer? "integer" : "float");
-			return NULL;
-		}
-	}
-
-	return node;
-}
-
-/**
  * Get child by id.
  *
  * If id is out of bounds sets errno to JSON_NOT_FOUND
@@ -225,33 +215,33 @@ json_node_t* json_popitem(json_node_t* parent, int id) {
  * ------------------------- */
 
 int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_NUMBER_INTEGER);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_NUMBER_INTEGER);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	*val = node->jn_data.i;
 	return JSON_OK;
 }
 
 int json_get_double(json_node_t* parent, const char* name, double* val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_NUMBER_FLOAT);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_NUMBER_FLOAT);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	*val = node->jn_data.d;
 	return JSON_OK;
 }
 
 int json_get_double_n(json_node_t* parent, const char* name, double* val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_NUMBER);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_NUMBER);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	if(node->jn_is_integer) {
 		*val = (double) node->jn_data.i;
@@ -264,44 +254,44 @@ int json_get_double_n(json_node_t* parent, const char* name, double* val) {
 }
 
 int json_get_string(json_node_t* parent, const char* name, char** val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_STRING);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_STRING);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	*val = (char*) node->jn_data.s;
 	return JSON_OK;
 }
 
 int json_get_boolean(json_node_t* parent, const char* name, boolean_t* val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_BOOLEAN);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_BOOLEAN);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	*val = node->jn_data.b;
 	return JSON_OK;
 }
 
 int json_get_array(json_node_t* parent, const char* name, json_node_t** val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_NODE);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_ARRAY);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	*val = node;
 	return JSON_OK;
 }
 
 int json_get_node(json_node_t* parent, const char* name, json_node_t** val) {
-	json_node_t* node = json_find_bytype(parent, name, JSON_NODE);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_NODE);
 
-	if(node == NULL) {
-		return json_errno();
-	}
+	if(err != JSON_OK)
+		return err;
 
 	*val = node;
 	return JSON_OK;

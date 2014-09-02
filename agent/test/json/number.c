@@ -45,8 +45,12 @@ void test_number_float_frac(void) {
 	json_buffer_t* buf = JSON_BUFFER("  -123.456  ");
 	json_node_t* num;
 
+	double val;
+
 	assert(json_parse(buf, &num) == JSON_OK);
-	assert(json_as_double(num) == -123.456);
+	val = json_as_double(num);
+
+	assert(val > -123.4561 && val < -123.4559);
 
 	json_node_destroy(num);
 }

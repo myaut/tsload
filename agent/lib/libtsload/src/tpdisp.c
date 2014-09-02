@@ -5,6 +5,9 @@
  *      Author: myaut
  */
 
+#define NO_JSON
+#define JSONNODE void
+
 #define LOG_SOURCE "tpool"
 #include <log.h>
 
@@ -15,8 +18,6 @@
 #include <mempool.h>
 #include <errcode.h>
 #include <tsload.h>
-
-#include <libjson.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -120,22 +121,14 @@ void tpd_wqueue_signal(thread_pool_t* tp, int wid) {
 	mutex_unlock(&worker->w_rq_mutex);
 }
 
-static int json_tp_disp_proc_fill_up(tp_disp_t* tpd, JSONNODE* node);
+static int tsobj_tp_disp_proc_fill_up(tp_disp_t* tpd, tsobj_node_t* node);
 
-tp_disp_t* json_tp_disp_proc(JSONNODE* node) {
+tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node) {
 	tp_disp_t* tpd = NULL;
-	JSONNODE_ITERATOR i_type, i_end;
 	char* type;
 
-	i_end = json_end(node);
-	i_type = json_find(node, "type");
-
-	if(i_type == i_end || json_type(*i_type) != JSON_STRING) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-				"Failed to parse dispatcher: missing or invalid parameter 'type'");
-	}
-
-	type = json_as_string(*i_type);
+	if(tsobj_get_string(node, "type", &type) != TSOBJ_OK)
+		goto bad_tsobj;
 
 	tpd = mp_malloc(sizeof(tp_disp_t));
 	tpd->tpd_tp = NULL;
@@ -157,11 +150,18 @@ tp_disp_t* json_tp_disp_proc(JSONNODE* node) {
 		tpd->tpd_class = &tpd_ff_class;
 	}
 	else if(strcmp(type, "fill-up") == 0) {
+		int err;
+
 		tpd->tpd_class = &tpd_fill_up_class;
 
-		if(json_tp_disp_proc_fill_up(tpd, node) != TPD_OK) {
+		err = tsobj_tp_disp_proc_fill_up(tpd, node);
+		if(err != TPD_OK) {
 			mp_free(tpd);
-			tpd = NULL;
+
+			if(err == TPD_BAD)
+				goto bad_tsobj;
+
+			return NULL;
 		}
 	}
 	else if(strcmp(type, "benchmark") == 0) {
@@ -169,39 +169,27 @@ tp_disp_t* json_tp_disp_proc(JSONNODE* node) {
 	}
 	else {
 		tsload_error_msg(TSE_INVALID_DATA,
-						"Failed to parse dispatcher: invalid dispatcher type '%s'", type);
+						 TPD_ERROR_PREFIX "invalid type '%s'", type);
 
 		mp_free(tpd);
-		tpd = NULL;
+		return NULL;
 	}
-
-	json_free(type);
 
 	return tpd;
+
+bad_tsobj:
+	tsload_error_msg(tsobj_error_code(), TPD_ERROR_PREFIX "%s", tsobj_error_message());
+	return NULL;
 }
 
-#define CONFIGURE_TPD_PARAM(i_node, name, type) 						\
-	i_node = json_find(node, name);										\
-	if(i_node == i_end || json_type(*i_node) != type) {					\
-		tsload_error_msg(TSE_INVALID_DATA,								\
-					  "Failed to parse fill-up dispatcher: "			\
-					  "missing or invalid parameter '%s'\n", name);		\
-		return TPD_ERROR;												\
-	}
-
-static int json_tp_disp_proc_fill_up(tp_disp_t* tpd, JSONNODE* node) {
+static int tsobj_tp_disp_proc_fill_up(tp_disp_t* tpd, tsobj_node_t* node) {
 	unsigned num_rqs;
 	int wid;
 
-	JSONNODE_ITERATOR i_num_rqs, i_wid;
-	JSONNODE_ITERATOR i_end;
-
-	i_end = json_end(node);
-	CONFIGURE_TPD_PARAM(i_num_rqs, "n", JSON_NUMBER);
-	CONFIGURE_TPD_PARAM(i_wid, "wid", JSON_NUMBER);
-
-	num_rqs = json_as_int(*i_num_rqs);
-	wid = json_as_int(*i_wid);
+	if(tsobj_get_integer_u(node, "n", &num_rqs) != TSOBJ_OK)
+		return TPD_BAD;
+	if(tsobj_get_integer_i(node, "wid", &wid) != TSOBJ_OK)
+		return TPD_BAD;
 
 	return tpd_preinit_fill_up(tpd, num_rqs, wid);
 }

@@ -28,6 +28,13 @@ void rqsched_destroy(workload_t* wl) {
 	wl->wl_rqsched_private = NULL;
 }
 
+void test_rqsched_bad(void) {
+	TEST_PREAMBLE("[ ]");
+	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
+	assert(wl->wl_rqsched_class == NULL);
+	assert(wl->wl_rqsched_private == NULL);
+}
+
 void test_rqsched_empty() {
 	TEST_PREAMBLE(" { } ");
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
@@ -167,6 +174,7 @@ int tsload_test_main() {
 	wl->wl_rqsched_class = NULL;
 	wl->wl_rqsched_private = NULL;
 
+	test_rqsched_bad();
 	test_rqsched_empty();
 	test_rqsched_invalid_type_type();
 	test_rqsched_invalid_type_value();

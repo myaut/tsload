@@ -82,7 +82,6 @@ STATIC_INLINE int json_set_error_str(int errno, const char* fmt, ...) {
 	return ret;
 }
 
-
 int json_init_errors(void);
 void json_destroy_errors(void);
 

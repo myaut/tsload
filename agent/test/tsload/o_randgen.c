@@ -18,6 +18,16 @@
 
 randgen_t* generator = NULL;
 
+void test_rg_bad(void) {
+	TEST_PREAMBLE(" [] ");
+	assert(tsobj_randgen_proc(node) == NULL);
+}
+
+void test_rg_empty(void) {
+	TEST_PREAMBLE("{  }");
+	assert(tsobj_randgen_proc(node) == NULL);
+}
+
 void test_invalid_rg_class_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", 1.1) " }");
 	assert(tsobj_randgen_proc(node) == NULL);
@@ -97,6 +107,9 @@ void test_valid_rv_exponential_rate_double(void) {
 }
 
 int tsload_test_main() {
+	test_rg_bad();
+	test_rg_empty();
+
 	test_invalid_rg_class_type();
 	test_invalid_rg_class_value();
 	test_valid_rg_class();

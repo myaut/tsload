@@ -254,10 +254,10 @@ int tsfile_fill_entry(tsfile_t* file, json_node_t* node, void* entry) {
 		{
 			switch(schema->fields[fi].size) {
 			case sizeof(float):
-				FIELD_PUT_VALUE(float, value, json_as_float(j_field));
+				FIELD_PUT_VALUE(float, value, json_as_double(j_field));
 			break;
 			case sizeof(double):
-				FIELD_PUT_VALUE(double, value, json_as_float(j_field));
+				FIELD_PUT_VALUE(double, value, json_as_double(j_field));
 			break;
 			}
 		}

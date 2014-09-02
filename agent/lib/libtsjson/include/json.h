@@ -147,6 +147,8 @@ typedef struct json_error_state {
  */
 #define JSON_BUFFER(str)	json_buf_create(str, sizeof(str), B_FALSE)
 
+LIBEXPORT int json_check_type(json_node_t* node, json_type_t type);
+
 LIBEXPORT json_str_t json_str_create(const char* str);
 LIBEXPORT json_buffer_t* json_buf_from_file(const char* path);
 LIBEXPORT json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse);
@@ -223,7 +225,6 @@ STATIC_INLINE json_type_t json_type_hinted(json_node_t* node) {
 
 LIBEXPORT json_node_t* json_find_opt(json_node_t* parent, const char* name);
 LIBEXPORT json_node_t* json_find(json_node_t* parent, const char* name);
-LIBEXPORT json_node_t* json_find_bytype(json_node_t* parent, const char* name, json_type_t type);
 LIBEXPORT json_node_t* json_getitem(json_node_t* parent, int id);
 LIBEXPORT json_node_t* json_popitem(json_node_t* parent, int id);
 
