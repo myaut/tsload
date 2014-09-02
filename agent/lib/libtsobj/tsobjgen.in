@@ -55,3 +55,4 @@ STATIC_INLINE const char* tsobj_name(tsobj_node_t* node);
 STATIC_INLINE tsobj_type_t tsobj_type(tsobj_node_t* node);
 
 STATIC_INLINE int tsobj_check_type(tsobj_node_t* node, tsobj_type_t type);
+STATIC_INLINE int tsobj_check_unused(tsobj_node_t* node);

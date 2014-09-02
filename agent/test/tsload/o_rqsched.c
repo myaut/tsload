@@ -56,9 +56,16 @@ void test_rqsched_invalid_type_value() {
 	assert(wl->wl_rqsched_private == NULL);
 }
 
+void test_rqsched_simple_unused() {
+	TEST_PREAMBLE(" { " JSON_PROP("type", "simple")  ", "
+			 	 	    JSON_PROP("distribution", "uniform") " } ");
+	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
+	assert(wl->wl_rqsched_class == NULL);
+	assert(wl->wl_rqsched_private == NULL);
+}
 
 void test_rqsched_simple() {
-	TEST_PREAMBLE(" { " JSON_PROP("type", "simple")  " } ");
+	TEST_PREAMBLE(" { " JSON_PROP("type", "simple") " } ");
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_OK);
 	assert(wl->wl_rqsched_class == &simple_rqsched_class);
 	assert(wl->wl_rqsched_private == NULL);
@@ -130,6 +137,16 @@ void test_rqsched_iat() {
 	rqsched_destroy(wl);
 }
 
+void test_rqsched_iat_unused() {
+	TEST_PREAMBLE(" { " JSON_PROP("type", "iat") ", "
+						JSON_PROP("distribution", "uniform")  ", "
+						JSON_PROP("scope", 0.2) ", "
+						JSON_PROP("min", 10.0) " } ");
+	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
+	assert(wl->wl_rqsched_class == NULL);
+	assert(wl->wl_rqsched_private == NULL);
+}
+
 void test_rqsched_think_no_params() {
 	TEST_PREAMBLE(" { " JSON_PROP("type", "think") ", "
 						JSON_PROP("distribution", "exponential") " } ");
@@ -178,7 +195,9 @@ int tsload_test_main() {
 	test_rqsched_empty();
 	test_rqsched_invalid_type_type();
 	test_rqsched_invalid_type_value();
+
 	test_rqsched_simple();
+	test_rqsched_simple_unused();
 
 	test_rqsched_iat_no_dist();
 	test_rqsched_iat_invalid_dist_type();
@@ -187,6 +206,7 @@ int tsload_test_main() {
 	test_rqsched_iat_invalid_scope_value();
 	test_rqsched_iat_invalid_randgen();
 	test_rqsched_iat();
+	test_rqsched_iat_unused();
 
 	test_rqsched_think_no_params();
 	test_rqsched_think_invalid_users_type();

@@ -29,10 +29,11 @@ typedef struct {
 const char* json_error_msg_text[] = {
 	"OK",
 	"Internal error",
-	"VALUE have invalid type",
-	"VALUE ?? not found"
+	"attribute ?? have invalid type",
+	"attribute ?? not found",
+	"attribute ?? is unused"
 };
-const int json_error_msg_count = 4;
+const int json_error_msg_count = 5;
 
 /**
  * Set JSON error. Create error state object if necessary.

@@ -170,9 +170,13 @@ tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node) {
 	else {
 		tsload_error_msg(TSE_INVALID_DATA,
 						 TPD_ERROR_PREFIX "invalid type '%s'", type);
-
 		mp_free(tpd);
 		return NULL;
+	}
+
+	if(tsobj_check_unused(node) != TSOBJ_OK) {
+		mp_free(tpd);
+		goto bad_tsobj;
 	}
 
 	return tpd;
@@ -189,6 +193,8 @@ static int tsobj_tp_disp_proc_fill_up(tp_disp_t* tpd, tsobj_node_t* node) {
 	if(tsobj_get_integer_u(node, "n", &num_rqs) != TSOBJ_OK)
 		return TPD_BAD;
 	if(tsobj_get_integer_i(node, "wid", &wid) != TSOBJ_OK)
+		return TPD_BAD;
+	if(tsobj_check_unused(node) != TSOBJ_OK)
 		return TPD_BAD;
 
 	return tpd_preinit_fill_up(tpd, num_rqs, wid);

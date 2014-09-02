@@ -36,6 +36,12 @@ void test_invalid_tpd_type_value(void) {
 	assert(tsobj_tp_disp_proc(node) == NULL);
 }
 
+void test_invalid_tpd_rr_unused(void) {
+	TEST_PREAMBLE("{ " JSON_PROP("type", "round-robin") ",  "
+					   JSON_PROP("wid", 1) " }");
+	assert(tsobj_tp_disp_proc(node) == NULL);
+}
+
 void test_tpd_rr(void) {
 	tp_disp_t* disp;
 	TEST_PREAMBLE("{ " JSON_PROP("type", "round-robin") " }");
@@ -64,16 +70,26 @@ void test_tpd_fillup(void) {
 	tpd_destroy(disp);
 }
 
+void test_tpd_fillup_unused(void) {
+	TEST_PREAMBLE("{ " JSON_PROP("type", "fill-up") ",  "
+					   JSON_PROP("n", 10) ",  "
+					   JSON_PROP("wid", 1) ",  "
+					   JSON_PROP("i", 1) " }");
+	assert(tsobj_tp_disp_proc(node) == NULL);
+}
+
 int tsload_test_main() {
 	test_tpd_bad();
 	test_tpd_empty();
 	test_invalid_tpd_type_type();
 	test_invalid_tpd_type_value();
 
+	test_invalid_tpd_rr_unused();
 	test_tpd_rr();
 
 	test_tpd_fillup_invalid_n_type();
 	test_tpd_fillup();
+	test_tpd_fillup_unused();
 
 	return 0;
 }

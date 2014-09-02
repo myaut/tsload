@@ -15,14 +15,15 @@ typedef enum ts_errcode {
 
 	TSE_MESSAGE_FORMAT		 = 200,
 	TSE_MISSING_ATTRIBUTE	 = 201,
-	TSE_INVALID_TYPE		 = 202,
-	TSE_INVALID_VALUE		 = 203,
+	TSE_UNUSED_ATTRIBUTE	 = 202,
+	TSE_INVALID_TYPE		 = 203,
+	TSE_INVALID_VALUE		 = 204,
 
 	TSE_INTERNAL_ERROR		 = 300,
 	TSE_INVALID_STATE		 = 301
 } ts_errcode_t;
 
-/* XXX: deprecated */
+/* TODO: deprecated */
 #define TSE_INVALID_DATA		TSE_INVALID_VALUE
 
 #endif /* ERRCODE_H_ */

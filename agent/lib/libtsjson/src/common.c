@@ -7,6 +7,7 @@
 
 #include <mempool.h>
 #include <threads.h>
+#include <tuneit.h>
 
 #include <json.h>
 #include <jsonimpl.h>
@@ -18,6 +19,8 @@
 
 mp_cache_t		json_node_mp;
 mp_cache_t		json_buffer_mp;
+
+extern boolean_t json_ignore_unused;
 
 json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse) {
 	json_buffer_t* buf;
@@ -171,6 +174,8 @@ json_node_t* json_node_create(json_buffer_t* buf, json_type_t type) {
 
 	node->jn_type 	= type;
 
+	node->jn_touched = B_FALSE;
+
 	node->jn_children_count = 0;
 	list_head_init(&node->jn_child_head, "jn_child_head");
 	list_node_init(&node->jn_child_node);
@@ -197,6 +202,8 @@ json_node_t* json_node_create_copy(json_node_t* node) {
 	copy->jn_children_count = 0;
 	list_head_init(&copy->jn_child_head, "jn_child_head");
 	list_node_init(&copy->jn_child_node);
+
+	copy->jn_touched = B_FALSE;
 
 	if(copy->jn_type == JSON_STRING) {
 		copy->jn_data.s = json_str_copy(node->jn_data.s, node->jn_buf);
@@ -233,6 +240,8 @@ void json_node_destroy(json_node_t* node) {
 int json_init(void) {
 	mp_cache_init(&json_node_mp, json_node_t);
 	mp_cache_init(&json_buffer_mp, json_buffer_t);
+
+	tuneit_set_bool(json_ignore_unused);
 
 	return json_init_errors();
 }

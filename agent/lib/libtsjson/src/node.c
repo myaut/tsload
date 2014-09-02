@@ -10,6 +10,14 @@
 
 #include <string.h>
 
+/**
+ * By default libtsjson, and top-level libraries treat unused attributes as an errors
+ * On one hand it protects from protocol differences or typos, but may be painful.
+ * This tuneable disables unused checks (note that if you set it to true, no warnings
+ * will be displayed).
+ */
+boolean_t json_ignore_unused = B_FALSE;
+
 static const char* json_type_names[] = {
 	"NULL",
 	"STRING",
@@ -50,17 +58,34 @@ int json_check_type(json_node_t* node, json_type_t type) {
 	}
 
 	if(unlikely(node->jn_type != type)) {
-		json_set_error_str(JSON_INVALID_TYPE, "VALUE '%s' have wrong type: %s (%s was expected)",
+		json_set_error_str(JSON_INVALID_TYPE, "attribute '%s' have wrong type: %s (%s was expected)",
 							 (node->jn_name == NULL) ? "(root)" : node->jn_name,
 							 json_type_names[node->jn_type], json_type_names[type]);
 		return JSON_INVALID_TYPE;
 	}
 
 	if(check_number && unlikely(node->jn_is_integer != is_integer)) {
-		json_set_error_str(JSON_INVALID_TYPE, "VALUE '%s' have wrong number type: %s was expected",
+		json_set_error_str(JSON_INVALID_TYPE, "attribute '%s' have wrong number type: %s was expected",
 							(node->jn_name == NULL) ? "(root)" : node->jn_name,
 							 is_integer? "integer" : "float");
 		return JSON_INVALID_TYPE;
+	}
+
+	return JSON_OK;
+}
+
+int json_check_unused(json_node_t* node) {
+	json_node_t* child;
+
+	if(json_ignore_unused)
+		return JSON_OK;
+
+	list_for_each_entry(json_node_t, child, &node->jn_child_head, jn_child_node) {
+		if(!child->jn_touched) {
+			json_set_error_str(JSON_UNUSED_CHILD, "attribute '%s' is not used",
+							   (child->jn_name == NULL) ? "(root)" : child->jn_name);
+			return JSON_UNUSED_CHILD;
+		}
 	}
 
 	return JSON_OK;
@@ -138,6 +163,7 @@ json_node_t* json_find_opt(json_node_t* parent, const char* name) {
 
 	list_for_each_entry(json_node_t, node, &parent->jn_child_head, jn_child_node) {
 		if(strcmp(json_name(node), name) == 0) {
+			node->jn_touched = B_TRUE;
 			return node;
 		}
 	}
@@ -155,7 +181,7 @@ json_node_t* json_find(json_node_t* parent, const char* name) {
 	json_node_t* node = json_find_opt(parent, name);
 
 	if(node == NULL) {
-		json_set_error_str(JSON_NOT_FOUND, "VALUE '%s' not found", name);
+		json_set_error_str(JSON_NOT_FOUND, "attribute '%s' not found", name);
 	}
 
 	return node;
@@ -181,7 +207,7 @@ json_node_t* json_getitem(json_node_t* parent, int id) {
 	/* TODO: Implement array for parents with large number of children */
 
 	if(id >= parent->jn_children_count || id < 0) {
-		json_set_error_str(JSON_NOT_FOUND, "VALUE #%d is out of bounds", id);
+		json_set_error_str(JSON_NOT_FOUND, "attribute #%d is out of bounds", id);
 	}
 
 	list_for_each_entry(json_node_t, node, &parent->jn_child_head, jn_child_node) {

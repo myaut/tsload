@@ -154,6 +154,10 @@ randgen_t* tsobj_randgen_proc(tsobj_node_t* node) {
 	error = tsobj_get_integer_i64(node, "seed", &seed);
 	if(error == TSOBJ_INVALID_TYPE)
 		goto bad_tsobj;
+
+	if(tsobj_check_unused(node) != TSOBJ_OK)
+		goto bad_tsobj;
+
 	if(error == TSOBJ_NOT_FOUND)
 		seed = tm_get_clock();
 
@@ -223,6 +227,8 @@ randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 
 		if(tsobj_get_double_n(node, "rate", &rate) != TSOBJ_OK)
 			goto bad_tsobj;
+		if(tsobj_check_unused(node) != TSOBJ_OK)
+			goto bad_tsobj;
 
 		rv = rv_create(&rv_exponential_class, rg);
 		RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double,
@@ -234,6 +240,8 @@ randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 		if(tsobj_get_double_n(node, "min", &min) != TSOBJ_OK)
 			goto bad_tsobj;
 		if(tsobj_get_double_n(node, "max", &max) != TSOBJ_OK)
+			goto bad_tsobj;
+		if(tsobj_check_unused(node) != TSOBJ_OK)
 			goto bad_tsobj;
 
 		rv = rv_create(&rv_uniform_class, rg);
@@ -248,6 +256,8 @@ randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 			goto bad_tsobj;
 		if(tsobj_get_integer_i(node, "shape", &shape) != TSOBJ_OK)
 			goto bad_tsobj;
+		if(tsobj_check_unused(node) != TSOBJ_OK)
+			goto bad_tsobj;
 
 		rv = rv_create(&rv_erlang_class, rg);
 		RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double,
@@ -261,6 +271,8 @@ randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 		if(tsobj_get_double_n(node, "mean", &mean) != TSOBJ_OK)
 			goto bad_tsobj;
 		if(tsobj_get_double_n(node, "stddev", &stddev) != TSOBJ_OK)
+			goto bad_tsobj;
+		if(tsobj_check_unused(node) != TSOBJ_OK)
 			goto bad_tsobj;
 
 		rv = rv_create(&rv_normal_class, rg);

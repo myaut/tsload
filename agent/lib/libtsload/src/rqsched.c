@@ -44,8 +44,6 @@ static int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, ran
 }
 
 static int tsobj_rqsched_proc_common(tsobj_node_t* node, workload_t* wl, rqsched_common_t* rqs) {
-	int ret = RQSCHED_TSOBJ_OK;
-
 	json_node_t* randgen;
 	char* distribution;
 
@@ -57,25 +55,22 @@ static int tsobj_rqsched_proc_common(tsobj_node_t* node, workload_t* wl, rqsched
 	rqs->rqs_randgen = NULL;
 	rqs->rqs_randvar = NULL;
 
-	ret = tsobj_rqsched_proc_randgen(node, "randgen", &rqs->rqs_randgen);
-	if(ret != RQSCHED_TSOBJ_OK)
-		goto end;
-
+	err = tsobj_rqsched_proc_randgen(node, "randgen", &rqs->rqs_randgen);
+	if(err != RQSCHED_TSOBJ_OK)
+		return err;
 
 	if(strcmp(distribution, "uniform") == 0) {
 		double scope = 1.0;
 
 		if(tsobj_get_double(node, "scope", &scope) != TSOBJ_OK) {
-			ret = RQSCHED_TSOBJ_BAD;
-			goto end;
+			return RQSCHED_TSOBJ_BAD;
 		}
 
 		if(scope < 0.0 || scope > 1.0) {
 			tsload_error_msg(TSE_INVALID_VALUE,
 							 RQSCHED_ERROR_PREFIX "invalid scope value %f",
 							 wl->wl_name, scope);
-			ret = RQSCHED_TSOBJ_ERROR;
-			goto end;
+			return RQSCHED_TSOBJ_ERROR;
 		}
 
 		rqs->rqs_params.u_scope = scope;
@@ -87,16 +82,14 @@ static int tsobj_rqsched_proc_common(tsobj_node_t* node, workload_t* wl, rqsched
 		int shape = 1.0;
 
 		if(tsobj_get_integer_i(node, "shape", &shape) != TSOBJ_OK) {
-			ret = RQSCHED_TSOBJ_BAD;
-			goto end;
+			return RQSCHED_TSOBJ_BAD;
 		}
 
 		if(shape < 1) {
 			tsload_error_msg(TSE_INVALID_VALUE,
 							 RQSCHED_ERROR_PREFIX "invalid shape value %d",
 							 wl->wl_name, shape);
-			ret = RQSCHED_TSOBJ_ERROR;
-			goto end;
+			return RQSCHED_TSOBJ_ERROR;
 		}
 
 		rqs->rqs_params.e_shape = shape;
@@ -114,16 +107,14 @@ static int tsobj_rqsched_proc_common(tsobj_node_t* node, workload_t* wl, rqsched
 		double dispersion = 1.0;
 
 		if(tsobj_get_double(node, "dispersion", &dispersion) != TSOBJ_OK) {
-			ret = RQSCHED_TSOBJ_BAD;
-			goto end;
+			return RQSCHED_TSOBJ_BAD;
 		}
 
 		if(dispersion < 0.0) {
 			tsload_error_msg(TSE_INVALID_VALUE,
 							 RQSCHED_ERROR_PREFIX "invalid dispersion value %f",
 							 wl->wl_name, dispersion);
-			ret = RQSCHED_TSOBJ_ERROR;
-			goto end;
+			return RQSCHED_TSOBJ_ERROR;
 		}
 
 		rqs->rqs_params.n_dispersion = dispersion;
@@ -135,15 +126,10 @@ static int tsobj_rqsched_proc_common(tsobj_node_t* node, workload_t* wl, rqsched
 		tsload_error_msg(TSE_INVALID_VALUE,
 						 RQSCHED_ERROR_PREFIX "invalid distribution '%s'",
 						 wl->wl_name, distribution);
-		ret = RQSCHED_TSOBJ_ERROR;
+		return RQSCHED_TSOBJ_ERROR;
 	}
 
-end:
-	if(ret != RQSCHED_TSOBJ_OK && rqs->rqs_randgen != NULL) {
-		rg_destroy(rqs->rqs_randgen);
-	}
-
-	return ret;
+	return RQSCHED_TSOBJ_OK;
 }
 
 static int tsobj_rqsched_proc_think(tsobj_node_t* node, workload_t* wl, rqsched_think_t* rqs_think) {
@@ -211,12 +197,25 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 		ret = RQSCHED_TSOBJ_ERROR;
 	}
 
+	if(ret == RQSCHED_TSOBJ_OK && tsobj_check_unused(node) != TSOBJ_OK) {
+		ret = RQSCHED_TSOBJ_BAD;
+	}
+
 bad_tsobj:
 	if(ret != RQSCHED_TSOBJ_OK) {
 		wl->wl_rqsched_class = NULL;
+		wl->wl_rqsched_private = NULL;
 
-		if(rqs != NULL)
+		if(rqs != NULL) {
+			if(rqs->rqs_randvar != NULL) {
+				rv_destroy(rqs->rqs_randvar);
+			}
+			if(rqs->rqs_randgen != NULL) {
+				rg_destroy(rqs->rqs_randgen);
+			}
+
 			mp_free(rqs);
+		}
 	}
 
 	if(ret == RQSCHED_TSOBJ_BAD) {

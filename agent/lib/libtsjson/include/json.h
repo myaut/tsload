@@ -81,6 +81,20 @@ typedef enum {
     JSON_NODE
 } json_type_t;
 
+/**
+ * JSON node
+ *
+ * @member jn_parent parent node
+ * @member jn_buf buffer that strings (jn_name or string value) that node references
+ * @member jn_name name of node (JSON string). Will be set to NULL for array nodes and root node
+ * @member jn_type type of node
+ * @member jn_is_integer special flag that distinguishes floating point numbers from integers \
+ * 						 type is decided during parsing (or json_set_number)
+ * @member jn_children_count cached number of children
+ * @member jn_child_head list of children
+ * @member jn_touched that node was touched by json_get_* or json_find* operations. \
+ * 						 Helps finding unused optional attributes (i.e. due to typo)
+ */
 typedef struct json_node {
 	struct json_node* jn_parent;
 
@@ -94,6 +108,8 @@ typedef struct json_node {
 	unsigned    jn_children_count;
 	list_head_t	jn_child_head;
 	list_node_t	jn_child_node;
+
+	boolean_t 	jn_touched;
 
 	union {
 		int64_t		i;
@@ -111,6 +127,7 @@ typedef struct json_node {
 #define JSON_INVALID_TYPE		-2
 #define JSON_NOT_FOUND			-3
 #define JSON_NOT_CHILD			-4
+#define JSON_UNUSED_CHILD		-5
 
 /* Parser errors */
 #define JSON_END_OF_BUFFER			-11
@@ -148,6 +165,7 @@ typedef struct json_error_state {
 #define JSON_BUFFER(str)	json_buf_create(str, sizeof(str), B_FALSE)
 
 LIBEXPORT int json_check_type(json_node_t* node, json_type_t type);
+LIBEXPORT int json_check_unused(json_node_t* node);
 
 LIBEXPORT json_str_t json_str_create(const char* str);
 LIBEXPORT json_buffer_t* json_buf_from_file(const char* path);

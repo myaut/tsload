@@ -47,6 +47,12 @@ void test_valid_rg_class(void) {
 	rg_destroy(rg);
 }
 
+void test_rg_seed_typo(void) {
+	TEST_PREAMBLE("{ " JSON_PROP("class", "lcg") ", "
+			   	   	   JSON_PROP("sed", 1e200) " }");
+	assert(tsobj_randgen_proc(node) == NULL);
+}
+
 void test_invalid_seed_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "lcg") ", "
 					   JSON_PROP("seed", 1e200) " }");
@@ -106,6 +112,13 @@ void test_valid_rv_exponential_rate_double(void) {
 	rv_destroy(rv);
 }
 
+void test_valid_rv_exponential_unused(void) {
+	TEST_PREAMBLE("{ " JSON_PROP("class", "exponential") ", "
+					   JSON_PROP("rate", 1.0) ", "
+					   JSON_PROP("mean", 1.0)" }");
+	assert(tsobj_randvar_proc(node, generator) == NULL);
+}
+
 int tsload_test_main() {
 	test_rg_bad();
 	test_rg_empty();
@@ -115,6 +128,7 @@ int tsload_test_main() {
 	test_valid_rg_class();
 	test_invalid_seed_type();
 	test_valid_seed();
+	test_rg_seed_typo();
 
 	generator = rg_create(&rg_lcg_class, 0);
 
@@ -124,6 +138,7 @@ int tsload_test_main() {
 	test_invalid_rv_exponential_rate_value();
 	test_valid_rv_exponential_rate_int();
 	test_valid_rv_exponential_rate_double();
+	test_valid_rv_exponential_unused();
 
 	rg_destroy(generator);
 
