@@ -202,4 +202,5 @@ static int tsobj_tp_disp_proc_fill_up(tp_disp_t* tpd, tsobj_node_t* node) {
 
 void tpd_destroy(tp_disp_t* tpd) {
 	tpd->tpd_class->destroy(tpd->tpd_tp);
+	mp_free(tpd);
 }

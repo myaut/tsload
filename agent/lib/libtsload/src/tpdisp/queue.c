@@ -359,9 +359,16 @@ void tpd_control_sleep_fill_up(thread_pool_t* tp) {
 	tpd_control_sleep_queue(tp, fill_up->first_wid, tpd_next_wid_fill_up);
 }
 
+void tpd_destroy_fill_up(thread_pool_t* tp) {
+	if(tp->tp_disp->tpd_data != NULL)
+		mp_free(tp->tp_disp->tpd_data);
+
+	tpd_destroy_queue(tp);
+}
+
 tp_disp_class_t tpd_fill_up_class = {
 	tpd_init_fill_up,
-	tpd_destroy_queue,
+	tpd_destroy_fill_up,
 	tpd_control_report_queue,
 	tpd_control_sleep_fill_up,
 	tpd_worker_pick_queue,

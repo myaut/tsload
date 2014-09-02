@@ -33,6 +33,7 @@ void test_rqsched_bad(void) {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_empty() {
@@ -40,6 +41,7 @@ void test_rqsched_empty() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_invalid_type_type() {
@@ -47,6 +49,7 @@ void test_rqsched_invalid_type_type() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_invalid_type_value() {
@@ -54,6 +57,7 @@ void test_rqsched_invalid_type_value() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_ERROR);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_simple_unused() {
@@ -62,6 +66,7 @@ void test_rqsched_simple_unused() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_simple() {
@@ -71,6 +76,7 @@ void test_rqsched_simple() {
 	assert(wl->wl_rqsched_private == NULL);
 
 	rqsched_destroy(wl);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat_no_dist() {
@@ -78,6 +84,7 @@ void test_rqsched_iat_no_dist() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat_invalid_dist_type() {
@@ -86,6 +93,7 @@ void test_rqsched_iat_invalid_dist_type() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat_invalid_dist_value() {
@@ -94,6 +102,7 @@ void test_rqsched_iat_invalid_dist_value() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_ERROR);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat_no_parameter() {
@@ -102,6 +111,7 @@ void test_rqsched_iat_no_parameter() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat_invalid_scope_value() {
@@ -111,6 +121,7 @@ void test_rqsched_iat_invalid_scope_value() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_ERROR);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat_invalid_randgen() {
@@ -121,6 +132,7 @@ void test_rqsched_iat_invalid_randgen() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_RG_ERROR);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_iat() {
@@ -133,6 +145,7 @@ void test_rqsched_iat() {
 
 	assert(wl->wl_rqsched_class == &iat_rqsched_class);
 	assert(wl->wl_rqsched_private != NULL);
+	json_node_destroy(node);
 
 	rqsched_destroy(wl);
 }
@@ -145,6 +158,7 @@ void test_rqsched_iat_unused() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_think_no_params() {
@@ -153,6 +167,7 @@ void test_rqsched_think_no_params() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_think_invalid_users_type() {
@@ -162,6 +177,7 @@ void test_rqsched_think_invalid_users_type() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_BAD);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_think_invalid_users_value() {
@@ -171,6 +187,7 @@ void test_rqsched_think_invalid_users_value() {
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_ERROR);
 	assert(wl->wl_rqsched_class == NULL);
 	assert(wl->wl_rqsched_private == NULL);
+	json_node_destroy(node);
 }
 
 void test_rqsched_think() {
@@ -182,6 +199,7 @@ void test_rqsched_think() {
 	assert(wl->wl_rqsched_private != NULL);
 
 	rqsched_destroy(wl);
+	json_node_destroy(node);
 }
 
 int tsload_test_main() {

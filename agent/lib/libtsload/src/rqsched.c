@@ -14,6 +14,15 @@ extern rqsched_class_t simple_rqsched_class;
 extern rqsched_class_t iat_rqsched_class;
 extern rqsched_class_t think_rqsched_class;
 
+static rqsched_common_t* rqsched_common_create(size_t size) {
+	rqsched_common_t* rqs = (rqsched_common_t*) mp_malloc(size);
+
+	rqs->rqs_randgen = NULL;
+	rqs->rqs_randvar = NULL;
+
+	return rqs;
+}
+
 void rqsched_common_destroy(rqsched_common_t* rqs) {
 	rv_destroy(rqs->rqs_randvar);
 	rg_destroy(rqs->rqs_randgen);
@@ -167,7 +176,7 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 	else if(strcmp(rqsched_type, "iat") == 0) {
 		wl->wl_rqsched_class = &iat_rqsched_class;
 
-		rqs = (rqsched_common_t*) mp_malloc(sizeof(rqsched_common_t));
+		rqs = rqsched_common_create(sizeof(rqsched_common_t));
 		ret = tsobj_rqsched_proc_common(node, wl, rqs);
 
 		if(ret == RQSCHED_TSOBJ_OK) {
@@ -177,7 +186,7 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 	else if(strcmp(rqsched_type, "think") == 0) {
 		wl->wl_rqsched_class = &think_rqsched_class;
 
-		rqs_think = (rqsched_think_t*) mp_malloc(sizeof(rqsched_think_t));
+		rqs_think = (rqsched_think_t*) rqsched_common_create(sizeof(rqsched_think_t));
 		rqs = &rqs_think->common;
 
 		ret = tsobj_rqsched_proc_common(node, wl, rqs);

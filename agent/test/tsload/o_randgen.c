@@ -21,21 +21,25 @@ randgen_t* generator = NULL;
 void test_rg_bad(void) {
 	TEST_PREAMBLE(" [] ");
 	assert(tsobj_randgen_proc(node) == NULL);
+	json_node_destroy(node);
 }
 
 void test_rg_empty(void) {
 	TEST_PREAMBLE("{  }");
 	assert(tsobj_randgen_proc(node) == NULL);
+	json_node_destroy(node);
 }
 
 void test_invalid_rg_class_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", 1.1) " }");
 	assert(tsobj_randgen_proc(node) == NULL);
+	json_node_destroy(node);
 }
 
 void test_invalid_rg_class_value(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "rg_invalid_class") " }");
 	assert(tsobj_randgen_proc(node) == NULL);
+	json_node_destroy(node);
 }
 
 void test_valid_rg_class(void) {
@@ -45,18 +49,21 @@ void test_valid_rg_class(void) {
 	assert((rg = tsobj_randgen_proc(node)) != NULL);
 
 	rg_destroy(rg);
+	json_node_destroy(node);
 }
 
 void test_rg_seed_typo(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "lcg") ", "
 			   	   	   JSON_PROP("sed", 1e200) " }");
 	assert(tsobj_randgen_proc(node) == NULL);
+	json_node_destroy(node);
 }
 
 void test_invalid_seed_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "lcg") ", "
 					   JSON_PROP("seed", 1e200) " }");
 	assert(tsobj_randgen_proc(node) == NULL);
+	json_node_destroy(node);
 }
 
 void test_valid_seed(void) {
@@ -68,28 +75,33 @@ void test_valid_seed(void) {
 	assert(rg->rg_seed == 1000);
 
 	rg_destroy(rg);
+	json_node_destroy(node);
 }
 
 void test_invalid_rv_class_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP2("class", "[]") " }");
 	assert(tsobj_randvar_proc(node, generator) == NULL);
+	json_node_destroy(node);
 }
 
 void test_invalid_rv_class_value(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "rv_invalid_class") " }");
 	assert(tsobj_randvar_proc(node, generator) == NULL);
+	json_node_destroy(node);
 }
 
 void test_invalid_rv_exponential_rate_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "exponential") ", "
 					   JSON_PROP("rate", "rate_value")" }");
 	assert(tsobj_randvar_proc(node, generator) == NULL);
+	json_node_destroy(node);
 }
 
 void test_invalid_rv_exponential_rate_value(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", "exponential") ", "
 					   JSON_PROP("rate", -10.0)" }");
 	assert(tsobj_randvar_proc(node, generator) == NULL);
+	json_node_destroy(node);
 }
 
 void test_valid_rv_exponential_rate_int(void) {
@@ -100,6 +112,7 @@ void test_valid_rv_exponential_rate_int(void) {
 	assert((rv = tsobj_randvar_proc(node, generator)) != NULL);
 
 	rv_destroy(rv);
+	json_node_destroy(node);
 }
 
 void test_valid_rv_exponential_rate_double(void) {
@@ -110,6 +123,7 @@ void test_valid_rv_exponential_rate_double(void) {
 	assert((rv = tsobj_randvar_proc(node, generator)) != NULL);
 
 	rv_destroy(rv);
+	json_node_destroy(node);
 }
 
 void test_valid_rv_exponential_unused(void) {
@@ -117,6 +131,7 @@ void test_valid_rv_exponential_unused(void) {
 					   JSON_PROP("rate", 1.0) ", "
 					   JSON_PROP("mean", 1.0)" }");
 	assert(tsobj_randvar_proc(node, generator) == NULL);
+	json_node_destroy(node);
 }
 
 int tsload_test_main() {
