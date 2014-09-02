@@ -67,7 +67,7 @@ int wlpgen_create_default(wlp_descr_t* wlp, struct workload* wl) {
 		return WLPARAM_DEFAULT_OK;
 	}
 
-	return wlparam_set_default(wlp, value->value);
+	return wlparam_set_default(wlp, value->value, wl);
 }
 
 wlp_generator_t* wlpgen_create_random(wlp_descr_t* wlp, struct workload* wl,
@@ -160,7 +160,7 @@ int json_wlpgen_param_proc(JSONNODE* node, wlp_generator_t* gen, wlpgen_value_t*
 
 	return json_wlparam_proc(node, gen->wlp, value->value);
 }
-
+#if 0
 int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) {
 	wlp_generator_t* gen;
 	int ret = WLPARAM_JSON_OK;
@@ -346,6 +346,7 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 
 	return WLPARAM_JSON_OK;
 }
+#endif
 
 #define WLPGEN_GEN_VALUE(type, value, param)				\
 	FIELD_PUT_VALUE(type, param, * (type*) &value->value)

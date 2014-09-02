@@ -171,10 +171,9 @@ typedef struct {
 } wlp_descr_t;
 
 #define WLPARAM_DEFAULT_OK			0
-#define WLPARAM_JSON_OK				0
-#define WLPARAM_JSON_WRONG_TYPE		-1
-#define WLPARAM_JSON_OUTSIDE_RANGE	-2
-#define WLPARAM_JSON_NOT_FOUND		-3
+#define WLPARAM_TSOBJ_OK			0
+#define WLPARAM_TSOBJ_BAD			-1
+#define WLPARAM_OUTSIDE_RANGE		-2
 #define WLPARAM_NO_DEFAULT			-4
 #define WLPARAM_INVALID_PARAM		-5
 #define WLPARAM_INVALID_TYPE		-6
@@ -183,7 +182,7 @@ typedef struct {
 #define WLPARAM_MISSING_PMAP		-9
 #define WLPARAM_INVALID_PMAP		-10
 
-#define WLP_ERROR_PREFIX 			"Workload parameter %s"
+#define WLP_ERROR_PREFIX 			"Failed to set workload '%s' parameter '%s': "
 
 typedef enum wlpgen_type {
 	WLPG_VALUE,
@@ -228,7 +227,7 @@ typedef struct wlp_generator {
 
 LIBEXPORT wlp_type_t wlp_get_base_type(wlp_descr_t* wlp);
 
-int wlparam_set_default(wlp_descr_t* wlp, void* param);
+int wlparam_set_default(wlp_descr_t* wlp, void* param, struct workload* wl);
 
 int wlpgen_create_default(wlp_descr_t* wlp, struct workload* wl);
 void wlpgen_destroy_all(struct workload* wl);
@@ -237,15 +236,20 @@ void* wlpgen_generate(struct workload* wl);
 #ifndef NO_JSON
 #include <libjson.h>
 
-int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param);
-int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param);
+#define WLPARAM_JSON_OK		0
 
-int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl);
+STATIC_INLINE int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) { return -1; }
+STATIC_INLINE int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) { return -1; }
 
-JSONNODE* json_wlparam_format(wlp_descr_t* wlp);
-JSONNODE* json_wlparam_format_all(wlp_descr_t* wlp);
-int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param);
-int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl);
+STATIC_INLINE int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) {return -1; }
+
+STATIC_INLINE JSONNODE* json_wlparam_format(wlp_descr_t* wlp) { return NULL; }
+STATIC_INLINE JSONNODE* json_wlparam_format_all(wlp_descr_t* wlp) { return NULL; }
+STATIC_INLINE int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) { return NULL; }
+#else
+#include <tsobj.h>
+TESTEXPORT int tsobj_wlparam_proc(tsobj_node_t* node, wlp_descr_t* wlp, void* param, struct workload* wl);
+TESTEXPORT int tsobj_wlparam_proc_all(tsobj_node_t* node, wlp_descr_t* wlp, struct workload* wl);
 #endif
 
 #endif /* WLPARAM_H_ */
