@@ -91,4 +91,5 @@ random/chisquare	file=chisquare.c lib=m maxtime=3
 				lib=libtsobj	lib=libtsload		lib=libhostinfo	\
 				file=main.c		use=mod
 tsload/o_randgen	file=o_randgen.c
+tsload/o_rqsched	file=o_rqsched.c
 

@@ -61,16 +61,20 @@ typedef struct rqsched_think {
 
 void rqsched_common_destroy(rqsched_common_t* disp);
 
-#define RQSCHED_JSON_OK				 0
-#define RQSCHED_JSON_MISSING_PARAMS	-1
-#define RQSCHED_JSON_UNDEFINED		-2
-#define RQSCHED_JSON_INVALID_CLASS	-3
-#define RQSCHED_JSON_INVALID_PARAM 	-4
+#define RQSCHED_TSOBJ_OK			0
+#define RQSCHED_TSOBJ_ERROR			-1
+#define RQSCHED_TSOBJ_BAD			-2
+#define RQSCHED_TSOBJ_RG_ERROR		-3
+
+#define RQSCHED_ERROR_PREFIX		"Failed to create request scheduler for workload '%s': "
 
 #ifndef NO_JSON
 #include <libjson.h>
-
-int json_rqsched_proc(JSONNODE* node, workload_t* wl);
+STATIC_INLINE int json_rqsched_proc(JSONNODE* node, workload_t* wl) { return 0; }
+#define RQSCHED_JSON_OK				0
+#else
+#include <tsobj.h>
+int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);
 #endif
 
 #endif /* DISP_H_ */

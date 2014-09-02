@@ -10,30 +10,13 @@
 #include <tsobj.h>
 #include <randgen.h>
 
+#include "helpers.h"
+
 #include <stdio.h>
 
 #include <assert.h>
 
-#define JSON_PROP(name, value) "\"" name "\": " #value
-#define JSON_PROP2(name, json) "\"" name "\": " json
-
 randgen_t* generator = NULL;
-
-STATIC_INLINE void debug_json_assert(int ret) {
-	if(ret != JSON_OK) {
-		fprintf(stderr, "JSON error: %s\n", json_error_message());
-	}
-
-	assert(ret == JSON_OK);
-}
-
-#define TEST_PREAMBLE(conf_str)						\
-	static char conf[] = conf_str;					\
-	tsobj_node_t* node = NULL;						\
-	fprintf(stderr, "%s:\n", __func__);				\
-	debug_json_assert(								\
-			json_parse(JSON_BUFFER(conf),			\
-					   (json_node_t**) &node));
 
 void test_invalid_rg_class_type(void) {
 	TEST_PREAMBLE("{ " JSON_PROP("class", 1.1) " }");

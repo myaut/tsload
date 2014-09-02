@@ -1,11 +1,12 @@
+#define NO_JSON
+#define JSONNODE void
+
 #include <defs.h>
 
 #include <rqsched.h>
 #include <tsload.h>
 #include <mempool.h>
 #include <tstime.h>
-
-#include <libjson.h>
 
 #include <string.h>
 
@@ -20,49 +21,61 @@ void rqsched_common_destroy(rqsched_common_t* rqs) {
 	mp_free(rqs);
 }
 
-static int json_rqsched_proc_common(JSONNODE* node, workload_t* wl, rqsched_common_t* rqs) {
-	int ret = RQSCHED_JSON_OK;
+static int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t** p_randgen) {
+	int err;
+	tsobj_node_t* randgen;
 
-	JSONNODE_ITERATOR i_randgen = json_find(node, "randgen"),
-					  i_distribution = json_find(node, "distribution"),
-					  i_end = json_end(node);
+	err = tsobj_get_node(node, param, &randgen);
+	if(err == TSOBJ_INVALID_TYPE)
+		return RQSCHED_TSOBJ_BAD;
 
+	if(err == TSOBJ_OK) {
+		*p_randgen = tsobj_randgen_proc(randgen);
+
+		if(*p_randgen == NULL) {
+			return RQSCHED_TSOBJ_RG_ERROR;
+		}
+	}
+	else {
+		*p_randgen = rg_create(&rg_lcg_class, tm_get_clock());
+	}
+
+	return RQSCHED_TSOBJ_OK;
+}
+
+static int tsobj_rqsched_proc_common(tsobj_node_t* node, workload_t* wl, rqsched_common_t* rqs) {
+	int ret = RQSCHED_TSOBJ_OK;
+
+	json_node_t* randgen;
 	char* distribution;
 
-	if(i_distribution == i_end) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "Missing distribution for workload %s", wl->wl_name);
-		return RQSCHED_JSON_UNDEFINED;
-	}
+	int err;
+
+	if(tsobj_get_string(node, "distribution", &distribution) != TSOBJ_OK)
+		return RQSCHED_TSOBJ_BAD;
 
 	rqs->rqs_randgen = NULL;
 	rqs->rqs_randvar = NULL;
 
-	if(i_randgen != i_end) {
-		rqs->rqs_randgen = json_randgen_proc(*i_randgen);
+	ret = tsobj_rqsched_proc_randgen(node, "randgen", &rqs->rqs_randgen);
+	if(ret != RQSCHED_TSOBJ_OK)
+		goto end;
 
-		if(rqs->rqs_randgen == NULL) {
-			return RQSCHED_JSON_INVALID_PARAM;
-		}
-	}
-	else {
-		rqs->rqs_randgen = rg_create(&rg_lcg_class, tm_get_clock());
-	}
-
-	distribution = json_as_string(*i_distribution);
 
 	if(strcmp(distribution, "uniform") == 0) {
-		JSONNODE_ITERATOR i_scope = json_find(node, "scope");
 		double scope = 1.0;
 
-		if(i_scope != i_end) {
-			scope = json_as_float(*i_scope);
+		if(tsobj_get_double(node, "scope", &scope) != TSOBJ_OK) {
+			ret = RQSCHED_TSOBJ_BAD;
+			goto end;
+		}
 
-			if(scope < 0.0 || scope > 1.0) {
-				tsload_error_msg(TSE_INVALID_DATA, "Invalid scope value '%f' for workload %s",
-												scope, wl->wl_name);
-				ret = RQSCHED_JSON_INVALID_PARAM;
-				goto end;
-			}
+		if(scope < 0.0 || scope > 1.0) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 RQSCHED_ERROR_PREFIX "invalid scope value %f",
+							 wl->wl_name, scope);
+			ret = RQSCHED_TSOBJ_ERROR;
+			goto end;
 		}
 
 		rqs->rqs_params.u_scope = scope;
@@ -71,18 +84,19 @@ static int json_rqsched_proc_common(JSONNODE* node, workload_t* wl, rqsched_comm
 		rqs->rqs_distribution = RQSD_UNIFORM;
 	}
 	else if(strcmp(distribution, "erlang") == 0) {
-		JSONNODE_ITERATOR i_shape = json_find(node, "shape");
 		int shape = 1.0;
 
-		if(i_shape != i_end) {
-			shape = json_as_int(*i_shape);
+		if(tsobj_get_integer_i(node, "shape", &shape) != TSOBJ_OK) {
+			ret = RQSCHED_TSOBJ_BAD;
+			goto end;
+		}
 
-			if(shape < 1) {
-				tsload_error_msg(TSE_INVALID_DATA, "Invalid shape value '%d' for workload %s",
-								  shape, wl->wl_name);
-				ret = RQSCHED_JSON_INVALID_PARAM;
-				goto end;
-			}
+		if(shape < 1) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 RQSCHED_ERROR_PREFIX "invalid shape value %d",
+							 wl->wl_name, shape);
+			ret = RQSCHED_TSOBJ_ERROR;
+			goto end;
 		}
 
 		rqs->rqs_params.e_shape = shape;
@@ -97,18 +111,19 @@ static int json_rqsched_proc_common(JSONNODE* node, workload_t* wl, rqsched_comm
 		rqs->rqs_distribution = RQSD_EXPONENTIAL;
 	}
 	else if(strcmp(distribution, "normal") == 0) {
-		JSONNODE_ITERATOR i_dispersion = json_find(node, "dispersion");
 		double dispersion = 1.0;
 
-		if(i_dispersion != i_end) {
-			dispersion = json_as_float(*i_dispersion);
+		if(tsobj_get_double(node, "dispersion", &dispersion) != TSOBJ_OK) {
+			ret = RQSCHED_TSOBJ_BAD;
+			goto end;
+		}
 
-			if(dispersion < 0.0) {
-				tsload_error_msg(TSE_INVALID_DATA, "Invalid dispersion value '%f' for workload %s",
-						dispersion, wl->wl_name);
-				ret = RQSCHED_JSON_INVALID_PARAM;
-				goto end;
-			}
+		if(dispersion < 0.0) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 RQSCHED_ERROR_PREFIX "invalid dispersion value %f",
+							 wl->wl_name, dispersion);
+			ret = RQSCHED_TSOBJ_ERROR;
+			goto end;
 		}
 
 		rqs->rqs_params.n_dispersion = dispersion;
@@ -117,115 +132,97 @@ static int json_rqsched_proc_common(JSONNODE* node, workload_t* wl, rqsched_comm
 		rqs->rqs_distribution = RQSD_NORMAL;
 	}
 	else {
-		tsload_error_msg(TSE_INVALID_DATA, "Invalid distribution '%s' for workload %s",
-							distribution, wl->wl_name);
-		ret = RQSCHED_JSON_INVALID_PARAM;
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 RQSCHED_ERROR_PREFIX "invalid distribution '%s'",
+						 wl->wl_name, distribution);
+		ret = RQSCHED_TSOBJ_ERROR;
 	}
 
 end:
-	if(ret != RQSCHED_JSON_OK)
+	if(ret != RQSCHED_TSOBJ_OK && rqs->rqs_randgen != NULL) {
 		rg_destroy(rqs->rqs_randgen);
-
-	json_free(distribution);
+	}
 
 	return ret;
 }
 
-static int json_rqsched_proc_think(JSONNODE* node, workload_t* wl, rqsched_think_t* rqs_think) {
-	int ret = RQSCHED_JSON_OK;
+static int tsobj_rqsched_proc_think(tsobj_node_t* node, workload_t* wl, rqsched_think_t* rqs_think) {
+	if(tsobj_get_integer_i(node, "nusers", &rqs_think->rqs_nusers) != TSOBJ_OK)
+		return RQSCHED_TSOBJ_BAD;
 
-	JSONNODE_ITERATOR i_randgen = json_find(node, "user_randgen"),
-					  i_nusers = json_find(node, "nusers"),
-					  i_end = json_end(node);
-
-	if(i_nusers == i_end) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "Missing number of users for workload %s", wl->wl_name);
-		return RQSCHED_JSON_UNDEFINED;
+	if(rqs_think->rqs_nusers < 1) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 RQSCHED_ERROR_PREFIX "number of users %d must be 1 or greater",
+						 wl->wl_name, rqs_think->rqs_nusers);
+		return RQSCHED_TSOBJ_ERROR;
 	}
 
-	if(json_type(*i_nusers) != JSON_NUMBER) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT, "'nusers' for workload %s should be JSON_NUMBER", wl->wl_name);
-		return RQSCHED_JSON_INVALID_PARAM;
-	}
-
-	rqs_think->rqs_nusers = json_as_int(*i_nusers);
-
-	if(i_randgen != i_end) {
-		rqs_think->rqs_user_randgen = json_randgen_proc(*i_randgen);
-
-		if(rqs_think->rqs_user_randgen == NULL) {
-			return RQSCHED_JSON_INVALID_PARAM;
-		}
-	}
-	else {
-		rqs_think->rqs_user_randgen = rg_create(&rg_lcg_class, tm_get_clock());
-	}
-
-	return RQSCHED_JSON_OK;
+	return tsobj_rqsched_proc_randgen(node, "user_randgen", &rqs_think->rqs_user_randgen);
 }
 
-int json_rqsched_proc(JSONNODE* node, workload_t* wl) {
-	int ret = RQSCHED_JSON_OK;
+int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
+	int ret = RQSCHED_TSOBJ_OK;
 
-	JSONNODE_ITERATOR i_type = json_find(node, "type"),
-					  i_end = json_end(node);
+	char* rqsched_type;
 
-	char* rqsched_name;
 	rqsched_common_t* rqs = NULL;
 	rqsched_think_t* rqs_think = NULL;
 
-	if(i_type == i_end) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-						 "Missing request scheduler class for workload %s", wl->wl_name);
-		return RQSCHED_JSON_UNDEFINED;
+	if(tsobj_get_string(node, "type", &rqsched_type) != TSOBJ_OK) {
+		ret = RQSCHED_TSOBJ_BAD;
+		goto bad_tsobj;
 	}
-
-	rqsched_name = json_as_string(*i_type);
 
 	wl->wl_rqsched_private = NULL;
 
-	if(strcmp(rqsched_name, "simple") == 0) {
+	if(strcmp(rqsched_type, "simple") == 0) {
 		wl->wl_rqsched_class = &simple_rqsched_class;
 	}
-	else if(strcmp(rqsched_name, "iat") == 0) {
+	else if(strcmp(rqsched_type, "iat") == 0) {
 		wl->wl_rqsched_class = &iat_rqsched_class;
 
 		rqs = (rqsched_common_t*) mp_malloc(sizeof(rqsched_common_t));
-		ret = json_rqsched_proc_common(node, wl, rqs);
+		ret = tsobj_rqsched_proc_common(node, wl, rqs);
 
-		if(ret == RQSCHED_JSON_OK) {
+		if(ret == RQSCHED_TSOBJ_OK) {
 			wl->wl_rqsched_private = (void*) rqs;
 		}
 	}
-	else if(strcmp(rqsched_name, "think") == 0) {
+	else if(strcmp(rqsched_type, "think") == 0) {
 		wl->wl_rqsched_class = &think_rqsched_class;
 
 		rqs_think = (rqsched_think_t*) mp_malloc(sizeof(rqsched_think_t));
 		rqs = &rqs_think->common;
 
-		ret = json_rqsched_proc_common(node, wl, rqs);
+		ret = tsobj_rqsched_proc_common(node, wl, rqs);
 
-		if(ret == RQSCHED_JSON_OK) {
-			ret = json_rqsched_proc_think(node, wl, rqs_think);
+		if(ret == RQSCHED_TSOBJ_OK) {
+			ret = tsobj_rqsched_proc_think(node, wl, rqs_think);
 
-			wl->wl_rqsched_private = (void*) rqs_think;
+			if(ret == RQSCHED_TSOBJ_OK) {
+				wl->wl_rqsched_private = (void*) rqs_think;
+			}
 		}
 	}
 	else {
-		tsload_error_msg(TSE_INVALID_DATA,
-						 "Invalid request scheduler class '%s' for workload %s",
-						  rqsched_name, wl->wl_name);
-		ret = RQSCHED_JSON_INVALID_CLASS;
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 RQSCHED_ERROR_PREFIX "invalid type '%s'",
+						 wl->wl_name, rqsched_type);
+		ret = RQSCHED_TSOBJ_ERROR;
 	}
 
-	if(ret == RQSCHED_JSON_MISSING_PARAMS) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-						 "Missing request scheduler parameters for workload %s", wl->wl_name);
+bad_tsobj:
+	if(ret != RQSCHED_TSOBJ_OK) {
+		wl->wl_rqsched_class = NULL;
+
+		if(rqs != NULL)
+			mp_free(rqs);
 	}
 
-	if(ret != RQSCHED_JSON_OK && rqs != NULL)
-		mp_free(rqs);
+	if(ret == RQSCHED_TSOBJ_BAD) {
+		tsload_error_msg(tsobj_error_code(), RQSCHED_ERROR_PREFIX "%s",
+								wl->wl_name, tsobj_error_message());
+	}
 
-	json_free(rqsched_name);
 	return ret;
 }
