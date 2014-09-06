@@ -94,4 +94,4 @@ tsload/o_randgen	file=o_randgen.c
 tsload/o_rqsched	file=o_rqsched.c
 tsload/o_tpdisp		file=o_tpdisp.c
 tsload/o_wlparam	file=o_wlparam.c
-
+tsload/o_wlpgen		file=o_wlpgen.c

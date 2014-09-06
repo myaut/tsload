@@ -140,6 +140,8 @@ json_node_t* json_first(json_node_t* parent, int* id) {
 		return NULL;
 	}
 
+	*id = 0;
+
 	if(parent->jn_children_count == 0)
 		return NULL;
 	return list_first_entry(json_node_t, &parent->jn_child_head, jn_child_node);

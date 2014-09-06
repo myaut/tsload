@@ -5,6 +5,9 @@
  *      Author: myaut
  */
 
+#define NO_JSON
+#define JSONNODE void
+
 #include <wlparam.h>
 #include <workload.h>
 #include <mempool.h>
@@ -13,6 +16,8 @@
 #include <tsload.h>
 #include <errcode.h>
 #include <field.h>
+
+#include <tsobj.h>
 
 #include <math.h>
 #include <float.h>
@@ -42,7 +47,7 @@ DECLARE_FIELD_FUNCTIONS(wlp_hiobject_t);
 
 double wlpgen_pmap_eps = 0.00001;
 
-int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen);
+int tsobj_wlpgen_proc_pmap(tsobj_node_t* node, wlp_generator_t* gen);
 void wlpgen_destroy_pmap(wlp_generator_t* gen, int pcount, wlpgen_probability_t* pmap);
 
 static wlp_generator_t* wlpgen_create(wlpgen_type_t type, wlp_descr_t* wlp, workload_t* wl) {
@@ -50,6 +55,7 @@ static wlp_generator_t* wlpgen_create(wlpgen_type_t type, wlp_descr_t* wlp, work
 
 	gen->type = type;
 	gen->wlp = wlp;
+	gen->wl = wl;
 
 	list_add_tail(&gen->node, &wl->wl_wlpgen_head);
 
@@ -152,180 +158,211 @@ void wlpgen_destroy_pmap(wlp_generator_t* gen, int pcount, wlpgen_probability_t*
 /* Because wlpgen are dynamically generated, we couldn't know in compile-time
  * length of wlparam-string, so they are dynamically allocated and handled
  * specially in this helper function */
-int json_wlpgen_param_proc(JSONNODE* node, wlp_generator_t* gen, wlpgen_value_t* value) {
+int tsobj_wlpgen_param_proc(tsobj_node_t* node, wlp_generator_t* gen, wlpgen_value_t* value) {
 	if(wlp_get_base_type(gen->wlp) == WLP_RAW_STRING) {
 		value->string = mp_malloc(gen->wlp->range.str_length);
-		return json_wlparam_string_proc(node, gen->wlp, value->string);
+		return tsobj_wlparam_proc(node, gen->wlp, value->string, gen->wl);
 	}
 
-	return json_wlparam_proc(node, gen->wlp, value->value);
+	return tsobj_wlparam_proc(node, gen->wlp, value->value, gen->wl);
 }
-#if 0
-int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) {
+
+int tsobj_wlpgen_proc(tsobj_node_t* node, wlp_descr_t* wlp, struct workload* wl) {
 	wlp_generator_t* gen;
-	int ret = WLPARAM_JSON_OK;
+	int ret = WLPARAM_TSOBJ_OK;
+	int err1, err2;
 
 	randgen_t* rg = NULL;
 	randvar_t* rv = NULL;
-	JSONNODE_ITERATOR i_end, i_randgen, i_randvar, i_pmap;
 
-	if(json_type(node) != JSON_NODE) {
+	tsobj_node_t *o_randgen, *o_randvar, *o_pmap;
+
+	/* Parsing configuration */
+	if(tsobj_type(node) != JSON_NODE) {
 		gen = wlpgen_create(WLPG_VALUE, wlp, wl);
-		return json_wlpgen_param_proc(node, gen, &gen->generator.value);
+		ret = tsobj_wlpgen_param_proc(node, gen, &gen->generator.value);
+		goto end;
 	}
 
-	/* Random generated value */
+	if(tsobj_get_node(node, "randgen", &o_randgen) != TSOBJ_OK)
+		goto bad_tsobj;
 
-	i_end = json_end(node);
-	i_randgen = json_find(node, "randgen");
-	i_randvar = json_find(node, "randvar");
-	i_pmap = json_find(node, "pmap");
+	/* Now pick pmap and randvar with following limitations (as the follow in code):
+	 * 	- pmap should be an array
+	 * 	- non-number parameters support only pmap
+	 * 	- randvar should be a node (and optional since uniform distribution may be handled by randgen)
+	 * 	- pmap and randvar are mutually exclusive */
+	err2 = tsobj_get_array(node, "pmap", &o_pmap);
+	if(err2 == TSOBJ_INVALID_TYPE)
+		goto bad_tsobj;
 
-	if(i_pmap == i_end) {
-		if(wlp_get_base_type(wlp) != WLP_INTEGER && wlp_get_base_type(wlp) != WLP_FLOAT) {
-			tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX ": missing probability map", wlp->name);
-			return WLPARAM_MISSING_PMAP;
-		}
+	if(err2 != TSOBJ_OK &&
+			(wlp_get_base_type(wlp) != WLP_INTEGER &&
+			 wlp_get_base_type(wlp) != WLP_FLOAT)) {
+		goto bad_tsobj;
 	}
 
-	if(i_randgen == i_end) {
-		tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX ": missing 'randgen'", wlp->name);
-		return WLPARAM_MISSING_RANDSPEC;
+	err1 = tsobj_get_node(node, "randvar", &o_randvar);
+	if(err1 == TSOBJ_INVALID_TYPE)
+		goto bad_tsobj;
+
+	if(err2 == TSOBJ_OK && err1 == TSOBJ_OK) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WLP_ERROR_PREFIX "'randvar' and 'pmap' are mutually exclusive",
+						 wl->wl_name, wlp->name);
+		return WLPARAM_TSOBJ_BAD;
 	}
 
-	rg = json_randgen_proc(*i_randgen);
+	if(tsobj_check_unused(node) != TSOBJ_OK)
+		goto bad_tsobj;
 
+	rg = tsobj_randgen_proc(o_randgen);
 	if(rg == NULL) {
-		tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX ": failed to parse random generator", wlp->name);
-		return WLPARAM_MISSING_RANDSPEC;
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WLP_ERROR_PREFIX "failed to create random generator",
+						 wl->wl_name, wlp->name);
+		return WLPARAM_ERROR;
 	}
 
-	if(i_randvar != i_end) {
-		rv = json_randvar_proc(*i_randvar, rg);
+	if(err1 == TSOBJ_OK) {
+		rv = tsobj_randvar_proc(o_randvar, rg);
 
 		if(rv == NULL) {
 			rg_destroy(rg);
-			tsload_error_msg(TSE_INVALID_DATA, WLP_ERROR_PREFIX ": failed to parse random variator", wlp->name);
-			return WLPARAM_MISSING_RANDSPEC;
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 WLP_ERROR_PREFIX "failed to create random variator",
+							 wl->wl_name, wlp->name);
+			return WLPARAM_ERROR;
 		}
 	}
 
+	/*  Finally create a generator */
 	gen = wlpgen_create_random(wlp, wl, rg, rv);
 
-	if(i_pmap != i_end) {
-		ret = json_wlpgen_proc_pmap(*i_pmap, gen);
+	if(err2 == TSOBJ_OK) {
+		ret = tsobj_wlpgen_proc_pmap(o_pmap, gen);
+	}
+
+end:
+	if(ret != WLPARAM_TSOBJ_OK) {
+		wlpgen_destroy(gen);
 	}
 
 	return ret;
+
+bad_tsobj:
+	tsload_error_msg(tsobj_error_code(), WLP_ERROR_PREFIX "%s",
+					 wl->wl_name, wlp->name, tsobj_error_message());
+
+	return WLPARAM_TSOBJ_BAD;
 }
 
-int json_wlpgen_proc_parray(JSONNODE* node, wlp_generator_t* gen, wlpgen_probability_t* pmap) {
-	JSONNODE_ITERATOR i_el, i_end;
-	int ret = WLPARAM_INVALID_PMAP;
-	int vi = 0;
+int tsobj_wlpgen_proc_parray(tsobj_node_t* node, wlp_generator_t* gen, wlpgen_probability_t* pmap, int pid) {
+	int ret = WLPARAM_ERROR;
+	int id;
 
-	if(json_size(node) == 0) {
-		return WLPARAM_INVALID_PMAP;
+	tsobj_node_t* el;
+
+	if(tsobj_size(node) == 0) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WLP_PMAP_ERROR_PREFIX " 'valarray' is empty",
+						 gen->wl->wl_name, gen->wlp->name, pid, gen->wlp->name);
+		return WLPARAM_TSOBJ_BAD;
 	}
 
-	i_end = json_end(node);
-	i_el = json_begin(node);
-
-	pmap->length = json_size(node);
+	pmap->length = tsobj_size(node);
 	pmap->valarray = mp_malloc(sizeof(wlpgen_value_t) * pmap->length);
 
-	while(i_el != i_end) {
-		ret = json_wlpgen_param_proc(*i_el, gen, &pmap->valarray[vi]);
+	tsobj_for_each(node, el, id)  {
+		ret = tsobj_wlpgen_param_proc(el, gen, &pmap->valarray[id]);
 
-		if(ret != WLPARAM_JSON_OK)
+		if(ret != WLPARAM_TSOBJ_OK) {
+			/* Save number of correctly parsed array elements so destroy()
+			 * may handle that situation */
+			pmap->length = id + 1;
 			return ret;
-
-		++vi;
-		++i_el;
+		}
 	}
 
 	return ret;
 }
 
-int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
+int tsobj_wlpgen_proc_pmap(tsobj_node_t* node, wlp_generator_t* gen) {
 	wlpgen_randgen_t* randgen = &gen->generator.randgen;
 	int pid = 0, pcount;
+
 	wlpgen_probability_t* pmap;
+
 	double total = 0.0, probability, diff, eps;
 	int ret;
+	int err1, err2;
 
-	JSONNODE_ITERATOR i_el, i_end;
-	JSONNODE_ITERATOR i_value, i_valarray, i_probability, i_el_end;
+	tsobj_node_t* el;
+	tsobj_node_t *value, *valarray;
 
-	if(json_type(node) != JSON_ARRAY) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-						 WLP_ERROR_PREFIX ": probability map is not an array", gen->wlp->name);
-		return WLPARAM_INVALID_PMAP;
+	if(tsobj_size(node) == 0) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WLP_ERROR_PREFIX " 'pmap' is empty",
+						 gen->wl->wl_name, gen->wlp->name, gen->wlp->name);
+		return WLPARAM_TSOBJ_BAD;
 	}
 
-	pcount = json_size(node);
+	pcount = tsobj_size(node);
 	pmap = mp_malloc(pcount * sizeof(wlpgen_probability_t));
 
-	i_end = json_end(node);
-	i_el = json_begin(node);
+	tsobj_for_each(node, el, pid) {
+		pmap[pid].length = 0;
+		pmap[pid].valarray = NULL;
 
-	while(i_el != i_end) {
-		if(json_type(*i_el) != JSON_NODE) {
-			tsload_error_msg(TSE_MESSAGE_FORMAT,
-							 WLP_ERROR_PREFIX ": pmap element #%d should be a node",
-							 gen->wlp->name, pid);
-			wlpgen_destroy_pmap(gen, pid, pmap);
-			return WLPARAM_INVALID_PMAP;
-		}
+		if(tsobj_check_type(el, JSON_NODE) != TSOBJ_OK)
+			goto bad_tsobj;
 
-		i_el_end = json_end(*i_el);
-		i_probability = json_find(*i_el, "probability");
-		i_value = json_find(*i_el, "value");
-		i_valarray = json_find(*i_el, "valarray");
+		if(tsobj_get_double(el, "probability", &probability) != TSOBJ_OK)
+			goto bad_tsobj;
 
-		if(i_probability == i_el_end  ||
-				json_type(*i_probability) != JSON_NUMBER) {
-			tsload_error_msg(TSE_MESSAGE_FORMAT,
-							 WLP_ERROR_PREFIX ": pmap element #%d - missing probability",
-							 gen->wlp->name, pid);
-			wlpgen_destroy_pmap(gen, pid, pmap);
-			return WLPARAM_INVALID_PMAP;
-		}
-
-		probability = json_as_float(*i_probability);
 		total += probability;
 
 		/* There are two levels of probability map values. Basically, pmap is O(n), because
 		 * there is cycle that used in wlpgen_gen_pmap() Second level (array) allows to pick
 		 * value with equal probabilities for O(1) complexity times and represented by valarray.  */
-		if(i_value != i_el_end) {
-			pmap[pid].length = 0;
-			pmap[pid].valarray = NULL;
-			ret = json_wlpgen_param_proc(*i_value, gen, &pmap[pid].value);
-		}
-		else if(i_valarray != i_el_end && json_type(*i_valarray) == JSON_ARRAY) {
-			ret = json_wlpgen_proc_parray(*i_valarray, gen, &pmap[pid]);
-		}
-		else {
-			tsload_error_msg(TSE_MESSAGE_FORMAT,
-							 WLP_ERROR_PREFIX ": pmap element #%d - neither 'value' nor 'valarray' was defined",
-							 gen->wlp->name, pid);
-			wlpgen_destroy_pmap(gen, pid, pmap);
-			return WLPARAM_INVALID_PMAP;
+		value = tsobj_find(el, "value");
+		valarray = tsobj_find_opt(el, "valarray");
+
+		if(value == NULL && valarray == NULL)
+			goto bad_tsobj;
+
+		if(tsobj_check_unused(el) != TSOBJ_OK)
+			goto bad_tsobj;
+
+		if(tsobj_check_type(valarray, JSON_ARRAY) == TSOBJ_INVALID_TYPE)
+			goto bad_tsobj;
+
+		if(value != NULL && valarray != NULL) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 WLP_PMAP_ERROR_PREFIX "neither 'value' nor 'valarray' was defined",
+							 gen->wl->wl_name, gen->wlp->name, pid);
+			goto error;
 		}
 
-		if(ret != WLPARAM_JSON_OK) {
-			tsload_error_msg(TSE_INVALID_DATA,
-							 WLP_ERROR_PREFIX ": pmap element #%d - failed to parse value",
-							 gen->wlp->name, pid);
-			wlpgen_destroy_pmap(gen, pid, pmap);
-			return ret;
+		if(value != NULL && valarray != NULL) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 WLP_PMAP_ERROR_PREFIX "'value' and 'valarray' are mutually exclusive",
+							 gen->wl->wl_name, gen->wlp->name, pid);
+			goto error;
+		}
+
+		if(value != NULL) {
+			ret = tsobj_wlpgen_param_proc(value, gen, &pmap[pid].value);
+		}
+		else if(valarray != NULL) {
+			ret = tsobj_wlpgen_proc_parray(valarray, gen, &pmap[pid], pid);
+		}
+
+		if(ret != WLPARAM_TSOBJ_OK) {
+			goto error;
 		}
 
 		pmap[pid].probability = probability;
-
-		++i_el;
-		++pid;
 	}
 
 	/* We may incur some errors during probability calculations,
@@ -333,20 +370,31 @@ int json_wlpgen_proc_pmap(JSONNODE* node, wlp_generator_t* gen) {
 	 * XXX: Is calculation of eps is correct?*/
 	diff = total - 1.0;
 	if((diff > wlpgen_pmap_eps) || (diff < -wlpgen_pmap_eps)) {
-		tsload_error_msg(TSE_INVALID_DATA,
-						 WLP_ERROR_PREFIX ": probability map - invalid total probability %f",
-						 gen->wlp->name, total);
-		wlpgen_destroy_pmap(gen, pid, pmap);
-		return WLPARAM_INVALID_PMAP;
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WLP_PMAP_ERROR_PREFIX " invalid total probability %f",
+						 gen->wl->wl_name, gen->wlp->name, -1, gen->wlp->name, total);
+		ret = WLPARAM_ERROR;
+		/* For most "errors" in foreach loop we want to do pid + 1 (to rollback all elements including current,
+		 * but in this case pid is already points to the last element, so we need to adjust that.
+		 * (Yes, this is a hack) */
+		--pid;
+		goto error;
 	}
 
 	/* Everything went fine */
 	randgen->pcount = pcount;
 	randgen->pmap = pmap;
 
-	return WLPARAM_JSON_OK;
+	return ret;
+
+bad_tsobj:
+	tsload_error_msg(tsobj_error_code(), WLP_PMAP_ERROR_PREFIX "%s",
+					 gen->wl->wl_name, gen->wlp->name, pid, tsobj_error_message());
+	ret = WLPARAM_TSOBJ_BAD;
+error:
+	wlpgen_destroy_pmap(gen, pid + 1, pmap);
+	return ret;
 }
-#endif
 
 #define WLPGEN_GEN_VALUE(type, value, param)				\
 	FIELD_PUT_VALUE(type, param, * (type*) &value->value)

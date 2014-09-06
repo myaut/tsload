@@ -31,4 +31,9 @@ STATIC_INLINE void debug_json_assert(int ret) {
 			json_parse(JSON_BUFFER(conf),			\
 					   (json_node_t**) &node));
 
+#define WLP_TEST_PREAMBLE(pname, str)			\
+	json_node_t* param;							\
+	TEST_PREAMBLE(str);							\
+	param = json_find(node, pname);
+
 #endif /* HELPERS_H_ */

@@ -198,12 +198,12 @@ static int tsobj_wlparam_hiobj_proc(tsobj_node_t* node, wlp_descr_t* wlp, void* 
 		break;
 	}
 
-	tsload_error_msg(TSE_INVALID_VALUE,
-					 WLP_ERROR_PREFIX "hostinfo object was not found",
-					 wl->wl_name, wlp->name);
-
-	if(hiobj == NULL)
+	if(hiobj == NULL) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WLP_ERROR_PREFIX "hostinfo object was not found",
+						 wl->wl_name, wlp->name);
 		return WLPARAM_OUTSIDE_RANGE;
+	}
 
 	FIELD_PUT_VALUE(wlp_hiobject_t, param, hiobj);
 	return WLPARAM_TSOBJ_OK;
@@ -358,9 +358,7 @@ int tsobj_wlparam_proc_all(tsobj_node_t* node, wlp_descr_t* wlp, struct workload
 			}
 			else {
 				if(wlp->flags & WLPF_REQUEST) {
-#ifndef NO_JSON
-					ret = json_wlpgen_proc(param_node, wlp, wl);
-#endif
+					ret = tsobj_wlpgen_proc(param_node, wlp, wl);
 				}
 				else {
 					ret = tsobj_wlparam_proc(param_node, wlp, param, wl);

@@ -21,11 +21,6 @@
 
 workload_t* wl;
 
-#define WLP_TEST_PREAMBLE(pname, str)			\
-	json_node_t* param;							\
-	TEST_PREAMBLE(str);							\
-	param = json_find(node, pname);
-
 struct test_data {
 	wlp_integer_t i;
 	wlp_string_t  s[32];
