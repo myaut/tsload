@@ -26,6 +26,8 @@
 #include <workload.h>
 #include <randgen.h>
 
+#include <tsobj.h>
+
 #define RQSCHEDNAMELEN		16
 
 #define RQSCHED_NAME(name)		SM_INIT(.rqsched_name, name)
@@ -74,17 +76,14 @@ typedef struct rqsched_think {
 
 void rqsched_common_destroy(rqsched_common_t* disp);
 
-#define RQSCHED_JSON_OK				 0
-#define RQSCHED_JSON_MISSING_PARAMS	-1
-#define RQSCHED_JSON_UNDEFINED		-2
-#define RQSCHED_JSON_INVALID_CLASS	-3
-#define RQSCHED_JSON_INVALID_PARAM 	-4
+#define RQSCHED_TSOBJ_OK			0
+#define RQSCHED_TSOBJ_ERROR			-1
+#define RQSCHED_TSOBJ_BAD			-2
+#define RQSCHED_TSOBJ_RG_ERROR		-3
 
-#ifndef NO_JSON
-#include <libjson.h>
+#define RQSCHED_ERROR_PREFIX		"Failed to create request scheduler for workload '%s': "
 
-int json_rqsched_proc(JSONNODE* node, workload_t* wl);
-#endif
+int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);
 
 #endif /* DISP_H_ */
 

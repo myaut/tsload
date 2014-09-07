@@ -24,73 +24,61 @@
 #include <tsfile.h>
 #include <mempool.h>
 
-#include <libjson.h>
+#include <json.h>
 
-#include <assert.h>
-
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define PARSE_SCHEMA_PARAM(root, i_node, name, type) 						\
-	i_node = json_find(root, name);											\
-	if(i_node == i_end || json_type(*i_node) != type) {						\
+#include <assert.h>
+
+#define PARSE_SCHEMA_PARAM(root, node, name, type) 							\
+	node = json_find(root, name);											\
+	if(node == NULL || json_type(node) != type) {							\
 		tsfile_error_msg(TSE_MESSAGE_FORMAT, 								\
 						 "Missing or invalid param '%s' in schema", name);	\
 		return NULL;														\
 	}
 
-#define PARSE_SCHEMA_FIELD(root, i_node, name, type, error) 			\
-	i_node = json_find(root, name);										\
-	if(i_node == i_end || json_type(*i_node) != type) {					\
+#define PARSE_SCHEMA_FIELD(root, node, name, type, error) 				\
+	node = json_find(root, name);										\
+	if(node == NULL || json_type(node) != type) {						\
 		return error; 													\
 	}
 
-static int json_tsfile_schema_proc_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset);
+static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* node, ptrdiff_t offset);
 
 tsfile_schema_t* tsfile_schema_read(const char* filename) {
-	JSONNODE* root;
+	json_node_t* root;
+	json_buffer_t* buf;
+
 	tsfile_schema_t* schema;
 
-	FILE* file = fopen(filename, "r");
-	char* schema_str;
-	size_t filesize;
+	int ret;
 
-	if(file == NULL) {
-		logmsg(LOG_CRIT, "Failed to open schema file '%s'", filename);
-		logerror();
+	buf = json_buf_from_file(filename);
+
+	if(buf == NULL) {
 		return NULL;
 	}
 
-	/* Read schema into array */
-	fseek(file, 0, SEEK_END);
-	filesize = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	ret = json_parse(buf, &root);
 
-	schema_str = mp_malloc(filesize  + 1);
-	fread(schema_str, 1, filesize, file);
-	schema_str[filesize] = '\0';
-
-	fclose(file);
-
-
-	root = json_parse(schema_str);
-	mp_free(schema_str);
-
-	if(root == NULL) {
+	if(ret != JSON_OK) {
 		logmsg(LOG_CRIT, "Couldn't parse schema file '%s'", filename);
 		return NULL;
 	}
 
 	schema = json_tsfile_schema_proc(root, B_FALSE);
 
-	json_delete(root);
+	json_node_destroy(root);
 	return schema;
 }
 
 int tsfile_schema_write(const char* filename, tsfile_schema_t* schema) {
-	JSONNODE* schema_node;
-	char* schema_str;
+	json_node_t* schema_node;
+
 	FILE* schema_file = fopen(filename, "w");
 
 	if(schema_file == NULL) {
@@ -99,9 +87,7 @@ int tsfile_schema_write(const char* filename, tsfile_schema_t* schema) {
 
 	schema_node = json_tsfile_schema_format(schema);
 
-	schema_str = json_write_formatted(schema_node);
-	fputs(schema_str, schema_file);
-	json_free(schema_str);
+	json_write_file(schema_node, schema_file, B_TRUE);
 
 	fclose(schema_file);
 
@@ -136,22 +122,20 @@ tsfile_schema_t* tsfile_schema_clone(int ext_field_count, tsfile_schema_t* base)
 	return schema;
 }
 
-tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset) {
-	JSONNODE_ITERATOR i_size, i_fields, i_end;
-	JSONNODE_ITERATOR i_fields_end, i_field;
-
+tsfile_schema_t* json_tsfile_schema_proc(json_node_t* root, boolean_t auto_offset) {
 	tsfile_schema_t* schema = NULL;
-	tsfile_field_t* field;
+	tsfile_field_t* schema_field;
 	ptrdiff_t offset = (ptrdiff_t) -1;
 	int field_count, fi;
 	int err;
 
-	i_end = json_end(root);
+	json_node_t *size, *fields, *field;
+	int jid;
 
-	PARSE_SCHEMA_PARAM(root, i_size, "entry_size", JSON_NUMBER);
-	PARSE_SCHEMA_PARAM(root, i_fields, "fields", JSON_NODE);
+	PARSE_SCHEMA_PARAM(root, size, "entry_size", JSON_NUMBER);
+	PARSE_SCHEMA_PARAM(root, fields, "fields", JSON_NODE);
 
-	field_count = json_size(*i_fields);
+	field_count = json_size(fields);
 
 	if(field_count > MAXFIELDCOUNT) {
 		tsfile_error_msg(TSE_MESSAGE_FORMAT, "Too many fields in schema");
@@ -160,57 +144,51 @@ tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset) 
 
 	schema = tsfile_schema_alloc(field_count);
 
-	schema->hdr.entry_size = json_as_int(*i_size);
+	schema->hdr.entry_size = json_as_integer(size);
 	schema->hdr.count = field_count;
-
-	i_field = json_begin(*i_fields);
-	i_fields_end = json_end(*i_fields);
 
 	if(auto_offset) {
 		offset = 0;
 	}
 
+	field = json_first(fields, &jid);
+
 	for(fi = 0; fi < field_count; ++fi) {
-		assert(i_field != i_fields_end);
+		assert(!json_is_end(fields, field, &jid));
 
-		field = &schema->fields[fi];
+		schema_field = &schema->fields[fi];
 
-		err = json_tsfile_schema_proc_field(field, *i_field, offset);
+		err = json_tsfile_schema_proc_field(schema_field, field, offset);
 		if(err != SCHEMA_FIELD_OK) {
 			tsfile_error_msg(TSE_MESSAGE_FORMAT,
-							 "Failed to parse field '%s': error %d", field->name, err);
+							 "Failed to parse field '%s': error %d", json_name(field), err);
 
 			mp_free(schema);
 			return NULL;
 		}
 
 		if(auto_offset) {
-			offset += field->size;
+			offset += schema_field->size;
 		}
 
-		++i_field;
+		field = json_next(field, &jid);
 	}
 
 	return schema;
 }
 
-static int json_tsfile_schema_proc_field(tsfile_field_t* field, JSONNODE* node, ptrdiff_t offset) {
-	JSONNODE_ITERATOR i_type, i_size, i_offset, i_end;
-	char* field_name;
-	char* field_type;
+static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* node, ptrdiff_t field_offset) {
+	json_node_t *type, *offset, *size;
+	const char* field_type;
 	boolean_t need_size = B_TRUE;
 
-	field_name = json_name(node);
-	strncpy(field->name, field_name, MAXFIELDLEN);
-	json_free(field_name);
-
-	i_end = json_end(node);
+	strncpy(field->name, json_name(node), MAXFIELDLEN);
 
 	/* Parse field type */
-	PARSE_SCHEMA_FIELD(node, i_type, "type", JSON_STRING,
+	PARSE_SCHEMA_FIELD(node, type, "type", JSON_STRING,
 							SCHEMA_FIELD_MISSING_TYPE);
 
-	field_type = json_as_string(*i_type);
+	field_type = json_as_string(type);
 	if(strcmp(field_type, "bool") == 0) {
 		field->type = TSFILE_FIELD_BOOLEAN;
 		need_size = B_FALSE;
@@ -225,71 +203,68 @@ static int json_tsfile_schema_proc_field(tsfile_field_t* field, JSONNODE* node, 
 		field->type = TSFILE_FIELD_STRING;
 	}
 	else {
-		json_free(field_type);
 		return SCHEMA_FIELD_INVALID_TYPE;
 	}
 
-	json_free(field_type);
-
 	/* Parse field offset */
-	if(offset == ((ptrdiff_t)-1)) {
-		PARSE_SCHEMA_FIELD(node, i_offset, "offset", JSON_NUMBER,
+	if(field_offset == ((ptrdiff_t)-1)) {
+		PARSE_SCHEMA_FIELD(node, offset, "offset", JSON_NUMBER,
 								SCHEMA_FIELD_MISSING_OFF);
-		field->offset = (ptrdiff_t) json_as_int(*i_offset);
+		field->offset = (ptrdiff_t) json_as_integer(offset);
+	}
+	else {
+		field->offset = field_offset;
 	}
 
 	/* Parse field size */
 	if(need_size) {
-		PARSE_SCHEMA_FIELD(node, i_size, "size", JSON_NUMBER,
+		PARSE_SCHEMA_FIELD(node, size, "size", JSON_NUMBER,
 								SCHEMA_FIELD_MISSING_SIZE);
-		field->size = (size_t) json_as_int(*i_size);
+		field->size = (size_t) json_as_integer(size);
 	}
 
 	return SCHEMA_FIELD_OK;
 }
 
-JSONNODE* json_tsfile_schema_format(tsfile_schema_t* schema) {
-	JSONNODE* node = json_new(JSON_NODE);
-	JSONNODE* fields = json_new(JSON_NODE);
+json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema) {
+	json_node_t* node = json_new_node(NULL);
+	json_node_t* fields = json_new_node(NULL);
 
-	JSONNODE* field_node = NULL;
+	json_node_t* field_node = NULL;
 	tsfile_field_t* field;
 
 	int fi;
 
-	json_set_name(fields, "fields");
-	json_push_back(node, fields);
-
-	json_push_back(node, json_new_i("entry_size", schema->hdr.entry_size));
+	json_add_node(node, JSON_STR("fields"), fields);
+	json_add_integer(node, JSON_STR("entry_size"), schema->hdr.entry_size);
 
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
-		field_node = json_new(JSON_NODE);
 		field = &schema->fields[fi];
 
-		json_set_name(field_node, field->name);
+		field_node = json_new_node(NULL);
 
 		if(field->type == TSFILE_FIELD_BOOLEAN) {
-			json_push_back(field_node, json_new_a("type", "bool"));
+			json_add_string(field_node, JSON_STR("type"), JSON_STR("bool"));
 		}
 		else {
 			switch(field->type) {
 			case TSFILE_FIELD_INT:
-				json_push_back(field_node, json_new_a("type", "int"));
+				json_add_string(field_node, JSON_STR("type"), JSON_STR("int"));
 				break;
 			case TSFILE_FIELD_FLOAT:
-				json_push_back(field_node, json_new_a("type", "float"));
+				json_add_string(field_node, JSON_STR("type"), JSON_STR("float"));
 				break;
 			case TSFILE_FIELD_STRING:
-				json_push_back(field_node, json_new_a("type", "string"));
+				json_add_string(field_node, JSON_STR("type"), JSON_STR("str"));
 				break;
 			}
 
-			json_push_back(field_node, json_new_i("size", field->size));
+			json_add_integer(field_node, JSON_STR("size"), field->size);
 		}
 
-		json_push_back(field_node, json_new_i("offset", field->offset));
+		json_add_integer(field_node, JSON_STR("offset"), field->offset);
 
-		json_push_back(fields, field_node);
+		json_add_node(fields, json_str_create(field->name), field_node);
 	}
 
 	return node;

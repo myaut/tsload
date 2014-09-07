@@ -4,6 +4,10 @@
 #include <workload.h>
 #include <threadpool.h>
 
+#include <tsobj.h>
+
+#include <stdlib.h>
+
 struct tp_disp;
 
 /**
@@ -34,8 +38,11 @@ struct tp_disp;
  */
 #define TPD_OK				0
 #define TPD_ERROR			-1
+#define TPD_BAD				-2
 
 typedef struct tp_disp_class {
+	const char* name;
+
 	int (*init)(thread_pool_t* tp);
 	void (*destroy)(thread_pool_t* tp);
 
@@ -80,11 +87,9 @@ static int tpd_next_wid_rand(thread_pool_t* tp, int wid, request_t* rq) {
 	return tpd_first_wid_rand(tp);
 }
 
-#ifndef NO_JSON
-#include <libjson.h>
+#define TPD_ERROR_PREFIX		"Failed to parse dispatcher: "
 
-LIBEXPORT tp_disp_t* json_tp_disp_proc(JSONNODE* node);
-#endif
+TESTEXPORT tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node);
 
 LIBEXPORT void tpd_destroy(tp_disp_t* tpd);
 

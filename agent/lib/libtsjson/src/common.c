@@ -20,28 +20,35 @@
 
 #include <mempool.h>
 #include <threads.h>
+#include <tuneit.h>
 
 #include <json.h>
 #include <jsonimpl.h>
 
+#include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <assert.h>
 
 mp_cache_t		json_node_mp;
 mp_cache_t		json_buffer_mp;
 
-json_buffer_t* json_buf_create(char* data, size_t sz) {
+extern boolean_t json_ignore_unused;
+
+json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse) {
 	json_buffer_t* buf;
 	char* buffer;
 
-	/* TODO: Use mempool cache for this
-	 * TODO: json_buf_create with reusable (not copied data) */
+	if(reuse) {
+		buffer = data;
+	}
+	else {
+		buffer = mp_malloc(sz);
+		if(!buffer)
+			return NULL;
 
-	buffer = mp_malloc(sz);
-	if(!buffer)
-		return NULL;
-
-	memcpy(buffer, data, sz);
+		memcpy(buffer, data, sz);
+	}
 
 	buf = mp_cache_alloc(&json_buffer_mp);
 	buf->buffer = buffer;
@@ -51,15 +58,43 @@ json_buffer_t* json_buf_create(char* data, size_t sz) {
 	return buf;
 }
 
-void json_buf_hold(json_buffer_t* buf) {
-	atomic_inc(&buf->ref_count);
+json_buffer_t* json_buf_from_file(const char* path) {
+	FILE* file = fopen(path, "r");
+
+	size_t filesize;
+	size_t result;
+	char* data;
+
+	/* TODO: mmapped buffers */
+
+	if(file == NULL) {
+		json_set_error_str(errno, "Failed to open JSON file '%s'", path);
+		return NULL;
+	}
+
+	/* Read schema into array */
+	fseek(file, 0, SEEK_END);
+	filesize = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	data = mp_malloc(filesize  + 1);
+	result = fread(data, 1, filesize, file);
+	data[filesize] = '\0';
+
+	fclose(file);
+
+	if(result < filesize) {
+		json_set_error_str(errno, "Failed to read JSON file '%s'", path);
+		mp_free(data);
+		return NULL;
+	}
+
+	return json_buf_create(data, filesize, B_TRUE);
 }
 
-void json_buf_rele(json_buffer_t* buf) {
-	if(atomic_dec(&buf->ref_count) == 1l) {
-		mp_free(buf->buffer);
-		mp_cache_free(&json_buffer_mp, buf);
-	}
+void json_buf_free(json_buffer_t* buf) {
+	mp_free(buf->buffer);
+	mp_cache_free(&json_buffer_mp, buf);
 }
 
 /**
@@ -67,14 +102,14 @@ void json_buf_rele(json_buffer_t* buf) {
  */
 json_str_t json_str_create(const char* str) {
 	size_t sz = strlen(str);
-	char* json_str = mp_malloc(sz + 1);
+	char* json_str = mp_malloc(sz + 2);
 
 	if(!json_str)
 		return NULL;
 
 	*json_str++ = JSON_STR_DYNAMIC;
 
-	strncpy(json_str, str, sz);
+	strncpy(json_str, str, sz + 1);
 	return (json_str_t) json_str;
 }
 
@@ -113,6 +148,24 @@ void json_str_free(json_str_t json_str, json_buffer_t* buf) {
 	assert(tag == JSON_STR_CONST);
 }
 
+json_str_t json_str_copy(json_str_t json_str, json_buffer_t* buf) {
+	const char* str = (const char*) json_str;
+	char tag = str[-1];
+
+	if(tag == JSON_STR_DYNAMIC) {
+		return json_str_create(JSON_C_STR(json_str));
+	}
+
+	if(tag == JSON_STR_REFERENCE) {
+		json_buf_hold(buf);
+		return json_str;
+	}
+
+	assert(tag == JSON_STR_CONST);
+
+	return json_str;
+}
+
 /**
  * Create a raw JSON node object.
  *
@@ -134,11 +187,45 @@ json_node_t* json_node_create(json_buffer_t* buf, json_type_t type) {
 
 	node->jn_type 	= type;
 
+	node->jn_touched = B_FALSE;
+
 	node->jn_children_count = 0;
 	list_head_init(&node->jn_child_head, "jn_child_head");
 	list_node_init(&node->jn_child_node);
 
 	return node;
+}
+
+json_node_t* json_node_create_copy(json_node_t* node) {
+	json_node_t* copy = mp_cache_alloc(&json_node_mp);
+
+	if(!copy)
+		return NULL;
+
+	copy->jn_parent = NULL;
+
+	copy->jn_buf	= node->jn_buf;
+	copy->jn_name	= (node->jn_name != NULL)
+			? json_str_copy(node->jn_name, node->jn_buf)
+			: NULL;
+
+	copy->jn_is_integer = node->jn_is_integer;
+	copy->jn_type 	= node->jn_type;
+
+	copy->jn_children_count = 0;
+	list_head_init(&copy->jn_child_head, "jn_child_head");
+	list_node_init(&copy->jn_child_node);
+
+	copy->jn_touched = B_FALSE;
+
+	if(copy->jn_type == JSON_STRING) {
+		copy->jn_data.s = json_str_copy(node->jn_data.s, node->jn_buf);
+	}
+	else {
+		memcpy(&copy->jn_data, &node->jn_data, sizeof(node->jn_data));
+	}
+
+	return copy;
 }
 
 void json_node_destroy(json_node_t* node) {
@@ -166,6 +253,8 @@ void json_node_destroy(json_node_t* node) {
 int json_init(void) {
 	mp_cache_init(&json_node_mp, json_node_t);
 	mp_cache_init(&json_buffer_mp, json_buffer_t);
+
+	tuneit_set_bool(json_ignore_unused);
 
 	return json_init_errors();
 }

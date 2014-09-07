@@ -6,7 +6,7 @@ Import('env')
 lib = env.Clone()
 
 # lib.PreparePlatform()
-lib.AddDeps(('lib', 'libjson'), ('lib', 'libtscommon'))
+lib.AddDeps(('lib', 'libtscommon'))
 
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)

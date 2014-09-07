@@ -118,12 +118,7 @@ STATIC_INLINE list_head_t* hi_dsk_list(boolean_t reprobe) {
 	return hi_obj_list(HI_SUBSYS_DISK, reprobe);
 }
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-const char* json_hi_dsk_format_type(struct hi_object_header* obj);
-JSONNODE* json_hi_dsk_format(struct hi_object_header* obj);
-#endif
+tsobj_node_t* tsobj_hi_dsk_format(struct hi_object_header* obj);
 
 #include <hitrace.h>
 

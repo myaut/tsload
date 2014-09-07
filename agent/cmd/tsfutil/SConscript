@@ -11,7 +11,7 @@ cmd = env.Clone()
 cmd.PreparePlatform()
 
 cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libjson'),
+            ('lib', 'libtsjson'),
             ('lib', 'libtsfile'))
 
 objects = cmd.CompileProgram()

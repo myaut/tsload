@@ -87,8 +87,7 @@ hi_obj_subsys_ops_t cpu_ops = {
 	hi_cpu_dtor,
 	hi_cpu_init,
 	hi_cpu_fini,
-	json_hi_cpu_format_type,
-	json_hi_cpu_format
+	tsobj_hi_cpu_format
 };
 
 hi_obj_subsys_ops_t disk_ops = {
@@ -96,8 +95,7 @@ hi_obj_subsys_ops_t disk_ops = {
 	hi_dsk_dtor,
 	hi_dsk_init,
 	hi_dsk_fini,
-	json_hi_dsk_format_type,
-	json_hi_dsk_format
+	tsobj_hi_dsk_format
 };
 
 hi_obj_subsys_t hi_obj_subsys[HI_SUBSYS_MAX] =
@@ -371,44 +369,41 @@ void hi_obj_fini(void) {
 	}
 }
 
-JSONNODE* json_hi_format_all(boolean_t reprobe) {
-	JSONNODE* hiobj = json_new(JSON_NODE);
-	JSONNODE *root, *obj, *children, *objdata;
+tsobj_node_t* tsobj_hi_format_all(boolean_t reprobe) {
+	tsobj_node_t* hiobj = tsobj_new_node(NULL);
 
 	int sid = 0;
 	hi_obj_subsys_t* subsys = NULL;
-
 
 	list_head_t* list;
 	hi_object_t* object;
 	hi_object_child_t *child = NULL;
 
+	tsobj_node_t* o_subsys;
+	tsobj_node_t* o_object;
+	tsobj_node_t* o_children;
+
 	for(sid = 0; sid < HI_SUBSYS_MAX; ++sid) {
 		subsys = get_subsys(sid);
 		list = hi_obj_list(sid, reprobe);
 
-		root = json_new(JSON_NODE);
-		json_set_name(root, subsys->name);
-		json_push_back(hiobj, root);
+		o_subsys = tsobj_new_node(NULL);
+		tsobj_add_node(hiobj, tsobj_str_create(subsys->name), o_subsys);
 
 		hi_for_each_object(object, list) {
-			obj = json_new(JSON_NODE);
-			json_set_name(obj, object->name);
-			json_push_back(root, obj);
+			o_object = tsobj_new_node(NULL);
+			tsobj_add_node(o_subsys, tsobj_str_create(object->name), o_object);
 
-			json_push_back(obj, json_new_a("type", subsys->ops->op_json_format_type(object)));
-
-			children = json_new(JSON_ARRAY);
-			json_set_name(children, "children");
-			json_push_back(obj, children);
+			o_children = json_new_array();
 
 			hi_for_each_child(child, object) {
-				json_push_back(children, json_new_a("0", child->object->name));
+				tsobj_add_string(o_children, NULL, tsobj_str_create(child->object->name));
 			}
 
-			objdata = subsys->ops->op_json_format(object);
-			json_set_name(objdata, "data");
-			json_push_back(obj, objdata);
+			tsobj_add_node(o_object, TSOBJ_STR("children"), o_children);
+
+			tsobj_add_node(o_object, TSOBJ_STR("data"),
+					subsys->ops->op_tsobj_format(object));
 		}
 	}
 

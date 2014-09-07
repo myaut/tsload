@@ -28,8 +28,6 @@
 #include <tstime.h>
 #include <list.h>
 
-#include <libjson.h>
-
 #include <stdlib.h>
 #include <assert.h>
 
@@ -1506,9 +1504,6 @@ int mempool_init(void) {
 
 	mp_frag_allocator_init();
 	mp_heap_allocator_init();
-
-	json_register_memory_callbacks(mp_malloc,
-			mp_realloc, mp_free);
 
 	logmsg(LOG_DEBUG, "Allocated mempool segment @%p of size %lx", mp_segment, mp_segment_size);
 

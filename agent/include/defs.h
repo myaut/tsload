@@ -98,6 +98,11 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #define LIBIMPORT			extern
 #endif
 
+/* Some functions are needed by unit tests
+ * FIXME: Make this configurable
+ */
+#define TESTEXPORT			LIBEXPORT
+
 /* For GNU C we need to use attributes with packed structures
  * For VC++ it is defined using #pragma pack(...). GNU C supports for compability */
 #ifdef __GNUC__

@@ -24,7 +24,6 @@
 #include <mempool.h>
 #include <defs.h>
 #include <modules.h>
-#include <libjson.h>
 #include <tsdirent.h>
 #include <pathutil.h>
 #include <readlink.h>

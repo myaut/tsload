@@ -22,8 +22,6 @@
 #include <mempool.h>
 #include <threads.h>
 
-#include <libjson.h>
-
 #include <assert.h>
 
 /* Helper routines for hash map */
@@ -331,35 +329,3 @@ unsigned hm_string_hash(const hm_key_t* key, unsigned mask) {
 
 	return hash & mask;
 }
-
-int json_hm_walker(hm_item_t* object, void* arg) {
-	struct hm_fmt_context* context = (struct hm_fmt_context*) arg;
-	JSONNODE* item_node = context->formatter(object);
-
-	if(item_node != NULL)
-		json_push_back(context->node, item_node);
-
-	return HM_WALKER_CONTINUE;
-}
-
-JSONNODE* json_hm_format_bykey(hashmap_t* hm, hm_json_formatter formatter, void* key) {
-	hm_item_t* object = hash_map_find(hm, key);
-
-	if(!object)
-		return NULL;
-
-	return formatter(object);
-}
-
-JSONNODE* json_hm_format_all(hashmap_t* hm, hm_json_formatter formatter) {
-	JSONNODE* node = json_new(JSON_NODE);
-	struct hm_fmt_context context;
-
-	context.node = node;
-	context.formatter = formatter;
-
-	hash_map_walk(hm, json_hm_walker, &context);
-
-	return node;
-}
-

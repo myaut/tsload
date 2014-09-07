@@ -21,6 +21,8 @@
 #include <getopt.h>
 #include <tstime.h>
 
+#include <json.h>
+
 #include <experiment.h>
 #include <commands.h>
 
@@ -59,7 +61,12 @@ int tse_do_command(const char* path, int argc, char* argv[]) {
 	if(path) {
 		root = experiment_load_root(path);
 		if(root == NULL) {
-			fprintf(stderr, "Couldn't load experiment from '%s'", path);
+			fprintf(stderr, "Couldn't load experiment from '%s'\n", path);
+
+			if(json_errno() != JSON_OK) {
+				fprintf(stderr, "JSON error: %s\n", json_error_message());
+			}
+
 			return CMD_INVALID_PATH;
 		}
 	}
@@ -111,13 +118,13 @@ experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[
 }
 
 size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen) {
-	JSONNODE* start_time;
+	json_node_t* start_time;
 	ts_time_t start_time_tm;
 
 	/* Get date */
-	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL);
+	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL, JSON_NUMBER_INTEGER);
 	if(start_time != NULL) {
-		start_time_tm = json_as_int(start_time);
+		start_time_tm = json_as_integer(start_time);
 		return tm_datetime_print(start_time_tm, date, buflen);
 	}
 
@@ -125,13 +132,13 @@ size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen) {
 }
 
 const char* tse_exp_get_status_str(experiment_t* exp) {
-	JSONNODE* status;
+	json_node_t* status;
 	int status_code = EXPERIMENT_UNKNOWN;
 
 	if(exp->exp_status == EXPERIMENT_UNKNOWN) {
-		status = experiment_cfg_find(exp->exp_config, "status", NULL);
+		status = experiment_cfg_find(exp->exp_config, "status", NULL, JSON_NUMBER_INTEGER);
 		if(status != NULL) {
-			status_code = json_as_int(status);
+			status_code = json_as_integer(status);
 		}
 	}
 	else {

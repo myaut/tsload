@@ -29,8 +29,6 @@
 #include <experiment.h>
 #include <commands.h>
 
-#include <libjson.h>
-
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -291,7 +289,7 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 
 	FILE* file;
 
-	JSONNODE* j_hostname;
+	json_node_t* j_hostname;
 	char* hostname = NULL;
 
 	if(!ctx->have_dest) {
@@ -301,7 +299,7 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 		ctx->have_dest = B_TRUE;
 	}
 
-	j_hostname = experiment_cfg_find(exp->exp_config, "agent:hostname", NULL);
+	j_hostname = experiment_cfg_find(exp->exp_config, "agent:hostname", NULL, JSON_STRING);
 	if(j_hostname != NULL)
 		hostname = json_as_string(j_hostname);
 

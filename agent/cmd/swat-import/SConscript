@@ -8,8 +8,7 @@ cmd = env.Clone()
 
 cmd.Append(LIBS = ['z', 'm'])
 
-cmd.AddDeps(('lib', 'libtscommon'), 
-            ('lib', 'libjson'))
+cmd.AddDeps(('lib', 'libtscommon'))
 objects = cmd.CompileProgram()
 swat_import = cmd.Program(target, objects)
 

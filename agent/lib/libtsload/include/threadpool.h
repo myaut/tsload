@@ -29,6 +29,8 @@
 #include <atomic.h>
 #include <hashmap.h>
 
+#include <tsobj.h>
+
 #include <stddef.h>
 
 #define TPNAMELEN		64
@@ -47,7 +49,7 @@
 #define CONTROL_TID		-1
 #define WORKER_TID		0
 
-#define TP_ERROR_SCHED_PREFIX	"Failed to schedule threadpool '%s'"
+#define TP_ERROR_SCHED_PREFIX	"Failed to schedule threadpool '%s': "
 
 struct request;
 struct workload;
@@ -160,12 +162,8 @@ LIBEXPORT void tp_fini(void);
 void tp_hold(thread_pool_t* tp);
 void tp_rele(thread_pool_t* tp, boolean_t may_destroy);
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-JSONNODE* json_tp_format(hm_item_t* object);
-int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched);
-#endif
+tsobj_node_t* tsobj_tp_format(hm_item_t* object);
+int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched);
 
 #endif /* THREADPOOL_H_ */
 

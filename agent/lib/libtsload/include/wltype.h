@@ -25,6 +25,8 @@
 #include <wlparam.h>
 #include <hashmap.h>
 
+#include <tsobj.h>
+
 #define WLTNAMELEN		64
 
 #define WLTHASHSIZE		8
@@ -109,11 +111,7 @@ wl_type_t* wl_type_search(const char* name);
 int wlt_init(void);
 void wlt_fini(void);
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-JSONNODE* json_wl_type_format(hm_item_t* object);
-#endif
+tsobj_node_t* tsobj_wl_type_format(hm_item_t* object);
 
 #endif /* MODAPI_H_ */
 

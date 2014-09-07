@@ -43,11 +43,7 @@ void tse_list_insert(struct tse_list_item* item, list_head_t* list);
 
 int tse_list_walk(struct experiment_walk_ctx* ctx, void* context) {
 	experiment_t* exp;
-
-	char* hostname = NULL;
-	char* name = NULL;
-
-	JSONNODE* j_hostname;
+	json_node_t* j_hostname;
 
 	struct tse_list_item* item;
 	list_head_t* list = (list_head_t*) context;
@@ -66,11 +62,9 @@ int tse_list_walk(struct experiment_walk_ctx* ctx, void* context) {
 	strcpy(item->name, exp->exp_name);
 
 	/* Get hostname */
-	j_hostname = experiment_cfg_find(exp->exp_config, "agent:hostname", NULL);
+	j_hostname = experiment_cfg_find(exp->exp_config, "agent:hostname", NULL, JSON_STRING);
 	if(j_hostname != NULL) {
-		hostname = json_as_string(j_hostname);
-		strncpy(item->hostname, hostname, 64);
-		json_free(hostname);
+		strncpy(item->hostname, json_as_string(j_hostname), 64);
 	}
 	else {
 		strcpy(item->hostname, "???");

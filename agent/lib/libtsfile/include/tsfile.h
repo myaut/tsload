@@ -29,9 +29,7 @@
 
 #include <stdio.h>
 
-#ifndef NO_JSON
-#include <libjson.h>
-#endif
+#include <json.h>
 
 #define TSFILE_EXTENSION	"tsf"
 
@@ -96,14 +94,13 @@ typedef struct tsfile {
 	char* 			filename;
 	size_t			size;
 
+	ts_time_t		sb_diff;
+
 	int				cur_sb;
 	thread_mutex_t	mutex;
 
-#ifndef NO_JSON
-	JSONNODE**		node_cache;
-#else
-	void**			node_cache;
-#endif
+	json_node_t**		node_cache;
+
 	int 			node_first;
 	int 			node_count;
 	thread_mutex_t	node_mutex;
@@ -152,10 +149,8 @@ LIBEXPORT int tsfile_schema_write(const char* filename, tsfile_schema_t* schema)
 LIBEXPORT tsfile_schema_t* tsfile_schema_alloc(int field_count);
 LIBEXPORT tsfile_schema_t* tsfile_schema_clone(int ext_field_count, tsfile_schema_t* base);
 
-#ifndef NO_JSON
-LIBEXPORT tsfile_schema_t* json_tsfile_schema_proc(JSONNODE* root, boolean_t auto_offset);
-LIBEXPORT JSONNODE* json_tsfile_schema_format(tsfile_schema_t* schema);
-#endif
+LIBEXPORT tsfile_schema_t* json_tsfile_schema_proc(json_node_t* root, boolean_t auto_offset);
+LIBEXPORT json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema);
 
 
 /* Nodes API (internal) */
@@ -163,14 +158,12 @@ LIBEXPORT JSONNODE* json_tsfile_schema_format(tsfile_schema_t* schema);
 void tsfile_init_nodes(tsfile_t* file);
 void tsfile_destroy_nodes(tsfile_t* file);
 
-#ifndef NO_JSON
-JSONNODE* tsfile_create_node(tsfile_t* file);
-JSONNODE** tsfile_get_nodes(tsfile_t* file, int count);
-boolean_t tsfile_put_node(tsfile_t* file, JSONNODE* node);
+json_node_t* tsfile_create_node(tsfile_t* file);
+json_node_t** tsfile_get_nodes(tsfile_t* file, int count);
+boolean_t tsfile_put_node(tsfile_t* file, json_node_t* node);
 
-void tsfile_fill_node(tsfile_t* file, JSONNODE* node, void* entry);
-int tsfile_fill_entry(tsfile_t* file, JSONNODE* node, void* entry);
-#endif
+void tsfile_fill_node(tsfile_t* file, json_node_t* node, void* entry);
+int tsfile_fill_entry(tsfile_t* file, json_node_t* node, void* entry);
 
 /* TSFile API */
 
@@ -182,16 +175,13 @@ LIBEXPORT int tsfile_add(tsfile_t* file, void* entries, unsigned count);
 LIBEXPORT uint32_t tsfile_get_count(tsfile_t* file);
 LIBEXPORT int tsfile_get_entries(tsfile_t* file, void* entries, unsigned start, unsigned end);
 
-#ifndef NO_JSON
-LIBEXPORT JSONNODE* json_tsfile_get(tsfile_t* file, unsigned number);
-LIBEXPORT void json_tsfile_put(tsfile_t* file, JSONNODE* node);
-LIBEXPORT int json_tsfile_add(tsfile_t* file, JSONNODE* node);
+LIBEXPORT json_node_t* json_tsfile_get(tsfile_t* file, unsigned number);
+LIBEXPORT void json_tsfile_put(tsfile_t* file, json_node_t* node);
+LIBEXPORT int json_tsfile_add(tsfile_t* file, json_node_t* node);
 
-LIBEXPORT JSONNODE* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end);
-LIBEXPORT void json_tsfile_put_array(tsfile_t* file, JSONNODE* node_array);
-LIBEXPORT int json_tsfile_add_array(tsfile_t* file, JSONNODE* node_array);
-
-#endif
+LIBEXPORT json_node_t* json_tsfile_get_array(tsfile_t* file, unsigned start, unsigned end);
+LIBEXPORT void json_tsfile_put_array(tsfile_t* file, json_node_t* node_array);
+LIBEXPORT int json_tsfile_add_array(tsfile_t* file, json_node_t* node_array);
 
 LIBEXPORT int tsfile_init(void);
 LIBEXPORT void tsfile_fini(void);

@@ -1,0 +1,24 @@
+import sys
+
+tgtroot = 'tsload-core'
+target = 'libtsobj'
+
+Import('env')
+
+lib = env.Clone()
+
+lib.Append(CCFLAGS = ['-O2'])
+
+# lib.PreparePlatform()
+lib.AddDeps(('lib', 'libtscommon'), ('lib', 'libtsjson'))
+
+TSObjGenBuilder = Builder(action = '%s $TSLOADPATH/tools/gentsobjapi.py $SOURCE > $TARGET' % (sys.executable))
+lib.Append(BUILDERS = {'TSObjGenBuilder': TSObjGenBuilder})
+
+tsobjgen_h = lib.TSObjGenBuilder('include/tsobjgen.h', 'tsobjgen.in')
+lib.Depends('include/tsobj.h', tsobjgen_h)
+
+objects = lib.CompileSharedLibrary()
+library = lib.LinkSharedLibrary(target, objects)
+
+lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

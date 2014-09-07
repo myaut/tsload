@@ -12,7 +12,9 @@ if lib.SupportedPlatform('solaris'):
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['setupapi', 'user32', 'advapi32', 'wbemuuid', 'comsuppw'])
 
-lib.AddDeps(('lib', 'libjson'), ('lib', 'libtscommon'))
+lib.AddDeps(('lib', 'libtscommon'),
+            ('lib', 'libtsjson'),
+            ('lib', 'libtsobj'))
 
 extra_sources = []
 if lib.SupportedPlatform('win'):

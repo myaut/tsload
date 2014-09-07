@@ -29,7 +29,11 @@
 
 #include <defs.h>
 
+#include <tsobj.h>
+
 struct randgen_class;
+
+#define RG_ERROR_PREFIX 	"Failed to create random generator: "
 
 typedef struct randgen {
 	struct randgen_class* rg_class;
@@ -89,7 +93,7 @@ LIBIMPORT randgen_class_t rg_devrandom_class;
 #define RV_INVALID_PARAM_NAME	-1
 #define RV_INVALID_PARAM_VALUE	-2
 
-#define RV_ERROR_PREFIX 	"Failed to parse random variator"
+#define RV_ERROR_PREFIX 	"Failed to create random variator: "
 
 struct randvar_class;
 
@@ -136,12 +140,8 @@ LIBIMPORT randvar_class_t rv_exponential_class;
 LIBIMPORT randvar_class_t rv_erlang_class;
 LIBIMPORT randvar_class_t rv_normal_class;
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-LIBEXPORT randgen_t* json_randgen_proc(JSONNODE* node);
-LIBEXPORT randvar_t* json_randvar_proc(JSONNODE* node, randgen_t* rg);
-#endif
+LIBEXPORT randgen_t* tsobj_randgen_proc(tsobj_node_t* node);
+LIBEXPORT randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg);
 
 #endif /* RANDGEN_H_ */
 

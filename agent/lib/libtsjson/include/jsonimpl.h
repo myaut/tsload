@@ -22,6 +22,7 @@
 #define JSONIMPL_H_
 
 #include <defs.h>
+#include <atomic.h>
 
 #include <json.h>
 
@@ -44,13 +45,23 @@ struct json_writer {
 
 int json_write_impl(json_node_t* node, struct json_writer* writer, void* state, boolean_t formatted, int indent);
 
-void json_buf_hold(json_buffer_t* buf);
-void json_buf_rele(json_buffer_t* buf);
+void json_buf_free(json_buffer_t* buf);
+
+STATIC_INLINE void json_buf_hold(json_buffer_t* buf) {
+	atomic_inc(&buf->ref_count);
+}
+
+STATIC_INLINE void json_buf_rele(json_buffer_t* buf) {
+	if(atomic_dec(&buf->ref_count) == 1l) {
+		json_buf_free(buf);
+	}
+}
 
 json_str_t json_str_reference(json_buffer_t* buf, int from, int to);
 void json_str_free(json_str_t json_str, json_buffer_t* buf);
 
 json_node_t* json_node_create(json_buffer_t* buf, json_type_t type);
+json_node_t* json_node_create_copy(json_node_t* node);
 
 int json_set_error_va(struct json_parser* parser, int error, const char* fmt, va_list va);
 
@@ -84,9 +95,10 @@ STATIC_INLINE int json_set_error_str(int errno, const char* fmt, ...) {
 	return ret;
 }
 
-
 int json_init_errors(void);
 void json_destroy_errors(void);
+
+int json_parse_number(struct json_parser* parser, json_buffer_t* buf, json_node_t** object);
 
 #endif /* JSONIMPL_H_ */
 

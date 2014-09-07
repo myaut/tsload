@@ -85,7 +85,6 @@ def LinkSharedLibrary(self, target, objects,
 
 def Module(self, mod_type, mod_name, etrace_sources = []):   
     mod = self
-    mod.Macroses('NO_JSON')
     mod['SHLIBPREFIX'] = ''
     
     etrace_files = []
@@ -93,6 +92,8 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     
     mod.AddDeps(('lib', 'libtscommon'),
                 ('lib', 'libhostinfo'), 
+                ('lib', 'libtsjson'),
+                ('lib', 'libtsobj'),
                 ('lib', 'libtsload'))
     modobjs = mod.CompileSharedLibrary()
     

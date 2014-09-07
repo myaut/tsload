@@ -18,7 +18,6 @@
 
 
 
-
 #define LOG_SOURCE "tpool"
 #include <log.h>
 
@@ -613,12 +612,12 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 	}
 }
 
-JSONNODE* json_tp_format(hm_item_t* object) {
-	JSONNODE* node = NULL;
-	JSONNODE* wl_list = NULL;
-	JSONNODE* jwl;
-	workload_t* wl;
+tsobj_node_t* tsobj_tp_format(hm_item_t* object) {
+	tsobj_node_t* node = NULL;
+	tsobj_node_t* wl_list = NULL;
+	tsobj_node_t* jwl;
 
+	workload_t* wl;
 	thread_pool_t* tp = (thread_pool_t*) object;
 
 	/* TODO: Should return bindings && scheduler options */
@@ -626,26 +625,23 @@ JSONNODE* json_tp_format(hm_item_t* object) {
 	if(tp->tp_is_dead)
 		return NULL;
 
-	node = json_new(JSON_NODE);
-	wl_list = json_new(JSON_ARRAY);
+	node = tsobj_new_node("tsload.ThreadPool");
+	wl_list = tsobj_new_array();
 
-	json_push_back(node, json_new_i("num_threads", tp->tp_num_threads));
-	json_push_back(node, json_new_i("quantum", tp->tp_quantum));
-	json_push_back(node, json_new_i("wl_count", tp->tp_wl_count));
-	json_push_back(node, json_new_a("disp_name", "simple"));
+	tsobj_add_integer(node, TSOBJ_STR("num_threads"), tp->tp_num_threads);
+	tsobj_add_integer(node, TSOBJ_STR("quantum"), tp->tp_quantum);
+	tsobj_add_integer(node, TSOBJ_STR("wl_count"), tp->tp_wl_count);
+
+	tsobj_add_string(node, TSOBJ_STR("disp_name"),
+					 tsobj_str_create(tp->tp_disp->tpd_class->name));
 
 	mutex_lock(&tp->tp_mutex);
 	list_for_each_entry(workload_t, wl, &tp->tp_wl_head, wl_tp_node) {
-		jwl = json_new(JSON_STRING);
-		json_set_a(jwl, wl->wl_name);
-		json_push_back(wl_list, jwl);
+		tsobj_add_string(wl_list, NULL, wl->wl_name);
 	}
 	mutex_unlock(&tp->tp_mutex);
 
-	json_set_name(node, tp->tp_name);
-	json_set_name(wl_list, "wl_list");
-
-	json_push_back(node, wl_list);
+	tsobj_add_node(node, TSOBJ_STR("wl_list"), wl_list);
 
 	return node;
 }
@@ -662,60 +658,11 @@ JSONNODE* json_tp_format(hm_item_t* object) {
  *		Look at Affinity field
  * */
 
-static int json_tp_bind_worker(thread_pool_t* tp, int wid, JSONNODE* node) {
-	JSONNODE_ITERATOR i_objects;
-	JSONNODE_ITERATOR i_object;
-	JSONNODE_ITERATOR i_objects_end;
-	JSONNODE_ITERATOR i_end;
-
-	char* obj_name;
-	hi_cpu_object_t* object;
+static int tp_bind_worker(thread_pool_t* tp, int wid, cpumask_t* binding) {
 	tp_worker_t* worker = tp->tp_workers + wid;
-
-	int err = 0;
-
-	cpumask_t* binding;
-
 	char* binding_str;
 
-	i_end = json_end(node);
-	i_objects = json_find(node, "objects");
-
-	if(i_objects == i_end) {
-		return 0;
-	}
-
-	if(json_type(*i_objects) != JSON_ARRAY) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-						 TP_ERROR_SCHED_PREFIX ": 'objects' element should be JSON_ARRAY", tp->tp_name);
-		return 1;
-	}
-
-	binding = cpumask_create();
-
-	i_objects_end = json_end(*i_objects);
-	i_object = json_begin(*i_objects);
-
-	if(i_objects_end == i_object) {
-		hi_cpu_mask(NULL, binding);
-	}
-	else {
-		for( ; i_object != i_objects_end ; ++i_object) {
-			obj_name = json_as_string(*i_object);
-			object = hi_cpu_find(obj_name);
-
-			if(object == NULL) {
-				tsload_error_msg(TSE_INVALID_DATA,
-								 TP_ERROR_SCHED_PREFIX ": no such object '%s'", tp->tp_name, obj_name);
-				json_free(obj_name);
-				goto end;
-			}
-
-			hi_cpu_mask(object, binding);
-		}
-	}
-
-	sched_set_affinity(&worker->w_thread, binding);
+	int ret = sched_set_affinity(&worker->w_thread, binding);
 
 	binding_str = worker_affinity_print(tp, wid);
 	if(binding_str) {
@@ -725,80 +672,17 @@ static int json_tp_bind_worker(thread_pool_t* tp, int wid, JSONNODE* node) {
 	}
 	else {
 		logmsg(LOG_INFO, "Worker #%d in threadpool '%s' was bound",
-			    wid, tp->tp_name);
+				wid, tp->tp_name);
 	}
 
-end:
-	cpumask_destroy(binding);
-
-	return err;
+	return ret;
 }
 
-static int json_tp_schedule_worker(thread_pool_t* tp, int wid, JSONNODE* node) {
-	char* policy;
-	char* param;
-	int64_t value;
-	int err;
+static int tp_schedule_worker_commit(thread_pool_t* tp, int wid) {
 	char* sched_str;
-
 	tp_worker_t* worker = tp->tp_workers + wid;
 
-	JSONNODE_ITERATOR i_end, i_policy, i_param, i_params, i_params_end;
-
-	i_end = json_end(node);
-	i_policy = json_find(node, "policy");
-	i_params = json_find(node, "params");
-
-	if(i_policy == i_end) {
-		return 0;
-	}
-
-	if(json_type(*i_policy) != JSON_STRING) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-						 TP_ERROR_SCHED_PREFIX ": 'policy' should be JSON_STRING", tp->tp_name);
-		return 1;
-	}
-
-	policy = json_as_string(*i_policy);
-	err = sched_set_policy(&worker->w_thread, policy);
-	json_free(policy);
-
-	if(err != SCHED_OK)
-		return err;
-
-	if(i_params != i_end) {
-		if(json_type(*i_params) != JSON_NODE) {
-			tsload_error_msg(TSE_MESSAGE_FORMAT,
-							 TP_ERROR_SCHED_PREFIX ": 'params' should be JSON_NODE", tp->tp_name);
-			return 1;
-		}
-
-		for(i_param = json_begin(*i_params),
-				i_params_end = json_end(*i_params) ;
-				i_param != i_params_end ;
-				++i_param) {
-			if(json_type(*i_param) != JSON_NUMBER) {
-				tsload_error_msg(TSE_MESSAGE_FORMAT,
-								 TP_ERROR_SCHED_PREFIX ": 'param' should be JSON_NUMBER", tp->tp_name);
-				return 1;
-			}
-
-			value = json_as_int(*i_param);
-			param = json_name(*i_param);
-
-			err = sched_set_param(&worker->w_thread, param, value);
-
-			if(err != SCHED_OK) {
-				tsload_error_msg(TSE_INVALID_DATA,
-								 TP_ERROR_SCHED_PREFIX ": failed to set param '%s' error = %d",
-								 tp->tp_name, param, err);
-				json_free(param);
-				return 1;
-			}
-
-			json_free(param);
-		}
-	}
+	int err;
 
 	err = sched_commit(&worker->w_thread);
 	if(err != SCHED_OK)
@@ -815,70 +699,166 @@ static int json_tp_schedule_worker(thread_pool_t* tp, int wid, JSONNODE* node) {
 			    wid, tp->tp_name);
 	}
 
-	return 0;
+	return SCHED_OK;
 }
 
-int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched) {
-	JSONNODE_ITERATOR i_sched;
-	JSONNODE_ITERATOR i_end;
-	JSONNODE_ITERATOR i_wid, i_w_end;
+static int tsobj_tp_bind_worker(thread_pool_t* tp, int wid, tsobj_node_t* node) {
+	tsobj_node_t* objects;
+	tsobj_node_t* obj_node;
+	int obj_id;
 
+	char* obj_name;
+	hi_cpu_object_t* object;
+
+	int err = SCHED_ERROR;
+
+	cpumask_t* binding;
+
+	err = tsobj_get_array(node, "objects", &objects);
+	if(err == TSOBJ_NOT_FOUND)
+		return SCHED_OK;
+
+	binding = cpumask_create();
+
+	if(tsobj_size(objects) == 0) {
+		hi_cpu_mask(NULL, binding);
+	}
+	else {
+		tsobj_errno_clear();
+
+		tsobj_for_each(objects, obj_node, obj_id) {
+			obj_name = tsobj_as_string(obj_node);
+
+			if(obj_name == NULL) {
+				tsload_error_msg(tsobj_error_code(), TP_ERROR_SCHED_PREFIX "%s", tp->tp_name,
+							     tsobj_error_message());
+				goto end;
+			}
+
+			object = hi_cpu_find(obj_name);
+
+			if(object == NULL) {
+				tsload_error_msg(TSE_INVALID_VALUE, TP_ERROR_SCHED_PREFIX "no such object '%s'",
+								 tp->tp_name, obj_name);
+				goto end;
+			}
+
+			hi_cpu_mask(object, binding);
+		}
+	}
+
+	err = tp_bind_worker(tp, wid, binding);
+
+end:
+	cpumask_destroy(binding);
+
+	return err;
+}
+
+static int tsobj_tp_schedule_worker(thread_pool_t* tp, int wid, tsobj_node_t* node) {
+	char* policy;
+	int err;
+
+	tp_worker_t* worker = tp->tp_workers + wid;
+
+	tsobj_node_t* params;
+	tsobj_node_t* param;
+	int paramid;
+	int64_t value;
+
+	/* Set policy */
+	if(tsobj_get_string(node, "policy", &policy) != JSON_OK)
+		goto bad_tsobj;
+
+	err = sched_set_policy(&worker->w_thread, policy);
+	if(err != SCHED_OK)
+		return err;
+
+	/* Set policy params */
+	err = tsobj_get_node(node, "params", &params);
+	if(err == TSOBJ_INVALID_TYPE)
+		goto bad_tsobj;
+
+	if(err == JSON_OK) {
+		tsobj_errno_clear();
+
+		tsobj_for_each(params, param, paramid) {
+			value = json_as_integer(param);
+
+			if(tsobj_errno() != TSOBJ_OK)
+				goto bad_tsobj;
+
+			err = sched_set_param(&worker->w_thread,
+								  tsobj_name(param), value);
+
+			if(err != SCHED_OK) {
+				tsload_error_msg(TSE_INVALID_DATA,
+								 TP_ERROR_SCHED_PREFIX "failed to set param '%s' error = %d",
+								 tp->tp_name, tsobj_name(param), err);
+				return 1;
+			}
+		}
+	}
+
+	return tp_schedule_worker_commit(tp, wid);
+
+bad_tsobj:
+	tsload_error_msg(tsobj_error_code(), TP_ERROR_SCHED_PREFIX "%s",
+					 tp->tp_name, tsobj_error_message());
+	return SCHED_ERROR;
+}
+
+int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched) {
 	int wid;
 	int err;
 
-	if(json_type(sched) != JSON_ARRAY) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-						 TP_ERROR_SCHED_PREFIX ": 'sched' should be JSON_ARRAY", tp->tp_name);
-		return 1;
+	json_node_t* worker_sched;
+	int id = -1;
+
+	if(json_check_type(sched, JSON_ARRAY) != JSON_OK)
+		goto bad_tsobj;
+
+	tsobj_for_each(sched, worker_sched, id) {
+		if(json_check_type(sched, JSON_NODE) != JSON_OK)
+			goto bad_tsobj_sched;
+
+		if(json_get_integer_i(worker_sched, "wid", &wid) != JSON_OK) {
+			goto bad_tsobj_sched;
+		}
+
+		if(wid >= tp->tp_num_threads || wid < 0) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 TP_ERROR_SCHED_PREFIX "element #%d: invalid worker id #%d", tp->tp_name, wid);
+			return 1;
+		}
+
+		if((err = tsobj_tp_bind_worker(tp, wid, worker_sched)) != 0) {
+			/* XXX: revert previous schedule options?  */
+			tsload_error_msg(TSE_INTERNAL_ERROR,
+							 TP_ERROR_SCHED_PREFIX "couldn't bind worker #%d: error %d",
+							 tp->tp_name, wid, err);
+			return err;
+		}
+
+		if((err = tsobj_tp_schedule_worker(tp, wid, worker_sched)) != 0) {
+			tsload_error_msg(TSE_INTERNAL_ERROR,
+							 TP_ERROR_SCHED_PREFIX "couldn't schedule worker #%d: error %d",
+							 tp->tp_name, wid, err);
+			return err;
+		}
 	}
 
-	i_end = json_end(sched);
-	for(i_sched = json_begin(sched);
-		i_sched != i_end ; ++i_sched) {
-			if(json_type(*i_sched) != JSON_NODE) {
-				tsload_error_msg(TSE_MESSAGE_FORMAT,
-							     TP_ERROR_SCHED_PREFIX ": 'sched' element should be JSON_NODE",
-								 tp->tp_name);
-				return 1;
-			}
+	return SCHED_OK;
 
-			i_w_end = json_end(*i_sched);
-			i_wid = json_find(*i_sched, "wid");
+bad_tsobj:
+	tsload_error_msg(tsobj_error_code(), TP_ERROR_SCHED_PREFIX "%s",
+					 tp->tp_name, tsobj_error_message());
+	return SCHED_ERROR;
 
-			if(i_wid == i_w_end) {
-				tsload_error_msg(TSE_MESSAGE_FORMAT,
-								 TP_ERROR_SCHED_PREFIX ": missing 'wid' ");
-				return 1;
-			}
-
-			if(json_type(*i_wid) != JSON_NUMBER) {
-				tsload_error_msg(TSE_MESSAGE_FORMAT,
-								 TP_ERROR_SCHED_PREFIX ": 'wid' should be JSON_NUMBER");
-				return 1;
-			}
-
-			wid = json_as_int(*i_wid);
-			if(wid >= tp->tp_num_threads || wid < 0) {
-				tsload_error_msg(TSE_INVALID_DATA,
-							     TP_ERROR_SCHED_PREFIX ", invalid worker id #%d", tp->tp_name, wid);
-				return 1;
-			}
-
-			if((err = json_tp_bind_worker(tp, wid, *i_sched)) != 0) {
-				/* XXX: revert previous schedule options?  */
-				tsload_error_msg(TSE_INVALID_DATA,
-								 TP_ERROR_SCHED_PREFIX "  - couldn't bind worker #%d", tp->tp_name, wid);
-				return err;
-			}
-
-			if((err = json_tp_schedule_worker(tp, wid, *i_sched)) != 0) {
-				tsload_error_msg(TSE_INVALID_DATA,
-								 TP_ERROR_SCHED_PREFIX "  - couldn't schedule worker #%d", tp->tp_name, wid);
-				return err;
-			}
-	}
-
-	return 0;
+bad_tsobj_sched:
+	tsload_error_msg(tsobj_error_code(), TP_ERROR_SCHED_PREFIX "element #%d: %s",
+					 tp->tp_name, id, tsobj_error_message());
+	return SCHED_ERROR;
 }
 
 static int tp_collect_tp(hm_item_t* item, void* arg) {

@@ -15,8 +15,9 @@ if lib.SupportedPlatform('win'):
 if GetOption('fast_randgen'):
     lib.Macroses('TSLOAD_RANDGEN_FAST')
 
-lib.AddDeps(('lib', 'libjson'), 
-            ('lib', 'libtscommon'), 
+lib.AddDeps(('lib', 'libtscommon'),
+            ('lib', 'libtsjson'), 
+            ('lib', 'libtsobj'),
             ('lib', 'libhostinfo'))
 
 lib.PreparePlatform()

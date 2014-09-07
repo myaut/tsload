@@ -140,20 +140,5 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 #define HM_WALKER_STOP			0x01
 #define HM_WALKER_REMOVE		0x02
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-typedef JSONNODE* (*hm_json_formatter)(hm_item_t* object);
-
-struct hm_fmt_context {
-	JSONNODE* node;
-	hm_json_formatter formatter;
-};
-
-LIBEXPORT JSONNODE* json_hm_format_bykey(hashmap_t* hm, hm_json_formatter formatter, void* key);
-LIBEXPORT JSONNODE* json_hm_format_all(hashmap_t* hm, hm_json_formatter formatter);
-
-#endif
-
 #endif
 

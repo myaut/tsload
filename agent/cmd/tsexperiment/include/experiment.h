@@ -30,7 +30,7 @@
 #include <threadpool.h>
 #include <workload.h>
 
-#include <libjson.h>
+#include <json.h>
 
 #define EWLHASHSIZE			8
 #define EWLHASHMASK			3
@@ -40,6 +40,7 @@
 #define EXPERIMENT_ROOT		-1
 
 #define EXPNAMELEN			128
+#define EXPERRLEN			256
 
 #define EXP_LOAD_OK				0
 #define EXP_LOAD_ERR_OPEN_FAIL  -1
@@ -53,6 +54,7 @@
 #define EXP_CONFIG_NOT_FOUND		-2
 #define EXP_CONFIG_INVALID_NODE		-3
 #define EXP_CONFIG_INVALID_VALUE	-4
+#define EXP_CONFIG_BAD_JSON			-5
 
 /**
  * Experiment walker return values
@@ -113,8 +115,8 @@ typedef struct exp_threadpool {
 	ts_time_t tp_quantum;
 	boolean_t tp_discard;
 
-	JSONNODE* tp_disp;
-	JSONNODE* tp_sched;
+	json_node_t* tp_disp;
+	json_node_t* tp_sched;
 
 	struct exp_threadpool* tp_next;
 
@@ -130,12 +132,12 @@ typedef struct exp_workload {
 
 	ts_time_t wl_deadline;
 
-	JSONNODE* wl_chain;
-	JSONNODE* wl_rqsched;
-	JSONNODE* wl_params;
+	json_node_t* wl_chain;
+	json_node_t* wl_rqsched;
+	json_node_t* wl_params;
 
 	char wl_chain_name[WLNAMELEN];
-	JSONNODE* wl_steps_cfg;
+	json_node_t* wl_steps_cfg;
 
 	/* Current parameters */
 	struct steps_generator* wl_steps;
@@ -189,7 +191,7 @@ typedef struct {
 	char exp_basedir[PATHPARTMAXLEN];
 
 	int exp_runid;
-	JSONNODE* exp_config;
+	json_node_t* exp_config;
 
 	hashmap_t* exp_threadpools;
 	hashmap_t* exp_workloads;
@@ -203,7 +205,9 @@ typedef struct {
 	int exp_wl_running_count;
 
 	int exp_status;
+
 	int exp_error;
+	char exp_error_msg[EXPERRLEN];
 
 	boolean_t exp_trace_mode;
 } experiment_t;
@@ -229,12 +233,13 @@ experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, voi
 int experiment_mkdir(experiment_t* exp);
 int experiment_write(experiment_t* exp);
 
-typedef int (*experiment_cfg_walk_func)(const char* name, JSONNODE* parent, JSONNODE* node, void* context);
+typedef int (*experiment_cfg_walk_func)(const char* name, json_node_t* parent, json_node_t* node, void* context);
 
-JSONNODE* experiment_cfg_find(JSONNODE* config, const char* name, JSONNODE** parent);
-JSONNODE* experiment_cfg_walk(JSONNODE* config, experiment_cfg_walk_func pre, experiment_cfg_walk_func post, void* context);
-int experiment_cfg_set(JSONNODE* config, const char* name, const char* value);
-int experiment_cfg_add(JSONNODE* config, const char* name, JSONNODE* node, boolean_t replace);
+json_node_t* experiment_cfg_find(json_node_t* config, const char* name, json_node_t** parent, json_type_t type);
+json_node_t* experiment_cfg_walk(json_node_t* config, experiment_cfg_walk_func pre, experiment_cfg_walk_func post, void* context);
+int experiment_cfg_set(json_node_t* config, const char* name, const char* value);
+int experiment_cfg_add(json_node_t* config, const char* parent_name, json_str_t name,
+					   json_node_t* node, boolean_t replace);
 
 int experiment_process_config(experiment_t* exp);
 int experiment_open_workloads(experiment_t* exp, int flags);

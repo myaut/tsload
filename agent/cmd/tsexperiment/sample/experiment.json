@@ -25,7 +25,7 @@
 			"rqsched": {
 				"type": "think",
 				"distribution": "uniform",
-				"scope": 0,
+				"scope": 0.1,
 				"nusers": 4
 			},
 			"deadline": 100000,

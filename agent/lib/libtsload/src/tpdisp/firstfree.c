@@ -331,6 +331,8 @@ void tpd_relink_request_ff(thread_pool_t* tp, request_t* rq) {
 }
 
 tp_disp_class_t tpd_ff_class = {
+	"first-free",
+
 	tpd_init_ff,
 	tpd_destroy_ff,
 	tpd_control_report_ff,

@@ -8,8 +8,9 @@ Import('env')
 
 cmd = env.Clone()
 
-cmd.AddDeps(('lib', 'libtscommon'), 
-            ('lib', 'libjson'),
+cmd.AddDeps(('lib', 'libtscommon'),
+            ('lib', 'libtsjson'),
+            ('lib', 'libtsobj'),
             ('lib', 'libhostinfo'))
 
 objects = cmd.CompileProgram()

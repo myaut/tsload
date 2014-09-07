@@ -29,6 +29,8 @@
 #include <tsversion.h>
 #include <tuneit.h>
 
+#include <json.h>
+
 #include <tsfile.h>
 #include <hiobject.h>
 

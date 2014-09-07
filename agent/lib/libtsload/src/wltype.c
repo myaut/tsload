@@ -8,7 +8,7 @@
 #include <wlparam.h>
 #include <hashmap.h>
 
-#include <libjson.h>
+#include <tsobj.h>
 
 #include <stdlib.h>
 
@@ -26,23 +26,23 @@ DECLARE_HASH_MAP(wl_type_hash_map, wl_type_t, WLTHASHSIZE, wlt_name, wlt_next,
 
 struct wlt_class_name {
 	unsigned long wlc;
-	const char* name;
+	tsobj_str_t name;
 } wlt_class_names[] = {
-	WL_CLASS_NAME(WLC_CPU_INTEGER , "cpu_integer"),
-	WL_CLASS_NAME(WLC_CPU_FLOAT, "cpu_float"),
-	WL_CLASS_NAME(WLC_CPU_MEMORY, "cpu_memory"),
-	WL_CLASS_NAME(WLC_CPU_MISC, "cpu_misc"),
+	WL_CLASS_NAME(WLC_CPU_INTEGER , TSOBJ_STR("cpu_integer")),
+	WL_CLASS_NAME(WLC_CPU_FLOAT, TSOBJ_STR("cpu_float")),
+	WL_CLASS_NAME(WLC_CPU_MEMORY, TSOBJ_STR("cpu_memory")),
+	WL_CLASS_NAME(WLC_CPU_MISC, TSOBJ_STR("cpu_misc")),
 
-	WL_CLASS_NAME(WLC_MEMORY_ALLOCATION , "mem_allocation"),
+	WL_CLASS_NAME(WLC_MEMORY_ALLOCATION , TSOBJ_STR("mem_allocation")),
 
-	WL_CLASS_NAME(WLC_FILESYSTEM_OP, "fs_op"),
-	WL_CLASS_NAME(WLC_FILESYSTEM_RW, "fs_rw"),
+	WL_CLASS_NAME(WLC_FILESYSTEM_OP, TSOBJ_STR("fs_op")),
+	WL_CLASS_NAME(WLC_FILESYSTEM_RW, TSOBJ_STR("fs_rw")),
 
-	WL_CLASS_NAME(WLC_DISK_RW, "disk_rw"),
+	WL_CLASS_NAME(WLC_DISK_RW, TSOBJ_STR("disk_rw")),
 
-	WL_CLASS_NAME(WLC_NETWORK, "network"),
+	WL_CLASS_NAME(WLC_NETWORK, TSOBJ_STR("network")),
 
-	WL_CLASS_NAME(WLC_OS_BENCHMARK, "os")
+	WL_CLASS_NAME(WLC_OS_BENCHMARK, TSOBJ_STR("os"))
 };
 
 #define WL_CLASS_NUM		10
@@ -77,30 +77,28 @@ wl_type_t* wl_type_search(const char* name) {
 	return wlt;
 }
 
-struct json_wl_type_context {
-	JSONNODE* node;
+struct tsobj_wl_type_context {
+	tsobj_node_t* node;
 };
 
-JSONNODE* json_wl_type_format(hm_item_t* object) {
+tsobj_node_t* tsobj_wl_type_format(hm_item_t* object) {
 	wl_type_t* wlt = (wl_type_t*) object;
 	int i;
-	JSONNODE* wlt_node = json_new(JSON_NODE);
-	JSONNODE* wlt_class = json_new(JSON_ARRAY);
 
-	json_set_name(wlt_node, wlt->wlt_name);
-	json_set_name(wlt_class, "wlclass");
+	tsobj_node_t* wlt_node = json_new_node("tsload.WorkloadType");
+	tsobj_node_t* wlt_class = json_new_array();
 
-	json_push_back(wlt_node, json_new_a("module", wlt->wlt_module->mod_name));
-	json_push_back(wlt_node, json_new_a("path", wlt->wlt_module->mod_path));
-	json_push_back(wlt_node, wlt_class);
+	tsobj_add_string(wlt_node, TSOBJ_STR("module"), tsobj_str_create(wlt->wlt_module->mod_name));
+	tsobj_add_string(wlt_node, TSOBJ_STR("path"), tsobj_str_create(wlt->wlt_module->mod_path));
 
 	for(i = 0; i < WL_CLASS_NUM; ++i) {
 		if(wlt->wlt_class & wlt_class_names[i].wlc) {
-			json_push_back(wlt_class, json_new_a("", wlt_class_names[i].name));
+			tsobj_add_string(wlt_class, NULL, wlt_class_names[i].name);
 		}
 	}
 
-	json_push_back(wlt_node, json_wlparam_format_all(wlt->wlt_params));
+	tsobj_add_node(wlt_node, TSOBJ_STR("wlclass"), wlt_class);
+	tsobj_add_node(wlt_node, TSOBJ_STR("parameters"), tsobj_wlparam_format_all(wlt->wlt_params));
 
 	return wlt_node;
 }
