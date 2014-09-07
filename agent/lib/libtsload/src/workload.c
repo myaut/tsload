@@ -762,34 +762,33 @@ THREAD_END:
 	THREAD_FINISH(arg);
 }
 
-#if 0
-JSONNODE* json_request_format_all(list_head_t* rq_list) {
-	JSONNODE* jrq;
-	JSONNODE* j_rq_list = json_new(JSON_ARRAY);
+tsobj_node_t* tsobj_request_format_all(list_head_t* rq_list) {
+	tsobj_node_t* jrq;
+	tsobj_node_t* j_rq_list = tsobj_new_array();
 
 	request_t* rq;
 
 	list_for_each_entry(request_t, rq, rq_list, rq_node) {
-		jrq = json_new(JSON_NODE);
+		jrq = tsobj_new_node("tsload.Request");
 
-		json_push_back(jrq, json_new_a("workload_name", rq->rq_workload->wl_name));
+		tsobj_add_string(jrq, TSOBJ_STR("workload_name"),
+						 tsobj_str_create(rq->rq_workload->wl_name));
 
-		json_push_back(jrq, json_new_i("step", rq->rq_step));
-		json_push_back(jrq, json_new_i("request", rq->rq_id));
-		json_push_back(jrq, json_new_i("thread", rq->rq_thread_id));
+		tsobj_add_integer(jrq, TSOBJ_STR("step"), rq->rq_step);
+		tsobj_add_integer(jrq, TSOBJ_STR("request"), rq->rq_id);
+		tsobj_add_integer(jrq, TSOBJ_STR("thread"), rq->rq_thread_id);
 
-		json_push_back(jrq, json_new_i("sched", rq->rq_sched_time));
-		json_push_back(jrq, json_new_i("start", rq->rq_start_time));
-		json_push_back(jrq, json_new_i("end", rq->rq_end_time));
+		tsobj_add_integer(jrq, TSOBJ_STR("sched"), rq->rq_sched_time);
+		tsobj_add_integer(jrq, TSOBJ_STR("start"), rq->rq_start_time);
+		tsobj_add_integer(jrq, TSOBJ_STR("end"), rq->rq_end_time);
 
-		json_push_back(jrq, json_new_i("flags", rq->rq_flags));
+		tsobj_add_integer(jrq, TSOBJ_STR("flags"), rq->rq_flags);
 
-		json_push_back(j_rq_list, jrq);
+		tsobj_add_node(j_rq_list, NULL, jrq);
 	}
 
 	return j_rq_list;
 }
-#endif
 
 static int tsobj_workload_proc_chain(workload_t* wl, tsobj_node_t* wl_chain_params) {
 	workload_t* parent = NULL;
@@ -808,7 +807,7 @@ static int tsobj_workload_proc_chain(workload_t* wl, tsobj_node_t* wl_chain_para
 	if(tsobj_get_string(wl_chain_params, "workload", &wl_chain_name) != TSOBJ_OK)
 		goto bad_tsobj;
 
-	err = json_get_node(wl_chain_params, "probability", &probability);
+	err = tsobj_get_node(wl_chain_params, "probability", &probability);
 	if(err == TSOBJ_INVALID_TYPE)
 		goto bad_tsobj;
 
@@ -824,10 +823,10 @@ static int tsobj_workload_proc_chain(workload_t* wl, tsobj_node_t* wl_chain_para
 	}
 
 	if(err == TSOBJ_OK) {
-		if(json_get_double(probability, "randgen", &randgen) != TSOBJ_OK)
+		if(tsobj_get_node(probability, "randgen", &randgen) != TSOBJ_OK)
 			goto bad_tsobj;
 
-		if(json_get_double(probability, "value", &wl_chain_probability) != TSOBJ_OK)
+		if(tsobj_get_double(probability, "value", &wl_chain_probability) != TSOBJ_OK)
 			goto bad_tsobj;
 
 		if(tsobj_check_unused(probability) != TSOBJ_OK)
@@ -891,7 +890,7 @@ workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const 
 
 	/* Process request scheduler.
 	 * Chained workloads do not have scheduler - use simple scheduler */
-	if(wl_chain_params != NULL) {
+	if(wl_chain_params == NULL) {
 		ret = tsobj_rqsched_proc(rqsched_params, wl);
 	}
 	else {

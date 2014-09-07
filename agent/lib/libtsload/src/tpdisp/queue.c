@@ -255,6 +255,8 @@ void tpd_control_sleep_rr(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_rr_class = {
+	"round-robin",
+
 	tpd_init_queue,
 	tpd_destroy_queue,
 	tpd_control_report_queue,
@@ -272,6 +274,8 @@ void tpd_control_sleep_rand(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_rand_class = {
+	"random",
+
 	tpd_init_queue,
 	tpd_destroy_queue,
 	tpd_control_report_queue,
@@ -291,6 +295,8 @@ void tpd_control_sleep_user(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_user_class = {
+	"user",
+
 	tpd_init_queue,
 	tpd_destroy_queue,
 	tpd_control_report_queue,
@@ -367,6 +373,8 @@ void tpd_destroy_fill_up(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_fill_up_class = {
+	"fill-up",
+
 	tpd_init_fill_up,
 	tpd_destroy_fill_up,
 	tpd_control_report_queue,
@@ -390,6 +398,8 @@ void tpd_control_sleep_trace(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_trace_class = {
+	"trace",
+
 	tpd_init_queue,
 	tpd_destroy_queue,
 	tpd_control_report_queue,

@@ -87,7 +87,8 @@ static int experiment_read_config(experiment_t* exp) {
 	err = json_parse(buf, &exp->exp_config);
 
 	if(err != JSON_OK) {
-		logmsg(LOG_CRIT, "JSON parse error of file %s", experiment_filename);
+		logmsg(LOG_CRIT, "JSON parse error of file %s: %s",
+				experiment_filename, json_error_message());
 		ret = EXP_LOAD_ERR_BAD_JSON;
 	}
 
@@ -613,10 +614,16 @@ json_node_t* experiment_cfg_find(json_node_t* node, const char* name, json_node_
 		}
 
 		if(json_type(node) == JSON_NODE) {
-			if(next != NULL)
+			if(next != NULL) {
 				iter = json_find_opt(node, node_name);
-			else
-				iter = json_find_bytype(node, node_name, type);
+			}
+			else {
+				iter = json_find(node, node_name);
+
+				if(json_check_type(node, type) != JSON_OK) {
+					iter = NULL;
+				}
+			}
 
 			if(iter == NULL)
 				return NULL;
@@ -834,6 +841,7 @@ static int exp_wl_proc(json_node_t* node, exp_workload_t* ewl) {
 	if(chain != NULL) {
 		if(json_get_string_copy(chain, "workload", ewl->wl_chain_name, WLTNAMELEN) != JSON_OK)
 				return -1;
+		ewl->wl_chain = chain;
 		ewl->wl_is_chained = B_TRUE;
 	}
 	else {

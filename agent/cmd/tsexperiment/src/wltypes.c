@@ -62,7 +62,7 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 	argi = optind;
 	if(argi == argc) {
 		if(json) {
-			node = tsload_walk_workload_types(TSLOAD_WALK_JSON_ALL, NULL, NULL);
+			node = tsload_walk_workload_types(TSLOAD_WALK_TSOBJ_ALL, NULL, NULL);
 		}
 		else {
 			tsload_walk_workload_types(TSLOAD_WALK_WALK, NULL, tse_print_wltype_walker);
@@ -74,7 +74,7 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 
 		for( ; argi < argc; ++argi) {
 			if(json) {
-				item = tsload_walk_workload_types(TSLOAD_WALK_JSON, argv[argi], NULL);
+				item = tsload_walk_workload_types(TSLOAD_WALK_TSOBJ, argv[argi], NULL);
 				if(item)
 					json_add_node(node, json_str_create(argv[argi]), item);
 			}

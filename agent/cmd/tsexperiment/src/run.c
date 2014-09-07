@@ -311,8 +311,8 @@ int tse_run_tp_configure_walk(hm_item_t* item, void* context) {
 
 	int ret;
 
-	JSONNODE* tp_disp = etp->tp_disp;
-	JSONNODE* trace_tp_disp = NULL;
+	json_node_t* tp_disp = etp->tp_disp;
+	json_node_t* trace_tp_disp = NULL;
 
 	if(exp->exp_trace_mode) {
 		experiment_cfg_add(etp->tp_disp, NULL, JSON_STR("type"),
@@ -554,6 +554,14 @@ void experiment_run(experiment_t* exp) {
 	}
 
 	hash_map_walk(exp->exp_workloads, tse_run_wl_configure_walk, NULL);
+
+	/* Wait until all workloads will configure then revert state if needed
+	 * (since configuration process is not interruptible, we have to wait) */
+	mutex_lock(&exp->exp_mutex);
+	while(exp->exp_wl_configuring_count > 0)
+		cv_wait(&exp->exp_cv, &exp->exp_mutex);
+	mutex_unlock(&exp->exp_mutex);
+
 	if(exp->exp_status != EXPERIMENT_NOT_CONFIGURED) {
 		tse_run_fprintf(exp, "Failure occured while configuring workloads\n");
 		goto unconfigure;
@@ -562,11 +570,6 @@ void experiment_run(experiment_t* exp) {
 	mutex_lock(&running_lock);
 	exp->exp_status = EXPERIMENT_OK;
 	mutex_unlock(&running_lock);
-
-	mutex_lock(&exp->exp_mutex);
-	while(exp->exp_wl_configuring_count > 0)
-		cv_wait(&exp->exp_cv, &exp->exp_mutex);
-	mutex_unlock(&exp->exp_mutex);
 
 	/* Ceil start time up to second */
 	start_time = tm_get_time() + (T_SEC / 2);

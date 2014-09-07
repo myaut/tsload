@@ -30,7 +30,7 @@ int tse_show_list_walk(const char* name, json_node_t* parent, json_node_t* node,
 		printf("%s=%" PRId64 "\n", name, json_as_integer(node));
 		break;
 	case JSON_NUMBER_FLOAT:
-		printf("%s=%f\n", name, json_as_float(node));
+		printf("%s=%f\n", name, json_as_double(node));
 		break;
 	case JSON_BOOLEAN:
 		printf("%s=%s\n", name, (json_as_boolean(node))? "true" : "false");
@@ -45,18 +45,18 @@ int tse_show_list_walk(const char* name, json_node_t* parent, json_node_t* node,
 
 #define TSE_SHOW_JSON_PARAM_STRING(agent, name)								\
 	{																		\
-		json_node_t* param = json_find_bytype(agent, name, JSON_STRING);	\
-		if(param != NULL) {													\
-			TSE_SHOW_PARAM("%s", name, json_as_string(param));				\
+		char* str;															\
+		if(json_get_string(agent, name, &str) == JSON_OK) {					\
+			TSE_SHOW_PARAM("%s", name, str);								\
 		}																	\
 	}
 
-#define TSE_SHOW_JSON_PARAM_INT(agent, name)										\
-	{																				\
-		json_node_t* param = json_find_bytype(agent, name, JSON_NUMBER_INTEGER);	\
-		if(param != NULL) {															\
-			TSE_SHOW_PARAM("%lld", name, (long long) json_as_integer(param));		\
-		}																			\
+#define TSE_SHOW_JSON_PARAM_INT(agent, name)								\
+	{																		\
+		long long ll;														\
+		if(json_get_integer_ll(agent, name, &ll) == JSON_OK) {				\
+			TSE_SHOW_PARAM("%lld", name, ll);								\
+		}																	\
 	}
 
 int tse_show_tp_walker(hm_item_t* obj, void* ctx) {

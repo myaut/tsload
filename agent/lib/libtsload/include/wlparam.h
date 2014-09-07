@@ -245,6 +245,9 @@ STATIC_INLINE JSONNODE* json_wlparam_format_all(wlp_descr_t* wlp) { return NULL;
 STATIC_INLINE int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) { return NULL; }
 #else
 #include <tsobj.h>
+
+tsobj_node_t* tsobj_wlparam_format_all(wlp_descr_t* wlp);
+
 TESTEXPORT int tsobj_wlparam_proc(tsobj_node_t* node, wlp_descr_t* wlp, void* param, struct workload* wl);
 TESTEXPORT int tsobj_wlpgen_proc(tsobj_node_t* node, wlp_descr_t* wlp, struct workload* wl);
 

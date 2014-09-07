@@ -93,6 +93,8 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     
     mod.AddDeps(('lib', 'libtscommon'),
                 ('lib', 'libhostinfo'), 
+                ('lib', 'libtsjson'),
+                ('lib', 'libtsobj'),
                 ('lib', 'libtsload'))
     modobjs = mod.CompileSharedLibrary()
     

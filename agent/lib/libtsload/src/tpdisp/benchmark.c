@@ -165,6 +165,8 @@ void tpd_relink_request_bench(thread_pool_t* tp, request_t* rq) {
 }
 
 tp_disp_class_t tpd_bench_class = {
+	"benchmark",
+
 	tpd_init_bench,
 	tpd_destroy_bench,
 	tpd_control_report_bench,

@@ -31,19 +31,19 @@ DECLARE_FIELD_FUNCTIONS(wlp_bool_t);
 DECLARE_FIELD_FUNCTIONS(wlp_strset_t);
 DECLARE_FIELD_FUNCTIONS(wlp_hiobject_t);
 
-const char* wlt_type_names[WLP_TYPE_MAX] = {
-	"null",
-	"bool",
-	"integer",
-	"float",
-	"string",
-	"strset",
+const char* wlt_type_tsobj_classes[WLP_TYPE_MAX] = {
+	"tsload.wlparam.WLParamNull",
+	"tsload.wlparam.WLParamBoolean",
+	"tsload.wlparam.WLParamInteger",
+	"tsload.wlparam.WLParamFloat",
+	"tsload.wlparam.WLParamString",
+	"tsload.wlparam.WLParamStringSet",
 
-	"size",
-	"time",
-	"filepath",
-	"cpuobject",
-	"disk"
+	"tsload.wlparam.WLParamSize",
+	"tsload.wlparam.WLParamTime",
+	"tsload.wlparam.WLParamFilePath",
+	"tsload.wlparam.WLParamCPUObject",
+	"tsload.wlparam.WLParamDisk"
 };
 
 static wlp_type_t wlp_base_types[WLP_TYPE_MAX] = {
@@ -78,94 +78,81 @@ wlp_type_t wlp_get_base_type(wlp_descr_t* wlp) {
 	return wlp_base_types[wlp->type];
 }
 
-#if 0
-static JSONNODE* json_wlparam_strset_format(wlp_descr_t* wlp) {
-	JSONNODE* node = json_new(JSON_ARRAY);
-	JSONNODE* el;
+
+static tsobj_node_t* tsobj_wlparam_strset_format(wlp_descr_t* wlp) {
+	tsobj_node_t* node = json_new_node(NULL);
 	int i;
 	char* str;
-
-	json_set_name(node, "strset");
 
 	for(i = 0; i < wlp->range.ss_num; ++i) {
 		str = wlp->range.ss_strings[i];
 
-		el = json_new(JSON_STRING);
-		json_set_a(el, str);
-
-		json_push_back(node, el);
+		tsobj_add_integer(node, tsobj_str_create(str), i);
 	}
 
 	return node;
 }
 
-JSONNODE* json_wlparam_format(wlp_descr_t* wlp) {
-	JSONNODE* wlp_node = json_new(JSON_NODE);
-
-	json_set_name(wlp_node, wlp->name);
-
-	json_push_back(wlp_node, json_new_a("type", wlt_type_names[wlp->type]));
+tsobj_node_t* tsobj_wlparam_format(wlp_descr_t* wlp) {
+	tsobj_node_t* wlp_node = tsobj_new_node(wlt_type_tsobj_classes[wlp->type]);
 
 	switch(wlp->type) {
 	case WLP_BOOL:
 		if(wlp->defval.enabled)
-			json_push_back(wlp_node, json_new_b("default", wlp->defval.b));
+			tsobj_add_boolean(wlp_node, TSOBJ_STR("default"), wlp->defval.b);
 		break;
 	case WLP_SIZE:
 	case WLP_TIME:
 	case WLP_INTEGER:
 		if(wlp->range.range) {
-			json_push_back(wlp_node, json_new_i("min", wlp->range.i_min));
-			json_push_back(wlp_node, json_new_i("max", wlp->range.i_max));
+			tsobj_add_integer(wlp_node, TSOBJ_STR("min"), wlp->range.i_min);
+			tsobj_add_integer(wlp_node, TSOBJ_STR("max"), wlp->range.i_max);
 		}
 		if(wlp->defval.enabled)
-			json_push_back(wlp_node, json_new_i("default", wlp->defval.i));
+			tsobj_add_integer(wlp_node, TSOBJ_STR("default"), wlp->defval.i);
 		break;
 	case WLP_FLOAT:
 		if(wlp->range.range) {
-			json_push_back(wlp_node, json_new_f("min", wlp->range.d_min));
-			json_push_back(wlp_node, json_new_f("max", wlp->range.d_max));
+			tsobj_add_double(wlp_node, TSOBJ_STR("min"), wlp->range.d_min);
+			tsobj_add_double(wlp_node, TSOBJ_STR("max"), wlp->range.d_max);
 		}
 		if(wlp->defval.enabled)
-			json_push_back(wlp_node, json_new_f("default", wlp->defval.f));
+			tsobj_add_double(wlp_node, TSOBJ_STR("default"), wlp->defval.f);
 		break;
 	case WLP_FILE_PATH:
 	case WLP_CPU_OBJECT:
 	case WLP_DISK:
 	case WLP_RAW_STRING:
-		json_push_back(wlp_node, json_new_i("len", wlp->range.str_length));
+		tsobj_add_integer(wlp_node, TSOBJ_STR("len"), wlp->range.str_length);
 		if(wlp->defval.enabled)
-			json_push_back(wlp_node, json_new_a("default", wlp->defval.s));
+			tsobj_add_string(wlp_node, TSOBJ_STR("default"), tsobj_str_create(wlp->defval.s));
 		break;
 	case WLP_STRING_SET:
-		json_push_back(wlp_node, json_wlparam_strset_format(wlp));
+		tsobj_add_node(wlp_node, TSOBJ_STR("strset"), tsobj_wlparam_strset_format(wlp));
 		if(wlp->defval.enabled)
-			json_push_back(wlp_node, json_new_i("default", wlp->defval.ssi));
+			tsobj_add_integer(wlp_node, TSOBJ_STR("default"), wlp->defval.ssi);
 		break;
 	}
 
-	json_push_back(wlp_node, json_new_i("flags", wlp->flags));
-	json_push_back(wlp_node, json_new_a("description", wlp->description));
+	tsobj_add_integer(wlp_node, TSOBJ_STR("flags"), wlp->flags);
+	tsobj_add_string(wlp_node, TSOBJ_STR("description"), tsobj_str_create(wlp->description));
 
 	return wlp_node;
 }
 
-JSONNODE* json_wlparam_format_all(wlp_descr_t* wlp) {
-	JSONNODE* node = json_new(JSON_NODE);
-	JSONNODE* wlp_node = NULL;
-
-	json_set_name(node, "params");
+tsobj_node_t* tsobj_wlparam_format_all(wlp_descr_t* wlp) {
+	tsobj_node_t* node = tsobj_new_node(NULL);
+	tsobj_node_t* wlp_node = NULL;
 
 	while(wlp->type != WLP_NULL) {
-		wlp_node = json_wlparam_format(wlp);
+		wlp_node = tsobj_wlparam_format(wlp);
+		tsobj_add_node(node, tsobj_str_create(wlp->name), wlp_node);
 
-		json_push_back(node, wlp_node);
-		wlp++;
+		++wlp;
 	}
 
 	return node;
 }
-#endif
 
 static int tsobj_wlparam_strset_proc(tsobj_node_t* node, wlp_descr_t* wlp, void* param, struct workload* wl) {
 	int i;
@@ -187,7 +174,7 @@ static int tsobj_wlparam_strset_proc(tsobj_node_t* node, wlp_descr_t* wlp, void*
 
 static int tsobj_wlparam_hiobj_proc(tsobj_node_t* node, wlp_descr_t* wlp, void* param, struct workload* wl) {
 	wlp_hiobject_t hiobj;
-	char* str = tsobj_as_string(node);
+	const char* str = tsobj_as_string(node);
 
 	switch(wlp->type) {
 	case WLP_CPU_OBJECT:

@@ -384,7 +384,14 @@ json_node_t* json_new_array(void) {
 }
 
 json_node_t* json_new_node(const char* node_class) {
-	return json_node_create(NULL, JSON_NODE);
+	json_node_t* node = json_node_create(NULL, JSON_NODE);
+
+	if(node_class != NULL) {
+		json_add_string(node, JSON_STR("_type"),
+				json_str_create(node_class));
+	}
+
+	return node;
 }
 
 void json_set_integer(json_node_t* node, int64_t val) {

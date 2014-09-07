@@ -237,6 +237,7 @@ int json_parse_string(struct json_parser* parser, json_buffer_t* buf, json_str_t
 
 		/* TODO: check other characters as well */
 		if(*data == '\n') {
+			PUT_STATE(idx, data);
 			return json_set_parser_error(parser, JSON_STRING_UNESCAPED,
 										 "Unescaped character '%d' while parsing STRING", *data);
 		}
@@ -248,6 +249,7 @@ int json_parse_string(struct json_parser* parser, json_buffer_t* buf, json_str_t
 		}
 
 		if(idx >= buf->size) {
+			PUT_STATE(idx, data);
 			return json_set_parser_error(parser, JSON_END_OF_BUFFER,
 										 "Unexpected end of buffer while parsing STRING");
 		}
@@ -338,11 +340,13 @@ int json_parse_number(struct json_parser* parser, json_buffer_t* buf, json_node_
 	}
 
 	if(errno == ERANGE) {
+		PUT_STATE(idx, data);
 		return json_set_parser_error(parser, JSON_NUMBER_OVERFLOW,
 									 "NUMBER literal '%s' is too large", literal);
 	}
 
 	if(endptr != data) {
+		PUT_STATE(idx, data);
 		return json_set_parser_error(parser, JSON_NUMBER_INVALID,
 									 "NUMBER literal '%s' is invalid", literal);
 	}
@@ -383,8 +387,10 @@ int json_parse_node(struct json_parser* parser, json_buffer_t* buf, json_node_t*
 		if(!is_array) {
 			/* For nodes - parse element name */
 			if(*data != '"') {
+				PUT_STATE(idx, data);
 				ret = json_set_parser_error(parser, JSON_OBJECT_INVALID,
-					 	 	 	 	 	 	 "Unexpected char '%c' while parsing OBJECT name - expected STRING");
+					 	 	 	 	 	 	 "Unexpected char '%c' while parsing OBJECT name - "
+					 	 	 	 	 	 	 "expected QUOTE", *data);
 				goto error;
 			}
 
@@ -398,8 +404,10 @@ int json_parse_node(struct json_parser* parser, json_buffer_t* buf, json_node_t*
 			GET_STATE(idx, data);
 
 			if(*data != ':') {
+				PUT_STATE(idx, data);
 				ret = json_set_parser_error(parser, JSON_OBJECT_INVALID,
-											 "Unexpected char '%c' while parsing OBJECT name - expected COLON");
+											 "Unexpected char '%c' while parsing OBJECT name - "
+											 "expected COLON", *data);
 				goto error;
 			}
 
@@ -425,8 +433,11 @@ int json_parse_node(struct json_parser* parser, json_buffer_t* buf, json_node_t*
 			break;
 
 		if(*data != ',') {
+			PUT_STATE(idx, data);
 			ret = json_set_parser_error(parser, JSON_OBJECT_INVALID,
-										 "Unexpected char '%c' while parsing OBJECT|ARRAY expected COMMA or RIGHT BRACKET");
+										 "Unexpected char '%c' while parsing %s "
+										 "expected COMMA or RIGHT BRACKET '%c'",
+										 *data, (is_array)? "ARRAY": "OBJECT", end_char);
 			goto error;
 		}
 
@@ -444,7 +455,8 @@ int json_parse_node(struct json_parser* parser, json_buffer_t* buf, json_node_t*
 
 eob:
 	ret = json_set_parser_error(parser, JSON_END_OF_BUFFER,
-							 	 "Unexpected end of buffer while parsing OBJECT|ARRAY");
+							 	 "Unexpected end of buffer while parsing %s",
+							 	(is_array)? "ARRAY": "OBJECT");
 error:
 	if(name != NULL)
 		json_str_free(name, buf);
@@ -541,7 +553,8 @@ int json_parse_value(struct json_parser* parser, json_buffer_t* buf, json_node_t
 	if(number_table_get(*data) == JSON_NUM_MODE_INT)
 		return json_parse_number(parser, buf, object);
 
-	return json_set_parser_error(parser, JSON_VALUE_INVALID, "Unknown VALUE literal");
+	return json_set_parser_error(parser, JSON_VALUE_INVALID,
+								 "Unexpected character '%c': unknown VALUE literal", *data);
 }
 
 int json_parse(json_buffer_t* buf, json_node_t** root) {

@@ -89,14 +89,14 @@ void json_buf_free(json_buffer_t* buf) {
  */
 json_str_t json_str_create(const char* str) {
 	size_t sz = strlen(str);
-	char* json_str = mp_malloc(sz + 1);
+	char* json_str = mp_malloc(sz + 2);
 
 	if(!json_str)
 		return NULL;
 
 	*json_str++ = JSON_STR_DYNAMIC;
 
-	strncpy(json_str, str, sz);
+	strncpy(json_str, str, sz + 1);
 	return (json_str_t) json_str;
 }
 

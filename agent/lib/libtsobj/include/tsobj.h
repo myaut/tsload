@@ -94,7 +94,7 @@ typedef json_str_t tsobj_str_t;
 				const char* name, type* val) {								\
 		int64_t i64;														\
 		int error = tsobj_get_integer_i64(parent, name, &i64);				\
-		*val = (type) i64;													\
+		if(error == JSON_OK) *val = (type) i64;								\
 		return error;														\
 	}
 

@@ -98,8 +98,10 @@ void wlt_fini(void);
 
 #ifndef NO_JSON
 #include <libjson.h>
-
 JSONNODE* json_wl_type_format(hm_item_t* object);
+#else
+#include <tsobj.h>
+tsobj_node_t* tsobj_wl_type_format(hm_item_t* object);
 #endif
 
 #endif /* MODAPI_H_ */

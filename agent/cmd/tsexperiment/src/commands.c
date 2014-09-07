@@ -8,6 +8,8 @@
 #include <getopt.h>
 #include <tstime.h>
 
+#include <json.h>
+
 #include <experiment.h>
 #include <commands.h>
 
@@ -46,7 +48,12 @@ int tse_do_command(const char* path, int argc, char* argv[]) {
 	if(path) {
 		root = experiment_load_root(path);
 		if(root == NULL) {
-			fprintf(stderr, "Couldn't load experiment from '%s'", path);
+			fprintf(stderr, "Couldn't load experiment from '%s'\n", path);
+
+			if(json_errno() != JSON_OK) {
+				fprintf(stderr, "JSON error: %s\n", json_error_message());
+			}
+
 			return CMD_INVALID_PATH;
 		}
 	}

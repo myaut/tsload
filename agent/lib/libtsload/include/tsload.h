@@ -13,6 +13,7 @@
 #include <errcode.h>
 #include <hashmap.h>
 #include <workload.h>
+#include <tsobj.h>
 
 #include <tsinit.h>
 #include <tstime.h>
@@ -63,18 +64,28 @@ LIBIMPORT tsload_requests_report_func tsload_requests_report;
  */
 typedef enum tsload_walk_op {
 	TSLOAD_WALK_FIND,
-	TSLOAD_WALK_JSON,
-	TSLOAD_WALK_JSON_ALL,
+	TSLOAD_WALK_TSOBJ,
+	TSLOAD_WALK_TSOBJ_ALL,
 	TSLOAD_WALK_WALK
 } tsload_walk_op_t;
 
+#define TSLOAD_CONFIGURE_WORKLOAD_ERROR_PREFIX		"Couldn't configure workload '%s': "
+#define TSLOAD_PROVIDE_STEP_ERROR_PREFIX 			"Couldn't provide step for workload '%s': "
+#define TSLOAD_CREATE_REQUEST_ERROR_PREFIX 			"Couldn't provide request for workload '%s'"
+#define TSLOAD_START_WORKLOAD_ERROR_PREFIX			"Couldn't start workload '%s': "
+#define TSLOAD_UNCONFIGURE_WORKLOAD_ERROR_PREFIX	"Couldn't unconfigure workload '%s': "
+
+#define TSLOAD_CREATE_THREADPOOL_ERROR_PREFIX		"Couldn't create threadpool '%s': "
+#define TSLOAD_SCHED_THREADPOOL_ERROR_PREFIX		"Couldn't schedule threadpool '%s': "
+#define TSLOAD_DESTROY_THREADPOOL_ERROR_PREFIX		"Couldn't destroy threadpool '%s': "
+
 LIBEXPORT void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker);
 
-LIBEXPORT JSONNODE* tsload_get_resources(void);
-LIBEXPORT JSONNODE* tsload_get_hostinfo(void);
+LIBEXPORT tsobj_node_t* tsload_get_resources(void);
+LIBEXPORT tsobj_node_t* tsload_get_hostinfo(void);
 
 LIBEXPORT int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
-		  	  	  	  	  	  	  	    JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params);
+										tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params);
 LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, list_head_t* trace_rqs,
 								  int* pstatus);
 LIBEXPORT int tsload_create_request(const char* wl_name, list_head_t* rq_list, boolean_t chained,
@@ -84,8 +95,8 @@ LIBEXPORT int tsload_start_workload(const char* wl_name, ts_time_t start_time);
 LIBEXPORT int tsload_unconfigure_workload(const char* wl_name);
 
 LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,
-		 	 	 	 	 	 	 	   boolean_t discard, JSONNODE* disp);
-LIBEXPORT int tsload_schedule_threadpool(const char* tp_name, JSONNODE* sched);
+		 	 	 	 	 	 	 	   boolean_t discard, tsobj_node_t* disp);
+LIBEXPORT int tsload_schedule_threadpool(const char* tp_name, tsobj_node_t* sched);
 LIBEXPORT void* tsload_walk_threadpools(tsload_walk_op_t op, void* arg, hm_walker_func walker);
 LIBEXPORT int tsload_destroy_threadpool(const char* tp_name);
 

@@ -39,6 +39,8 @@ struct tp_disp;
 #define TPD_BAD				-2
 
 typedef struct tp_disp_class {
+	const char* name;
+
 	int (*init)(thread_pool_t* tp);
 	void (*destroy)(thread_pool_t* tp);
 

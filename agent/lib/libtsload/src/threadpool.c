@@ -602,13 +602,12 @@ void tp_distribute_requests(workload_step_t* step, thread_pool_t* tp) {
 	}
 }
 
-#if 0
-JSONNODE* json_tp_format(hm_item_t* object) {
-	JSONNODE* node = NULL;
-	JSONNODE* wl_list = NULL;
-	JSONNODE* jwl;
-	workload_t* wl;
+tsobj_node_t* tsobj_tp_format(hm_item_t* object) {
+	tsobj_node_t* node = NULL;
+	tsobj_node_t* wl_list = NULL;
+	tsobj_node_t* jwl;
 
+	workload_t* wl;
 	thread_pool_t* tp = (thread_pool_t*) object;
 
 	/* TODO: Should return bindings && scheduler options */
@@ -616,30 +615,26 @@ JSONNODE* json_tp_format(hm_item_t* object) {
 	if(tp->tp_is_dead)
 		return NULL;
 
-	node = json_new(JSON_NODE);
-	wl_list = json_new(JSON_ARRAY);
+	node = tsobj_new_node("tsload.ThreadPool");
+	wl_list = tsobj_new_array();
 
-	json_push_back(node, json_new_i("num_threads", tp->tp_num_threads));
-	json_push_back(node, json_new_i("quantum", tp->tp_quantum));
-	json_push_back(node, json_new_i("wl_count", tp->tp_wl_count));
-	json_push_back(node, json_new_a("disp_name", "simple"));
+	tsobj_add_integer(node, TSOBJ_STR("num_threads"), tp->tp_num_threads);
+	tsobj_add_integer(node, TSOBJ_STR("quantum"), tp->tp_quantum);
+	tsobj_add_integer(node, TSOBJ_STR("wl_count"), tp->tp_wl_count);
+
+	tsobj_add_string(node, TSOBJ_STR("disp_name"),
+					 tsobj_str_create(tp->tp_disp->tpd_class->name));
 
 	mutex_lock(&tp->tp_mutex);
 	list_for_each_entry(workload_t, wl, &tp->tp_wl_head, wl_tp_node) {
-		jwl = json_new(JSON_STRING);
-		json_set_a(jwl, wl->wl_name);
-		json_push_back(wl_list, jwl);
+		tsobj_add_string(wl_list, NULL, wl->wl_name);
 	}
 	mutex_unlock(&tp->tp_mutex);
 
-	json_set_name(node, tp->tp_name);
-	json_set_name(wl_list, "wl_list");
-
-	json_push_back(node, wl_list);
+	tsobj_add_node(node, TSOBJ_STR("wl_list"), wl_list);
 
 	return node;
 }
-#endif
 
 /*
  * To check bindings externally:

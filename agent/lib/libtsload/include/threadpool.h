@@ -153,7 +153,7 @@ STATIC_INLINE JSONNODE* json_tp_format(hm_item_t* object) {}
 STATIC_INLINE int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched) {}
 #else
 #include <tsobj.h>
-tsobj_node_t* json_tp_format(hm_item_t* object);
+tsobj_node_t* tsobj_tp_format(hm_item_t* object);
 int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched);
 #endif
 

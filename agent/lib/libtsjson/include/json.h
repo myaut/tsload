@@ -270,7 +270,7 @@ STATIC_INLINE int json_get_string_copy(json_node_t* parent, const char* name, ch
 				const char* name, type* val) {							\
 		int64_t i64;													\
 		int error = json_get_integer_i64(parent, name, &i64);			\
-		*val = (type) i64;												\
+		if(error == JSON_OK) *val = (type) i64;							\
 		return error;													\
 	}
 

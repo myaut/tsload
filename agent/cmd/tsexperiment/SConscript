@@ -17,6 +17,7 @@ cmd.Macroses('NO_JSON')
 cmd.AddDeps(('lib', 'libjson'),
             ('lib', 'libtscommon'),
             ('lib', 'libtsjson'),
+            ('lib', 'libtsobj'),
             ('lib', 'libtsfile'),  
             ('lib', 'libhostinfo'), 
             ('lib', 'libtsload'))
