@@ -14,21 +14,6 @@
 #include <tstime.h>
 #include <hashmap.h>
 
-/* Hide json_ while libjson is in project */
-#define json_parse			ts_json_parse
-#define json_as_string		ts_json_as_string
-#define json_size			ts_json_size
-#define json_name			ts_json_name
-#define json_type			ts_json_type
-#define json_find			ts_json_find
-
-#undef JSON_NULL
-#undef JSON_STRING
-#undef JSON_NUMBER
-#undef JSON_BOOLEAN
-#undef JSON_ARRAY
-#undef JSON_NODE
-
 #define JSONERRLEN			256
 
 /**

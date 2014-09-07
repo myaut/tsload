@@ -5,9 +5,6 @@
  *      Author: myaut
  */
 
-#define NO_JSON
-#define JSONNODE void
-
 #define LOG_SOURCE ""
 #include <log.h>
 
@@ -82,11 +79,7 @@ void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func 
 }
 
 tsobj_node_t* tsload_get_resources(void) {
-#ifndef NO_JSON
-	return json_hi_format_all(B_TRUE);
-#else
-	return NULL;
-#endif
+	return tsobj_hi_format_all(B_TRUE);
 }
 
 tsobj_node_t* tsload_get_hostinfo(void) {

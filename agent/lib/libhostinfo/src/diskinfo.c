@@ -57,37 +57,35 @@ void hi_dsk_fini(void) {
 	mp_cache_destroy(&hi_dsk_cache);
 }
 
-const char* json_hi_dsk_format_type(struct hi_object_header* obj) {
-	hi_dsk_info_t* di = HI_DSK_FROM_OBJ(obj);
-
+const char* tsobj_hi_dsk_format_class(hi_dsk_info_t* di) {
 	switch(di->d_type) {
 	case HI_DSKT_DISK:
-		return "disk";
+		return "tsload.hi.Disk";
 	case HI_DSKT_PARTITION:
-		return "partition";
+		return "tsload.hi.DiskPartition";
 	case HI_DSKT_POOL:
-		return "pool";
+		return "tsload.hi.DiskPool";
 	case HI_DSKT_VOLUME:
-		return "volume";
+		return "tsload.hi.Volume";
 	}
 
-	return "unknown";
+	return "tsload.hi.DiskObject";
 }
 
-JSONNODE* json_hi_dsk_format(struct hi_object_header* obj) {
-	JSONNODE* jdsk = json_new(JSON_NODE);
+tsobj_node_t* tsobj_hi_dsk_format(struct hi_object_header* obj) {
 	hi_dsk_info_t* di = HI_DSK_FROM_OBJ(obj);
+	tsobj_node_t* dsk = tsobj_new_node(tsobj_hi_dsk_format_class(di));
 
-	json_push_back(jdsk, json_new_a("path", di->d_path));
+	tsobj_add_string(dsk, TSOBJ_STR("path"), tsobj_str_create(di->d_path));
 
-	json_push_back(jdsk, json_new_i("size", di->d_size));
-	json_push_back(jdsk, json_new_i("mode", di->d_mode));
+	tsobj_add_integer(dsk, TSOBJ_STR("size"), di->d_size);
+	tsobj_add_integer(dsk, TSOBJ_STR("mode"), di->d_mode);
 
-	json_push_back(jdsk, json_new_a("bus_type", di->d_bus_type));
-	json_push_back(jdsk, json_new_a("model", di->d_model));
-	json_push_back(jdsk, json_new_a("port", di->d_port));
+	tsobj_add_string(dsk, TSOBJ_STR("bus_type"), tsobj_str_create(di->d_bus_type));
+	tsobj_add_string(dsk, TSOBJ_STR("model"), tsobj_str_create(di->d_model));
+	tsobj_add_string(dsk, TSOBJ_STR("port"), tsobj_str_create(di->d_port));
 
-	json_push_back(jdsk, json_new_a("fs", di->d_fs));
+	tsobj_add_string(dsk, TSOBJ_STR("fs"), tsobj_str_create(di->d_fs));
 
-	return jdsk;
+	return dsk;
 }

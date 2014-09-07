@@ -5,8 +5,6 @@
  *      Author: myaut
  */
 
-#define NO_JSON
-
 #include <tsobj.h>
 #include <randgen.h>
 

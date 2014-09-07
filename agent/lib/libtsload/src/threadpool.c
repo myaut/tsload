@@ -5,9 +5,6 @@
  *      Author: myaut
  */
 
-#define NO_JSON
-#define JSONNODE void
-
 #define LOG_SOURCE "tpool"
 #include <log.h>
 

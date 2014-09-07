@@ -12,6 +12,8 @@
 #include <list.h>
 #include <cpumask.h>
 
+#include <tsobj.h>
+
 #include <hiobject.h>
 
 #define 	HI_CPU_ANY			-1
@@ -135,12 +137,7 @@ LIBEXPORT size_t hi_cpu_mem_total(void);
 
 LIBEXPORT int hi_cpu_mask(hi_cpu_object_t* object, cpumask_t* mask);
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-const char* json_hi_cpu_format_type(struct hi_object_header* obj);
-JSONNODE* json_hi_cpu_format(struct hi_object_header* obj);
-#endif
+tsobj_node_t* tsobj_hi_cpu_format(struct hi_object_header* obj);
 
 #include <hitrace.h>
 

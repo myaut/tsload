@@ -19,8 +19,7 @@ if cmd.SupportedPlatform('win'):
 
 cmd.PreparePlatform()
 
-cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libjson'))
+cmd.AddDeps(('lib', 'libtscommon'))
 
 objects = cmd.CompileProgram()
 tsgenuuid = cmd.Program(target, objects)

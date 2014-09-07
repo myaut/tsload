@@ -10,6 +10,5 @@ cmd = env.Clone()
 if cmd.SupportedPlatform('posix'):
     cmd.Append(LIBS = ['c'])
 
-cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libjson'))
+cmd.AddDeps(('lib', 'libtscommon'))
 mpbench = cmd.Program(cmd.Target(tgtdir, target), Glob("*.c"))

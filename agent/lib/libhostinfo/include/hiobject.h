@@ -11,9 +11,7 @@
 #include <defs.h>
 #include <list.h>
 
-#ifndef NO_JSON
-#include <libjson.h>
-#endif
+#include <tsobj.h>
 
 struct hi_object_header;
 
@@ -36,10 +34,7 @@ typedef void (*hi_obj_dtor_op)(struct hi_object_header* obj);
 typedef int   (*hi_obj_init_op)(void);
 typedef void  (*hi_obj_fini_op)(void);
 
-#ifndef NO_JSON
-typedef const char* (*hi_obj_json_format_type_op)(struct hi_object_header* obj);
-typedef JSONNODE* (*hi_obj_json_format_op)(struct hi_object_header* obj);
-#endif
+typedef tsobj_node_t* (*hi_obj_tsobj_format_op)(struct hi_object_header* obj);
 
 typedef struct {
 	hi_obj_probe_op		op_probe;
@@ -47,10 +42,7 @@ typedef struct {
 	hi_obj_init_op		op_init;
 	hi_obj_fini_op		op_fini;
 
-#	ifndef NO_JSON
-	hi_obj_json_format_type_op 		op_json_format_type;
-	hi_obj_json_format_op 			op_json_format;
-#	endif
+	hi_obj_tsobj_format_op 	op_tsobj_format;
 } hi_obj_subsys_ops_t;
 
 typedef struct {
@@ -106,9 +98,7 @@ LIBEXPORT list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe);
 LIBEXPORT int hi_obj_init(void);
 LIBEXPORT void hi_obj_fini(void);
 
-#ifndef NO_JSON
-LIBEXPORT JSONNODE* json_hi_format_all(boolean_t reprobe);
-#endif
+LIBEXPORT tsobj_node_t* tsobj_hi_format_all(boolean_t reprobe);
 
 #define hi_for_each_object(object, list)	\
 		list_for_each_entry(hi_object_t, object, list, list_node)

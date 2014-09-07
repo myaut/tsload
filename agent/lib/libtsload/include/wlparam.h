@@ -12,6 +12,8 @@
 #include <list.h>
 #include <randgen.h>
 
+#include <tsobj.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -230,28 +232,11 @@ int wlpgen_create_default(wlp_descr_t* wlp, struct workload* wl);
 TESTEXPORT void wlpgen_destroy_all(struct workload* wl);
 void* wlpgen_generate(struct workload* wl);
 
-#ifndef NO_JSON
-#include <libjson.h>
-
-#define WLPARAM_JSON_OK		0
-
-STATIC_INLINE int json_wlparam_string_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) { return -1; }
-STATIC_INLINE int json_wlparam_proc(JSONNODE* node, wlp_descr_t* wlp, void* param) { return -1; }
-
-STATIC_INLINE int json_wlpgen_proc(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) {return -1; }
-
-STATIC_INLINE JSONNODE* json_wlparam_format(wlp_descr_t* wlp) { return NULL; }
-STATIC_INLINE JSONNODE* json_wlparam_format_all(wlp_descr_t* wlp) { return NULL; }
-STATIC_INLINE int json_wlparam_proc_all(JSONNODE* node, wlp_descr_t* wlp, struct workload* wl) { return NULL; }
-#else
-#include <tsobj.h>
-
 tsobj_node_t* tsobj_wlparam_format_all(wlp_descr_t* wlp);
 
 TESTEXPORT int tsobj_wlparam_proc(tsobj_node_t* node, wlp_descr_t* wlp, void* param, struct workload* wl);
 TESTEXPORT int tsobj_wlpgen_proc(tsobj_node_t* node, wlp_descr_t* wlp, struct workload* wl);
 
 TESTEXPORT int tsobj_wlparam_proc_all(tsobj_node_t* node, wlp_descr_t* wlp, struct workload* wl);
-#endif
 
 #endif /* WLPARAM_H_ */

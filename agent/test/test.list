@@ -36,7 +36,7 @@ dummy/loop			file=loop.c 	expect=timeout
 dummy/assert		file=assert.c 	expect=abort  
 				
 # Tests for libtscommon stuff
-^tscommon		    lib=libjson 	lib=libtscommon
+^tscommon		    lib=libtscommon
 tscommon/getopt		file=getopt.c
 tscommon/posixcomp  dir=posixcomp   use=posixcomp/file
 tscommon/ilog2		file=ilog2.c
@@ -49,7 +49,7 @@ tscommon/cpumask	file=cpumask.c
 tscommon/tuneit		file=tuneit.c
 
 # Tests for libtsjson
-^json		    lib=libjson 	lib=libtscommon		lib=libtsjson	\
+^json		    lib=libtscommon		lib=libtsjson	\
 				file=main.c
 json/string			file=string.c
 json/number			file=number.c
@@ -57,39 +57,40 @@ json/object			file=object.c
 json/writer			file=writer.c
 
 # Test for libtsobj
-^tsobj		    lib=libjson 	lib=libtscommon		lib=libtsjson 	\
+^tsobj		    lib=libtscommon		lib=libtsjson 	\
 				lib=libtsobj
 tsobj/error			file=error.c
 
 # Tests for network sockets
-^netsock 			lib=libjson 	lib=libtscommon
+^netsock 			lib=libtscommon
 netsock/netsock		file=netsock.c
 netsock/nonblocking	file=nonblocking.c
 
 # Tests for threads 
-^threads			lib=libjson 	lib=libtscommon
+^threads			lib=libtscommon
 threads/thread1		file=thread1.c
 threads/atomic		file=atomic.c
 threads/mutex		file=mutex.c
 threads/event		file=event.c 	maxtime=2
-threads/affinity	file=affinity.c	lib=libhostinfo  maxtime=12
-threads/solaris_pset file=solaris_pset.c lib=libhostinfo plat=solaris maxtime=12
+threads/affinity	file=affinity.c	lib=libtsjson 	lib=libtsobj lib=libhostinfo  maxtime=12
+threads/solaris_pset file=solaris_pset.c lib=libtsjson 	lib=libtsobj lib=libhostinfo plat=solaris maxtime=12
 threads/sched 		file=sched.c
 
 # Tests for hostinfo
-^hostinfo 			lib=libjson 	lib=libtscommon		lib=libhostinfo
+^hostinfo 			lib=libtscommon	lib=libtsjson 	lib=libtsobj		\
+					lib=libhostinfo
 hostinfo/linux_sysfs_bitmap		file=linux_sysfs_bitmap.c  plat=linux
 hostinfo/wmi_proc		file=wmi_proc.c  plat=win
 
 # Tests for random generators
-^random 			lib=libjson 	lib=libtscommon		lib=libtsjson 	\
-					lib=libtsobj	lib=libtsload		lib=libhostinfo
+^random 			lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
+				    lib=libtsload		lib=libhostinfo
 random/chisquare	file=chisquare.c lib=m maxtime=3
 
 # Tests for libtsload object creation
-^tsload		    lib=libjson 	lib=libtscommon		lib=libtsjson 	\
-				lib=libtsobj	lib=libtsload		lib=libhostinfo	\
-				file=main.c		use=mod
+^tsload		    	lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
+					lib=libtsload		lib=libhostinfo	file=main.c		\
+					use=mod
 tsload/o_randgen	file=o_randgen.c
 tsload/o_rqsched	file=o_rqsched.c
 tsload/o_tpdisp		file=o_tpdisp.c

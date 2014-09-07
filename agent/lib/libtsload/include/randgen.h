@@ -16,6 +16,8 @@
 
 #include <defs.h>
 
+#include <tsobj.h>
+
 struct randgen_class;
 
 #define RG_ERROR_PREFIX 	"Failed to create random generator: "
@@ -125,14 +127,7 @@ LIBIMPORT randvar_class_t rv_exponential_class;
 LIBIMPORT randvar_class_t rv_erlang_class;
 LIBIMPORT randvar_class_t rv_normal_class;
 
-#ifdef NO_JSON
-#include <tsobj.h>
-
 LIBEXPORT randgen_t* tsobj_randgen_proc(tsobj_node_t* node);
 LIBEXPORT randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg);
-#else
-STATIC_INLINE randgen_t* json_randgen_proc(void* node) { return NULL; }
-STATIC_INLINE randvar_t* json_randvar_proc(void* node, randgen_t* rg) { return NULL; }
-#endif
 
 #endif /* RANDGEN_H_ */

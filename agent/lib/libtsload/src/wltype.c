@@ -1,6 +1,3 @@
-#define NO_JSON
-#define JSONNODE void
-
 #define LOG_SOURCE "modules"
 #include <log.h>
 

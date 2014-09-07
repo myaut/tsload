@@ -16,6 +16,8 @@
 #include <atomic.h>
 #include <hashmap.h>
 
+#include <tsobj.h>
+
 #include <stddef.h>
 
 #define TPNAMELEN		64
@@ -147,14 +149,7 @@ LIBEXPORT void tp_fini(void);
 void tp_hold(thread_pool_t* tp);
 void tp_rele(thread_pool_t* tp, boolean_t may_destroy);
 
-#ifndef NO_JSON
-#include <libjson.h>
-STATIC_INLINE JSONNODE* json_tp_format(hm_item_t* object) {}
-STATIC_INLINE int json_tp_schedule(thread_pool_t* tp, JSONNODE* sched) {}
-#else
-#include <tsobj.h>
 tsobj_node_t* tsobj_tp_format(hm_item_t* object);
 int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched);
-#endif
 
 #endif /* THREADPOOL_H_ */

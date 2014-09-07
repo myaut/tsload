@@ -5,8 +5,6 @@
  *      Author: myaut
  */
 
-#define NO_JSON
-
 #include <defs.h>
 #include <tsobj.h>
 #include <mempool.h>

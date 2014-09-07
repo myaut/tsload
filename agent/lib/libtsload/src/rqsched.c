@@ -1,6 +1,3 @@
-#define NO_JSON
-#define JSONNODE void
-
 #include <defs.h>
 
 #include <rqsched.h>

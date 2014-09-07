@@ -5,9 +5,6 @@
  *      Author: myaut
  */
 
-#define NO_JSON
-#define JSONNODE void
-
 #include <wlparam.h>
 #include <workload.h>
 #include <mempool.h>

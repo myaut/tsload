@@ -10,7 +10,7 @@
 #include <getopt.h>
 #include <tsversion.h>
 
-#include <libjson.h>
+#include <json.h>
 
 #include <hiprint.h>
 
@@ -26,6 +26,8 @@ int print_flags = INFO_DEFAULT;
 struct subsystem subsys[] = {
 	SUBSYSTEM("mempool", mempool_init, mempool_fini),
 	SUBSYSTEM("sched", sched_init, sched_fini),
+	SUBSYSTEM("json", json_init, json_fini),
+	SUBSYSTEM("tsobj", tsobj_init, tsobj_fini),
 	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini)
 };
 
@@ -81,14 +83,9 @@ int print_info(const char* topic) {
 }
 
 int print_json(void) {
-	char* jstr;
-	JSONNODE* hiobj = json_hi_format_all(B_FALSE);
+	json_node_t* hiobj = (json_node_t*) tsobj_hi_format_all(B_FALSE);
 
-	jstr = json_write_formatted(hiobj);
-	fputs(jstr, stdout);
-	json_free(jstr);
-
-	return 0;
+	return json_write_file(hiobj, stdout, B_TRUE);
 }
 
 int init(void) {
