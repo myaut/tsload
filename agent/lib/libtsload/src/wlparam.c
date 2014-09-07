@@ -325,9 +325,12 @@ int tsobj_wlparam_proc_all(tsobj_node_t* node, wlp_descr_t* wlp, struct workload
 	int ret = WLPARAM_TSOBJ_OK;
 	void* param;
 	char* params = wl->wl_params;
-	const char* wlp_name;
+	const char* wlp_name = "(null)";
 
 	tsobj_node_t* param_node;
+
+	if(tsobj_check_type(node, JSON_NODE) != TSOBJ_OK)
+		goto bad_tsobj;
 
 	while(ret == WLPARAM_TSOBJ_OK && wlp->type != WLP_NULL) {
 		param = ((char*) params) + wlp->off;

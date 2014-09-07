@@ -268,12 +268,20 @@ void wl_finish(workload_t* wl);
 #define WL_STEP_QUEUE_FULL		-1
 #define WL_STEP_INVALID			-2
 
+#define WL_ERROR_PREFIX					"Failed to create workload '%s': "
+#define WL_CHAIN_ERROR_PREFIX			"Failed to chain workload '%s': "
+
+
 #ifndef NO_JSON
 #include <libjson.h>
 
-LIBEXPORT JSONNODE* json_request_format_all(list_head_t* rq_list);
-workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
-		                       JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params);
+STATIC_INLINE JSONNODE* json_request_format_all(list_head_t* rq_list) { return NULL; }
+STATIC_INLINE workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
+		                                     JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params) { return NULL; }
+#else
+LIBEXPORT tsobj_node_t* tsobj_request_format_all(list_head_t* rq_list);
+workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
+ 		                        tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params);
 #endif
 
 #endif /* WORKLOAD_H_ */

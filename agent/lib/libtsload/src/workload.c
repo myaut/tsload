@@ -5,6 +5,9 @@
  *      Author: myaut
  */
 
+#define NO_JSON
+#define JSONNODE void
+
 #define LOG_SOURCE "workload"
 #include <log.h>
 
@@ -23,7 +26,7 @@
 #include <rqsched.h>
 #include <tuneit.h>
 
-#include <libjson.h>
+#include <tsobj.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -759,6 +762,7 @@ THREAD_END:
 	THREAD_FINISH(arg);
 }
 
+#if 0
 JSONNODE* json_request_format_all(list_head_t* rq_list) {
 	JSONNODE* jrq;
 	JSONNODE* j_rq_list = json_new(JSON_ARRAY);
@@ -785,130 +789,142 @@ JSONNODE* json_request_format_all(list_head_t* rq_list) {
 
 	return j_rq_list;
 }
+#endif
 
-workload_t* json_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
-		                       JSONNODE* wl_chain_params, JSONNODE* rqsched_params, JSONNODE* wl_params) {
-
-	workload_t* wl = NULL;
+static int tsobj_workload_proc_chain(workload_t* wl, tsobj_node_t* wl_chain_params) {
 	workload_t* parent = NULL;
-	wl_type_t* wlt = NULL;
-	thread_pool_t* tp = NULL;
 
 	char* wl_chain_name;
 	double wl_chain_probability = -1.0;
 	randgen_t* wl_chain_rg = NULL;
 
-	JSONNODE_ITERATOR i_randgen, i_workload, i_probability,
-					  i_prob_value, i_prob_end, i_end;
+	tsobj_node_t* probability;
+	tsobj_node_t* randgen;
+	int err;
 
-	int ret = RQSCHED_JSON_OK;
+	if(tsobj_check_type(wl_chain_params, JSON_NODE) != TSOBJ_OK)
+		goto bad_tsobj;
+
+	if(tsobj_get_string(wl_chain_params, "workload", &wl_chain_name) != TSOBJ_OK)
+		goto bad_tsobj;
+
+	err = json_get_node(wl_chain_params, "probability", &probability);
+	if(err == TSOBJ_INVALID_TYPE)
+		goto bad_tsobj;
+
+	if(tsobj_check_unused(wl_chain_params) != TSOBJ_OK)
+		goto bad_tsobj;
+
+	parent = wl_search(wl_chain_name);
+	if(parent == NULL) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WL_CHAIN_ERROR_PREFIX "not found workload '%s'",
+						 wl->wl_name, wl_chain_name);
+		goto fail;
+	}
+
+	if(err == TSOBJ_OK) {
+		if(json_get_double(probability, "randgen", &randgen) != TSOBJ_OK)
+			goto bad_tsobj;
+
+		if(json_get_double(probability, "value", &wl_chain_probability) != TSOBJ_OK)
+			goto bad_tsobj;
+
+		if(tsobj_check_unused(probability) != TSOBJ_OK)
+			goto bad_tsobj;
+
+		if(wl_chain_probability < 0.0 || wl_chain_probability > 1.0) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 WL_CHAIN_ERROR_PREFIX "invalid value for probability",
+							 wl->wl_name);
+			goto fail;
+		}
+
+		wl_chain_rg = tsobj_randgen_proc(randgen);
+
+		if(wl_chain_rg == NULL) {
+			tsload_error_msg(TSE_INVALID_VALUE,
+							 WL_CHAIN_ERROR_PREFIX "failed to create random generator",
+							 wl->wl_name);
+			goto fail;
+		}
+	}
+
+	wl_chain_back(parent, wl);
+
+	wl->wl_chain_probability = wl_chain_probability;
+	wl->wl_chain_rg = wl_chain_rg;
+
+	return 0;
+
+bad_tsobj:
+	tsload_error_msg(tsobj_error_code(), WL_CHAIN_ERROR_PREFIX "%s",
+					 wl->wl_name, tsobj_error_message());
+fail:
+	return -1;
+}
+
+workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
+		                       tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params) {
+	workload_t* wl = NULL;
+	wl_type_t* wlt = NULL;
+	thread_pool_t* tp = NULL;
+
+	int ret = RQSCHED_TSOBJ_OK;
 
 	wlt = wl_type_search(wl_type);
 
-	if(wl_params == NULL) {
-		tsload_error_msg(TSE_MESSAGE_FORMAT,
-				         "Workload / request parameters was not provided for workload '%s'", wl_name);
-		goto fail;
-	}
-
 	if(tp_name) {
 		tp = tp_search(tp_name);
-
-		if(rqsched_params == NULL) {
-			tsload_error_msg(TSE_MESSAGE_FORMAT,
-					         "Request scheduler parameters was not provided for workload '%s'", wl_name);
-			goto fail;
-		}
 	}
-	else if(wl_chain_params) {
-		i_end = json_end(wl_chain_params);
-		i_probability = json_find(wl_chain_params, "probability");
-		i_workload = json_find(wl_chain_params, "workload");
-
-		if(i_probability != i_end) {
-			i_prob_end = json_end(*i_probability);
-			i_randgen = json_find(*i_probability, "randgen");
-			i_prob_value = json_find(*i_probability, "value");
-
-			if(i_randgen != i_prob_end) {
-				wl_chain_rg = json_randgen_proc(*i_randgen);
-			}
-
-			if(i_prob_value != i_prob_end) {
-				wl_chain_probability = json_as_float(*i_prob_value);
-			}
-
-			if(wl_chain_probability < 0.0 || wl_chain_probability > 1.0) {
-				tsload_error_msg(TSE_MESSAGE_FORMAT,
-								 "Not specified or incorrect chain probability value for workload '%s'", wl_name);
-				goto fail;
-			}
-
-			if(wl_chain_rg == NULL) {
-				tsload_error_msg(TSE_MESSAGE_FORMAT,
-								 "Not specified or incorrect random generator "
-								 "of chain probability for workload '%s'", wl_name);
-				goto fail;
-			}
-		}
-
-		if(i_workload == i_end) {
-			tsload_error_msg(TSE_INVALID_DATA,
-							 "Not specified chain parent for workload '%s'", wl_name);
-			goto fail;
-		}
-
-		wl_chain_name = json_as_string(*i_workload);
-		parent = wl_search(wl_chain_name);
-
-		if(parent == NULL) {
-			tsload_error_msg(TSE_INVALID_DATA,
-							 "Not found chain parent '%s' for workload '%s'", wl_chain_name, wl_name);
-			json_free(wl_chain_name);
-			goto fail;
-		}
-
-		json_free(wl_chain_name);
-	}
-	else {
-		tsload_error_msg(TSE_INVALID_DATA,
-						 "Neither threadpool nor chain are set for workload '%s'", wl_name);
+	else if(!wl_chain_params) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						  WL_ERROR_PREFIX "neither 'chain' nor 'threadpool' was defined",
+						  wl_name);
 		goto fail;
 	}
 
-	/* Get workload's name */
-	logmsg(LOG_DEBUG, "Parsing workload %s", wl_name);
+	logmsg(LOG_DEBUG, "Creating workload %s", wl_name);
 
 	/* Create workload */
 	wl = wl_create(wl_name, wlt, tp);
 
 	/* Process request scheduler.
 	 * Chained workloads do not have scheduler - use simple scheduler */
-	if(parent == NULL) {
-		ret = json_rqsched_proc(rqsched_params, wl);
+	if(wl_chain_params != NULL) {
+		ret = tsobj_rqsched_proc(rqsched_params, wl);
 	}
 	else {
 		wl->wl_rqsched_class = &simple_rqsched_class;
 	}
 
-	if(ret != RQSCHED_JSON_OK) {
+	if(ret != RQSCHED_TSOBJ_OK) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WL_ERROR_PREFIX "failed to create request scheduler",
+						 wl_name, tsobj_error_message());
+
 		goto fail;
 	}
 
 	/* Process params from i_params to wl_params, where mod_params contains
 	 * parameters descriptions (see wlparam) */
-	ret = json_wlparam_proc_all(wl_params, wlt->wlt_params, wl);
+	ret = tsobj_wlparam_proc_all(wl_params, wlt->wlt_params, wl);
 
-	if(ret != WLPARAM_JSON_OK) {
+	if(ret != WLPARAM_TSOBJ_OK) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 WL_ERROR_PREFIX "failed to process parameters",
+						 wl_name, tsobj_error_message());
+
+
 		goto fail;
 	}
 
-	/* Chain workload */
-	if(parent != NULL) {
-		wl_chain_back(parent, wl);
+	/* Chain workload if needed */
+	if(wl_chain_params != NULL) {
+		ret = tsobj_workload_proc_chain(wl, wl_chain_params);
 
-		wl->wl_chain_probability = wl_chain_probability;
-		wl->wl_chain_rg = wl_chain_rg;
+		if(ret != 0)
+			goto fail;
 	}
 
 	wl->wl_deadline = deadline;
@@ -921,6 +937,7 @@ fail:
 
 	return NULL;
 }
+
 
 int wl_init(void) {
 	tuneit_set_int(ts_time_t, wl_poll_interval);

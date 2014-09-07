@@ -163,9 +163,14 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 	rqsched_common_t* rqs = NULL;
 	rqsched_think_t* rqs_think = NULL;
 
+	if(tsobj_check_type(node, JSON_NODE) != TSOBJ_OK) {
+		ret = RQSCHED_TSOBJ_BAD;
+		goto end;
+	}
+
 	if(tsobj_get_string(node, "type", &rqsched_type) != TSOBJ_OK) {
 		ret = RQSCHED_TSOBJ_BAD;
-		goto bad_tsobj;
+		goto end;
 	}
 
 	wl->wl_rqsched_private = NULL;
@@ -210,7 +215,7 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 		ret = RQSCHED_TSOBJ_BAD;
 	}
 
-bad_tsobj:
+end:
 	if(ret != RQSCHED_TSOBJ_OK) {
 		wl->wl_rqsched_class = NULL;
 		wl->wl_rqsched_private = NULL;
