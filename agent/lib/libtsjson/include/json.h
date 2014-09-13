@@ -127,6 +127,9 @@ typedef struct json_node {
 #define JSON_NOT_CHILD			-4
 #define JSON_UNUSED_CHILD		-5
 
+/* Generic constant */
+#define JSON_MIN_GENERIC_ERROR	-6
+
 /* Parser errors */
 #define JSON_END_OF_BUFFER			-11
 #define JSON_VALUE_INVALID			-12

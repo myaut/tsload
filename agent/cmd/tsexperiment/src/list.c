@@ -22,6 +22,8 @@
 #include <tstime.h>
 #include <mempool.h>
 
+#include <json.h>
+
 #include <experiment.h>
 #include <commands.h>
 
@@ -47,6 +49,8 @@ int tse_list_walk(struct experiment_walk_ctx* ctx, void* context) {
 
 	struct tse_list_item* item;
 	list_head_t* list = (list_head_t*) context;
+
+	json_errno_clear();
 
 	exp = experiment_load_dir(ctx->root->exp_root, ctx->runid, ctx->dir);
 

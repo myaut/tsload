@@ -245,9 +245,7 @@ int json_parse_string(struct json_parser* parser, json_buffer_t* buf, json_str_t
 	GET_STATE(idx, data);
 	from = idx;
 
-	do {
-		++idx; ++data;
-
+	while(*data != '"') {
 		/* TODO: check other characters as well */
 		if(*data == '\n') {
 			PUT_STATE(idx, data);
@@ -266,7 +264,9 @@ int json_parse_string(struct json_parser* parser, json_buffer_t* buf, json_str_t
 			return json_set_parser_error(parser, JSON_END_OF_BUFFER,
 										 "Unexpected end of buffer while parsing STRING");
 		}
-	} while(*data != '"');
+
+		++idx; ++data;
+	}
 
 	to = idx;
 

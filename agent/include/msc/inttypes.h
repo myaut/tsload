@@ -302,4 +302,6 @@ imaxdiv_t __cdecl imaxdiv(intmax_t numer, intmax_t denom)
 #define wcstoumax _wcstoui64
 
 
+#define __func__ __FUNCTION__
+
 #endif // _MSC_INTTYPES_H_ ]

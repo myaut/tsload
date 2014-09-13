@@ -83,7 +83,11 @@ void rqsched_common_destroy(rqsched_common_t* disp);
 
 #define RQSCHED_ERROR_PREFIX		"Failed to create request scheduler for workload '%s': "
 
-int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);
+LIBIMPORT rqsched_class_t simple_rqsched_class;
+LIBIMPORT rqsched_class_t iat_rqsched_class;
+LIBIMPORT rqsched_class_t think_rqsched_class;
+
+TESTEXPORT int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);
 
 #endif /* DISP_H_ */
 

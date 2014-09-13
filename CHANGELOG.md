@@ -3,16 +3,25 @@
 TSLoad server release + monitoring functionality embedded into agent
 Release date: ?
 
-### TSLoad 0.2
+### TSLoad 0.2 alpha #2
 
-Final release of 0.2 branch
 Release date: ?
+
+* Complete HostInfo implementation
+* BigMem module
+* SimpleIO module + swat-import
+
+### TSLoad 0.2 alpha #1
+
+Some enhacements to TSLoad 0.2
+Release date: 13 Sep 2014.
 
 * Tuneables API
 * Workload advanced parametrization: probability arrays with O(1) complexity
 * HTTP request module
+* New libjson implementation
 
-### TSLoad 0.2 alpha
+### TSLoad 0.2 alpha #0
 
 Iterative release that incorporates a large subset of functionality.
 Release date: 15 Feb 2014.

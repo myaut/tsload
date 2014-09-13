@@ -62,9 +62,9 @@ typedef enum tsfile_ftype {
 
 typedef struct tsfile_field {
 	char		   name[MAXFIELDLEN];
-	tsfile_ftype_t type;
-	size_t		   size;
-	ptrdiff_t	   offset;
+	uint64_t	   type;
+	uint64_t	   size;
+	uint64_t	   offset;
 } tsfile_field_t;
 
 typedef struct tsfile_shdr {

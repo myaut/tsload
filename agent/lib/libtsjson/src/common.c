@@ -59,7 +59,7 @@ json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse) {
 }
 
 json_buffer_t* json_buf_from_file(const char* path) {
-	FILE* file = fopen(path, "r");
+	FILE* file = fopen(path, "rb");
 
 	size_t filesize;
 	size_t result;
@@ -68,7 +68,7 @@ json_buffer_t* json_buf_from_file(const char* path) {
 	/* TODO: mmapped buffers */
 
 	if(file == NULL) {
-		json_set_error_str(errno, "Failed to open JSON file '%s'", path);
+		json_set_error_str(JSON_FILE_ERROR, "Failed to open JSON file '%s': error = %d", path, errno);
 		return NULL;
 	}
 
@@ -84,7 +84,8 @@ json_buffer_t* json_buf_from_file(const char* path) {
 	fclose(file);
 
 	if(result < filesize) {
-		json_set_error_str(errno, "Failed to read JSON file '%s'", path);
+		json_set_error_str(JSON_FILE_ERROR, "Failed to read JSON file '%s': result = %ld/%ld, error = %d",
+						   path, (unsigned long) result, (unsigned long) filesize, errno);
 		mp_free(data);
 		return NULL;
 	}

@@ -80,6 +80,10 @@ static tsfile_t* tsfile_open_file(const char* filename, boolean_t create) {
 	if(tsfile_sync_mode)
 		flags |= O_SYNC;
 
+#ifdef _MSC_VER
+	flags |= _O_BINARY;
+#endif
+
 	if(create) {
 		fd = open(filename, flags | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
 	}
@@ -193,22 +197,25 @@ static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t
 		f1 = &schema1->fields[fi];
 		f2 = &schema2->fields[fi];
 
-		if(f1->type != f2->type) {
+		if(strncmp(f1->name, f2->name, MAXFIELDLEN) != 0) {
 			tsfile_error_msg(TSE_INTERNAL_ERROR,
-							 "Different schema field #%d - type", fi);
+							 "Different schema field #%d - name (%s, %s)",
+							 fi, f1->name, f2->name);
 			return B_FALSE;
 		}
 
-		if(strncmp(f1->name, f2->name, MAXFIELDLEN) != 0) {
+		if(f1->type != f2->type) {
 			tsfile_error_msg(TSE_INTERNAL_ERROR,
-							 "Different schema field #%d - name", fi);
+							 "Different schema field #%d - type (%d, %d)",
+							 fi, (int) f1->type, (int) f2->type);
 			return B_FALSE;
 		}
 
 		if(f1->type != TSFILE_FIELD_BOOLEAN) {
 			if(f1->size != f2->size) {
 				tsfile_error_msg(TSE_INTERNAL_ERROR,
-								 "Different schema field #%d - size", fi);
+								 "Different schema field #%d - size (%d, %d)",
+								 fi, (int) f1->size, (int) f2->size);
 				return B_FALSE;
 			}
 		}

@@ -205,7 +205,7 @@ void tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 	for(rq_idx = 0; rq_idx < rq_count ; ++rq_idx) {
 		tsfile_get_entries(ewl->wl_file, entry, rq_idx, rq_idx + 1);
 
-		if(rqe->rq_step > step) {
+		if(((long) rqe->rq_step) > step) {
 			if(step >= 0 && rq_idx > step_stats.start_rq_idx) {
 				tse_report_step(&step_stats, wait_times, exec_times, idx, rq_idx);
 			}

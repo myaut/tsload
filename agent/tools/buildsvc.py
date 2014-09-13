@@ -386,8 +386,8 @@ class BuildManager(object):
                     server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample run')
                     server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample list')
                     server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample show')
-                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample report')
-                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample export -F csv')
+                    # server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample report')
+                    # server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample export -F csv')
                 
                 if 'fetch' in targets:
                     server.build(self.global_opts, 'zip')

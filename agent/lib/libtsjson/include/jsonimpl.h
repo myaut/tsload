@@ -76,20 +76,20 @@ STATIC_INLINE int json_set_parser_error(struct json_parser* parser, int error, c
 	return ret;
 }
 
-STATIC_INLINE int json_set_error(int errno) {
+STATIC_INLINE int json_set_error(int error) {
 	/* This is intended to be unitialized, because it will be ignored
 	 * by json_set_error_va (fmt == NULL) */
 	va_list va;
 
-	return json_set_error_va(NULL, errno, NULL, va);
+	return json_set_error_va(NULL, error, NULL, va);
 }
 
-STATIC_INLINE int json_set_error_str(int errno, const char* fmt, ...) {
+STATIC_INLINE int json_set_error_str(int error, const char* fmt, ...) {
 	va_list va;
 	int ret;
 
 	va_start(va, fmt);
-	ret = json_set_error_va(NULL, errno, fmt, va);
+	ret = json_set_error_va(NULL, error, fmt, va);
 	va_end(va);
 
 	return ret;

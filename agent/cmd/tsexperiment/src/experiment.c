@@ -93,7 +93,13 @@ static int experiment_read_config(experiment_t* exp) {
 	buf = json_buf_from_file(experiment_filename);
 
 	if(buf == NULL) {
-		logmsg(LOG_CRIT, "Couldn't open workload file %s", experiment_filename);
+		if(json_errno() != JSON_OK) {
+			logmsg(LOG_CRIT, "Couldn't open workload file %s: %s",
+				   experiment_filename, json_error_message());
+		}
+		else {
+			logmsg(LOG_CRIT, "Couldn't open workload file %s", experiment_filename);
+		}
 		return EXP_LOAD_ERR_OPEN_FAIL;
 	}
 
@@ -633,7 +639,7 @@ json_node_t* experiment_cfg_find(json_node_t* node, const char* name, json_node_
 			else {
 				iter = json_find(node, node_name);
 
-				if(json_check_type(node, type) != JSON_OK) {
+				if(json_check_type(iter, type) != JSON_OK) {
 					iter = NULL;
 				}
 			}
@@ -825,7 +831,7 @@ static int exp_tp_proc(json_node_t* node, exp_threadpool_t* etp) {
 	if(json_get_boolean(node, "discard", &etp->tp_discard) == JSON_INVALID_TYPE)
 		return -4;
 
-	if(json_get_node(node, "sched", &etp->tp_sched) == JSON_INVALID_TYPE)
+	if(json_get_array(node, "sched", &etp->tp_sched) == JSON_INVALID_TYPE)
 		return -5;
 
 	return 0;

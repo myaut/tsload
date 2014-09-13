@@ -7,10 +7,6 @@
 
 #include <string.h>
 
-extern rqsched_class_t simple_rqsched_class;
-extern rqsched_class_t iat_rqsched_class;
-extern rqsched_class_t think_rqsched_class;
-
 static rqsched_common_t* rqsched_common_create(size_t size) {
 	rqsched_common_t* rqs = (rqsched_common_t*) mp_malloc(size);
 

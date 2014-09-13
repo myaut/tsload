@@ -766,8 +766,11 @@ static int tsobj_tp_schedule_worker(thread_pool_t* tp, int wid, tsobj_node_t* no
 	int paramid;
 	int64_t value;
 
-	/* Set policy */
-	if(tsobj_get_string(node, "policy", &policy) != JSON_OK)
+	/* Set policy. If policy is not found, ignore scheduling */
+	err = tsobj_get_string(node, "policy", &policy);
+	if(err == TSOBJ_NOT_FOUND)
+		return SCHED_OK;
+	if(err != TSOBJ_OK)
 		goto bad_tsobj;
 
 	err = sched_set_policy(&worker->w_thread, policy);
@@ -819,7 +822,7 @@ int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched) {
 		goto bad_tsobj;
 
 	tsobj_for_each(sched, worker_sched, id) {
-		if(json_check_type(sched, JSON_NODE) != JSON_OK)
+		if(json_check_type(worker_sched, JSON_NODE) != JSON_OK)
 			goto bad_tsobj_sched;
 
 		if(json_get_integer_i(worker_sched, "wid", &wid) != JSON_OK) {

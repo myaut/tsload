@@ -66,7 +66,8 @@ tsfile_schema_t* tsfile_schema_read(const char* filename) {
 	ret = json_parse(buf, &root);
 
 	if(ret != JSON_OK) {
-		logmsg(LOG_CRIT, "Couldn't parse schema file '%s'", filename);
+		logmsg(LOG_CRIT, "Couldn't parse schema file '%s': %s",
+			   filename, json_error_message());
 		return NULL;
 	}
 

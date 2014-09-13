@@ -104,7 +104,12 @@ int json_set_error_va(struct json_parser* parser, int error, const char* fmt, va
 		}
 	}
 	else if(-error < json_error_msg_count) {
-		strncpy(state->je_message, json_error_msg_text[-error], JSONERRLEN);
+		if(error > JSON_MIN_GENERIC_ERROR) {
+			strncpy(state->je_message, json_error_msg_text[-error], JSONERRLEN);
+		}
+		else {
+			snprintf(state->je_message, JSONERRLEN, "JSON error %d", error);
+		}
 	}
 
 	return error;

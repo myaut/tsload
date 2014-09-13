@@ -93,7 +93,7 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
 
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
-env['TSVERSION'] = '0.2.a0'
+env['TSVERSION'] = '0.2.a1'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
 env['DEBUG'] = GetOption('debug')

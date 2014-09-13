@@ -78,7 +78,6 @@ static const char* tuneit_int_format_table[4][3] = {
 	/* 4 */ { "%" SCNd32, "%" SCNx32, "%" SCNo32 }
 };
 
-
 int tuneit_set_int_impl(const char* name, size_t sz, void* ptr) {
 	int ret = TUNEIT_OK;
 	tuneit_opt_t* opt = tuneit_find_opt(name);
@@ -86,6 +85,11 @@ int tuneit_set_int_impl(const char* name, size_t sz, void* ptr) {
 	int row, col;
 	int count;
 	char* value;
+
+#ifdef _MSC_VER
+	unsigned temp;
+	void* ptr1;
+#endif
 
 	if(opt == NULL)
 		return TUNEIT_NOTSET;
@@ -96,7 +100,7 @@ int tuneit_set_int_impl(const char* name, size_t sz, void* ptr) {
 		goto end;
 	}
 
-	row = (sz == 8)? 3 : (sz - 1);
+	row = (sz == 8)? 2 : (sz - 1);
 	if(*opt->value == '0') {
 		if(*(opt->value + 1) == 'x') {
 			/* '0x' prefix --> hexademical values */
@@ -119,12 +123,28 @@ int tuneit_set_int_impl(const char* name, size_t sz, void* ptr) {
 		value = opt->value;
 	}
 
+#ifdef _MSC_VER
+	/* Visual C doesn't support 1-byte sscanf, so use temporary integer variable */
+	if(sz == 1) {
+		ptr1 = ptr;
+		ptr = &temp;
+	}
+#endif
+
 	count = sscanf(value, tuneit_int_format_table[row][col], ptr);
+
+#ifdef _MSC_VER
+	if(sz == 1) {
+		*((unsigned char*) ptr1) = (unsigned char) temp;
+	}
+#endif
 
 	if(count != 1) {
 		tuneit_error(name, "failed to parse integer '%s'", value);
 		ret = TUNEIT_INVALID;
 	}
+
+	/* FIXME: check ERANGE here */
 
 end:
 	tuneit_opt_destroy(opt);
