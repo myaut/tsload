@@ -354,7 +354,7 @@ hi_cpu_object_t* hi_cpu_proc_cpu(hi_cpu_object_t* node, processorid_t cpu, long*
 	hi_cpu_object_add(strand);
 
 	hi_cpu_dprintf("hi_cpu_proc_cpu: processing processor #%d freq: %lld model: %s\n", (int) cpu,
-						(long long) node->node.cm_freq, node->node.cm_name);
+						(long long) chip->chip.cp_freq, chip->chip.cp_name);
 
 	kstat_close(kc);
 

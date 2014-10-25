@@ -107,7 +107,7 @@ void hi_wmi_disconnect(hi_wmi_t* wmi) {
 	CoUninitialize();
 }
 
-int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, const char* dialect, const char* query) {
+int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, unsigned short* dialect, unsigned short* query) {
 	HRESULT hres;
 
 	iter->enumerator = NULL;
@@ -137,12 +137,33 @@ boolean_t hi_wmi_next(hi_wmi_iter_t* iter) {
 	return B_FALSE;
 }
 
-int hi_wmi_get_string(hi_wmi_iter_t* iter, const char* name, char* str, size_t len) {
+int hi_wmi_get_string_raw(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len) {
 	VARIANT vtProp;
 	HRESULT hres;
 	char* tmp;
 
 	hres = iter->cls_obj->Get((LPCWSTR) name, 0, &vtProp, 0, 0);
+	if(FAILED(hres) || vtProp.vt == VT_EMPTY || vtProp.vt == VT_NULL) {
+		return HI_WMI_ERROR_FETCH_PROPERTY;
+	}
+
+	strncpy(str, (const char*) vtProp.bstrVal, len);
+
+	VariantClear(&vtProp);
+
+	return HI_WMI_OK;
+}
+
+int hi_wmi_get_string(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len) {
+	VARIANT vtProp;
+	HRESULT hres;
+	char* tmp;
+
+	hres = iter->cls_obj->Get((LPCWSTR) name, 0, &vtProp, 0, 0);
+	if(FAILED(hres) || vtProp.vt == VT_EMPTY || vtProp.vt == VT_NULL) {
+		return HI_WMI_ERROR_FETCH_PROPERTY;
+	}
+
 	tmp = _com_util::ConvertBSTRToString(vtProp.bstrVal);
 
 	strncpy(str, (const char*) tmp, len);
@@ -153,5 +174,50 @@ int hi_wmi_get_string(hi_wmi_iter_t* iter, const char* name, char* str, size_t l
 	return HI_WMI_OK;
 }
 
+int hi_wmi_get_integer(hi_wmi_iter_t* iter, unsigned short* name, int64_t* pi) {
+	VARIANT vtProp;
+	VARIANT vtProp2;
+	HRESULT hres;
 
+	hres = iter->cls_obj->Get((LPCWSTR) name, 0, &vtProp, 0, 0);
+	if(FAILED(hres) || vtProp.vt == VT_EMPTY || vtProp.vt == VT_NULL) {
+		return HI_WMI_ERROR_FETCH_PROPERTY;
+	}
+
+	hres = VariantChangeType (&vtProp2, &vtProp, 0, VT_I8);
+	if(FAILED(hres)) {
+		return HI_WMI_ERROR_CONVERT_PROPERTY;
+	}
+
+	*pi = vtProp2.llVal;
+
+	VariantClear(&vtProp);
+
+	return HI_WMI_OK;
+}
+
+
+int hi_wmi_get_boolean(hi_wmi_iter_t* iter, unsigned short* name, boolean_t* pb) {
+	VARIANT vtProp;
+	HRESULT hres;
+	int ret = HI_WMI_OK;
+
+	hres = iter->cls_obj->Get((LPCWSTR) name, 0, &vtProp, 0, 0);
+	if(FAILED(hres) || vtProp.vt == VT_EMPTY || vtProp.vt == VT_NULL) {
+		return HI_WMI_ERROR_FETCH_PROPERTY;
+	}
+
+	switch(vtProp.boolVal) {
+		case 0:
+			*pb = B_FALSE;
+			break;
+		default:
+			*pb = B_TRUE;
+			break;
+	}
+
+	VariantClear(&vtProp);
+
+	return ret;
+}
 

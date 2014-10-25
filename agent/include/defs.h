@@ -98,6 +98,14 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #define LIBIMPORT			extern
 #endif
 
+/* This macro guarantees correct linking of C++ code with C variables
+ */
+#ifdef __cplusplus
+#define LIBVARIABLE 		extern "C"
+#else
+#define LIBVARIABLE 		extern
+#endif
+
 /* Some functions are needed by unit tests
  * FIXME: Make this configurable
  */

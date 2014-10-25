@@ -148,6 +148,23 @@ void hi_linux_sysfs_fixstr(char* p) {
 	}
 }
 
+/**
+ * Fix sysfs string 2: replace last \n with \0 */
+void hi_linux_sysfs_fixstr2(char* p) {
+	if(*p == '\0')
+		return;
+
+	while(*p) {
+		if(*p == '\n' && *(p+1) == '\0') {
+			*p = '\0';
+			return;
+		}
+
+		++p;
+	}
+}
+
+
 int hi_linux_sysfs_walk(const char* root,
 					   void (*proc)(const char* name, void* arg), void* arg) {
 	plat_dir_t* dirp;

@@ -22,7 +22,9 @@
 #include <mempool.h>
 #include <cpuinfo.h>
 #include <diskinfo.h>
+#include <netinfo.h>
 #include <hitrace.h>
+#include <tuneit.h>
 
 #include <string.h>
 #include <assert.h>
@@ -98,10 +100,19 @@ hi_obj_subsys_ops_t disk_ops = {
 	tsobj_hi_dsk_format
 };
 
+hi_obj_subsys_ops_t network_ops = {
+	hi_net_probe,
+	hi_net_dtor,
+	hi_net_init,
+	hi_net_fini,
+	tsobj_hi_net_format
+};
+
 hi_obj_subsys_t hi_obj_subsys[HI_SUBSYS_MAX] =
 {
 	HI_OBJ_SUBSYS(HI_SUBSYS_CPU, "cpu", &cpu_ops),
 	HI_OBJ_SUBSYS(HI_SUBSYS_DISK, "disk", &disk_ops),
+	HI_OBJ_SUBSYS(HI_SUBSYS_NET, "net", &network_ops),
 };
 
 /* Last initialized subsystem. Needed for correct finish if hi_obj_init fails. */
@@ -341,6 +352,10 @@ int hi_obj_init(void) {
 	int ret = 0;
 
 	hi_obj_subsys_t* subsys = NULL;
+
+#ifdef HOSTINFO_TRACE
+	tuneit_set_int(unsigned, hi_trace_flags);
+#endif
 
 	for(sid = 0; sid < HI_SUBSYS_MAX; ++sid) {
 		subsys = get_subsys(sid);

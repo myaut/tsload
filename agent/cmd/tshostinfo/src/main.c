@@ -9,6 +9,7 @@
 #include <tsinit.h>
 #include <getopt.h>
 #include <tsversion.h>
+#include <tuneit.h>
 
 #include <json.h>
 
@@ -36,7 +37,7 @@ void usage(int ret, const char* reason, ...);
 void parse_options(int argc, char* argv[]) {
 	int c;
 
-	while((c = plat_getopt(argc, argv, "vhlxj")) != -1) {
+	while((c = plat_getopt(argc, argv, "vhlxjX:")) != -1) {
 		switch(c) {
 		case 'v':
 			print_ts_version("Host information");
@@ -50,6 +51,9 @@ void parse_options(int argc, char* argv[]) {
 			break;
 		case 'j':
 			print_flags |= INFO_JSON;
+			break;
+		case 'X':
+			tuneit_add_option(optarg);
 			break;
 		case 'h':
 			usage(0, "");
@@ -78,6 +82,7 @@ int print_info(const char* topic) {
 	PRINT_INFO_IMPL(cpu);
 	PRINT_INFO_IMPL(sched);
 	PRINT_INFO_IMPL(vm);
+	PRINT_INFO_IMPL(net);
 
 	return 1;
 }

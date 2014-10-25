@@ -23,10 +23,14 @@
 
 #include <defs.h>
 
+/**
+ * HostInfo tracing flags
+ */
 #define HI_TRACE_UNAME		0x1
 #define HI_TRACE_DSK		0x2
 #define HI_TRACE_CPU		0x4
 #define HI_TRACE_OBJ		0x8
+#define HI_TRACE_NET		0x10
 
 #ifdef PLAT_LINUX
 #define HI_TRACE_SYSFS		0x100
@@ -37,11 +41,14 @@
 #endif
 
 #ifdef HOSTINFO_TRACE
-extern int hi_trace_flags;
+
+LIBVARIABLE unsigned hi_trace_flags;
 
 #include <stdio.h>
 #define hi_trace_dprintf( flags, ... )	\
-			if(hi_trace_flags & flags) printf(  __VA_ARGS__ )
+			if(hi_trace_flags & flags) fprintf(stderr,  __VA_ARGS__ )
+
+
 #else
 
 #define hi_trace_dprintf( flags, ... )
@@ -51,6 +58,7 @@ extern int hi_trace_flags;
 #define hi_dsk_dprintf( ... )		hi_trace_dprintf(HI_TRACE_DSK, __VA_ARGS__ )
 #define hi_cpu_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_CPU, __VA_ARGS__ )
 #define hi_obj_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_OBJ, __VA_ARGS__ )
+#define hi_net_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_NET, __VA_ARGS__ )
 
 #ifdef PLAT_LINUX
 #define hi_sysfs_dprintf( ... ) hi_trace_dprintf(HI_TRACE_SYSFS, __VA_ARGS__ )

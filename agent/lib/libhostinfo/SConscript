@@ -8,9 +8,10 @@ lib = env.Clone()
 lib.PreparePlatform()
 
 if lib.SupportedPlatform('solaris'):
-    lib.Append(LIBS = ['diskmgt', 'lgrp', 'nvpair', 'kstat'])
+    lib.Append(LIBS = ['diskmgt', 'lgrp', 'nvpair', 'kstat', 'dladm'])
 if lib.SupportedPlatform('win'):
-    lib.Append(LIBS = ['setupapi', 'user32', 'advapi32', 'wbemuuid', 'comsuppw'])
+    lib.Append(LIBS = ['setupapi', 'user32', 'advapi32', 'wbemuuid', 'comsuppw', 
+                       'iphlpapi', 'Ws2_32'])
 
 lib.AddDeps(('lib', 'libtscommon'),
             ('lib', 'libtsjson'),

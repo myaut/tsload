@@ -33,6 +33,7 @@ uint64_t hi_linux_sysfs_readuint(const char* root, const char* name, const char*
 int hi_linux_sysfs_readbitmap(const char* root, const char* name, const char* object,
 						   uint32_t* bitmap, int len);
 void hi_linux_sysfs_fixstr(char* p);
+void hi_linux_sysfs_fixstr2(char* p);
 
 int hi_linux_sysfs_walk(const char* root,
 					   void (*proc)(const char* name, void* arg), void* arg);

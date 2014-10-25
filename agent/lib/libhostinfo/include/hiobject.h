@@ -28,11 +28,14 @@
 
 struct hi_object_header;
 
-#define HIOBJNAMELEN			48
+/* Windows have long network interface names,
+ * so provide large space for storing them */
+#define HIOBJNAMELEN			128
 
 typedef enum {
 	HI_SUBSYS_CPU,
 	HI_SUBSYS_DISK,
+	HI_SUBSYS_NET,
 
 	HI_SUBSYS_MAX
 } hi_obj_subsys_id_t;

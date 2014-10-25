@@ -38,6 +38,7 @@ int print_host_info(int flags);
 int print_disk_info(int flags);
 int print_sched_info(int flags);
 int print_vm_info(int flags);
+int print_net_info(int flags);
 
 STATIC_INLINE void print_header(int flags, const char* header) {
 	if(flags & INFO_ALL) {

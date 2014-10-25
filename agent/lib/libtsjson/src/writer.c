@@ -153,7 +153,7 @@ int json_write_impl(json_node_t* node, struct json_writer* writer, void* state, 
 	boolean_t is_node = B_FALSE;
 	json_node_t* child;
 
-	int ret;
+	int ret = JSON_OK;
 	char* indent_str = NULL;
 	int orig_indent = indent;
 

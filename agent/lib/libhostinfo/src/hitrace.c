@@ -21,7 +21,8 @@
 #include <hitrace.h>
 
 #ifdef HOSTINFO_TRACE
-/* FIXME: make this tuneable */
-int hi_trace_flags = 0xffff;
+/**
+ * Trace flags for hostinfo */
+unsigned hi_trace_flags = 0;
 #endif
 

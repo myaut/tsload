@@ -112,7 +112,6 @@ LIBEXPORT PLATAPI int nsk_resolve(const char* host, nsk_host_entry* he);
  */
 LIBEXPORT PLATAPI int nsk_setaddr(nsk_addr* sa, nsk_host_entry* he, unsigned short port);
 
-
 /**
  * Converts socket address into string <IP>:<port>
  *

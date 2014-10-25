@@ -54,12 +54,14 @@ typedef struct {
 
 #endif
 
-#define HI_WMI_OK					0
-#define HI_WMI_ERROR_INIT_COM		-1
-#define HI_WMI_ERROR_SECURITY		-2
-#define HI_WMI_ERROR_CREATE_LOCATOR	-3
-#define HI_WMI_ERROR_CONNECT		-4
-#define HI_WMI_ERROR_QUERY			-5
+#define HI_WMI_OK						0
+#define HI_WMI_ERROR_INIT_COM			-1
+#define HI_WMI_ERROR_SECURITY			-2
+#define HI_WMI_ERROR_CREATE_LOCATOR		-3
+#define HI_WMI_ERROR_CONNECT			-4
+#define HI_WMI_ERROR_QUERY				-5
+#define HI_WMI_ERROR_FETCH_PROPERTY		-6
+#define HI_WMI_ERROR_CONVERT_PROPERTY	-7
 
 #define HI_WMI_ROOT_CIMV2			"ROOT\\CIMV2"
 
@@ -70,9 +72,13 @@ extern "C" {
 LIBEXPORT int hi_wmi_connect(hi_wmi_t* wmi, const char* ns);
 LIBEXPORT void hi_wmi_disconnect(hi_wmi_t* wmi);
 
-LIBEXPORT int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, const char* dialect, const char* query);
-LIBEXPORT int hi_wmi_get_string(hi_wmi_iter_t* iter, const char* name, char* str, size_t len);
+LIBEXPORT int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, unsigned short* dialect, unsigned short* query);
 LIBEXPORT boolean_t hi_wmi_next(hi_wmi_iter_t* iter);
+
+LIBEXPORT int hi_wmi_get_string_raw(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len);
+LIBEXPORT int hi_wmi_get_string(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len);
+LIBEXPORT int hi_wmi_get_integer(hi_wmi_iter_t* iter, unsigned short* name, int64_t* pi);
+LIBEXPORT int hi_wmi_get_boolean(hi_wmi_iter_t* iter, unsigned short* name, boolean_t* pb);
 
 #ifdef __cplusplus
 }
