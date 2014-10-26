@@ -19,6 +19,7 @@
 
 
 #include <pathutil.h>
+#include <autostring.h>
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -63,18 +64,19 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
         if(part_len > len)
             return NULL;
 
-        len -= part_len;
-
         /* If previous part was not finished by separator,
          * add it (works only if psep_length == 1 */
         if(i != 0 && dest[idx - 1] != *path_separator) {
+        	strncat(dest, path_separator, len);
+
             len -= psep_length;
             idx += psep_length;
-            strncat(dest, path_separator, len);
         }
 
         strncat(dest, part, len);
+
         idx += part_len;
+        len -= part_len;
 
         part = parts[++i];
     }
@@ -101,13 +103,53 @@ char* path_join(char* dest, size_t len, ...) {
         part = va_arg(va, const char*);
         parts[i++] = part;
 
-        /*Too much parts*/
+        /* Too much parts */
         if(i == PATHMAXPARTS)
             return NULL;
     } while(part != NULL);
     va_end(va);
 
     return path_join_array(dest, len, i, parts);
+}
+
+/**
+ * Join paths into auto-allocated string
+ *
+ * @note Last argument should be always NULL
+ *
+ * @see path_join
+ * @see aas_init
+ * @see aas_free
+ */
+char* path_join_aas(char** aas, ...) {
+	const char* parts[PATHMAXPARTS];
+	const char* part = NULL;
+
+	va_list va;
+
+	int i = 0;
+	size_t count = 0;
+
+	va_start(va, aas);
+	do {
+		part = va_arg(va, const char*);
+		parts[i++] = part;
+
+		if(part) {
+			count += strlen(part) + psep_length;
+		}
+
+		/* Too much parts */
+		if(i == PATHMAXPARTS)
+			return NULL;
+	} while(part != NULL);
+	va_end(va);
+
+	*aas = aas_allocate(count);
+	if(*aas == NULL)
+		return NULL;
+
+	return path_join_array(*aas, count + 1, i, parts);
 }
 
 static int path_split_add(path_split_iter_t* iter, const char* part, const char* end) {

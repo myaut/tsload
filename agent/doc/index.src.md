@@ -50,6 +50,7 @@
 * [][tscommon/log]
 * [][tscommon/modules]
 * [][tscommon/mempool]
+* [][tscommon/autostring]
 
 #### Multithreading
 

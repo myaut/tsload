@@ -35,7 +35,7 @@ lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 lib.Append(TSDOC_SPACE='tscommon')
 tsdoc = [lib.DocBuilder(['include/hashmap.h', 'src/hashmap.c']),
          lib.DocBuilder(['include/syncqueue.h', 'src/syncqueue.c']),
-         lib.DocBuilder(['include/list.h']),
+         lib.DocBuilder(['include/list.h']),         
          
          lib.DocBuilder(['include/pathutil.h', 'src/pathutil.c']),
          lib.DocBuilder(['include/tsdirent.h']),
@@ -49,6 +49,8 @@ tsdoc = [lib.DocBuilder(['include/hashmap.h', 'src/hashmap.c']),
          
          lib.DocBuilder(['include/tstime.h', 'src/tstime.c']),
          lib.DocBuilder(['include/mempool.h', 'src/mempool.c', 'src/mempool_libc.c']),
+         
+         lib.DocBuilder(['include/autostring.h', 'src/autostring.c']),
          
          lib.DocBuilder(['include/ilog2.h']),
          lib.DocBuilder(['include/getopt.h']),

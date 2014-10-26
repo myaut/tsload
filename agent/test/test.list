@@ -47,6 +47,7 @@ tscommon/dirent		dir=dirent		use=dirent/test
 tscommon/paths		file=paths.c
 tscommon/cpumask	file=cpumask.c
 tscommon/tuneit		file=tuneit.c
+tscommon/autostring file=autostring.c
 
 # Tests for libtsjson
 ^json		    lib=libtscommon		lib=libtsjson	\

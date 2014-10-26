@@ -54,6 +54,7 @@ typedef struct {
 
 LIBEXPORT char* path_join_array(char* dest, size_t len, int num_parts, const char** parts);
 LIBEXPORT char* path_join(char* dest, size_t len, ...);
+LIBEXPORT char* path_join_aas(char** aas, ...);
 
 LIBEXPORT char* path_split(path_split_iter_t* iter, int max, const char* path);
 LIBEXPORT char* path_split_next(path_split_iter_t* iter);
