@@ -23,11 +23,15 @@
 
 #include <defs.h>
 
+#define HI_LINUX_SYSFS_BLOCK	32
+
 #define HI_LINUX_SYSFS_OK		0
 #define HI_LINUX_SYSFS_ERROR 	-1
 
 int hi_linux_sysfs_readstr(const char* root, const char* name, const char* object,
 						   char* str, int len);
+int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* object,
+						   	   char** aas);
 uint64_t hi_linux_sysfs_readuint(const char* root, const char* name, const char* object,
 						   uint64_t defval);
 int hi_linux_sysfs_readbitmap(const char* root, const char* name, const char* object,

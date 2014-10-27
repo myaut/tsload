@@ -168,6 +168,8 @@ hi_cpu_object_t* hi_cpu_create_cache(hi_cpu_object_t* parent, struct hi_cpu_sol_
 
 	memcpy(&cache->cache, &caches[cid].cache, sizeof(hi_cpu_cache_t));
 
+	hi_cpu_object_add(cache);
+
 	return cache;
 }
 
@@ -293,7 +295,6 @@ hi_cpu_object_t* hi_cpu_proc_cpu(hi_cpu_object_t* node, processorid_t cpu, long*
 	kstat_named_t	*knp;
 
 	long coreid, chipid;
-	char brand[HICPUNAMELEN];
 
 	hi_cpu_object_t* chip;
 	hi_cpu_object_t* core;

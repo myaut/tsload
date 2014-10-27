@@ -20,6 +20,7 @@
 
 #include <diskinfo.h>
 #include <pathutil.h>
+#include <autostring.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -311,8 +312,8 @@ void hi_sol_proc_slice(hi_dsk_info_t* parent, hi_sol_dsk_t* dsk, char* slice_nam
 
 	di = hi_dsk_create();
 
-	strncpy(di->d_name, path_basename(&psi, slice_name), HIDSKNAMELEN);
-	strncpy(di->d_path, slice_name, HIDSKPATHLEN);
+	aas_copy(&di->d_hdr.name, path_basename(&psi, slice_name));
+	aas_copy(&di->d_path, slice_name);
 
 	di->d_size = size * SECTOR_SIZE;
 	di->d_type = HI_DSKT_PARTITION;		/* Slices considered as partitions */
@@ -372,8 +373,8 @@ void hi_sol_proc_partition(hi_dsk_info_t* parent, hi_sol_dsk_t* dsk, char* part_
 
 	di = hi_dsk_create();
 
-	strncpy(di->d_name, path_basename(&psi, part_name), HIDSKNAMELEN);
-	strncpy(di->d_path, part_name, HIDSKPATHLEN);
+	aas_copy(&di->d_hdr.name, path_basename(&psi, part_name));
+	aas_copy(&di->d_path, part_name);
 
 	di->d_size = size;
 	di->d_type = HI_DSKT_PARTITION;
@@ -418,16 +419,16 @@ void hi_sol_proc_disk(hi_dsk_info_t* parent, hi_sol_dsk_t* pdsk, char* name, dm_
 
 	/* Create disk instance */
 	di = hi_dsk_create();
-	strncpy(di->d_name, path_basename(&psi, dsk.sd_opath), HIDSKNAMELEN);
-	strncpy(di->d_path, dsk.sd_opath, HIDSKPATHLEN);
+	aas_copy(&di->d_hdr.name, path_basename(&psi, dsk.sd_opath));
+	aas_copy(&di->d_path, dsk.sd_opath);
 
 	di->d_size = dsk.sd_size * SECTOR_SIZE;
 	di->d_type = HI_DSKT_DISK;
 
-	strncpy(di->d_bus_type, dsk.sd_ctype, HIDSKBUSLEN);
-	strncpy(di->d_id, name, HIDSKIDLEN);
+	aas_copy(&di->d_bus_type, dsk.sd_ctype);
+	aas_copy(&di->d_id, name);
 
-	snprintf(di->d_model, HIDSKMODELLEN, "%s %s", dsk.sd_vendor_id, dsk.sd_product_id);
+	aas_printf(&di->d_model, "%s %s", dsk.sd_vendor_id, dsk.sd_product_id);
 
 	hi_dsk_add(di);
 

@@ -22,6 +22,7 @@
 #include <mempool.h>
 #include <hiobject.h>
 #include <cpumask.h>
+#include <autostring.h>
 
 #include <ctype.h>
 
@@ -34,7 +35,7 @@ mp_cache_t hi_cpu_obj_cache;
 hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t type, int id) {
 	hi_cpu_object_t* object = (hi_cpu_object_t*) mp_cache_alloc(&hi_cpu_obj_cache);
 
-	hi_obj_header_init(HI_SUBSYS_CPU, &object->hdr, "cpuobj");
+	hi_obj_header_init(HI_SUBSYS_CPU, &object->hdr, NULL);
 	if(parent)
 		hi_obj_attach(&object->hdr, &parent->hdr);
 
@@ -46,7 +47,7 @@ hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t 
 		object->node.cm_mem_free = 0;
 	}
 	else if(type == HI_CPU_CHIP) {
-		object->chip.cp_name[0] = '\0';
+		aas_init(&object->chip.cp_name);
 		object->chip.cp_freq = 0;
 	}
 	else if(type == HI_CPU_CACHE) {
@@ -60,55 +61,65 @@ hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t 
 
 void hi_cpu_set_chip_name(hi_cpu_object_t* chip, const char* name) {
 	boolean_t wasspace = B_FALSE;
-	char* p = name;
-	int i = 0;
+	char* new_name;
+	char* p1;
+	char* p2;
 
-	/* Model names may contain (R), (TM) or continously going spaces, ignore them */
-	while(*p && i < HICPUNAMELEN) {
-		if(wasspace && isspace(*p)) {
-			p++;
+	aas_copy(&new_name, name);
+	p1 = p2 = new_name;
+
+	/* Model names may contain (R), (TM) or continous spaces, filter them */
+	while(*p2) {
+		if(wasspace && isspace(*p2)) {
+			++p2;
 			continue;
 		}
-		if(strncmp(p, "(R)", 3) == 0 ||
-		   strncmp(p, "(r)", 3) == 0)
-			p += 3;
-		if(strncmp(p, "(TM)", 4) == 0 ||
-		   strncmp(p, "(TM)", 4) == 0)
-			p += 4;
 
-		wasspace = TO_BOOLEAN(isspace(*p));
+		if(strncmp(p2, "(R)", 3) == 0 ||
+		   strncmp(p2, "(r)", 3) == 0)
+			p2 += 3;
+		if(strncmp(p2, "(TM)", 4) == 0 ||
+		   strncmp(p2, "(tm)", 4) == 0)
+			p2 += 4;
 
-		chip->chip.cp_name[i++] = *p++;
+		wasspace = TO_BOOLEAN(isspace(*p2));
+
+		if(p1 != p2)
+			*p1 = *p2;
+		++p1;
+		++p2;
 	}
 
-	chip->chip.cp_name[i] = '\0';
+	*p1++ = *p2++;
+
+	chip->chip.cp_name = new_name;
 }
 
 void hi_cpu_object_add(hi_cpu_object_t* object) {
 	switch(object->type) {
 	case HI_CPU_NODE:
-		snprintf(object->hdr.name, HIOBJNAMELEN, "node:%d", object->id);
+		aas_printf(&object->hdr.name, "node:%d", object->id);
 		break;
 	case HI_CPU_CHIP:
-		snprintf(object->hdr.name, HIOBJNAMELEN, "chip:%d", object->id);
+		aas_printf(&object->hdr.name, "chip:%d", object->id);
 		break;
 	case HI_CPU_CORE:
-		snprintf(object->hdr.name, HIOBJNAMELEN, "core:%d:%d",
+		aas_printf(&object->hdr.name, "core:%d:%d",
 				HI_CPU_PARENT(object)->id, object->id);
 		break;
 	case HI_CPU_STRAND:
-		snprintf(object->hdr.name, HIOBJNAMELEN, "strand:%d:%d:%d",
+		aas_printf(&object->hdr.name, "strand:%d:%d:%d",
 				HI_CPU_PARENT(HI_CPU_PARENT(object))->id, HI_CPU_PARENT(object)->id, object->id);
 		break;
 	case HI_CPU_CACHE:
 		{
 			hi_cpu_object_t* cache = HI_CPU_FROM_OBJ(object);
 			if(cache->cache.c_level != HI_CPU_CACHE_TLB_LEVEL) {
-				snprintf(object->hdr.name, HIOBJNAMELEN, "cache:l%d:%d",
+				aas_printf(&object->hdr.name, "cache:l%d:%d",
 						cache->cache.c_level, object->id);
 			}
 			else {
-				snprintf(object->hdr.name, HIOBJNAMELEN, "cache:tlb:%d", object->id);
+				aas_printf(&object->hdr.name, "cache:tlb:%d", object->id);
 			}
 		}
 		break;
@@ -156,6 +167,11 @@ void* hi_cpu_find_byid(hi_cpu_object_t* parent, hi_cpu_objtype_t type, int id) {
 
 void hi_cpu_dtor(hi_object_t* object) {
 	hi_cpu_object_t* cpu_object = (hi_cpu_object_t*) object;
+
+	if(cpu_object->type == HI_CPU_CHIP) {
+		aas_free(&cpu_object->chip.cp_name);
+	}
+
 	mp_cache_free(&hi_cpu_obj_cache, cpu_object);
 }
 

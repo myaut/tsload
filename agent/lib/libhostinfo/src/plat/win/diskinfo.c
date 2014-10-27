@@ -20,6 +20,7 @@
 
 #include <diskinfo.h>
 #include <mempool.h>
+#include <autostring.h>
 
 #include <stdlib.h>
 
@@ -202,8 +203,8 @@ int hi_win_proc_partitions(hi_win_dsk_t* dsk, hi_dsk_info_t* parent) {
 		di = hi_dsk_create();
 
 		/* XXX: This is wrong */
-		snprintf(di->d_name, HIDSKNAMELEN, "%s\\Partition%d", dsk->dev_phys_buf, partition->PartitionNumber);
-		strncpy(di->d_path, di->d_name, HIDSKPATHLEN);
+		aas_printf(&di->d_hdr.name, "%s\\Partition%d", dsk->dev_phys_buf, partition->PartitionNumber);
+		aas_copy(&di->d_path, di->d_hdr.name);
 
 		di->d_size = partition->PartitionLength.QuadPart;
 		di->d_type = HI_DSKT_PARTITION;
@@ -263,26 +264,26 @@ int hi_win_proc_disk(hi_win_dsk_t* dsk) {
 
 	/* Creating a disk */
 	di = hi_dsk_create();
-	strncpy(di->d_name, dsk->dev_phys_buf, HIDSKNAMELEN);
-	strncpy(di->d_path, dsk->p_int_detail->DevicePath, HIDSKPATHLEN);
+	aas_copy(&di->d_hdr.name, dsk->dev_phys_buf);
+	aas_copy(&di->d_path, dsk->p_int_detail->DevicePath);
 
 	di->d_size = geometry->DiskSize.QuadPart;
 	di->d_type = HI_DSKT_DISK;
 
 	if(adapter->BusType < BusTypeMax)
-		strncpy(di->d_bus_type, hi_win_dsk_bus_type[adapter->BusType], HIDSKBUSLEN);
+		aas_copy(&di->d_bus_type, hi_win_dsk_bus_type[adapter->BusType]);
 
 	if(dsk->dev_loc_buf)
-		strncpy(di->d_port, dsk->dev_loc_buf, HIDSKPATHLEN);
+		aas_copy(&di->d_port, dsk->dev_loc_buf);
 	if(dsk->dev_hid_buf)
-		strncpy(di->d_id, dsk->dev_hid_buf, HIDSKIDLEN);
+		aas_copy(&di->d_id, dsk->dev_hid_buf);
 
 	if(device->VendorIdOffset > 0)
 		vendor_id = &dsk->dev_buf[device->VendorIdOffset];
 	if(device->ProductIdOffset > 0)
 		product_id = &dsk->dev_buf[device->ProductIdOffset];
 
-	snprintf(di->d_model, HIDSKMODELLEN, "%s %s", vendor_id, product_id);
+	aas_printf(&di->d_model, "%s %s", vendor_id, product_id);
 
 	hi_dsk_add(di);
 
@@ -338,7 +339,7 @@ int hi_win_proc_dev(hi_win_dsk_t* dsk) {
 
 	if(status == FALSE) {
 		error_code = GetLastError();
-		hi_dsk_dprintf("hi_win_proc_dev: SetupDiEnumDeviceInfo failed\n");
+		hi_dsk_dprintf("hi_win_proc_dev: SetupDiEnumDeviceInfo failed: 0x%lx\n", error_code);
 		if(error_code == ERROR_NO_MORE_ITEMS)
 			return HI_WIN_DSK_NODEV;
 		return HI_WIN_DSK_ERROR;
@@ -350,7 +351,7 @@ int hi_win_proc_dev(hi_win_dsk_t* dsk) {
 
 	error = hi_win_get_reg_property(dsk, SPDRP_PHYSICAL_DEVICE_OBJECT_NAME, &dsk->dev_phys_buf);
 	if(error != HI_WIN_DSK_OK) {
-		hi_dsk_dprintf("hi_win_proc_dev: get SPDRP_PHYSICAL_DEVICE_OBJECT_NAME failed\n");
+		hi_dsk_dprintf("hi_win_proc_dev: get SPDRP_PHYSICAL_DEVICE_OBJECT_NAME failed: %d\n", error);
 		return error;
 	}
 
@@ -382,7 +383,7 @@ int hi_win_proc_int(hi_win_dsk_t* dsk) {
 	status = SetupDiGetDeviceInterfaceDetail(dsk->int_dev_info, &dsk->int_data, NULL, 0, &req_size, NULL);
 	if(status == FALSE) {
 		error_code = GetLastError();
-		hi_dsk_dprintf("hi_win_proc_int: 1st SetupDiGetDeviceInterfaceDetail failed\n");
+		hi_dsk_dprintf("hi_win_proc_int: 1st SetupDiGetDeviceInterfaceDetail failed: %lx\n", error_code);
 		if(error_code != ERROR_INSUFFICIENT_BUFFER)
 			return HI_WIN_DSK_ERROR;
 	}
@@ -394,7 +395,7 @@ int hi_win_proc_int(hi_win_dsk_t* dsk) {
 	status = SetupDiGetDeviceInterfaceDetail(dsk->int_dev_info, &dsk->int_data, dsk->p_int_detail, int_detail_size, &req_size, NULL);
 
 	if(status == FALSE) {
-		hi_dsk_dprintf("hi_win_proc_int: 2nd SetupDiGetDeviceInterfaceDetail failed\n");
+		hi_dsk_dprintf("hi_win_proc_int: 2nd SetupDiGetDeviceInterfaceDetail failed: %lx\n", error_code);
 		return HI_WIN_DSK_ERROR;
 	}
 

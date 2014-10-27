@@ -42,7 +42,7 @@ char* disk_get_type(hi_dsk_info_t* di) {
 }
 
 #define PRINT_DISK_XSTR(what, str) 					\
-			if(str[0] != '\0')						\
+			if(str)									\
 				printf("\t%-7s: %s\n", what, str);
 
 void print_disk_slaves(hi_dsk_info_t* parent) {
@@ -53,13 +53,14 @@ void print_disk_slaves(hi_dsk_info_t* parent) {
 	char *ps = slaves;
 	int off = 0;
 
+	/* TODO: Make this AAS */
 	if(!list_empty(&parent->d_hdr.children)) {
 		hi_for_each_child(child, &parent->d_hdr) {
 			di = HI_DSK_FROM_OBJ(child->object);
-			if((off + strlen(di->d_name) > 254))
+			if((off + strlen(di->d_hdr.name) > 254))
 				break;
 
-			off += sprintf(slaves + off, " %s", di->d_name);
+			off += sprintf(slaves + off, " %s", di->d_hdr.name);
 		}
 
 		PRINT_DISK_XSTR("slaves", slaves);
@@ -86,7 +87,7 @@ int print_disk_info(int flags) {
 	hi_for_each_object(object, disk_list) {
 		di = HI_DSK_FROM_OBJ(object);
 
-		printf("%-12s %-6s %-16llu %c%c %s\n", di->d_name,
+		printf("%-12s %-6s %-16llu %c%c %s\n", object->name,
 					disk_get_type(di), di->d_size,
 					(di->d_mode & R_OK)? 'R' : '-',
 					(di->d_mode & W_OK)? 'W' : '-',

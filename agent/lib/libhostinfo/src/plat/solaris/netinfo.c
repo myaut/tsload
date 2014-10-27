@@ -17,6 +17,7 @@
 */
 
 #include <mempool.h>
+#include <autostring.h>
 
 #include <netinfo.h>
 #include <hitrace.h>
@@ -378,8 +379,8 @@ static int hi_net_sol_getallifs(sa_family_t af, void (*add)(hi_net_object_t* par
 
 	hi_net_object_t* parent;
 
-	char name[32];
-	char ifa_name[32];
+	char* name;
+	char* ifa_name;
 	char* addr_name;
 
 	hi_net_sol_ifa_t ifa;
@@ -404,22 +405,22 @@ static int hi_net_sol_getallifs(sa_family_t af, void (*add)(hi_net_object_t* par
 							(af == AF_INET6) ? "inet6" : "inet");
 
 		/* Parse lifr_name and find appropriate net object */
-		strncpy(ifa_name, lifr->lifr_name, 32);
-		addr_name = strchr(ifa_name, ':');
+		aas_init(&name);
+		aas_init(&addr_name);
+		aas_init(&ifa_name);
+
+		aas_copy(&ifa_name, lifr->lifr_name);
+		aas_copy(&addr_name, strchr(ifa_name, ':'));
 
 		if(addr_name == NULL) {
 			addr_name = "primary";
 		}
-		else {
-			*addr_name = '\0';
-			++addr_name;
-		}
 
 		/* To ensure that primary IP address won't collide with
 		 * device name, use 'primary' suffix */
-		snprintf(name, 32, "%s:%s:%s",
-				 (af == AF_INET)? "ip" : "ipv6",
-				 ifa_name, addr_name);
+		aas_printf(&name, "%s:%s:%s",
+				   (af == AF_INET)? "ip" : "ipv6",
+				   ifa_name, addr_name);
 
 		parent = hi_net_find(ifa_name);
 
@@ -438,6 +439,10 @@ static int hi_net_sol_getallifs(sa_family_t af, void (*add)(hi_net_object_t* par
 		memcpy(&ifa.ifa_netmask, &lifr->lifr_addr, sizeof(struct sockaddr_storage));
 
 		add(parent, name, &ifa);
+
+		aas_free(&name);
+		aas_free(&ifa_name);
+		aas_free(&addr_name);
 	}
 
 	mp_free(lifrs);

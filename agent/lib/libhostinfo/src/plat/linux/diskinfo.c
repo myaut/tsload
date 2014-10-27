@@ -23,6 +23,7 @@
 #include <plat/posixdecl.h>
 #include <pathutil.h>
 #include <plat/sysfs.h>
+#include <autostring.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -46,11 +47,16 @@
 /**
  * @return: -1 if device not exists or access mask
  * */
-int hi_linux_make_dev_path(const char* name, char* dev_path) {
+int hi_linux_make_dev_path(const char* name, char** aas_dev_path) {
 	char* p;
+	char* dev_path;
+
 	int mode = R_OK;
 
-	path_join(dev_path, 256, DEV_ROOT_PATH, name, NULL);
+	if(path_join_aas(aas_dev_path, DEV_ROOT_PATH, name, NULL) == NULL)
+		return -1;
+
+	dev_path = *aas_dev_path;
 
 	/* in /sys/block, '/'s are replaced with '!' or '.' */
 	p = dev_path;
@@ -77,8 +83,8 @@ int hi_linux_make_dev_path(const char* name, char* dev_path) {
 hi_dsk_info_t* hi_linux_disk_create(const char* name, const char* dev_path, const char* sys_path) {
 	hi_dsk_info_t* di = hi_dsk_create();
 
-	strncpy(di->d_name, name, HIDSKNAMELEN);
-	strncpy(di->d_path, dev_path, HIDSKPATHLEN);
+	aas_copy(&di->d_hdr.name, name);
+	aas_copy(&di->d_path, dev_path);
 	di->d_size = hi_linux_sysfs_readuint(SYS_BLOCK_PATH, sys_path, "size", 0);
 
 	return di;
@@ -86,27 +92,27 @@ hi_dsk_info_t* hi_linux_disk_create(const char* name, const char* dev_path, cons
 
 void hi_linux_disk_proc_partition(const char* disk_name, int part_id, hi_dsk_info_t* parent) {
 	hi_dsk_info_t* di;
-	char dev_path[256];
-	char sys_path[256];
+	char* dev_path = NULL;
+	char* sys_path = NULL;
 
 	int mode;
 
-	char part_name[32];
-	char sys_part_name[32];
+	char* part_name = NULL;
+	char* sys_part_name = NULL;
 
 	/* Partitions are located in /sys/block/sda/sdaX
 	 * while their dev_path is /dev/sdaX, so
 	 * they have logic that differs from disks */
 
-	snprintf(part_name, 32, "%s%d", disk_name, part_id);
-	snprintf(sys_part_name, 32, "%s/%s", disk_name, part_name);
+	aas_printf(&part_name, "%s%d", disk_name, part_id);
+	aas_printf(&sys_part_name, "%s/%s", disk_name, part_name);
 
-	mode = hi_linux_make_dev_path(part_name, dev_path);
+	mode = hi_linux_make_dev_path(part_name, &dev_path);
 
 	hi_dsk_dprintf("hi_linux_disk_proc_partition: Probing %s (%s)\n", dev_path, part_name);
 
 	if(mode == -1) {
-		return;
+		goto end;
 	}
 
 	di = hi_linux_disk_create(part_name, dev_path, sys_part_name);
@@ -115,19 +121,26 @@ void hi_linux_disk_proc_partition(const char* disk_name, int part_id, hi_dsk_inf
 
 	hi_dsk_add(di);
 	hi_dsk_attach(di, parent);
+
+end:
+	aas_free(&dev_path);
+	aas_free(&sys_path);
+	aas_free(&part_name);
+	aas_free(&sys_part_name);
 }
 
 void hi_linux_disk_proc_disk(const char* name, void* arg) {
 	hi_dsk_info_t* di;
-	char dev_path[256];
+	char* dev_path;
 
 	int mode;
 
-	mode = hi_linux_make_dev_path(name, dev_path);
+	mode = hi_linux_make_dev_path(name, &dev_path);
 
-	hi_dsk_dprintf("hi_linux_disk_proc_partition: Probing %s (%s)\n", dev_path, name);
+	hi_dsk_dprintf("hi_linux_disk_proc_partition: Probing %s (%s), mode: %x\n", dev_path, name, mode);
 
 	if(mode == -1) {
+		aas_free(&dev_path);
 		return;
 	}
 
@@ -137,24 +150,24 @@ void hi_linux_disk_proc_disk(const char* name, void* arg) {
 		/* Device-mapper node. All dm-nodes
 		 * are considered as volumes until slaves are checked */
 		di->d_type = HI_DSKT_VOLUME;
-		strncpy(di->d_bus_type, "DM", HIDSKBUSLEN);
+		aas_set(&di->d_bus_type, "DM");
 
-		hi_linux_sysfs_readstr(SYS_BLOCK_PATH, name, "dm/uuid", di->d_id, HIDSKIDLEN);
+		hi_linux_sysfs_readstr_aas(SYS_BLOCK_PATH, name, "dm/uuid", &di->d_id);
 		hi_linux_sysfs_fixstr(di->d_id);
 	}
 	else if(strncmp(name, "ram", 3) == 0) {
 		di->d_type = HI_DSKT_VOLUME;
-		strncpy(di->d_bus_type, "RAM", HIDSKBUSLEN);
+		aas_set(&di->d_bus_type, "RAM");
 	}
 	else if(strncmp(name, "loop", 4) == 0) {
 		di->d_type = HI_DSKT_VOLUME;
-		strncpy(di->d_bus_type, "LOOP", HIDSKBUSLEN);
+		aas_set(&di->d_bus_type, "LOOP");
 	}
 	else {
 		int part_range, part_id;
 
 		/* TODO: bus type */
-		hi_linux_sysfs_readstr(SYS_BLOCK_PATH, name, "device/model", di->d_model, HIDSKMODELLEN);
+		hi_linux_sysfs_readstr_aas(SYS_BLOCK_PATH, name, "device/model", &di->d_model);
 		hi_linux_sysfs_fixstr(di->d_model);
 
 		di->d_type = HI_DSKT_DISK;
@@ -167,6 +180,8 @@ void hi_linux_disk_proc_disk(const char* name, void* arg) {
 	}
 
 	hi_dsk_add(di);
+
+	aas_free(&dev_path);
 }
 
 void hi_linux_disk_proc_slave(const char* name, void* arg) {

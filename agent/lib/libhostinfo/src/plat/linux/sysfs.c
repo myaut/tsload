@@ -8,6 +8,7 @@
 #include <tsdirent.h>
 #include <plat/posixdecl.h>
 #include <plat/sysfs.h>
+#include <autostring.h>
 
 #include <string.h>
 #include <limits.h>
@@ -35,6 +36,63 @@ int hi_linux_sysfs_readstr(const char* root, const char* name, const char* objec
 	close(fd);
 
 	hi_sysfs_dprintf("hi_linux_sysfs_readstr: %s/%s/%s\n", root, name, object);
+
+	return HI_LINUX_SYSFS_OK;
+}
+
+int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* object,
+						   	   char** aas) {
+	char* path;
+	int fd;
+
+	char* src;
+	ssize_t count = 0;
+	ssize_t chunk_size = HI_LINUX_SYSFS_BLOCK;
+
+	char tmp[HI_LINUX_SYSFS_BLOCK];
+
+	hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: %s/%s/%s\n", root, name, object);
+
+	if(path_join_aas(&path, root, name, object, NULL) == NULL) {
+		hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to do path_join");
+		return HI_LINUX_SYSFS_ERROR;
+	}
+
+	fd = open(path, O_RDONLY);
+	aas_free(&path);
+
+	if(fd == -1) {
+		hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to open file");
+		return HI_LINUX_SYSFS_ERROR;
+	}
+
+	/* Evaluate length that needs to be read */
+	do {
+		chunk_size = read(fd, tmp, HI_LINUX_SYSFS_BLOCK);
+
+		if(chunk_size == -1) {
+			hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to read from file");
+
+			close(fd);
+			return HI_LINUX_SYSFS_ERROR;
+		}
+
+		count += chunk_size;
+	} while(chunk_size != 0);
+
+	if(count < HI_LINUX_SYSFS_BLOCK) {
+		tmp[count] = '\0';
+		aas_copy(aas, tmp);
+	}
+	else {
+		/* Read into newly allocated string and add null terminator to it */
+		lseek(fd, 0, SEEK_SET);
+		*aas = aas_allocate(count);
+		read(fd, aas, count);
+		aas[count] = '\0';
+	}
+
+	close(fd);
 
 	return HI_LINUX_SYSFS_OK;
 }
@@ -141,6 +199,9 @@ int hi_linux_sysfs_readbitmap(const char* root, const char* name, const char* ob
 /**
  * Fix sysfs string: replace \n with spaces */
 void hi_linux_sysfs_fixstr(char* p) {
+	if(p == NULL)
+		return;
+
 	while(*p) {
 		if(*p == '\n')
 			*p = ' ';

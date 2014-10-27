@@ -36,36 +36,26 @@ typedef enum hi_dsk_type {
 	HI_DSKT_VOLUME
 } hi_dsk_type_t;
 
-#define HIDSKNAMELEN	32
-#define HIDSKPATHLEN	256
-#define HIDSKBUSLEN		16
-#define HIDSKPORTLEN	256
-#define HIDSKMODELLEN	64
-#define HIDSKFSLEN		256
-#define HIDSKIDLEN		128
-
 typedef struct hi_dsk_info {
 	hi_object_header_t	d_hdr;
 
 	/* Mandatory fields */
-	char 			d_name[HIDSKNAMELEN];
-	char 			d_path[HIDSKPATHLEN];
-	int 			d_mode;
-	uint64_t 		d_size;
-	hi_dsk_type_t 	d_type;
+	char* d_path;
+	int  d_mode;
+	uint64_t d_size;
+	hi_dsk_type_t d_type;
 
 	/* Optional fields */
-	char d_bus_type[HIDSKBUSLEN];
+	char* d_bus_type;
 
 	/* For iSCSI LUNs - IQN,
 	   For FC LUNs - WWN
 	   For SCSI disks - bus/target/LUN
 	   For Vol managers - internal ID */
-	char d_port[HIDSKPORTLEN];
+	char* d_port;
 
-	char d_id[HIDSKIDLEN];
-	char d_model[HIDSKMODELLEN];
-	char d_fs[HIDSKFSLEN];	/* FS mounted here */
+	char* d_id;
+	char* d_model;
 } hi_dsk_info_t;
 
 #define HI_DSK_FROM_OBJ(object)		((hi_dsk_info_t*) (object))
@@ -81,7 +71,6 @@ hi_dsk_info_t* hi_dsk_create(void);
 /**
  * Add disk descriptor to global list */
 STATIC_INLINE void hi_dsk_add(hi_dsk_info_t* di) {
-	strcpy(di->d_hdr.name, di->d_name);
 	hi_obj_add(HI_SUBSYS_DISK, (hi_object_header_t*) &di->d_hdr);
 }
 

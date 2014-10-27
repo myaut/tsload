@@ -18,6 +18,7 @@
 #include <pathutil.h>
 #include <plat/posixdecl.h>
 #include <readlink.h>
+#include <autostring.h>
 
 #include <netinfo.h>
 #include <plat/sysfs.h>
@@ -44,11 +45,11 @@
 
 #define SYS_NET_PATH		"/sys/class/net"
 
-static long hi_linux_get_vlanid(const char* name, char* dev_name, size_t len) {
+static long hi_linux_get_vlanid(const char* name, char** dev_name_ptr) {
 	char* p;
 
-	strncpy(dev_name, name, HIOBJNAMELEN);
-	p = strchr(dev_name, '.');
+	aas_copy(dev_name_ptr, name);
+	p = strchr(*dev_name_ptr, '.');
 
 	if(p == NULL) {
 		return 0;
@@ -141,7 +142,7 @@ static void hi_linux_net_proc(const char* name, void* arg) {
 	struct stat s;
 	unsigned type = 0;
 
-	char name_copy[HIOBJNAMELEN];
+	char* vlan_name;
 	long vlan_id;
 
 	hi_net_object_t* netobj = NULL;
@@ -192,10 +193,12 @@ static void hi_linux_net_proc(const char* name, void* arg) {
 	}
 
 	/* May be it is VLAN? Linux 8021q do not support sysfs (sic!), so let's play guessing game! */
-	vlan_id = hi_linux_get_vlanid(name, name_copy, HIOBJNAMELEN);
+	vlan_id = hi_linux_get_vlanid(name, &vlan_name);
 	if(vlan_id != 0) {
-		netobj = hi_net_create(name, HI_NET_VLAN);
+		netobj = hi_net_create(vlan_name, HI_NET_VLAN);
 		netobj->vlan_id = vlan_id;
+
+		aas_free(&vlan_name);
 
 		hi_net_add(netobj);
 
@@ -203,10 +206,10 @@ static void hi_linux_net_proc(const char* name, void* arg) {
 
 		return;
 	}
+	aas_free(&vlan_name);
 
 	/* Should not be reached */
 	hi_net_dprintf("hi_linux_net_proc: Unknown network object!\n");
-
 }
 
 static void hi_linux_net_addr_probe(void) {
@@ -218,8 +221,8 @@ static void hi_linux_net_addr_probe(void) {
 	hi_net_object_t* addr = NULL;
 	hi_net_address_flags_t* flags = NULL;
 
-	char name[32];
-	char ifa_name[32];
+	char* name;
+	char* ifa_name;
 	char* addr_name;
 
 	if (getifaddrs(&ifaddr) == -1) {
@@ -237,22 +240,22 @@ static void hi_linux_net_addr_probe(void) {
 			continue;
 
 		/* Let's find device this IP address is attached to */
-		strncpy(ifa_name, ifa->ifa_name, 32);
-		addr_name = strchr(ifa_name, ':');
+		aas_init(&name);
+		aas_init(&addr_name);
+		aas_init(&ifa_name);
+
+		aas_copy(&ifa_name, ifa->ifa_name);
+		aas_copy(&addr_name, strchr(ifa_name, ':'));
 
 		if(addr_name == NULL) {
 			addr_name = "primary";
 		}
-		else {
-			*addr_name = '\0';
-			++addr_name;
-		}
 
 		/* To ensure that primary IP address won't collide with
 		 * device name, use 'primary' suffix */
-		snprintf(name, 32, "%s:%s:%s",
-				 (family == AF_INET)? "ip" : "ipv6",
-				 ifa_name, addr_name);
+		aas_printf(&name, "%s:%s:%s",
+				   (family == AF_INET)? "ip" : "ipv6",
+				   ifa_name, addr_name);
 
 		parent = hi_net_find(ifa_name);
 
@@ -299,6 +302,10 @@ static void hi_linux_net_addr_probe(void) {
 
 		hi_net_add(addr);
 		hi_net_attach(addr, parent);
+
+		aas_free(&name);
+		aas_free(&ifa_name);
+		aas_free(&addr_name);
 	}
 
 	freeifaddrs(ifaddr);
@@ -340,7 +347,7 @@ static void hi_linux_net_attach(const char* name, void* arg) {
 	char net_path[256];
 	char tmp_path[256];
 
-	char vlan_dev_name[HIOBJNAMELEN];
+	char* vlan_dev_name;
 	long vlan_id;
 
 	path_join(net_path, 256, SYS_NET_PATH, name, NULL);
@@ -351,10 +358,11 @@ static void hi_linux_net_attach(const char* name, void* arg) {
 	path_join(tmp_path, 256, net_path, "master", NULL);
 	hi_linux_net_attach_link(tmp_path, name);
 
-	vlan_id = hi_linux_get_vlanid(name, vlan_dev_name, HIOBJNAMELEN);
+	vlan_id = hi_linux_get_vlanid(name, &vlan_dev_name);
 	if(vlan_id != 0) {
 		hi_linux_net_attach_impl(name, vlan_dev_name);
 	}
+	aas_free(&vlan_dev_name);
 
 	return;
 }

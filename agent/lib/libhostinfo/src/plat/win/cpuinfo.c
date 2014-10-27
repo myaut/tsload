@@ -64,7 +64,6 @@ uint64_t cpumask(hi_cpu_object_t* parent) {
 	return mask;
 }
 
-
 void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	hi_cpu_cache_type_t cache_type;
 	hi_cpu_object_t* cache;
@@ -73,10 +72,12 @@ void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	hi_cpu_object_t* parent;
 	hi_cpu_object_t* strand = NULL;
 
+	uint64_t core_mask;
+
 	int strandid;
 	int scount = sizeof(ULONG_PTR) * 8 - 1;
 
-	hi_cpu_dprintf("hi_win_proc_lproc: found cache L%d:%d strand mask: %llx\n",
+	hi_cpu_dprintf("hi_win_proc_cache: found cache L%d:%d strand mask: %llx\n",
 				   (int) lproc->Cache.Level, (int)  lproc->Cache.Type,
 				   (unsigned long long) lproc->ProcessorMask);
 
@@ -103,7 +104,7 @@ void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 		}
 	}
 
-	hi_cpu_dprintf("hi_win_proc_lproc: => strand %p\n", strand);
+	hi_cpu_dprintf("hi_win_proc_cache: => strand %p\n", strand);
 
 	if(strand == NULL)
 		return;
@@ -118,7 +119,8 @@ void hi_win_proc_cache(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION lproc) {
 	core = HI_CPU_PARENT(strand);
 	chip = HI_CPU_PARENT(core);
 
-	parent = (cpumask(core) == lproc->ProcessorMask)? core : chip;
+	core_mask = cpumask(core);
+	parent = ((lproc->ProcessorMask & core_mask) == lproc->ProcessorMask)? core : chip;
 
 	hi_cpu_attach(cache, parent);
 
@@ -264,7 +266,9 @@ void hi_win_proc_lproc(struct hi_win_lproc_state* state, PSYSTEM_LOGICAL_PROCESS
 		/* Insert new object between parent and child */
 		if(parent) {
 			hi_cpu_detach(child, parent);
-			hi_cpu_attach(object, parent);
+
+			if(HI_CPU_PARENT(object) != parent)
+				hi_cpu_attach(object, parent);
 		}
 		hi_cpu_attach(child, object);
 

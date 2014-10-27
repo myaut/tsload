@@ -25,6 +25,7 @@
 #include <netinfo.h>
 #include <hitrace.h>
 #include <tuneit.h>
+#include <autostring.h>
 
 #include <string.h>
 #include <assert.h>
@@ -144,7 +145,9 @@ void hi_obj_child_init(hi_object_child_t* child, hi_object_header_t* object) {
 void hi_obj_header_init(hi_obj_subsys_id_t sid, hi_object_header_t* hdr, const char* name) {
 	hdr->sid = sid;
 
-	strncpy(hdr->name, name, HIOBJNAMELEN);
+	aas_init(&hdr->name);
+	if(name != NULL)
+		aas_copy(&hdr->name, name);
 
 	list_head_init(&hdr->children, "hiobj_children");
 
@@ -244,6 +247,8 @@ int hi_obj_destroy(hi_object_t* object) {
 		if(allocated_child)
 			mp_free(child);
 	}
+
+	aas_free(&object->name);
 
 	subsys = get_subsys(object->sid);
 	subsys->ops->op_dtor(object);

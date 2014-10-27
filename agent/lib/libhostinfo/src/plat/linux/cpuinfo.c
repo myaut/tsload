@@ -23,6 +23,7 @@
 #include <plat/sysfs.h>
 #include <ilog2.h>
 #include <mempool.h>
+#include <autostring.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -205,7 +206,7 @@ void hi_linux_get_meminfo(hi_cpu_object_t* node, const char* name) {
 	mp_free(meminfo);
 }
 
-static boolean_t cpuinfo_read_var(const char* line, const char* param, char* value, size_t vallen) {
+static boolean_t cpuinfo_read_var(char* line, const char* param, char** value) {
 	size_t paramlen = strlen(param);
 	size_t linelen = strlen(line);
 	const char* p = line + paramlen;
@@ -215,8 +216,9 @@ static boolean_t cpuinfo_read_var(const char* line, const char* param, char* val
 	int mode = 0;
 
 	/* Cut out last '\n' */
-	end = line + linelen;
-	*(--end) = '\0';
+	end = line + linelen - 1;
+	if(*end == '\n')
+		*end = '\0';
 
 	if(strncmp(line, param, paramlen) == 0) {
 		/* Ignore parameter name with whitespaces. Acts as FSM.  */
@@ -230,7 +232,7 @@ static boolean_t cpuinfo_read_var(const char* line, const char* param, char* val
 			++p;
 		}
 
-		strncpy(value, p + 1, vallen);
+		aas_copy(value, p + 1);
 
 		return B_TRUE;
 	}
@@ -245,7 +247,7 @@ hi_cpu_object_t* hi_linux_proc_chip(hi_cpu_object_t* node, int strandid, int chi
 	char cpu_name[32];
 
 	char line[256];
-	char value[64];
+	char* value;
 
 	long ci_chipid;
 
@@ -266,22 +268,28 @@ hi_cpu_object_t* hi_linux_proc_chip(hi_cpu_object_t* node, int strandid, int chi
 	/* Read modelname from /proc/cpuinfo */
 	if(cpuinfo) {
 		while(fgets(line, 256, cpuinfo) != NULL) {
-			if(cpuinfo_read_var(line, "processor", value, 64)) {
+			aas_init(&value);
+
+			if(cpuinfo_read_var(line, "processor", &value)) {
 				ci_chipid = strtol(value, NULL, 10);
+				aas_free(&value);
+
 				continue;
 			}
 
 			if(ci_chipid == chipid) {
-				if(!freq_read && cpuinfo_read_var(line, "cpu MHz", value, 64)) {
+				if(!freq_read && cpuinfo_read_var(line, "cpu MHz", &value)) {
 					/* Frequency in MHz */
 					cpufreq = strtoul(value, NULL, 10);
 					freq_read = B_TRUE;
 				}
-				else if(cpuinfo_read_var(line, "model name", value, 64)) {
+				else if(cpuinfo_read_var(line, "model name", &value)) {
 					hi_cpu_set_chip_name(chip, value);
 					model_read = B_TRUE;
 				}
 			}
+
+			aas_free(&value);
 
 			if(freq_read && model_read)
 				break;

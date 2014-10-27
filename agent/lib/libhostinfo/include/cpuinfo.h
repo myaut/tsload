@@ -32,7 +32,10 @@
 #define 	HI_CPU_ANY			-1
 #define 	HI_CPU_UNUSED		-2
 
-#define HI_CPU_CACHEID(level, type)		(level << 2 | type)
+#define HI_CPU_CACHEID(level, type)			\
+	(level == HI_CPU_CACHE_TLB_LEVEL)		\
+		? type								\
+		: (level << 2 | type)
 
 #define HI_CPU_CACHE_TLB_LEVEL		-1
 
@@ -57,15 +60,13 @@ typedef struct {
 	uint32_t mem_free;
 } hi_cpu_stat_t;
 
-#define HICPUNAMELEN	64
-
 typedef struct {
 	uint64_t cm_mem_total;
 	uint64_t cm_mem_free;
 } hi_cpu_node_t;
 
 typedef struct {
-	char cp_name[HICPUNAMELEN];
+	char* cp_name;
 	uint64_t cp_freq;
 } hi_cpu_chip_t;
 

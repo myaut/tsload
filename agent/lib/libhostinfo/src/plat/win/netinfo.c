@@ -16,6 +16,7 @@
 */
 
 #include <mempool.h>
+#include <autostring.h>
 
 #include <netinfo.h>
 #include <hitrace.h>
@@ -52,8 +53,9 @@ static void create_ip_netmask(uint8_t* netmask, int length) {
 
 void hi_win_net_create_address(hi_net_object_t* netobj, PIP_ADAPTER_ADDRESSES address,
 				PIP_ADAPTER_UNICAST_ADDRESS unicast_address, int addr_id) {
-	char name[HIOBJNAMELEN];
-	char addr_name[HIOBJNAMELEN];
+	size_t name_len = 2 * wcslen(address->FriendlyName);
+	char* name = mp_malloc(name_len);
+	char* addr_name = NULL;
 
 	int family;
 
@@ -64,8 +66,7 @@ void hi_win_net_create_address(hi_net_object_t* netobj, PIP_ADAPTER_ADDRESSES ad
 
 	/* Pick name */
 	WideCharToMultiByte(CP_UTF8, 0, address->FriendlyName, -1,
-						name, HIOBJNAMELEN, NULL, NULL);
-	snprintf(addr_name, HIOBJNAMELEN, "%s:%d", name, addr_id);
+						name, name_len, NULL, NULL);
 
 	hi_net_dprintf("hi_win_net_create_address: adapter name: %s, address name: %s\n", netobj->hdr.name, addr_name);
 
@@ -75,6 +76,7 @@ void hi_win_net_create_address(hi_net_object_t* netobj, PIP_ADAPTER_ADDRESSES ad
 		uint8_t netmask[4] = { 0, 0, 0, 0 };
 		create_ip_netmask(netmask, unicast_address->OnLinkPrefixLength);
 
+		aas_printf(&addr_name, "%s:%d", name, addr_id);
 		addrobj = hi_net_create(addr_name, HI_NET_IPv4_ADDRESS);
 
 		InetNtop(family, &(((struct sockaddr_in*) sock_address)->sin_addr),
@@ -88,6 +90,7 @@ void hi_win_net_create_address(hi_net_object_t* netobj, PIP_ADAPTER_ADDRESSES ad
 		uint16_t netmask[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 		create_ip_netmask(netmask, unicast_address->OnLinkPrefixLength);
 
+		aas_printf(&addr_name, "%s:%d", name, addr_id);
 		addrobj = hi_net_create(addr_name, HI_NET_IPv6_ADDRESS);
 
 		InetNtop(family, &(((struct sockaddr_in6*) sock_address)->sin6_addr),
@@ -98,6 +101,7 @@ void hi_win_net_create_address(hi_net_object_t* netobj, PIP_ADAPTER_ADDRESSES ad
 		flags = &addrobj->ipv6_address.flags;
 	}
 	else {
+		mp_free(name);
 		return;
 	}
 
@@ -112,10 +116,14 @@ void hi_win_net_create_address(hi_net_object_t* netobj, PIP_ADAPTER_ADDRESSES ad
 
 	hi_net_add(addrobj);
 	hi_net_attach(addrobj, netobj);
+
+	mp_free(name);
+	aas_free(&addr_name);
 }
 
 void hi_win_net_create_adapter(PIP_ADAPTER_ADDRESSES address) {
-	char name[HIOBJNAMELEN];
+	size_t name_len = 2 * wcslen(address->Description);
+	char* name = mp_malloc(name_len);
 
 	int i;
 	size_t len = 0;
@@ -127,7 +135,7 @@ void hi_win_net_create_adapter(PIP_ADAPTER_ADDRESSES address) {
 	PIP_ADAPTER_UNICAST_ADDRESS unicast_address;
 
 	WideCharToMultiByte(CP_UTF8, 0, address->Description, -1,
-						name, HIOBJNAMELEN, NULL, NULL);
+						name, name_len, NULL, NULL);
 
 	hi_net_dprintf("hi_win_net_probe_adresses: adapter name: %s\n", name);
 

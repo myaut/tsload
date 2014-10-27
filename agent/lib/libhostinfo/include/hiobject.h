@@ -30,7 +30,6 @@ struct hi_object_header;
 
 /* Windows have long network interface names,
  * so provide large space for storing them */
-#define HIOBJNAMELEN			128
 
 typedef enum {
 	HI_SUBSYS_CPU,
@@ -94,7 +93,7 @@ typedef struct hi_object_header {
 
 	unsigned short				ref_count;
 
-	char						name[HIOBJNAMELEN];
+	char*						name;
 } hi_object_header_t;
 
 typedef hi_object_header_t	hi_object_t;

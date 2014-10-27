@@ -21,6 +21,7 @@
 #include <defs.h>
 #include <mempool.h>
 #include <diskinfo.h>
+#include <autostring.h>
 
 #include <string.h>
 
@@ -35,18 +36,16 @@ mp_cache_t hi_dsk_cache;
 hi_dsk_info_t* hi_dsk_create(void) {
 	hi_dsk_info_t* di = mp_cache_alloc(&hi_dsk_cache);
 
-	di->d_path[0] = '\0';
+	aas_init(&di->d_path);
 	di->d_size = 0;
 	di->d_mode = 0;
 	di->d_type = HI_DSKT_UNKNOWN;
 
-	di->d_port[0] = '\0';
-	di->d_model[0] = '\0';
-	di->d_fs[0] = '\0';
+	aas_init(&di->d_port);
+	aas_init(&di->d_model);
+	aas_init(&di->d_bus_type);
 
-	di->d_bus_type[0] = '\0';
-
-	hi_obj_header_init(HI_SUBSYS_DISK, &di->d_hdr, "disk");
+	hi_obj_header_init(HI_SUBSYS_DISK, &di->d_hdr, NULL);
 
 	return di;
 }
@@ -56,6 +55,12 @@ hi_dsk_info_t* hi_dsk_create(void) {
  * */
 void hi_dsk_dtor(hi_object_header_t* object) {
 	hi_dsk_info_t* di = (hi_object_t*) object;
+
+	aas_free(&di->d_path);
+	aas_free(&di->d_port);
+	aas_free(&di->d_model);
+	aas_free(&di->d_bus_type);
+
 	mp_cache_free(&hi_dsk_cache, di);
 }
 
@@ -97,8 +102,6 @@ tsobj_node_t* tsobj_hi_dsk_format(struct hi_object_header* obj) {
 	tsobj_add_string(dsk, TSOBJ_STR("bus_type"), tsobj_str_create(di->d_bus_type));
 	tsobj_add_string(dsk, TSOBJ_STR("model"), tsobj_str_create(di->d_model));
 	tsobj_add_string(dsk, TSOBJ_STR("port"), tsobj_str_create(di->d_port));
-
-	tsobj_add_string(dsk, TSOBJ_STR("fs"), tsobj_str_create(di->d_fs));
 
 	return dsk;
 }
