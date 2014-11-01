@@ -39,9 +39,6 @@
 
 #define EXPERIMENT_ROOT		-1
 
-#define EXPNAMELEN			128
-#define EXPERRLEN			256
-
 #define EXP_LOAD_OK				0
 #define EXP_LOAD_ERR_OPEN_FAIL  -1
 #define EXP_LOAD_ERR_BAD_JSON	-2
@@ -109,7 +106,7 @@ struct steps_generator;
 
 typedef struct exp_threadpool {
 	/* Config parameters */
-	char tp_name[TPNAMELEN];
+	AUTOSTRING char* tp_name;
 
 	unsigned tp_num_threads;
 	ts_time_t tp_quantum;
@@ -125,10 +122,10 @@ typedef struct exp_threadpool {
 
 typedef struct exp_workload {
 	/* Config parameters */
-	char wl_name[WLNAMELEN];
+	AUTOSTRING char* wl_name;
 
-	char wl_type[WLTNAMELEN];
-	char wl_tp_name[TPNAMELEN];
+	AUTOSTRING char* wl_type;
+	AUTOSTRING char* wl_tp_name;
 
 	ts_time_t wl_deadline;
 
@@ -136,7 +133,7 @@ typedef struct exp_workload {
 	json_node_t* wl_rqsched;
 	json_node_t* wl_params;
 
-	char wl_chain_name[WLNAMELEN];
+	AUTOSTRING char* wl_chain_name;
 	json_node_t* wl_steps_cfg;
 
 	/* Current parameters */
@@ -184,7 +181,7 @@ typedef struct exp_request_entry {
  * @member exp_workloads  dynamic hashmap of workloads. Created by experiment_process_config()
  */
 typedef struct {
-	char exp_name[EXPNAMELEN];
+	AUTOSTRING char* exp_name;
 
 	char exp_root[PATHMAXLEN];
 	char exp_directory[PATHPARTMAXLEN];
@@ -207,7 +204,7 @@ typedef struct {
 	int exp_status;
 
 	int exp_error;
-	char exp_error_msg[EXPERRLEN];
+	AUTOSTRING char* exp_error_msg;
 
 	boolean_t exp_trace_mode;
 } experiment_t;

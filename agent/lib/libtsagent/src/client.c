@@ -61,7 +61,7 @@ thread_key_t	proc_msg_key;
 /*
  * Hash table helpers
  * */
-DECLARE_HASH_MAP(hdl_hashmap, clnt_msg_handler_t, CLNTMHTABLESIZE, mh_msg_id, mh_next,
+DECLARE_HASH_MAP(hdl_hashmap, B_FALSE, clnt_msg_handler_t, CLNTMHTABLESIZE, mh_msg_id, mh_next,
 	{
 		unsigned* msg_id = (unsigned*) key;
 		return *msg_id & CLNTMHTABLEMASK;

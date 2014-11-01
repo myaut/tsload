@@ -25,13 +25,16 @@
 #include <tsdirent.h>
 #include <pathutil.h>
 #include <hashmap.h>
-#include <tsfile.h>
 #include <plat/posixdecl.h>
-#include <wlparam.h>
-#include <wltype.h>
 #include <tsload.h>
 #include <tstime.h>
 #include <filelock.h>
+#include <autostring.h>
+
+#include <wlparam.h>
+#include <wltype.h>
+
+#include <tsfile.h>
 
 #include <json.h>
 
@@ -118,7 +121,7 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 	strcpy(exp->exp_root, root_path);
 	strncpy(exp->exp_directory, dir, PATHPARTMAXLEN);
 
-	exp->exp_name[0] = '\0';
+	aas_init(&exp->exp_name);
 	exp->exp_basedir[0] = '\0';
 
 	exp->exp_runid = runid;
@@ -137,7 +140,7 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 	exp->exp_log = NULL;
 
 	exp->exp_error = 0;
-	exp->exp_error_msg[0] = '\0';
+	aas_init(&exp->exp_error_msg);
 
 	exp->exp_status = EXPERIMENT_NOT_CONFIGURED;
 
@@ -147,7 +150,7 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 static exp_threadpool_t* exp_tp_create(const char* name) {
 	exp_threadpool_t* etp = mp_malloc(sizeof(exp_threadpool_t));
 
-	strncpy(etp->tp_name, name, TPNAMELEN);
+	aas_copy(aas_init(&etp->tp_name), name);
 
 	etp->tp_discard = B_FALSE;
 	etp->tp_quantum = 0;
@@ -162,6 +165,8 @@ static exp_threadpool_t* exp_tp_create(const char* name) {
 }
 
 static void exp_tp_destroy(exp_threadpool_t* etp) {
+	aas_free(&etp->tp_name);
+
 	mp_free(etp);
 }
 
@@ -174,10 +179,11 @@ int exp_tp_destroy_walker(hm_item_t* obj, void* ctx) {
 static exp_workload_t* exp_wl_create(const char* name) {
 	 exp_workload_t* ewl = mp_malloc(sizeof(exp_workload_t));
 
-	 strncpy(ewl->wl_name, name, WLNAMELEN);
+	 aas_copy(aas_init(&ewl->wl_name), name);
 
-	 ewl->wl_type[0] = '\0';
-	 ewl->wl_tp_name[0] = '\0';
+	 aas_init(&ewl->wl_type);
+	 aas_init(&ewl->wl_tp_name);
+	 aas_init(&ewl->wl_chain_name);
 
 	 ewl->wl_deadline = TS_TIME_MAX;
 
@@ -187,8 +193,6 @@ static exp_workload_t* exp_wl_create(const char* name) {
 
 	 ewl->wl_chain_next = NULL;
 	 ewl->wl_next = NULL;
-
-	 ewl->wl_chain_name[0] = '\0';
 
 	 ewl->wl_steps = NULL;
 	 ewl->wl_steps_cfg = NULL;
@@ -213,6 +217,10 @@ static void exp_wl_destroy(exp_workload_t* ewl) {
 	if(ewl->wl_file_schema != NULL) {
 		mp_free(ewl->wl_file_schema);
 	}
+	aas_free(&ewl->wl_name);
+	aas_free(&ewl->wl_type);
+	aas_free(&ewl->wl_tp_name);
+	aas_free(&ewl->wl_chain_name);
 
 	mp_free(ewl);
 }
@@ -249,7 +257,7 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 		return NULL;
 	}
 
-	/* Fetch status & name if possibles */
+	/* Fetch status & name if possible */
 	status = experiment_cfg_find(exp->exp_config, "status", NULL, JSON_NUMBER_INTEGER);
 	if(status != NULL) {
 		exp->exp_status = json_as_integer(status);
@@ -257,7 +265,7 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 
 	name = experiment_cfg_find(exp->exp_config, "name", NULL, JSON_STRING);
 	if(name != NULL) {
-		strncpy(exp->exp_name, json_as_string(name), EXPNAMELEN);
+		aas_copy(&exp->exp_name, json_as_string(name));
 	}
 
 	return exp;
@@ -397,7 +405,8 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	experiment_init(exp, root->exp_root, runid, dir);
 
 	strcpy(exp->exp_basedir, base->exp_directory);
-	strcpy(exp->exp_name, name);
+	if(name)
+		aas_copy(&exp->exp_name, name);
 
 	exp->exp_config = json_copy_node(base->exp_config);
 
@@ -431,6 +440,9 @@ void experiment_destroy(experiment_t* exp) {
 
 	cv_destroy(&exp->exp_cv);
 	mutex_destroy(&exp->exp_mutex);
+
+	aas_free(&exp->exp_name);
+	aas_free(&exp->exp_error_msg);
 
 	mp_free(exp);
 }
@@ -574,7 +586,7 @@ experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, voi
 		switch(ret) {
 		case EXP_WALK_RETURN:
 			exp = experiment_load_dir(root->exp_root, ctx.runid, de->d_name);
-			strncpy(exp->exp_name, name, EXPNAMELEN);
+			aas_copy(&exp->exp_name, name);
 			/* FALLTHROUGH */
 		case EXP_WALK_BREAK:
 			plat_closedir(dir);
@@ -841,10 +853,10 @@ static int exp_wl_proc(json_node_t* node, exp_workload_t* ewl) {
 	int tp_error = 0;
 	json_node_t* chain = NULL;
 
-	if(json_get_string_copy(node, "wltype", ewl->wl_type, WLTNAMELEN) != JSON_OK)
+	if(json_get_string_aas(node, "wltype", &ewl->wl_type) != JSON_OK)
 		return -1;
 
-	tp_error = json_get_string_copy(node, "threadpool", ewl->wl_tp_name, TPNAMELEN);
+	tp_error = json_get_string_aas(node, "threadpool", &ewl->wl_tp_name);
 	if(tp_error == JSON_INVALID_TYPE)
 		return -2;
 
@@ -858,7 +870,7 @@ static int exp_wl_proc(json_node_t* node, exp_workload_t* ewl) {
 		return -5;
 
 	if(chain != NULL) {
-		if(json_get_string_copy(chain, "workload", ewl->wl_chain_name, WLTNAMELEN) != JSON_OK)
+		if(json_get_string_aas(chain, "workload", &ewl->wl_chain_name) != JSON_OK)
 				return -1;
 		ewl->wl_chain = chain;
 		ewl->wl_is_chained = B_TRUE;
@@ -908,15 +920,15 @@ int experiment_process_config(experiment_t* exp) {
 		error = exp_wl_proc(workload, ewl);
 
 		if(error != 0) {
-			snprintf(exp->exp_error_msg, EXPERRLEN, "workload '%s': %s",
-					json_name(workload), json_error_message());
+			aas_printf(&exp->exp_error_msg, "workload '%s': %s",
+					   json_name(workload), json_error_message());
 
 			return EXP_CONFIG_BAD_JSON;
 		}
 
 		if(hash_map_insert(exp->exp_workloads, ewl) != HASH_MAP_OK) {
-			snprintf(exp->exp_error_msg, EXPERRLEN, "workload '%s' already exists",
-					json_name(workload));
+			aas_printf(&exp->exp_error_msg, "workload '%s' already exists",
+					  json_name(workload));
 
 			exp_wl_destroy(ewl);
 			return EXP_CONFIG_DUPLICATE;
@@ -928,15 +940,15 @@ int experiment_process_config(experiment_t* exp) {
 		error = exp_tp_proc(threadpool, etp);
 
 		if(error != 0) {
-			snprintf(exp->exp_error_msg, EXPERRLEN, "threadpool '%s': %s",
-					json_name(threadpool), json_error_message());
+			aas_printf(&exp->exp_error_msg, "threadpool '%s': %s",
+					  json_name(threadpool), json_error_message());
 
 			return EXP_CONFIG_BAD_JSON;
 		}
 
 		if(hash_map_insert(exp->exp_threadpools, etp) != HASH_MAP_OK) {
-			snprintf(exp->exp_error_msg, EXPERRLEN, "threadpool '%s' already exists",
-					 json_name(threadpool));
+			aas_printf(&exp->exp_error_msg, "threadpool '%s' already exists",
+					   json_name(threadpool));
 
 			exp_tp_destroy(etp);
 			return EXP_CONFIG_DUPLICATE;
@@ -947,6 +959,9 @@ int experiment_process_config(experiment_t* exp) {
 		exp_workload_t* ewl = hash_map_find(exp->exp_workloads, json_name(step));
 
 		if(ewl == NULL) {
+			aas_printf(&exp->exp_error_msg, "could not find workload for steps '%s'",
+					   json_name(step));
+
 			return EXP_CONFIG_NOT_FOUND;
 		}
 
@@ -956,8 +971,8 @@ int experiment_process_config(experiment_t* exp) {
 	return EXP_CONFIG_OK;
 
 bad_json:
-	snprintf(exp->exp_error_msg, EXPERRLEN, "missing config node: %s",
-			 json_error_message());
+	aas_printf(&exp->exp_error_msg, "missing config node: %s",
+			   json_error_message());
 
 	return EXP_CONFIG_BAD_JSON;
 }
@@ -995,8 +1010,11 @@ tsfile_schema_t* exp_wl_generate_schema(experiment_t* exp, exp_workload_t* ewl, 
 
 	wlt = tsload_walk_workload_types(TSLOAD_WALK_FIND, ewl->wl_type, NULL);
 
-	if(wlt == NULL)
+	if(wlt == NULL) {
+		logmsg(LOG_WARN, "Error generating schema: couldn't find workload type '%s'", ewl->wl_type);
+
 		return NULL;
+	}
 
 	/* Count number of per-request parameters */
 	rq_param_count = 0;
@@ -1014,8 +1032,11 @@ tsfile_schema_t* exp_wl_generate_schema(experiment_t* exp, exp_workload_t* ewl, 
 
 	/* Clone per-request schema with additional fields */
 	schema = tsfile_schema_clone(rq_param_count, &request_schema);
-	if(schema == NULL)
+	if(schema == NULL) {
+		logmsg(LOG_WARN, "Error generating schema: failed to clone it");
+
 		return NULL;
+	}
 
 	/* Now fill in information about per-request params fields
 	 * Update schema so it will know about per-request params:

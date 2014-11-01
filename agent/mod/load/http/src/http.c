@@ -177,7 +177,7 @@ MODEXPORT int http_run_request(request_t* rq) {
 }
 
 wl_type_t http_wlt = {
-	"http",							/* wlt_name */
+	AAS_CONST_STR("http"),			/* wlt_name */
 
 	WLC_NET_CLIENT,					/* wlt_class */
 

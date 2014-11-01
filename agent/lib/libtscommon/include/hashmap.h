@@ -39,8 +39,6 @@ typedef void hm_item_t;
 typedef void hm_key_t;
 #endif
 
-#define HMNAMELEN			32
-
 #define HASH_MAP_STATIC		1
 #define HASH_MAP_DYNAMIC	2
 
@@ -48,6 +46,7 @@ typedef struct {
 	size_t			hm_size;
 	hm_item_t** 	hm_heads;
 
+	boolean_t		hm_indirect;
 	int 			hm_type;
 
 	thread_mutex_t hm_mutex;
@@ -55,7 +54,7 @@ typedef struct {
 	ptrdiff_t hm_off_key;
 	ptrdiff_t hm_off_next;
 
-	char 	hm_name[HMNAMELEN];
+	char* hm_name;
 
 	unsigned (*hm_hash_key)(const hm_key_t* key);
 	boolean_t (*hm_compare)(const hm_key_t* key1, const hm_key_t* key2);
@@ -86,7 +85,7 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
  * @param hm_hash_body function body {} that hashes key and returns hash (params: const void* key)
  * @param hm_compare_body function body {} that compares to keys (params: const void* key1, const void* key2)
  */
-#define DECLARE_HASH_MAP(name, type, size, key_field, next_field, hm_hash_body, hm_compare_body) \
+#define DECLARE_HASH_MAP(name, is_indirect, type, size, key_field, next_field, hm_hash_body, hm_compare_body) \
 	static boolean_t								\
 	hm_compare_##name(const hm_key_t* key1, 		\
 					  const hm_key_t* key2) 		\
@@ -100,6 +99,7 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 	hashmap_t name = {								\
 		SM_INIT(.hm_size, size),							\
 		SM_INIT(.hm_heads, (void**) hm_heads_##name),		\
+		SM_INIT(.hm_indirect, is_indirect),					\
 		SM_INIT(.hm_type, HASH_MAP_STATIC),					\
 		SM_INIT(.hm_mutex, THREAD_MUTEX_INITIALIZER),		\
 		SM_INIT(.hm_off_key, offsetof(type, key_field)),	\
@@ -110,13 +110,15 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 	};
 
 /**
- * Same as DECLARE_HASH_MAP, but assumes that key field is string
+ * Same as DECLARE_HASH_MAP, but assumes that key field is string declared as char* (AAS)
  */
 #define DECLARE_HASH_MAP_STRKEY(name, type, size, key_field, next_field, mask)	\
-	DECLARE_HASH_MAP(name, type, size, key_field, next_field, 					\
+	DECLARE_HASH_MAP(name, B_TRUE, type, size, key_field, next_field, 			\
 		{ return hm_string_hash(key, mask); },									\
 		{ return strcmp((char*) key1, (char*) key2) == 0; }						\
 	)
+
+
 
 /**
  * hm_* functions return codes

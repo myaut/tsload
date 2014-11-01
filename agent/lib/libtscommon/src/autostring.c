@@ -52,20 +52,22 @@ void aas_set_impl(char** aas, const char* str) {
  *
  * @return number of printed characters or AAS error
  */
-size_t aas_printf(char** aas, const char* format, ...) {
+size_t aas_vprintf(char** aas, const char* format, va_list va) {
 	/* Implementation taken from
 	 * http://stackoverflow.com/questions/4899221/substitute-or-workaround-for-asprintf-on-aix */
-	va_list va;
+	va_list va1;
+	va_list va2;
 	size_t count;
+
+	va_copy(va1, va);
+	va_copy(va2, va);
 
 	if(format == NULL)
 		return AAS_INVALID_ARGUMENT;
 	if(*aas != NULL)
 		return AAS_BUF_NOT_EMPTY;
 
-	va_start(va, format);
-	count = vsnprintf(NULL, 0, format, va);
-	va_end(va);
+	count = vsnprintf(NULL, 0, format, va1);
 
 	if (count >= 0)
 	{
@@ -73,9 +75,7 @@ size_t aas_printf(char** aas, const char* format, ...) {
 		if (buffer == NULL)
 			return AAS_ALLOCATION_ERROR;
 
-		va_start(va, format);
-		count = vsnprintf(buffer, count + 1, format, va);
-		va_end(va);
+		count = vsnprintf(buffer, count + 1, format, va2);
 
 		if (count < 0)
 		{
@@ -144,16 +144,45 @@ size_t aas_merge(char** aas, const char* str, ...) {
 }
 
 /**
+ * Copy up to count characters
+ *
+ * @param aas pointer to auto-allocated string
+ * @param str source string
+ *
+ * @return number of copied characters or AAS error
+ */
+size_t aas_copy_n(char** aas, const char* str, size_t count) {
+	size_t length;
+
+	char* buffer;
+
+	if(str == NULL)
+		return AAS_INVALID_ARGUMENT;
+	length = strlen(str);
+
+	count = min(count, length);
+
+	buffer = aas_allocate(count);
+	if (buffer == NULL)
+		return AAS_ALLOCATION_ERROR;
+
+	strncpy(buffer, str, count + 1);
+
+	*aas = buffer;
+
+	return count;
+}
+
+/**
  * Copy string to auto-allocated string
  *
  * @param aas pointer to auto-allocated string
  * @param str source string
  *
- * @return number of printed characters or AAS error
+ * @return number of copied characters or AAS error
  */
 size_t aas_copy(char** aas, const char* str) {
 	size_t count;
-
 	char* buffer;
 
 	if(str == NULL)

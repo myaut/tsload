@@ -33,7 +33,6 @@
 
 #include <stddef.h>
 
-#define TPNAMELEN		64
 #define TPMAXTHREADS 	64
 
 #define TPHASHSIZE		4
@@ -108,7 +107,7 @@ typedef struct tp_worker {
  */
 typedef struct thread_pool {
 	unsigned tp_num_threads;
-	char tp_name[TPNAMELEN];
+	AUTOSTRING char* tp_name;
 
 	boolean_t tp_is_dead;
 	boolean_t tp_started;

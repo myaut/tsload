@@ -18,16 +18,15 @@
 
 
 
-#ifndef MODTSLOAD_H_
-#define MODTSLOAD_H_
+#ifndef WLTYPE_H_
+#define WLTYPE_H_
 
 #include <modules.h>
 #include <wlparam.h>
 #include <hashmap.h>
+#include <autostring.h>
 
 #include <tsobj.h>
-
-#define WLTNAMELEN		64
 
 #define WLTHASHSIZE		8
 #define WLTHASHMASK		(WLTHASHSIZE - 1)
@@ -72,7 +71,7 @@ typedef enum wl_class {
  *
  * Set up it statically in your module
  *
- * @member wlt_name Name of workload type
+ * @member wlt_name Name of workload type (use AAS_CONST_STR for it)
  * @member wlt_class Bitmask of workload class flags
  * @member wlt_params pointer to a vector of workload/request parameter descriptors
  * @member wlt_params_size sizeof() of workload parameters structure
@@ -85,7 +84,7 @@ typedef enum wl_class {
  * @member wlt_next field internally used by TSLoad, set to NULL
  */
 typedef struct wl_type {
-	char		 wlt_name[WLTNAMELEN];
+	AUTOSTRING char* wlt_name;
 
 	wl_class_t	wlt_class;
 
@@ -113,5 +112,5 @@ void wlt_fini(void);
 
 tsobj_node_t* tsobj_wl_type_format(hm_item_t* object);
 
-#endif /* MODAPI_H_ */
+#endif /* WLTYPE_H_ */
 

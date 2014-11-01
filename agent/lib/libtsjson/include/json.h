@@ -255,16 +255,8 @@ LIBEXPORT int json_get_boolean(json_node_t* parent, const char* name, boolean_t*
 LIBEXPORT int json_get_array(json_node_t* parent, const char* name, json_node_t** val);
 LIBEXPORT int json_get_node(json_node_t* parent, const char* name, json_node_t** val);
 
-STATIC_INLINE int json_get_string_copy(json_node_t* parent, const char* name, char* val, size_t len) {
-	char* str;
-	int ret = json_get_string(parent, name, &str);
-
-	if(ret != JSON_OK)
-		return ret;
-
-	strncpy(val, str, len);
-	return JSON_OK;
-}
+LIBEXPORT int json_get_string_copy(json_node_t* parent, const char* name, char* val, size_t len);
+LIBEXPORT int json_get_string_aas(json_node_t* parent, const char* name, char** aas);
 
 #define DEFINE_TYPED_GET_INTEGER(suffix, type)							\
 	STATIC_INLINE int json_get_integer_ ## suffix(json_node_t* parent, 	\

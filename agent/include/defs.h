@@ -162,5 +162,10 @@ STATIC_INLINE double round(double val)
 /* Hint to TSDOC that function is not documentable */
 #define TSDOC_HIDDEN
 
+/**
+ * Hint that string is automatically allocated
+ */
+#define AUTOSTRING
+
 #endif /* DEFS_H_ */
 

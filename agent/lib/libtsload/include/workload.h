@@ -37,9 +37,6 @@
 
 #define WLHASHSIZE	8
 #define WLHASHMASK	(WLHASHSIZE - 1)
-#define WLNAMELEN	64
-
-#define WLNOTIFYMSGLEN	512
 
 /**
  * @module Workloads
@@ -157,7 +154,7 @@ typedef enum {
  *              DESTROYED <--+
  * ```
  *
- * @member wl_name 	Name of workload. Length limited to WLNAMELEN
+ * @member wl_name 	Name of workload
  * @member wl_type	Reference to workload type descriptor, provided by module
  * @member wl_tp Reference to thread pool it was attached. May be set to NULL for chained workloads
  * @member wl_params Vector of workload parameters
@@ -182,7 +179,7 @@ typedef enum {
  * @member wl_rqsched_private Private data for request scheduler
  */
 typedef struct workload {
-	char 			 wl_name[WLNAMELEN];
+	AUTOSTRING char* wl_name;
 
 	wl_type_t*		 wl_type;
 
@@ -231,11 +228,11 @@ typedef struct workload {
 } workload_t;
 
 typedef struct {
-	char wl_name[WLNAMELEN];
+	AUTOSTRING char* wl_name;
 	wl_status_t status;
 	long progress;
 
-	char msg[WLNOTIFYMSGLEN];
+	AUTOSTRING char* msg;
 } wl_notify_msg_t;
 
 LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...);

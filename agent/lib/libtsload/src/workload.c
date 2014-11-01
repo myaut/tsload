@@ -22,19 +22,22 @@
 #include <log.h>
 
 #include <defs.h>
+
 #include <list.h>
 #include <hashmap.h>
 #include <mempool.h>
 #include <modules.h>
 #include <threads.h>
+#include <tstime.h>
+#include <etrace.h>
+#include <tuneit.h>
+#include <autostring.h>
+
 #include <threadpool.h>
 #include <workload.h>
 #include <wltype.h>
 #include <tsload.h>
-#include <tstime.h>
-#include <etrace.h>
 #include <rqsched.h>
-#include <tuneit.h>
 
 #include <tsobj.h>
 
@@ -113,14 +116,7 @@ ETRC_DEFINE_EVENT(tsload__workload, request__start, 1);
 ETRC_DEFINE_EVENT(tsload__workload, request__finish, 2);
 ETRC_DEFINE_EVENT(tsload__workload, workload__step, 3);
 
-DECLARE_HASH_MAP(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_hm_next,
-	{
-		return hm_string_hash(key, WLHASHMASK);
-	},
-	{
-		return strcmp((char*) key1, (char*) key2) == 0;
-	}
-)
+DECLARE_HASH_MAP_STRKEY(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_hm_next, WLHASHMASK);
 
 static atomic_t wl_count = (atomic_t) 0l;
 ts_time_t wl_poll_interval = 200 * T_MS;
@@ -140,7 +136,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	if(wl == NULL)
 		return NULL;
 
-	strncpy(wl->wl_name, name, WLNAMELEN);
+	aas_copy(aas_init(&wl->wl_name), name);
 	wl->wl_type = wlt;
 
 	wl->wl_tp = tp;
@@ -227,6 +223,8 @@ void wl_destroy_impl(workload_t* wl) {
 	mutex_destroy(&wl->wl_rq_mutex);
 	mutex_destroy(&wl->wl_status_mutex);
 	mutex_destroy(&wl->wl_step_mutex);
+
+	aas_free(&wl->wl_name);
 
 	mp_free(wl->wl_params);
 	mp_cache_free(&wl_cache, wl);
@@ -358,13 +356,13 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	msg = mp_malloc(sizeof(wl_notify_msg_t));
 
 	va_start(args, format);
-	vsnprintf(msg->msg, WLNOTIFYMSGLEN, format, args);
+	aas_vprintf(aas_init(&msg->msg), format, args);
 	va_end(args);
 
 	logmsg((status == WLS_CFG_FAIL)? LOG_WARN : LOG_INFO,
 			"Workload %s status: %s", wl->wl_name, msg->msg);
 
-	strcpy(msg->wl_name, wl->wl_name);
+	aas_copy(aas_init(&msg->wl_name), wl->wl_name);
 	msg->status = status;
 	msg->progress = progress;
 
@@ -385,6 +383,8 @@ thread_result_t wl_notification_thread(thread_arg_t arg) {
 
 		tsload_workload_status(msg->wl_name, msg->status, msg->progress, msg->msg);
 
+		aas_free(&msg->wl_name);
+		aas_free(&msg->msg);
 		mp_free(msg);
 	}
 

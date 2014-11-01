@@ -260,8 +260,8 @@ int tse_report(experiment_t* root, int argc, char* argv[]) {
 
 
 struct tse_export_option {
-	char wl_name[WLNAMELEN];
-	char* option;
+	AUTOSTRING char* wl_name;
+	AUTOSTRING char* option;
 
 	list_node_t node;
 };
@@ -336,7 +336,7 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 
 	/* Walk over options and apply them */
 	list_for_each_entry(struct tse_export_option, opt, &ctx->options, node) {
-		if(opt->wl_name[0] == '\0' || strcmp(opt->wl_name, ewl->wl_name) == 0) {
+		if(opt->wl_name == NULL || strcmp(opt->wl_name, ewl->wl_name) == 0) {
 			tsfile_backend_set(backend, opt->option);
 		}
 	}
@@ -363,17 +363,13 @@ static void tse_add_option(list_head_t* options, const char* optarg) {
 	/* Colon may be also passed as argument of option, so
 	 * ensure if it goes before '=' symbol (inside option name) */
 	if(colon != NULL && (eq == NULL || colon < eq)) {
-		wl_name_len = min(colon - optarg, (WLNAMELEN - 1));
+		wl_name_len = colon - optarg;
 
-		strncpy(opt->wl_name, optarg, wl_name_len);
+		aas_copy_n(aas_init(&opt->wl_name), optarg, wl_name_len);
 		optarg = colon + 1;
 	}
 
-	opt->wl_name[wl_name_len] = '\0';
-
-	opt_len = strlen(optarg);
-	opt->option = mp_malloc(opt_len + 1);
-	strncpy(opt->option, optarg, opt_len + 1);
+	aas_copy(aas_init(&opt->option), optarg);
 
 	list_node_init(&opt->node);
 	list_add_tail(&opt->node, options);
@@ -384,7 +380,8 @@ static void tse_destroy_options(list_head_t* options) {
 	struct tse_export_option* opt_next;
 
 	list_for_each_entry_safe(struct tse_export_option, opt, opt_next, options, node) {
-		mp_free(opt->option);
+		aas_free(&opt->wl_name);
+		aas_free(&opt->option);
 		mp_free(opt);
 	}
 }

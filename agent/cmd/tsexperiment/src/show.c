@@ -97,11 +97,11 @@ int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 		json_get_string(ewl->wl_rqsched, "type", &rqsched);
 	}
 
-	if(ewl->wl_tp_name[0] != '\0') {
+	if(ewl->wl_tp_name != NULL) {
 		printf("%-16s %-12s %-16s %-12s\n", ewl->wl_name, ewl->wl_type,
 					ewl->wl_tp_name, (rqsched == NULL)? "???" : rqsched);
 	}
-	else if(ewl->wl_chain_name[0] != '\0') {
+	else if(ewl->wl_chain_name != NULL) {
 		printf("%-16s %-12s %-16s %-12s chained: %s\n", ewl->wl_name, ewl->wl_type,
 							"-", "-", ewl->wl_chain_name);
 	}

@@ -21,6 +21,7 @@
 #include <defs.h>
 
 #include <stdlib.h>
+#include <stdarg.h>
 
 /**
  * @module Automatically allocated strings.
@@ -62,8 +63,21 @@
 
 LIBEXPORT char* aas_allocate(size_t count);
 
-LIBEXPORT size_t aas_printf(char** aas, const char* format, ...);
+LIBEXPORT size_t aas_vprintf(char** aas, const char* format, va_list va);
+STATIC_INLINE size_t aas_printf(char** aas, const char* format, ...) {
+	va_list va;
+	size_t ret;
+
+	va_start(va, format);
+	ret = aas_vprintf(aas, format, va);
+	va_end(va);
+
+	return ret;
+}
+
 LIBEXPORT size_t aas_merge(char** aas, const char* str, ...);
+
+LIBEXPORT size_t aas_copy_n(char** aas, const char* str, size_t count);
 LIBEXPORT size_t aas_copy(char** aas, const char* str);
 
 LIBEXPORT void aas_set_impl(char** aas, const char* str);
@@ -74,6 +88,7 @@ LIBEXPORT void aas_set_impl(char** aas, const char* str);
  * @param aas pointer to auto-allocated string
  * @param str constant string literal
  */
+#define AAS_CONST_STR(str)		((AAS_STATIC_PREFIX str) + 1)
 #define aas_set(aas, str)		aas_set_impl(aas, AAS_STATIC_PREFIX str)
 
 static char** aas_init(char** aas) {

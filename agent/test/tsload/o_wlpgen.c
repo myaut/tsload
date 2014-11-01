@@ -9,6 +9,7 @@
 #include <tsobj.h>
 #include <mempool.h>
 #include <workload.h>
+#include <autostring.h>
 #include <wlparam.h>
 
 #include "helpers.h"
@@ -433,7 +434,7 @@ void test_string_pmap_ok(void) {
 
 int tsload_test_main() {
 	wl = mp_malloc(sizeof(workload_t));
-	strcpy(wl->wl_name, "o_wlpgen");
+	aas_copy(aas_init(&wl->wl_name), "o_wlpgen");
 	list_head_init(&wl->wl_wlpgen_head, "wlpgen_head");
 
 
@@ -468,6 +469,7 @@ int tsload_test_main() {
 	test_string_randvar();
 	test_string_pmap_ok();
 
+	aas_free(&wl->wl_name);
 	mp_free(wl);
 
 	return 0;

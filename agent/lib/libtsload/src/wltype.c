@@ -12,14 +12,7 @@
 
 #include <stdlib.h>
 
-DECLARE_HASH_MAP(wl_type_hash_map, wl_type_t, WLTHASHSIZE, wlt_name, wlt_next,
-	{
-		return hm_string_hash(key, WLTHASHMASK);
-	},
-	{
-		return strcmp((char*) key1, (char*) key2) == 0;
-	}
-)
+DECLARE_HASH_MAP_STRKEY(wl_type_hash_map, wl_type_t, WLTHASHSIZE, wlt_name, wlt_next, WLTHASHMASK);
 
 #define WL_CLASS_NAME(wlc_, name_) \
 		{ SM_INIT(.wlc, wlc_), SM_INIT(.name, name_) }

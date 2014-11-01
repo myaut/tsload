@@ -33,7 +33,7 @@
 #include <assert.h>
 
 /* Thread hash map. Maps pthreads to our threads */
-DECLARE_HASH_MAP(thread_hash_map, thread_t, THASHSIZE, t_id, t_next,
+DECLARE_HASH_MAP(thread_hash_map, B_FALSE, thread_t, THASHSIZE, t_id, t_next,
 	/*hash*/ {
 		thread_id_t tid = * (thread_id_t*) key;
 

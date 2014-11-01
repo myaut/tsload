@@ -30,7 +30,7 @@ struct test {
 #define HTESTSIZE	4
 #define HTESTMASK	3
 
-DECLARE_HASH_MAP(test_hash_map, struct test, HTESTSIZE, key, next,
+DECLARE_HASH_MAP(test_hash_map, B_FALSE, struct test, HTESTSIZE, key, next,
 	{
 		return hm_string_hash(key, HTESTMASK);
 	},

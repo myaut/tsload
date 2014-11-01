@@ -16,7 +16,7 @@
     along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
 */    
 
-
+#include <autostring.h>
 
 #include <json.h>
 #include <jsonimpl.h>
@@ -302,6 +302,35 @@ int json_get_string(json_node_t* parent, const char* name, char** val) {
 		return err;
 
 	*val = (char*) node->jn_data.s;
+	return JSON_OK;
+}
+
+int json_get_string_copy(json_node_t* parent, const char* name, char* val, size_t len) {
+	char* str;
+	int ret = json_get_string(parent, name, &str);
+
+	if(ret != JSON_OK)
+		return ret;
+
+	strncpy(val, str, len);
+	return JSON_OK;
+}
+
+int json_get_string_aas(json_node_t* parent, const char* name, char** aas) {
+	char* str;
+	size_t aas_ret;
+	int ret = json_get_string(parent, name, &str);
+
+	if(ret != JSON_OK)
+		return ret;
+
+	aas_ret = aas_copy(aas, str);
+
+	if(!AAS_IS_OK(aas_ret)) {
+		json_set_error_str(JSON_INTERNAL_ERROR, "AAS error: %x", aas_ret);
+		return JSON_INTERNAL_ERROR;
+	}
+
 	return JSON_OK;
 }
 

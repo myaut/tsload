@@ -639,8 +639,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	int ret = CMD_OK;
 	int err;
 
-	char exp_name[EXPNAMELEN];
-	boolean_t nflag = B_FALSE;
+	char* exp_name = NULL;
 	boolean_t trace_mode = B_FALSE;
 
 	experiment_t* base = NULL;
@@ -648,14 +647,11 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 
 	json_node_t* hostinfo;
 
-	exp_name[0] = '\0';
-
 	argi = optind;
 	while((c = plat_getopt(argc, argv, "bTn:s:")) != -1) {
 		switch(c) {
 		case 'n':
-			strncpy(exp_name, optarg, EXPNAMELEN);
-			nflag = B_TRUE;
+			aas_copy(&exp_name, optarg);
 			break;
 		case 'b':
 			tse_run_batch_mode = B_TRUE;
@@ -672,7 +668,8 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 				fprintf(stderr, "-%c option requires an argument\n", optopt);
 			else
 				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-			return CMD_INVALID_OPT;
+			ret = CMD_INVALID_OPT;
+			goto end_name;
 		}
 	}
 
@@ -681,7 +678,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 		base = root;
 	}
 
-	exp = experiment_create(root, base, (nflag)? exp_name : NULL);
+	exp = experiment_create(root, base, exp_name);
 	if(exp == NULL) {
 		fprintf(stderr, "Couldn't create experiment from %d\n",
 				(base == NULL) ? EXPERIMENT_ROOT : base->exp_runid);
@@ -754,6 +751,9 @@ end:
 end_base:
 	if(base != root)
 		experiment_destroy(base);
+
+end_name:
+	aas_free(&exp_name);
 
 	return ret;
 }

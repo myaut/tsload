@@ -21,6 +21,7 @@
 #include <getopt.h>
 #include <tstime.h>
 #include <mempool.h>
+#include <autostring.h>
 
 #include <json.h>
 
@@ -33,7 +34,7 @@
 struct tse_list_item {
 	int runid;
 
-	char name[EXPNAMELEN];
+	AUTOSTRING char* name;
 	char date[32];
 	char hostname[64];
 	char status[10];
@@ -63,7 +64,7 @@ int tse_list_walk(struct experiment_walk_ctx* ctx, void* context) {
 
 	list_node_init(&item->node);
 	item->runid = ctx->runid;
-	strcpy(item->name, exp->exp_name);
+	aas_copy(aas_init(&item->name), exp->exp_name);
 
 	/* Get hostname */
 	j_hostname = experiment_cfg_find(exp->exp_config, "agent:hostname", NULL, JSON_STRING);
@@ -104,6 +105,9 @@ void tse_list_print(list_head_t* list) {
 	list_for_each_entry_safe(struct tse_list_item, item, next, list, node) {
 		printf("%-4d %-16s %-6s %-20s %s\n", item->runid, item->name,
 				item->status, item->date, item->hostname);
+
+		aas_free(&item->name);
+		mp_free(item);
 	}
 }
 

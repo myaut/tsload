@@ -69,7 +69,7 @@ MODEXPORT int busy_wait_run_request(request_t* rq) {
 }
 
 wl_type_t busy_wait_wlt = {
-	"busy_wait",						/* wlt_name */
+	AAS_CONST_STR("busy_wait"),			/* wlt_name */
 
 	WLC_CPU_MISC,						/* wlt_class */
 

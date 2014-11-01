@@ -21,19 +21,22 @@
 #define LOG_SOURCE "tpool"
 #include <log.h>
 
+#include <defs.h>
+
 #include <hashmap.h>
 #include <mempool.h>
 #include <threads.h>
-#include <threadpool.h>
-#include <defs.h>
-#include <workload.h>
 #include <cpuinfo.h>
 #include <cpumask.h>
 #include <schedutil.h>
-#include <tsload.h>
 #include <list.h>
-#include <tpdisp.h>
 #include <tuneit.h>
+#include <autostring.h>
+
+#include <threadpool.h>
+#include <workload.h>
+#include <tsload.h>
+#include <tpdisp.h>
 
 #include <assert.h>
 #include <string.h>
@@ -43,14 +46,7 @@
 mp_cache_t	   tp_cache;
 mp_cache_t	   tp_worker_cache;
 
-DECLARE_HASH_MAP(tp_hash_map, thread_pool_t, TPHASHSIZE, tp_name, tp_next,
-	{
-		return hm_string_hash(key, TPHASHMASK);
-	},
-	{
-		return strcmp((char*) key1, (char*) key2) == 0;
-	}
-)
+DECLARE_HASH_MAP_STRKEY(tp_hash_map, thread_pool_t, TPHASHSIZE, tp_name, tp_next, TPHASHMASK);
 
 /* Minimum quantum duration. Should be set to system's tick
  * Maximum reasonable quantum duration. Currently 10 min*/
@@ -224,7 +220,7 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 
 	tp = (thread_pool_t*) mp_cache_alloc(&tp_cache);
 
-	strncpy(tp->tp_name, name, TPNAMELEN);
+	aas_copy(aas_init(&tp->tp_name), name);
 
 	tp->tp_num_threads = num_threads;
 	tp->tp_workers = (tp_worker_t*) mp_cache_alloc_array(&tp_worker_cache, num_threads);
@@ -319,6 +315,8 @@ static void tp_destroy_impl(thread_pool_t* tp, boolean_t may_remove) {
 	}
 
 	mutex_destroy(&tp->tp_mutex);
+
+	aas_free(&tp->tp_name);
 
 	mp_cache_free_array(&tp_worker_cache, tp->tp_workers, tp->tp_num_threads);
 	mp_cache_free(&tp_cache, tp);

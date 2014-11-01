@@ -21,6 +21,7 @@
 #include <hashmap.h>
 #include <mempool.h>
 #include <threads.h>
+#include <autostring.h>
 
 #include <assert.h>
 
@@ -34,7 +35,13 @@ STATIC_INLINE void hm_set_next(hashmap_t* hm, hm_item_t* obj, hm_item_t* next) {
 }
 
 STATIC_INLINE hm_key_t* hm_get_key(hashmap_t* hm, hm_item_t* obj) {
-	return (obj + hm->hm_off_key);
+	hm_key_t* key = (obj + hm->hm_off_key);
+
+	if(hm->hm_indirect) {
+		key = * (void**) key;
+	}
+
+	return key;
 }
 
 STATIC_INLINE unsigned hm_hash_object(hashmap_t* hm, hm_item_t* obj) {
@@ -45,7 +52,7 @@ STATIC_INLINE unsigned hm_hash_object(hashmap_t* hm, hm_item_t* obj) {
  * Initialize static hash map.
  *
  * Because hash map usually a global object, it doesn't
- * provide formatted names
+ * support formatted names
  *
  * @param hm hash map to initialize
  * @param name identifier for hash map
@@ -59,7 +66,8 @@ void hash_map_init(hashmap_t* hm, const char* name) {
 
 	mutex_init(&hm->hm_mutex, "hm-%s", name);
 
-	strncpy(hm->hm_name, name, HMNAMELEN);
+	if(name != NULL)
+		aas_copy(&hm->hm_name, name);
 }
 
 /**
@@ -71,9 +79,10 @@ void hash_map_init(hashmap_t* hm, const char* name) {
 hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...) {
 	hashmap_t* hm = mp_malloc(sizeof(hashmap_t));
 	va_list va;
-	char name[HMNAMELEN];
 
 	hm->hm_type = HASH_MAP_DYNAMIC;
+
+	hm->hm_indirect = base->hm_indirect;
 
 	hm->hm_size = base->hm_size;
 	hm->hm_heads = mp_malloc(base->hm_size * sizeof(hm_item_t*));
@@ -84,11 +93,11 @@ hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...) {
 	hm->hm_compare = base->hm_compare;
 	hm->hm_hash_key = base->hm_hash_key;
 
-	va_start(va, namefmt);
-	vsnprintf(name, HMNAMELEN, namefmt, va);
-	va_end(va);
+	hash_map_init(hm, NULL);
 
-	hash_map_init(hm, name);
+	va_start(va, namefmt);
+	aas_vprintf(&hm->hm_name, namefmt, va);
+	va_end(va);
 
 	return hm;
 }
@@ -104,6 +113,8 @@ void hash_map_destroy(hashmap_t* hm) {
 	for(i = 0; i < hm->hm_size; ++i) {
 		assert(hm->hm_heads[i] == NULL);
 	}
+
+	aas_free(&hm->hm_name);
 
 	mutex_destroy(&hm->hm_mutex);
 
