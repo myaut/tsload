@@ -64,6 +64,14 @@ def CompileProgram(self, extra_sources = []):
                           extra_sources)
     return objects
 
+def LinkProgram(self, target, objects):
+    program = self.Program(target, objects)
+    
+    # XXX: See below in LinkSharedLibrary
+    env['TESTBINS'][target] = program
+    
+    return program
+
 def LinkSharedLibrary(self, target, objects, 
                       ctfmerge = True):
     library = self.SharedLibrary(target, objects)
@@ -111,6 +119,9 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     if man_files:
         mod.InstallTarget('tsload-modules', mod['INSTALL_SHARE'], man_files)
     
+    # XXX: See above in LinkSharedLibrary
+    env['TESTMODS'][mod_name] = module
+    
     return module
 
 def CheckBinary(self, name, paths = []):
@@ -156,6 +167,7 @@ env.AddMethod(InstallTarget)
 env.AddMethod(SupportedPlatform)
 env.AddMethod(CompileSharedLibrary)
 env.AddMethod(CompileProgram)
+env.AddMethod(LinkProgram)
 env.AddMethod(LinkSharedLibrary)
 env.AddMethod(FindMicrosoftSDK)
 env.AddMethod(CheckBinary)
@@ -173,8 +185,10 @@ UsageBuilder = Builder(action = '%s $TSLOADPATH/tools/genusage.py $SOURCE > $TAR
                        suffix = '.c')
 env.Append(BUILDERS = {'UsageBuilder': UsageBuilder})
 
-# TESTLIBS maps library under test name to path to it
+# This maps library/module/binary under test name to path to it
 env.Append(TESTLIBS = {})
+env.Append(TESTMODS = {})
+env.Append(TESTBINS = {})
 
 # Add verbosity of warnings but disable unnecessary warnings
 if env['CC'] == 'gcc': 

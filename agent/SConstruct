@@ -12,7 +12,7 @@ from optparse import SUPPRESS_HELP
 sys.path.append(os.path.join('tools', 'build'))
 
 from pathutil import *
-from tstest import TestSuite
+import tstest
 
 # ------------------------
 # ENVIRONMENT HELPERS
@@ -200,12 +200,21 @@ for mod_type in ('load', ):
 
 # ------------
 # TESTS
+if 'tests' in BUILD_TARGETS and 'systests' in BUILD_TARGETS:
+    raise StopError('Unit and system testing is mutually exclusibe')
+
 if 'tests' in BUILD_TARGETS:
-    test_f = file(PathJoin('test', 'test.list'))
-    env['TEST_SUITE'] = TestSuite(test_f)
+    env['TEST_MODE_INT'] = False
+    env['TEST_SUITE'] = File(PathJoin('test', 'test.list'))
         
     SConscript(PathJoin('test', 'SConscript'), 'env',
                variant_dir = PathJoin('#build', 'test'))
+elif 'systests' in BUILD_TARGETS:
+    env['TEST_MODE_INT'] = True
+    env['TEST_SUITE'] = File(PathJoin('test', 'systest.list'))
+        
+    SConscript(PathJoin('test', 'SConscript'), 'env',
+               variant_dir = PathJoin('#build', 'test', 'tsexperiment'))
     
 #------------
 # DOC (again)

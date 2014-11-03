@@ -1,0 +1,283 @@
+# System tests list
+# 
+# Syntax is similiar to test/test.list
+# It has, however, another set of supported parameters:
+# 		dir, file 			not supported
+# 		bin=tsexperiment	destination binary to test
+#		mod=mod_name		required module name
+#		"args=a1 -a a2"		arguments
+#
+# Expected values for return values of tsexperiment:
+#  Basic command errors:
+#	 CMD_OK		    		0
+#	 CMD_MISSING_CMD    	1
+#	 CMD_UNKNOWN_CMD    	2
+#	 CMD_INVALID_OPT  		3
+#	 CMD_INVALID_ARG  		4
+#	 CMD_MISSING_ARG  		5
+# Experiment well-known errors:
+#	 CMD_NOT_EXISTS			11
+#	 CMD_NO_PERMS			12
+#	 CMD_ALREADY_EXISTS		13
+#	 CMD_IS_ROOT			14
+# All other errors:
+#	 CMD_GENERIC_ERROR		30
+
+^tsexperiment lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
+			  lib=libtsload		lib=libhostinfo	 	lib=libtsfile	\
+			  bin=tsexperiment
+
+# ---------------------------
+# WLTYPES
+ 
+^wltypes				extends=tsexperiment mod=busy_wait	
+
+# normal tests
+wltypes/all				args=wl
+wltypes/all_json		"args=wl -j"
+wltypes/spec			"args=wl busy_wait"
+wltypes/spec_2			"args=wl busy_wait http" mod=http
+
+# wltype with experiment arg = CMD_INVALID_OPT
+wltypes/exp_arg			"args=-e experiment wl" use=experiment expect=return:3
+
+# invalid name of wltype = CMD_INVALID_ARG
+wltypes/spec_inval		"args=wl non_existent"	expect=return:4
+wltypes/spec_inval_2	"args=wl busy_wait non_existent" expect=return:4
+
+# ---------------------------
+# LIST
+
+^list				extends=tsexperiment use=experiment "args=-e experiment list"
+# all tests must succeed
+list/ok_list			
+list/stale_id		"use=stale.id 							\
+		rename:experiment/experiment.id"
+list/runid_no_perms										\
+	"use=experiment/experiment-1/experiment.json 		\
+		chmod:0000 										\
+		rename:experiment/experiment-1/experiment.json"
+list/noent												\
+	"use=experiment/experiment-1/experiment.json 		\
+		remove:True										\
+		rename:experiment/experiment-1/experiment.json"
+
+# ---------------------------
+# SHOW
+
+^show					extends=tsexperiment use=experiment "args=-e experiment show"
+
+show/ok_root		
+show/ok_root_json			"args=-j"
+show/ok_root_list			"args=-l"
+
+show/noent	 			expect=return:11 	\
+	"use=experiment/experiment.json 		\
+		remove:True							\
+		rename:experiment/experiment.json" 
+show/no_perms		 	expect=return:12 	\
+	"use=experiment/experiment.json 		\
+		chmod:0000 							\
+		rename:experiment/experiment.json" 
+
+show/no_workloads	 	expect=return:30	\
+	"use=no-workloads.json 					\
+		rename:experiment/experiment.json"
+show/empty_workloads						\
+	"use=empty-workloads.json 				\
+		 rename:experiment/experiment.json"
+
+show/no_threadpools  	expect=return:30	\
+	"use=no-threadpools.json 				\
+		 rename:experiment/experiment.json"
+show/empty_wls_tps							\
+	"use=empty-wls-tps.json 				\
+		 rename:experiment/experiment.json"		
+
+show/wl_no_tp			expect=return:30	\
+	"use=wl-no-tp.json 						\
+		 rename:experiment/experiment.json"
+show/wl_inval_tp		expect=return:30	\
+	"use=wl-inval-tp.json					\
+		 rename:experiment/experiment.json"
+
+show/runid			"args=1"
+show/runid_neg		"args=-- -2"	expect=return:4
+show/runid_not_int	"args=test"		expect=return:4
+show/runid_inval	"args=10" 		expect=return:11
+
+show/runid_noent	"args=1"		expect=return:11		\
+	"use=experiment/experiment-1/experiment.json 			\
+			remove:True										\
+			rename:experiment/experiment-1/experiment.json"			
+show/runid_no_perms	"args=1"		expect=return:12		\
+	"use=experiment/experiment-1/experiment.json 			\
+			chmod:0000 										\
+			rename:experiment/experiment-1/experiment.json"
+
+# ---------------------------
+# REPORT
+
+^report		extends=tsexperiment use=experiment  mod=busy_wait	\
+			"args=-e experiment report"
+
+report/ok				"args=1"
+
+report/wl_ok			"args=1 test1"
+report/wl_ok_2			"args=1 test1 test2"		
+report/wl_invalid		"args=1 invalid_wl"			expect=return:4
+report/wl_invalid_2		"args=1 invalid_wl test2"	expect=return:4
+
+report/schema_noent	"args=1"						\
+	expect=return:11								\
+	"use=experiment/experiment-1/test1-schema.json 	\
+			remove:True								\
+			rename:experiment/experiment-1/test1-schema.json"
+report/schema_no_perms		"args=1"				\
+	expect=return:12								\
+	"use=experiment/experiment-1/test1-schema.json 	\
+			chmod:0000 								\
+			rename:experiment/experiment-1/test1-schema.json"
+report/broken_schema	"args=1"					\
+	expect=return:30								\
+	"use=broken-schema.json						 	\			
+			rename:experiment/experiment-1/test1-schema.json"		
+
+report/tsf_noent	"args=1" 						\
+	expect=return:11								\
+	"use=experiment/experiment-1/test1.tsf		 	\
+			remove:True								\			
+			rename:experiment/experiment-1/test1.tsf"		
+report/tsf_no_perms	"args=1"						\
+	expect=return:12								\
+	"use=experiment/experiment-1/test1.tsf		 	\
+			chmod:0000 								\			
+			rename:experiment/experiment-1/test1.tsf"
+report/broken_tsf_1	"args=1"						\
+	expect=return:30								\
+	"use=broken1.tsf							 	\			
+			rename:experiment/experiment-1/test1.tsf"			
+report/broken_tsf_2	"args=1" 						\
+	expect=return:30								\
+	"use=broken2.tsf							 	\			
+			rename:experiment/experiment-1/test1.tsf"
+			
+			
+# ---------------------------
+# EXPORT
+# Since is shares some code with report, 
+# check only export-specific use-cases
+
+^export		extends=tsexperiment use=experiment  mod=busy_wait	\
+			"args=-e experiment export"
+
+export/ok				"args=1"
+export/wl_ok			"args=1 test1"
+export/wl_ok_2			"args=1 test1 test2"		
+export/wl_invalid		"args=1 invalid_wl"			expect=return:4
+export/wl_invalid_2		"args=1 invalid_wl test2"	expect=return:4
+
+export/backend_csv			"args=-F csv 1 "
+export/backend_json			"args=-F json 1"
+export/backend_jsonraw		"args=-F jsonraw 1"
+											
+export/csv_valsep		"args=-F csv -o valsep=\; 1"
+export/csv_valsep_inval "args=-F csv -o 'valsep= II ' 1" 						\
+						expect=return:4
+export/csv_opt_2		"args=-F csv -o noheader,valsep=\| 1"
+export/csv_header		"args=-F csv -o header=rq_flags 1"
+export/csv_header_2		"args=-F csv -o header=rq_flags:hex 1"
+export/csv_hdr_inval_field		"args=-F csv -o header=rq_no_such_field 1"		\
+						expect=return:4
+export/csv_hdr_inval_subopt		"args=-F csv -o header=rq_flags:inval_subopt 1" \
+						expect=return:4
+
+export/dest				"args=-F csv -d export 1" use=export
+export/dest_noent		"args=-F csv -d export 1"								\
+						expect=return:11
+export/dest_no_perms	"args=-F csv -d export 1" "use=export chown:0000"		\
+						expect=return:12
+
+# ---------------------------
+# RUN
+# This is also reduces workload start delay to 0.2 s since
+# correctness of measurements is not interesting here
+^run		extends=tsexperiment use=experiment  mod=busy_wait	\
+		"args=-Xtse_run_wl_start_delay=200000000 -e experiment run" maxtime=5
+		
+run/ok			
+run/batch				"args=1"
+run/reproduce			"args=1"
+run/reproduce_set		"args=-s threadpools:test_tp:quantum=200000000 1"
+run/reproduce_set_inval	"args=-s threadpools:1:quantum=200000000 1"				\
+						expect=return:4
+run/trace				"args=-T 1"
+run/trace_set			"args=-T -s threadpools:test_tp:quantum=200000000 1"		\
+						expect=return:3
+run/reproduce_inval		"args=10"
+
+run/noent	 			expect=return:11 	\
+	"use=experiment/experiment.json 		\
+		remove:True							\
+		rename:experiment/experiment.json" 
+run/no_perms		 	expect=return:12 	\
+	"use=experiment/experiment.json 		\
+		chmod:0000 							\
+		rename:experiment/experiment.json"
+
+run/stale_id		"use=stale.id 			\
+		rename:experiment/experiment.id"
+run/invalid_id		"use=invalid.id 		\
+		rename:experiment/experiment.id"		
+run/steps_file_chars	expect=return:30	\
+	"use=invalid-chars.tss 					\
+		rename:experiment/test2.tss"
+run/steps_file_negative	expect=return:30	\
+	"use=negative-count.tss 				\
+		rename:experiment/test2.tss"
+
+run/reproduce_noent	"args=1"								\
+	expect=return:11										\
+	"use=experiment/experiment-1/experiment.json 			\
+			remove:True										\
+			rename:experiment/experiment-1/experiment.json"			
+run/reproduce_no_perms	"args=1"							\
+	expect=return:12										\
+	"use=experiment/experiment-1/experiment.json 			\
+			chmod:0000 										\
+			rename:experiment/experiment-1/experiment.json"															
+
+run/trace_schema_noent	"args=-T 1"					\
+	expect=return:11								\
+	"use=experiment/experiment-1/test1-schema.json 	\
+			remove:True								\
+			rename:experiment/experiment-1/test1-schema.json"
+run/trace_schema_no_perms		"args=-T 1"			\
+	expect=return:12								\
+	"use=experiment/experiment-1/test1-schema.json 	\
+			chmod:0000 								\
+			rename:experiment/experiment-1/test1-schema.json"
+run/trace_broken_schema	"args=-T 1"					\
+	expect=return:30								\
+	"use=broken-schema.json						 	\			
+			rename:experiment/experiment-1/test1-schema.json"		
+
+run/trace_tsf_noent	"args=-T 1" 					\
+	expect=return:11								\
+	"use=experiment/experiment-1/test1.tsf		 	\
+			remove:True								\			
+			rename:experiment/experiment-1/test1.tsf"		
+run/trace_tsf_no_perms	"args=-T 1"					\
+	expect=return:12								\
+	"use=experiment/experiment-1/test1.tsf		 	\
+			chmod:0000 								\			
+			rename:experiment/experiment-1/test1.tsf"
+run/trace_broken_tsf_1	"args=-T 1"					\
+	expect=return:30								\
+	"use=broken1.tsf							 	\			
+			rename:experiment/experiment-1/test1.tsf"			
+run/trace_broken_tsf_2	"args=-T 1" 				\
+	expect=return:30								\
+	"use=broken2.tsf							 	\			
+			rename:experiment/experiment-1/test1.tsf"
+			

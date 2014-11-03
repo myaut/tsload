@@ -1,0 +1,18 @@
+{
+	"name": "experiment",
+	"steps": {
+		"test1": {
+			"num_steps":	4,
+ 			"num_requests": 10
+		},
+		"test2": {
+			"file": "test2.tss"
+		}
+	},
+	"threadpools": {
+		
+	},
+	"workloads" : {		
+		
+	}
+}

@@ -9,6 +9,7 @@
 #include <mempool.h>
 #include <workload.h>
 #include <rqsched.h>
+#include <autostring.h>
 
 #include "helpers.h"
 
@@ -203,7 +204,7 @@ void test_rqsched_think() {
 int tsload_test_main() {
 	wl = mp_malloc(sizeof(workload_t));
 
-	strcpy(wl->wl_name, "o_rqsched");
+	aas_copy(aas_init(&wl->wl_name), "o_rqsched");
 	wl->wl_rqsched_class = NULL;
 	wl->wl_rqsched_private = NULL;
 
@@ -229,6 +230,7 @@ int tsload_test_main() {
 	test_rqsched_think_invalid_users_value();
 	test_rqsched_think();
 
+	aas_free(&wl->wl_name);
 	mp_free(wl);
 
 	return 0;

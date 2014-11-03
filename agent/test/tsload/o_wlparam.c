@@ -10,6 +10,7 @@
 #include <mempool.h>
 #include <workload.h>
 #include <wlparam.h>
+#include <autostring.h>
 
 #include "helpers.h"
 
@@ -144,7 +145,7 @@ void test_simple_params(void) {
 
 int tsload_test_main() {
 	wl = mp_malloc(sizeof(workload_t));
-	strcpy(wl->wl_name, "o_wlparam");
+	aas_copy(aas_init(&wl->wl_name), "o_wlparam");
 
 	/* Easy way to generate this:
 	 * grep '^void' test/tsload/o_wlparam.c | sed 's/ {$/;/g;s/(void)/()/g;s/^void //g' */
@@ -162,6 +163,7 @@ int tsload_test_main() {
 	test_simple_params_missing();
 	test_simple_params();
 
+	aas_free(&wl->wl_name);
 	mp_free(wl);
 
 	return 0;

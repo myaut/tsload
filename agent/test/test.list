@@ -15,15 +15,20 @@
 # Params:
 # 	 file=source.c  - file to be compiled
 #	 dir=dir		- directory where sources are located
-# 	 lib=lib		- library to be linked with (library under test)
-#					  core libraries are linked by default
+# 	 lib=lib		- TSLoad library to be linked with (library under test)
+#	 extlib=plat:name - platform-specific library to be linked with
+#	 
 # 	 use=use		- external file used by test (searched over dirs)
+#    	=use chmod:0777
+#		=use rename:new_path
+#		=use remove:True
 #    plat=generic   - compile/run test only for platform 
 #    maxtime=1		- time in seconds maximum to be allowed for test. 1 is default
 # 	 enabled=False	- disable test or group
 #	 expect=ok|timeout|abort 	-  expected result for test execution
-#	 expect=signal:SIG 			-  expect=ok is default
-#	 expect=return:err								  
+#	 		signal:SIG 			-  expect=ok is default
+# 			return:err								  
+# 	 extend=group	- copy parameters from other group
 
 # Dummy tests are tests for testing test suite itself
 
@@ -86,12 +91,11 @@ hostinfo/wmi_proc		file=wmi_proc.c  plat=win
 # Tests for random generators
 ^random 			lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
 				    lib=libtsload		lib=libhostinfo
-random/chisquare	file=chisquare.c lib=m maxtime=3
+random/chisquare	file=chisquare.c 	extlib=posix:m maxtime=3
 
 # Tests for libtsload object creation
 ^tsload		    	lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
-					lib=libtsload		lib=libhostinfo	file=main.c		\
-					use=mod
+					lib=libtsload		lib=libhostinfo	file=main.c	
 tsload/o_randgen	file=o_randgen.c
 tsload/o_rqsched	file=o_rqsched.c
 tsload/o_tpdisp		file=o_tpdisp.c

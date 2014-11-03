@@ -1,0 +1,61 @@
+{
+  "name": "experiment",
+  "steps": {
+    "test1": {
+      "num_steps": 4,
+      "num_requests": 10
+    },
+    "test2": {
+      "file": "test2.tss"
+    }
+  },
+  "threadpools": {
+    "test_tp": {
+      "num_threads": 2,
+      "quantum": 400000000,
+      "disp": {
+        "type": "random"
+      }
+    }
+  },
+  "workloads": {
+    "test1": {
+      "wltype": "busy_wait",
+      "threadpool": "test_tp",
+      "rqsched": {
+        "type": "iat",
+        "distribution": "exponential"
+      },
+      "params": {
+        "num_cycles": 1000
+      }
+    },
+    "test2": {
+      "wltype": "busy_wait",
+      "threadpool": "test_tp",
+      "rqsched": {
+        "type": "iat",
+        "distribution": "exponential"
+      },
+      "params": {
+        "num_cycles": 5000
+      }
+    }
+  },
+  "name": "experiment",
+  "start_time": 1415040978000000000,
+  "status": 2,
+  "agent": {
+    "_type": "tsload.HostInfo",
+    "hostname": "panther.mylocal",
+    "domainname": "(none)",
+    "osname": "openSUSE 12.3",
+    "release": "3.7.10-1.16-desktop",
+    "machine_arch": "x86_64",
+    "system": "MICRO-STAR INTERNATIONAL CO.,LTD  MS-7583 ",
+    "num_cpus": 1,
+    "num_cores": 4,
+    "mem_total": 0,
+    "agent_pid": 19239
+  }
+}

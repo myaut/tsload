@@ -3,6 +3,8 @@
 import sys
 import json
 
+import shlex
+
 from SCons.Errors import StopError 
 
 class TestException(Exception):
@@ -18,8 +20,10 @@ class Test:
     SIGNALS =  {'SEGV': 11}
     
     def __init__(self, name, group):
+        self.bin = None
         self.name = name
         self.group = group
+        self.groups = [group]
         
         self.maxtime = 1
         self.enabled = True
@@ -31,7 +35,12 @@ class Test:
         self.dirs = []
         
         self.libs = []
+        self.mods = []
         self.uses = []
+        
+        self.extlibs = []
+        
+        self.args = ''
     
     def __str__(self):
         return '<tstest.Test %s/%s %s>' % (self.name, self.group, 
@@ -42,10 +51,22 @@ class Test:
             self.files.append(value)
         elif name == 'dir':
             self.dirs.append(value)
+        elif name == 'extlib':
+            try:
+                plat, lib = value.split(':')
+                self.extlibs.append((plat, lib))
+            except ValueError:
+                raise TestException('Invalid syntax for extlib=%s' % repr(value))
         elif name == 'use':
             self.uses.append(value)
         elif name == 'lib':
             self.libs.append(value)
+        elif name == 'mod':
+            self.mods.append(value)
+        elif name == 'bin':
+            self.bin = value
+        elif name == 'args':
+            self.args += ' ' + value            
         elif name == 'enabled':
             self.enabled = False if value == 'False' else True
         elif name == 'plat':
@@ -106,10 +127,13 @@ class TestSuite:
             if not line or line.startswith('#'):
                 continue
             
-            wholeline += line
-            if wholeline.endswith('\\'):
-                wholeline = wholeline[:-1]
+            
+            if line.endswith('\\'):
+                line = line[:-1].strip()
+                wholeline += line + ' '
                 continue
+            
+            wholeline += line
             
             try:
                 if wholeline.startswith('^'):
@@ -130,18 +154,27 @@ class TestSuite:
         for param in params:
             if '=' not in param:
                 raise TestException('Missing param value in %s!' % repr(param))
-            name, value = param.split('=')
+            name, value = param.split('=', 1)
             
             yield name, value
     
     def parse_group(self, line):
-        params = line.split()
+        params = shlex.split(line)
         group = params.pop(0)
         
         self.group_params[group] = list(self.parse_params(params))
     
+    def copy_group_params(self, test, group):
+        for name, value in self.group_params[group]:
+            if name == 'extends':
+                test.groups.append(value)
+                self.copy_group_params(test, value)
+                continue            
+            
+            test.add_param(name, value)
+    
     def parse_test(self, line):
-        params = line.split()
+        params = shlex.split(line)
         first = params.pop(0)
         
         if '/' not in first:
@@ -152,14 +185,16 @@ class TestSuite:
             raise TestException('Group %s is not defined' % repr(group))
         
         test = Test(name, group)
-        
-        for name, value in self.group_params[group]:
-            test.add_param(name, value)
+                
+        self.copy_group_params(test, group)
         
         for name, value in self.parse_params(params):
             test.add_param(name, value)
         
-        if not test.files and not test.dirs:
-            raise TestException('Invalid test %s: no dirs or files was specified!' % first)
+        if not test.files and not test.dirs and test.bin is None:
+            raise TestException('Invalid test %s: no source dirs or files was specified, and no destination binary was set!' % first)
+        
+        if test.bin is not None and (test.files or test.dirs):
+            raise TestException('Invalid test %s: source dirs or files and destination binary are mutually exclusive!' % first)
         
         self.tests.append(test)

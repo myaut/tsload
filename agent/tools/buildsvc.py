@@ -378,16 +378,7 @@ class BuildManager(object):
                     server.build(self.global_opts, 'install')
                 
                 if 'run' in targets:
-                    server.get_results(self.prefix)
-                    
-                    server.test_run('${INSTALL_BIN}tshostinfo${EXESUFFIX} -x')
-                    
-                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} workload')
-                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample run')
-                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample list')
-                    server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample show')
-                    # server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample report')
-                    # server.test_run('${INSTALL_BIN}tsexperiment${EXESUFFIX} -e ${INSTALL_VAR}sample export -F csv')
+                    server.build(self.global_opts, 'systests')                    
                 
                 if 'fetch' in targets:
                     server.build(self.global_opts, 'zip')
