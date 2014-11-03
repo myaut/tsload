@@ -17,10 +17,6 @@
 */    
 
 
-
-#define LOG_SOURCE "experiment"
-#include <log.h>
-
 #include <mempool.h>
 #include <tsdirent.h>
 #include <pathutil.h>
@@ -29,7 +25,6 @@
 #include <tsload.h>
 #include <tstime.h>
 #include <filelock.h>
-#include <autostring.h>
 
 #include <wlparam.h>
 #include <wltype.h>
@@ -39,10 +34,15 @@
 #include <json.h>
 
 #include <experiment.h>
+#include <tseerror.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
+
+unsigned exp_load_error = EXPERR_LOAD_OK;
+unsigned exp_create_error = EXPERR_CREATE_OK;
 
 static char* strrchr_y(const char* s, int c) {
 	/* TODO: fallback to libc if possible. */
@@ -78,40 +78,103 @@ tsfile_schema_t request_schema = {
 };
 
 /**
+ * Checks that required experiment directories and files exist
+ * and have applicable permissions
+ *
+ * @param path	path to file/directory
+ * @param access_mask access mask for checking permissions
+ * @param err_noent error that would be returned if file do not exist
+ * @param err_perms error that would be returned if file have invalid permissions
+ *
+ * @note set err_noent/err_perms to EXPERIMENT_OK if you wish to ignore that check
+ */
+static int experiment_check_path(const char* path, int access_mask,
+								 int err_noent, int err_perms) {
+	struct stat statbuf;
+
+	if(err_noent != EXPERIMENT_OK &&
+			stat(path, &statbuf) == -1) {
+		return err_noent;
+	}
+
+	if(err_perms != EXPERIMENT_OK &&
+			access(path, access_mask) == -1) {
+		return err_perms;
+	}
+
+	return EXPERIMENT_OK;
+}
+
+static boolean_t experiment_check_path_exists(const char* path) {
+	struct stat statbuf;
+
+	if(stat(path, &statbuf) == 0) {
+		return B_TRUE;
+	}
+
+	return B_FALSE;
+}
+
+/**
  * Reads JSON config of experiment from file and parses it
  *
  * @return LOAD_OK if everything was OK or LOAD_ERR_ constant
  */
 static int experiment_read_config(experiment_t* exp) {
-	int ret = EXP_LOAD_OK;
+	int ret = EXPERR_LOAD_OK;
 	json_buffer_t* buf;
 
 	int err;
+	struct stat s;
 
+	char experiment_directory[PATHMAXLEN];
 	char experiment_filename[PATHMAXLEN];
 
-	path_join(experiment_filename, PATHMAXLEN,
-			  exp->exp_root, exp->exp_directory, EXPERIMENT_FILENAME, NULL);
+	/* Run some preliminary checks */
+	path_join(experiment_directory, PATHMAXLEN,
+				  exp->exp_root, exp->exp_directory, NULL);
+	ret = experiment_check_path(experiment_directory, R_OK | X_OK,
+								EXPERR_LOAD_NO_DIR, EXPERR_LOAD_DIR_NO_PERMS);
+	if(ret != EXPERIMENT_OK) {
+		tse_experiment_error_msg(exp, ret, "Couldn't enter experiment directory '%s': "
+								 "not exists or no permissions", experiment_directory);
+		return ret;
+	}
 
+	path_join(experiment_filename, PATHMAXLEN,
+					experiment_directory, EXPERIMENT_FILENAME, NULL);
+	ret = experiment_check_path(experiment_filename, R_OK,
+								EXPERR_LOAD_NO_FILE, EXPERR_LOAD_FILE_NO_PERMS);
+	if(ret != EXPERIMENT_OK) {
+		tse_experiment_error_msg(exp, ret, "Couldn't open experiment file '%s': "
+								 "not exists or no permissions", experiment_filename);
+		return ret;
+	}
+
+	/* No load file and parse JSON */
 	buf = json_buf_from_file(experiment_filename);
 
 	if(buf == NULL) {
 		if(json_errno() != JSON_OK) {
-			logmsg(LOG_CRIT, "Couldn't open workload file %s: %s",
-				   experiment_filename, json_error_message());
+			tse_experiment_error_msg(exp, EXPERR_LOAD_FILE_ERROR,
+							"Couldn't open experiment file %s: %s",
+							experiment_filename, json_error_message());
 		}
 		else {
-			logmsg(LOG_CRIT, "Couldn't open workload file %s", experiment_filename);
+			tse_experiment_error_msg(exp, EXPERR_LOAD_FILE_ERROR,
+							"Couldn't open experiment file %s",
+							experiment_filename);
 		}
-		return EXP_LOAD_ERR_OPEN_FAIL;
+		return EXPERR_LOAD_FILE_ERROR;
 	}
 
 	err = json_parse(buf, &exp->exp_config);
 
 	if(err != JSON_OK) {
-		logmsg(LOG_CRIT, "JSON parse error of file %s: %s",
+		tse_experiment_error_msg(exp, EXPERR_LOAD_BAD_JSON,
+				"JSON parse error of file %s: %s",
 				experiment_filename, json_error_message());
-		ret = EXP_LOAD_ERR_BAD_JSON;
+		ret = EXPERR_LOAD_BAD_JSON;
 	}
 
 	return ret;
@@ -140,7 +203,6 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 	exp->exp_log = NULL;
 
 	exp->exp_error = 0;
-	aas_init(&exp->exp_error_msg);
 
 	exp->exp_status = EXPERIMENT_NOT_CONFIGURED;
 
@@ -197,6 +259,8 @@ static exp_workload_t* exp_wl_create(const char* name) {
 	 ewl->wl_steps = NULL;
 	 ewl->wl_steps_cfg = NULL;
 
+	 ewl->wl_tp = NULL;
+
 	 ewl->wl_is_chained = B_FALSE;
 
 	 ewl->wl_file_schema = NULL;
@@ -252,7 +316,8 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 
 	experiment_init(exp, root_path, runid, dir);
 
-	if(experiment_read_config(exp) != EXP_LOAD_OK) {
+	exp_load_error = experiment_read_config(exp);
+	if(exp_load_error != EXPERR_LOAD_OK) {
 		mp_free(exp);
 		return NULL;
 	}
@@ -302,6 +367,13 @@ static int experiment_load_run_walk(struct experiment_walk_ctx* ctx, void* conte
  */
 experiment_t* experiment_load_run(experiment_t* root, int runid) {
 	return experiment_walk(root, experiment_load_run_walk, &runid);
+}
+
+/**
+ * Returns an error occured in experiment_load_*() functions
+ */
+unsigned experiment_load_error() {
+	return exp_load_error;
 }
 
 static int experiment_max_runid_walk(struct experiment_walk_ctx* ctx, void* context) {
@@ -382,7 +454,9 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	json_node_t* j_name;
 
 	if(runid == -1) {
-		logmsg(LOG_CRIT, "Couldn't allocate runid for experiment!");
+		tse_experiment_error_msg(root, EXPERR_CREATE_ALLOC_RUNID,
+								 "Couldn't allocate runid for experiment!");
+		exp_create_error = EXPERR_CREATE_ALLOC_RUNID;
 		return NULL;
 	}
 
@@ -392,7 +466,9 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	if(name == NULL) {
 		j_name = json_find_opt(base->exp_config, "name");
 		if(j_name == NULL) {
-			logmsg(LOG_CRIT, "Neither command-line name nor name from config was provided");
+			tse_experiment_error_msg(root, EXPERR_CREATE_UNNAMED,
+									 "Neither command-line name nor name from config was provided");
+			exp_create_error = EXPERR_CREATE_UNNAMED;
 			return NULL;
 		}
 
@@ -414,6 +490,13 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 					   json_new_string(json_str_create(name)), B_TRUE);
 
 	return exp;
+}
+
+/**
+ * Returns an error occured in experiment_create() function
+ */
+unsigned experiment_create_error() {
+	return exp_create_error;
 }
 
 /**
@@ -442,7 +525,6 @@ void experiment_destroy(experiment_t* exp) {
 	mutex_destroy(&exp->exp_mutex);
 
 	aas_free(&exp->exp_name);
-	aas_free(&exp->exp_error_msg);
 
 	mp_free(exp);
 }
@@ -452,25 +534,40 @@ void experiment_destroy(experiment_t* exp) {
  */
 int experiment_mkdir(experiment_t* exp) {
 	char path[PATHMAXLEN];
-	struct stat statbuf;
+
+	int ret;
 
 	if(exp->exp_runid == EXPERIMENT_ROOT) {
-		return EXPERIMENT_MKDIR_INVALID;
+		tse_experiment_error_msg(exp, EXPERR_MKDIR_IS_ROOT, "Failed to create experiment's run, "
+						 "cannot be performed on root");
+		return EXPERR_MKDIR_IS_ROOT;
+	}
+
+	ret = experiment_check_path(exp->exp_root, R_OK | W_OK | X_OK,
+								EXPERIMENT_OK, EXPERR_MKDIR_NO_PERMS);
+	if(ret != EXPERIMENT_OK) {
+		tse_experiment_error_msg(exp, ret, "Failed to create experiment's run: "
+						 	 	 "no permissions on '%s'", exp->exp_root);
+		return ret;
 	}
 
 	path_join(path, PATHMAXLEN, exp->exp_root, exp->exp_directory, NULL);
 
-	if(stat(path, &statbuf) == 0) {
-		return EXPERIMENT_MKDIR_EXISTS;
+	if(experiment_check_path_exists(path)) {
+		tse_experiment_error_msg(exp, EXPERR_MKDIR_EXISTS,
+				"Failed to create experiment's run '%s': already exists", path);
+		return EXPERR_MKDIR_EXISTS;
 	}
 
 	if(mkdir(path, S_IRWXU |
 				   S_IRGRP | S_IXGRP |
 				   S_IROTH | S_IXOTH) != 0) {
-		return EXPERIMENT_MKDIR_ERROR;
+		tse_experiment_error_msg(exp, EXPERR_MKDIR_ERROR,
+				"Failed to create experiment's run '%s': mkdir error %d", path, errno);
+		return EXPERR_MKDIR_ERROR;
 	}
 
-	return EXPERIMENT_MKDIR_OK;
+	return EXPERR_MKDIR_OK;
 }
 
 /**
@@ -483,36 +580,47 @@ int experiment_write(experiment_t* exp) {
 	FILE* file;
 	char* data;
 
-	struct stat statbuf;
+	int ret;
+
+	path_join(path, PATHMAXLEN, exp->exp_root, exp->exp_directory, NULL);
+	ret = experiment_check_path(path, R_OK | W_OK | X_OK,
+								EXPERR_WRITE_NO_DIR, EXPERR_WRITE_DIR_NO_PERMS);
+	if(ret != 0) {
+		tse_experiment_error_msg(exp, ret,
+				"Failed to write experiment's config to '%s': no permissions or not exists", path);
+		return ret;
+	}
 
 	path_join(path, PATHMAXLEN, exp->exp_root, exp->exp_directory, EXPERIMENT_FILENAME, NULL);
 	path_join(old_path, PATHMAXLEN, exp->exp_root, exp->exp_directory, EXPERIMENT_FILENAME_OLD, NULL);
 
-	if(stat(path, &statbuf) == 0) {
+	if(experiment_check_path_exists(path)) {
 		if(rename(path, old_path) == -1) {
-			logmsg(LOG_WARN, "Failed to rename experiment's config '%s' -> '%s'", path, old_path);
-			return EXPERIMENT_WRITE_RENAME_ERROR;
+			tse_experiment_error_msg(exp, EXPERR_WRITE_RENAME_ERROR, "Failed to rename experiment's config "
+							  "'%s' -> '%s'. Errno: %d", path, old_path, errno);
+			return EXPERR_WRITE_RENAME_ERROR;
 		}
 	}
 
 	file = fopen(path, "w");
 	if(file == NULL) {
-		logmsg(LOG_WARN, "Failed to open experiment's config '%s'", path);
+		tse_experiment_error_msg(exp, EXPERR_WRITE_FILE_ERROR, "Failed to write experiment's config '%s':"
+						 "cannot open, errno: %d", path, errno);
 
 		rename(old_path, path);
-		return EXPERIMENT_WRITE_FILE_ERROR;
+		return EXPERR_WRITE_FILE_ERROR;
 	}
 
 	if(json_write_file(exp->exp_config, file, B_TRUE) != JSON_OK) {
-		logmsg(LOG_WARN, "Failed to write experiment's config '%s': %s",
-				path, json_error_message());
+		tse_experiment_error_msg(exp, EXPERR_WRITE_FILE_JSON_FAIL, "Failed to write experiment's config '%s': "
+						 "JSON error %s", path, json_error_message());
 
-		return EXPERIMENT_WRITE_FILE_ERROR;
+		return EXPERR_WRITE_FILE_JSON_FAIL;
 	}
 
 	fclose(file);
 
-	return EXPERIMENT_WRITE_OK;
+	return EXPERR_WRITE_OK;
 }
 
 /**
@@ -520,25 +628,41 @@ int experiment_write(experiment_t* exp) {
  */
 int experiment_open_log(experiment_t* exp) {
 	char path[PATHMAXLEN];
-	struct stat statbuf;
+	int ret;
 
 	if(exp->exp_runid == EXPERIMENT_ROOT) {
-		return EXPERIMENT_OPENLOG_INVALID;
+		tse_experiment_error_msg(exp, EXPERR_OPENLOG_IS_ROOT, "Failed to create experiment's log, "
+						 "cannot be performed on root");
+		return EXPERR_OPENLOG_IS_ROOT;
+	}
+
+	path_join(path, PATHMAXLEN, exp->exp_root, exp->exp_directory, NULL);
+	ret = experiment_check_path(path, R_OK | W_OK | X_OK,
+								EXPERR_OPENLOG_NO_DIR, EXPERR_OPENLOG_DIR_NO_PERMS);
+	if(ret != 0) {
+		tse_experiment_error_msg(exp, ret,
+				"Failed to create experiment's log in '%s': no permissions or not exists",
+				path);
+		return ret;
 	}
 
 	path_join(path, PATHMAXLEN, exp->exp_root, exp->exp_directory, EXPERIMENT_LOG_FILE, NULL);
 
-	if(stat(path, &statbuf) == 0) {
-		return EXPERIMENT_OPENLOG_EXISTS;
+	if(experiment_check_path_exists(path)) {
+		tse_experiment_error_msg(exp, EXPERR_OPENLOG_EXISTS, "Failed to create experiment's log '%s': "
+						 "log already exists", path);
+		return EXPERR_OPENLOG_EXISTS;
 	}
 
 	exp->exp_log = fopen(path, "w");
 
 	if(exp->exp_log == NULL) {
-		return EXPERIMENT_OPENLOG_ERROR;
+		tse_experiment_error_msg(exp, EXPERR_OPENLOG_ERROR, "Failed to create experiment's log '%s': "
+						 "cannot open, errno: %d", path, errno);
+		return EXPERR_OPENLOG_ERROR;
 	}
 
-	return EXPERIMENT_MKDIR_OK;
+	return EXPERR_OPENLOG_OK;
 }
 
 /**
@@ -898,60 +1022,81 @@ int experiment_process_config(experiment_t* exp) {
 	int id;
 
 	int error = 0;
-	int ret = EXP_CONFIG_OK;
+	int ret = EXPERR_PROC_OK;
 
 	if(json_get_node(exp->exp_config, "workloads", &workloads) != JSON_OK) {
+		ret = EXPERR_PROC_NO_WLS;
 		goto bad_json;
 	}
 
 	if(json_get_node(exp->exp_config, "threadpools", &threadpools) != JSON_OK) {
+		ret = EXPERR_PROC_NO_TPS;
 		goto bad_json;
 	}
 
 	if(json_get_node(exp->exp_config, "steps", &steps) != JSON_OK) {
+		ret = EXPERR_PROC_NO_STEPS;
 		goto bad_json;
 	}
 
 	exp->exp_workloads = hash_map_create(&exp_workload_hash_map, "wl-%s", exp->exp_name);
 	exp->exp_threadpools = hash_map_create(&exp_tp_hash_map, "tp-%s", exp->exp_name);
 
-	json_for_each(workloads, workload, id) {
-		exp_workload_t* ewl = exp_wl_create(json_name(workload));
-		error = exp_wl_proc(workload, ewl);
-
-		if(error != 0) {
-			aas_printf(&exp->exp_error_msg, "workload '%s': %s",
-					   json_name(workload), json_error_message());
-
-			return EXP_CONFIG_BAD_JSON;
-		}
-
-		if(hash_map_insert(exp->exp_workloads, ewl) != HASH_MAP_OK) {
-			aas_printf(&exp->exp_error_msg, "workload '%s' already exists",
-					  json_name(workload));
-
-			exp_wl_destroy(ewl);
-			return EXP_CONFIG_DUPLICATE;
-		}
-	}
-
 	json_for_each(threadpools, threadpool, id) {
 		exp_threadpool_t* etp = exp_tp_create(json_name(threadpool));
 		error = exp_tp_proc(threadpool, etp);
 
 		if(error != 0) {
-			aas_printf(&exp->exp_error_msg, "threadpool '%s': %s",
+			tse_experiment_error_msg(exp, EXPERR_PROC_INVALID_TP,
+					  "Failed to process experiment config: threadpool '%s': %s",
 					  json_name(threadpool), json_error_message());
 
-			return EXP_CONFIG_BAD_JSON;
+			return EXPERR_PROC_INVALID_TP;
 		}
 
 		if(hash_map_insert(exp->exp_threadpools, etp) != HASH_MAP_OK) {
-			aas_printf(&exp->exp_error_msg, "threadpool '%s' already exists",
+			tse_experiment_error_msg(exp, EXPERR_PROC_DUPLICATE_TP,
+					   "Failed to process experiment config: threadpool '%s' already exists",
 					   json_name(threadpool));
 
 			exp_tp_destroy(etp);
-			return EXP_CONFIG_DUPLICATE;
+			return EXPERR_PROC_DUPLICATE_TP;
+		}
+	}
+
+	json_for_each(workloads, workload, id) {
+		exp_workload_t* ewl = exp_wl_create(json_name(workload));
+		error = exp_wl_proc(workload, ewl);
+
+		if(error != 0) {
+			tse_experiment_error_msg(exp, EXPERR_PROC_INVALID_WL,
+					   "Failed to process experiment config: workload '%s': %s",
+					   json_name(workload), json_error_message());
+
+			return EXPERR_PROC_INVALID_WL;
+		}
+
+		if(hash_map_insert(exp->exp_workloads, ewl) != HASH_MAP_OK) {
+			tse_experiment_error_msg(exp, EXPERR_PROC_DUPLICATE_WL,
+					  "Failed to process experiment config: workload '%s' already exists",
+					  json_name(workload));
+
+			exp_wl_destroy(ewl);
+			return EXPERR_PROC_DUPLICATE_WL;
+		}
+
+		if(ewl->wl_tp_name != NULL) {
+			exp_threadpool_t* tp = hash_map_find(exp->exp_threadpools, ewl->wl_tp_name);
+
+			if(tp == NULL) {
+				tse_experiment_error_msg(exp, EXPERR_PROC_WL_NO_TP,
+							"Failed to process experiment config: "
+							"workload '%s' has to be attached to threadpool '%s', "
+						    "but it does not exist", ewl->wl_name, ewl->wl_tp_name);
+				return EXPERR_PROC_WL_NO_TP;
+			}
+
+			ewl->wl_tp = tp;
 		}
 	}
 
@@ -959,22 +1104,24 @@ int experiment_process_config(experiment_t* exp) {
 		exp_workload_t* ewl = hash_map_find(exp->exp_workloads, json_name(step));
 
 		if(ewl == NULL) {
-			aas_printf(&exp->exp_error_msg, "could not find workload for steps '%s'",
-					   json_name(step));
+			tse_experiment_error_msg(exp, EXPERR_PROC_NO_STEP_WL,
+						"Failed to process experiment config: "
+						"could not find workload for steps '%s'", json_name(step));
 
-			return EXP_CONFIG_NOT_FOUND;
+			return EXPERR_PROC_NO_STEP_WL;
 		}
 
 		ewl->wl_steps_cfg = step;
 	}
 
-	return EXP_CONFIG_OK;
+	return ret;
 
 bad_json:
-	aas_printf(&exp->exp_error_msg, "missing config node: %s",
+	tse_experiment_error_msg(exp, ret,
+			   "Failed to process experiment config: missing config node: %s",
 			   json_error_message());
 
-	return EXP_CONFIG_BAD_JSON;
+	return ret;
 }
 
 /* ---------------------------
@@ -987,56 +1134,13 @@ struct exp_wl_open_context {
 	experiment_t* exp;
 };
 
-tsfile_schema_t* exp_wl_generate_schema(experiment_t* exp, exp_workload_t* ewl, int flags) {
-	tsfile_schema_t* schema = NULL;
+static void exp_wl_generate_rqparams(tsfile_schema_t* schema, wl_type_t* wlt, int rq_param_count) {
 	tsfile_field_t* field;
-	wl_type_t* wlt;
 	wlp_descr_t* wlp;
-	int rq_param_count;
+
 	int field_count, fid;
+
 	size_t rqe_size = sizeof(exp_request_entry_t);
-
-	if((flags & EXP_OPEN_SCHEMA_READ) &&
-			((flags & EXP_OPEN_CREATE) == 0)) {
-		char schema_path[PATHMAXLEN];
-		char schema_filename[PATHPARTMAXLEN];
-
-		snprintf(schema_filename, PATHPARTMAXLEN, "%s-%s", ewl->wl_name, EXP_SCHEMA_SUFFIX);
-
-		path_join(schema_path, PATHMAXLEN, exp->exp_root, exp->exp_directory, schema_filename, NULL);
-
-		return tsfile_schema_read(schema_path);
-	}
-
-	wlt = tsload_walk_workload_types(TSLOAD_WALK_FIND, ewl->wl_type, NULL);
-
-	if(wlt == NULL) {
-		logmsg(LOG_WARN, "Error generating schema: couldn't find workload type '%s'", ewl->wl_type);
-
-		return NULL;
-	}
-
-	/* Count number of per-request parameters */
-	rq_param_count = 0;
-
-	if(flags & EXP_OPEN_RQPARAMS) {
-		wlp = &wlt->wlt_params[0];
-
-		while(wlp->type != WLP_NULL) {
-			if(wlp->flags & WLPF_REQUEST) {
-				++rq_param_count;
-			}
-			++wlp;
-		}
-	}
-
-	/* Clone per-request schema with additional fields */
-	schema = tsfile_schema_clone(rq_param_count, &request_schema);
-	if(schema == NULL) {
-		logmsg(LOG_WARN, "Error generating schema: failed to clone it");
-
-		return NULL;
-	}
 
 	/* Now fill in information about per-request params fields
 	 * Update schema so it will know about per-request params:
@@ -1096,6 +1200,101 @@ tsfile_schema_t* exp_wl_generate_schema(experiment_t* exp, exp_workload_t* ewl, 
 			++wlp;
 		}
 	}
+}
+
+static tsfile_schema_t* exp_wl_generate_schema(struct exp_wl_open_context* ctx, exp_workload_t* ewl) {
+	tsfile_schema_t* schema = NULL;
+
+	int rq_param_count = 0;
+	wl_type_t* wlt;
+	wlp_descr_t* wlp;
+
+	experiment_t* exp = ctx->exp;
+	int flags = ctx->flags;
+
+	char schema_path[PATHMAXLEN];
+	char schema_filename[PATHPARTMAXLEN];
+
+	snprintf(schema_filename, PATHPARTMAXLEN, "%s-%s", ewl->wl_name, EXP_SCHEMA_SUFFIX);
+	path_join(schema_path, PATHMAXLEN, exp->exp_root, exp->exp_directory, schema_filename, NULL);
+
+	/* Use preliminary saved schema description
+	 * */
+	if((flags & EXP_OPEN_SCHEMA_READ) &&
+			((flags & EXP_OPEN_CREATE) == 0)) {
+		ctx->error = experiment_check_path(schema_path, R_OK,
+										   EXPERR_OPEN_NO_SCHEMA_FILE, EXPERR_OPEN_SCHEMA_NO_PERMS);
+		if(ctx->error != EXPERIMENT_OK) {
+			tse_experiment_error_msg(ctx->exp, ctx->error,
+					"Error opening schema for workload '%s': "
+					"file has no permissions or not exists", ewl->wl_name);
+			return NULL;
+		}
+
+		schema = tsfile_schema_read(schema_path);
+		if(schema == NULL) {
+			ctx->error = EXPERR_OPEN_SCHEMA_OPEN_ERROR;
+			tse_experiment_error_msg(ctx->exp, ctx->error,
+					"Error opening schema for workload '%s': "
+					"cannot read schema from it", ewl->wl_name);
+		}
+
+		return schema;
+	}
+
+	/* Generating schema - first check if it is already exists and we need to create it
+	 * */
+	if((flags & EXP_OPEN_CREATE) && experiment_check_path_exists(schema_path)) {
+		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_SCHEMA_EXISTS,
+				"Error generating schema for workload '%s': "
+				"schema-file already exists", ewl->wl_name);
+		ctx->error = EXPERR_OPEN_SCHEMA_EXISTS;
+		return NULL;
+	}
+
+	wlt = tsload_walk_workload_types(TSLOAD_WALK_FIND, ewl->wl_type, NULL);
+
+	if(wlt == NULL) {
+		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_SCHEMA_NO_WLTYPE,
+				"Error generating schema for workload '%s': "
+				"couldn't find workload type '%s'", ewl->wl_name, ewl->wl_type);
+		ctx->error = EXPERR_OPEN_SCHEMA_NO_WLTYPE;
+		return NULL;
+	}
+
+	/* Count number of per-request parameters */
+	if(flags & EXP_OPEN_RQPARAMS) {
+		wlp = &wlt->wlt_params[0];
+
+		while(wlp->type != WLP_NULL) {
+			if(wlp->flags & WLPF_REQUEST) {
+				++rq_param_count;
+			}
+			++wlp;
+		}
+	}
+
+	/* Clone per-request schema with additional fields */
+	schema = tsfile_schema_clone(rq_param_count, &request_schema);
+	if(schema == NULL) {
+		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_SCHEMA_CLONE_ERROR,
+				"Error generating schema: for workload '%s': "
+				 "failed to clone it", ewl->wl_name);
+		ctx->error = EXPERR_OPEN_SCHEMA_CLONE_ERROR;
+		return NULL;
+	}
+
+	exp_wl_generate_rqparams(schema, wlt, rq_param_count);
+
+	if(tsfile_schema_write(schema_path, schema) != 0) {
+		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_SCHEMA_WRITE_ERROR,
+				"Error generating schema: for workload '%s': "
+				"failed to write file", ewl->wl_name);
+		ctx->error = EXPERR_OPEN_SCHEMA_WRITE_ERROR;
+
+		mp_free(schema);
+		schema = NULL;
+	}
 
 	return schema;
 }
@@ -1105,32 +1304,42 @@ int exp_wl_open_walker(hm_item_t* obj, void* context) {
 	exp_workload_t* ewl = (exp_workload_t*) obj;
 
 	tsfile_t* tsfile;
-	tsfile_schema_t* schema = exp_wl_generate_schema(ctx->exp, ewl, ctx->flags);
+	tsfile_schema_t* schema = NULL;
 
 	char tsf_path[PATHMAXLEN];
 	char tsf_filename[PATHPARTMAXLEN];
 
-	if(schema == NULL) {
-		ctx->error = EXP_OPEN_BAD_SCHEMA;
-		return HM_WALKER_STOP;
-	}
-
 	snprintf(tsf_filename, PATHPARTMAXLEN, "%s.%s", ewl->wl_name, TSFILE_EXTENSION);
 	path_join(tsf_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_directory, tsf_filename, NULL);
 
+	/* Check if tsfile exists */
 	if(ctx->flags & EXP_OPEN_CREATE) {
-		char schema_path[PATHMAXLEN];
-		char schema_filename[PATHPARTMAXLEN];
-
-		snprintf(schema_filename, PATHPARTMAXLEN, "%s-%s", ewl->wl_name, EXP_SCHEMA_SUFFIX);
-		path_join(schema_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_directory, schema_filename, NULL);
-
-		if(tsfile_schema_write(schema_path, schema) != 0) {
-			mp_free(schema);
-			ctx->error = EXP_OPEN_ERROR_SCHEMA;
+		if(experiment_check_path_exists(tsf_path)) {
+			ctx->error = EXPERR_OPEN_TSF_EXISTS;
+			tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_TSF_EXISTS,
+					"Failed to create tsfile for workload '%s': "
+					"file has no permissions or not exists", ewl->wl_name);
 			return HM_WALKER_STOP;
 		}
+	}
+	else {
+		ctx->error = experiment_check_path(tsf_path, R_OK,
+										   EXPERR_OPEN_NO_TSF_FILE, EXPERR_OPEN_TSF_NO_PERMS);
 
+		if(ctx->error != EXPERIMENT_OK) {
+			tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_NO_TSF_FILE,
+					"Failed to open tsfile for workload '%s': "
+					"file has no permissions or not exists", ewl->wl_name);
+			return HM_WALKER_STOP;
+		}
+	}
+
+	/* Open or generate schema and tsfiles */
+	schema = exp_wl_generate_schema(ctx, ewl);
+	if(schema == NULL)
+		return HM_WALKER_STOP;
+
+	if(ctx->flags & EXP_OPEN_CREATE) {
 		tsfile = tsfile_create(tsf_path, schema);
 	}
 	else {
@@ -1138,8 +1347,13 @@ int exp_wl_open_walker(hm_item_t* obj, void* context) {
 	}
 
 	if(tsfile == NULL) {
+		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_ERROR_TSFILE,
+				"Failed to open or create tsfile for workload '%s': "
+				"tsfile internal error", ewl->wl_name);
+
 		mp_free(schema);
-		ctx->error = EXP_OPEN_ERROR_TSFILE;
+		ctx->error = EXPERR_OPEN_ERROR_TSFILE;
+
 		return HM_WALKER_STOP;
 	}
 
@@ -1160,9 +1374,31 @@ int exp_wl_open_walker(hm_item_t* obj, void* context) {
  */
 int experiment_open_workloads(experiment_t* exp, int flags) {
 	struct exp_wl_open_context ctx;
+	char experiment_path[PATHMAXLEN];
+	int ret;
+
+	if(exp->exp_runid == EXPERIMENT_ROOT) {
+		tse_experiment_error_msg(exp, EXPERR_OPEN_IS_ROOT,
+				"Failed to open workloads, "
+				"cannot be performed on root");
+		return EXPERR_OPEN_IS_ROOT;
+	}
 
 	if(exp->exp_workloads == NULL) {
-		return EXP_OPEN_NO_WORKLOADS;
+		tse_experiment_error_msg(exp, EXPERR_OPEN_NO_WORKLOADS,
+				"Failed to open workloads, "
+				"there are no workloads");
+		return EXPERR_OPEN_NO_WORKLOADS;
+	}
+
+	path_join(experiment_path, PATHMAXLEN, exp->exp_root, exp->exp_directory, NULL);
+	ret = experiment_check_path(experiment_path, R_OK | ((flags & EXP_OPEN_CREATE) ? W_OK : 0),
+								EXPERR_OPEN_DIR_NO_PERMS, EXPERR_OPEN_NO_DIR);
+	if(ret != EXPERIMENT_OK) {
+		tse_experiment_error_msg(exp, EXPERR_OPEN_DIR_NO_PERMS,
+				"Failed to open workloads in '%s', "
+				"no permissions or not exists", experiment_path);
+		return ret;
 	}
 
 	ctx.error = 0;

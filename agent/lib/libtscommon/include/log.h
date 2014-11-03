@@ -23,6 +23,8 @@
 
 #include <defs.h>
 
+#include <stdarg.h>
+
 /**
  * @module Logging facility
  */
@@ -52,8 +54,9 @@ LIBEXPORT void log_fini();
 
 LIBEXPORT int logerror();
 
+LIBEXPORT int logmsg_src_va(int severity, const char* source, const char* format, va_list args);
 LIBEXPORT int logmsg_src(int severity, const char* source, const char* format, ...)
-		CHECKFORMAT(printf, 3, 4);		/*For GCC printf warnings*/;
+	CHECKFORMAT(printf, 3, 4);		/*For GCC printf warnings*/
 
 LIBEXPORT PLATAPI int plat_get_callers(char* callers, size_t size);
 
@@ -68,6 +71,8 @@ LIBEXPORT PLATAPI int plat_get_callers(char* callers, size_t size);
  * */
 #define logmsg(severity, ...) \
 	logmsg_src((severity), LOG_SOURCE, __VA_ARGS__)
+#define logmsg_va(severity, format, va) \
+	logmsg_src_va((severity), LOG_SOURCE, format, va)
 
 #endif /* LOG_H_ */
 

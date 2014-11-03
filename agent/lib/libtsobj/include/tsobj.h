@@ -53,7 +53,7 @@ typedef struct tsobj_error_state {
 #define TSOBJ_NOT_CHILD			JSON_NOT_CHILD
 #define TSOBJ_UNUSED_CHILD 		JSON_UNUSED_CHILD
 
-typedef int (*tsobj_error_msg_func)(int errno, const char* format, va_list va);
+typedef int (*tsobj_error_msg_func)(int tsobj_errno, const char* format, va_list va);
 LIBIMPORT tsobj_error_msg_func tsobj_error_msg;
 
 LIBEXPORT int tsobj_errno(void);

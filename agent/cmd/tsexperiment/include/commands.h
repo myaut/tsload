@@ -24,12 +24,22 @@
 #include <experiment.h>
 
 #define CMD_OK		    	0
-#define CMD_UNKNOWN      	-1
-#define CMD_MISSING_ARG  	-2
-#define CMD_INVALID_PATH	-3
-#define CMD_INVALID_OPT  	-4
-#define CMD_INVALID_ARG  	-5
-#define CMD_ERROR			-6
+#define CMD_MISSING_CMD    	-1
+#define CMD_UNKNOWN_CMD    	-2
+#define CMD_INVALID_OPT  	-3
+#define CMD_INVALID_ARG  	-4
+#define CMD_MISSING_ARG  	-5
+
+#define CMD_ERROR_BASE		-10
+#define CMD_NOT_EXISTS		-11
+#define CMD_NO_PERMS		-12
+#define CMD_ALREADY_EXISTS	-13
+#define CMD_IS_ROOT			-14
+
+#define CMD_GENERIC_ERROR	-30
+
+int tse_experr_to_cmderr(unsigned experr);
+int tse_command_error_msg(int code, const char* format, ...);
 
 size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen);
 const char* tse_exp_get_status_str(experiment_t* exp);
@@ -45,6 +55,7 @@ int tse_show(experiment_t* root, int argc, char* argv[]);
 int tse_report(experiment_t* root, int argc, char* argv[]);
 int tse_export(experiment_t* root, int argc, char* argv[]);
 int tse_run(experiment_t* root, int argc, char* argv[]);
+int tse_exp_err(experiment_t* root, int argc, char* argv[]);
 
 int run_init(void);
 void run_fini(void);

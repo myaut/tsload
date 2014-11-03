@@ -18,7 +18,7 @@
 
 
 
-#define LOG_SOURCE "experiment"
+#define LOG_SOURCE "tserun"
 #include <log.h>
 
 #include <threads.h>
@@ -29,7 +29,9 @@
 #include <workload.h>
 #include <wltype.h>
 #include <mempool.h>
+#include <tuneit.h>
 
+#include <tseerror.h>
 #include <experiment.h>
 #include <commands.h>
 #include <steps.h>
@@ -39,54 +41,13 @@
 
 #include <assert.h>
 
-ts_time_t tse_run_wl_start_delay = 2 * T_SEC;
+ts_time_t tse_run_wl_start_delay = 1 * T_SEC;
 
 experiment_t* running = NULL;
 static thread_mutex_t	running_lock;
 
-static thread_mutex_t	output_lock;
-
-boolean_t tse_run_batch_mode = B_FALSE;
-
 int tse_experiment_set(experiment_t* exp, const char* option);
 int tse_prepare_experiment(experiment_t* exp, experiment_t* base);
-
-int tse_run_vfprintf(experiment_t* exp, const char* fmt, va_list va) {
-	va_list va1;
-	va_list va2;
-
-	int ret;
-
-	va_copy(va1, va);
-	va_copy(va2, va);
-
-	mutex_lock(&output_lock);
-
-	if(!tse_run_batch_mode) {
-		ret = vfprintf(stderr, fmt, va1);
-		fflush(stderr);
-	}
-
-	if(exp->exp_log != NULL) {
-		ret = vfprintf(exp->exp_log, fmt, va2);
-		fflush(exp->exp_log);
-	}
-
-	mutex_unlock(&output_lock);
-
-	return ret;
-}
-
-int tse_run_fprintf(experiment_t* exp, const char* fmt, ...) {
-	va_list va;
-	int ret;
-
-	va_start(va, fmt);
-	tse_run_vfprintf(exp, fmt, va);
-	va_end(va);
-
-	return ret;
-}
 
 static const char* tse_run_wl_status_msg(wl_status_t wls) {
 	switch(wls) {
@@ -115,7 +76,7 @@ static const char* tse_run_wl_status_msg(wl_status_t wls) {
  */
 
 struct exp_create_steps_context {
-	int error;
+	unsigned error;
 	experiment_t* exp;
 	experiment_t* base;
 };
@@ -146,8 +107,9 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 	}
 
 	if(ewl->wl_steps_cfg == NULL) {
-		tse_run_fprintf(ctx->exp, "Missing steps for workload %s\n", ewl->wl_name);
-		ctx->error = -3;
+		tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_CONST,
+							  "Missing steps for workload %s\n", ewl->wl_name);
+		ctx->error = EXPERR_STEPS_INVALID_CONST;
 		return HM_WALKER_STOP;
 	}
 
@@ -155,9 +117,10 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 
 	if(error != JSON_NOT_FOUND) {
 		if(error == JSON_INVALID_TYPE) {
-			tse_run_fprintf(ctx->exp, "Error parsing step parameters for workload '%s': %s\n",
+			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_FILE,
+					"Error parsing step parameters for workload '%s': %s\n",
 					ewl->wl_name, json_error_message());
-			ctx->error = -4;
+			ctx->error = EXPERR_STEPS_INVALID_FILE;
 			return HM_WALKER_STOP;
 		}
 
@@ -167,13 +130,14 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 		sg = step_create_file(step_path, step_dest_path);
 
 		if(sg != NULL) {
-			tse_run_fprintf(ctx->exp, "Loaded steps file '%s' for workload '%s'\n",
+			tse_printf(TSE_PRINT_ALL, "Loaded steps file '%s' for workload '%s'\n",
 							step_path, ewl->wl_name);
 		}
 		else {
-			tse_run_fprintf(ctx->exp, "Couldn't open steps file '%s' for workload '%s'\n",
-							step_path, ewl->wl_name);
-			ctx->error = -1;
+			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_FILE_ERROR,
+					"Couldn't open steps file '%s' for workload '%s'\n",
+					step_path, ewl->wl_name);
+			ctx->error = EXPERR_STEPS_FILE_ERROR;
 			return HM_WALKER_STOP;
 		}
 	}
@@ -184,13 +148,15 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 		if(error1 == JSON_OK && error2 == JSON_OK) {
 			sg = step_create_const(num_steps, num_requests);
 
-			tse_run_fprintf(ctx->exp, "Created const steps generator for workload '%s' with N=%ld R=%u\n",
-						 	ewl->wl_name, num_steps, num_requests);
+			tse_printf(TSE_PRINT_ALL,
+					   "Created const steps generator for workload '%s' with N=%ld R=%u\n",
+						ewl->wl_name, num_steps, num_requests);
 		}
 		else {
-			tse_run_fprintf(ctx->exp, "Error parsing step parameters for workload '%s': %s\n",
+			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_CONST,
+							"Error parsing step parameters for workload '%s': %s\n",
 							ewl->wl_name, json_error_message());
-			ctx->error = -2;
+			ctx->error = EXPERR_STEPS_INVALID_CONST;
 			return HM_WALKER_STOP;
 		}
 	}
@@ -201,9 +167,10 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 		if(ewl->wl_steps == NULL) {
 			step_destroy(sg);
 
-			tse_run_fprintf(ctx->exp, "Couldn't create trace-driven step generator for workload '%s'\n",
-						    ewl->wl_name);
-			ctx->error = -2;
+			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_TRACE,
+					"Couldn't create trace-driven step generator for workload '%s'\n",
+					 ewl->wl_name);
+			ctx->error = EXPERR_STEPS_INVALID_TRACE;
 			return HM_WALKER_STOP;
 		}
 	}
@@ -289,26 +256,8 @@ void tse_run_requests_report(list_head_t* rq_list) {
 
 	if(count > 0) {
 		/* TODO: Report per-workload statistics */
-
-		tse_run_fprintf(running, "Reported %d requests\n", count);
+		tse_printf(TSE_PRINT_NOLOG, "Reported %d requests\n", count);
 	}
-}
-
-void tse_run_error_handler(ts_errcode_t code, const char* format, ...) {
-	va_list va;
-	char fmtstr[256];
-
-	snprintf(fmtstr, 256, "ERROR %d: %s\n", code, format);
-
-	va_start(va, format);
-	tse_run_vfprintf(running, fmtstr, va);
-	va_end(va);
-
-	mutex_lock(&running->exp_mutex);
-	running->exp_status = EXPERIMENT_ERROR;
-	running->exp_error = code;
-
-	mutex_unlock(&running->exp_mutex);
 }
 
 /* -----------------------
@@ -341,8 +290,9 @@ int tse_run_tp_configure_walk(hm_item_t* item, void* context) {
 	}
 
 	tm_human_print(etp->tp_quantum, quantum, 40);
-	tse_run_fprintf(running, "Configured threadpool '%s' with %d threads and %s quantum\n",
-					etp->tp_name, etp->tp_num_threads, quantum);
+	tse_printf(TSE_PRINT_NOLOG,
+			   "Configured threadpool '%s' with %d threads and %s quantum\n",
+			   etp->tp_name, etp->tp_num_threads, quantum);
 
 	etp->tp_status = EXPERIMENT_OK;
 
@@ -364,8 +314,9 @@ int tse_run_tp_unconfigure_walk(hm_item_t* item, void* context) {
 	if(etp->tp_status != EXPERIMENT_NOT_CONFIGURED) {
 		tsload_destroy_threadpool(etp->tp_name);
 
-		tse_run_fprintf(running, "Unconfigured threadpool '%s (status: %d)'\n",
-				        etp->tp_name, etp->tp_status);
+		tse_printf(TSE_PRINT_NOLOG,
+				   "Unconfigured threadpool '%s (status: %d)'\n",
+				   etp->tp_name, etp->tp_status);
 	}
 
 	return HM_WALKER_CONTINUE;
@@ -411,8 +362,9 @@ int tse_run_wl_provide_step(exp_workload_t* ewl) {
 	ret = step_get_step(ewl->wl_steps, &step_id, &num_rqs, &trace_rqs);
 
 	if(ret == STEP_ERROR) {
-		tse_run_fprintf(running,
-				        "Couldn't process step %ld for workload '%s': steps failure\n", step_id, ewl->wl_name);
+		tse_experiment_error_msg(running, EXPERR_STEP_PROVIDE_STEP_ERROR,
+				   "Couldn't process step %ld for workload '%s': "
+				   "steps failure\n", step_id, ewl->wl_name);
 		ewl->wl_status = EXPERIMENT_ERROR;
 		return ret;
 	}
@@ -425,16 +377,18 @@ int tse_run_wl_provide_step(exp_workload_t* ewl) {
 		err = tsload_provide_step(ewl->wl_name, step_id, num_rqs, &trace_rqs, &status);
 
 		if(err != TSLOAD_OK) {
-			tse_run_fprintf(running,
-							"Couldn't provide step %ld for workload '%s': TSLoad core error\n", step_id, ewl->wl_name);
+			tse_experiment_error_msg(running, EXPERR_STEP_PROVIDE_TSLOAD_ERROR,
+					   "Couldn't provide step %ld for workload '%s': "
+					   "TSLoad core error\n", step_id, ewl->wl_name);
 
 			ewl->wl_status = EXPERIMENT_ERROR;
 			return STEP_ERROR;
 		}
 
 		if(status == WL_STEP_QUEUE_FULL) {
-			tse_run_fprintf(running,
-							"Couldn't provide step %ld for workload '%s': queue is full\n", step_id, ewl->wl_name);
+			tse_experiment_error_msg(running, EXPERR_STEP_PROVIDE_QFULL,
+					   "Couldn't provide step %ld for workload '%s': "
+					   "queue is full\n", step_id, ewl->wl_name);
 
 			ewl->wl_status = EXPERIMENT_ERROR;
 			return STEP_ERROR;
@@ -471,7 +425,8 @@ int tse_run_wl_start_walk(hm_item_t* item, void* context) {
 
 	mutex_unlock(&running->exp_mutex);
 
-	tse_run_fprintf(running, "Starting workload '%s': provided %d steps\n", ewl->wl_name, step);
+	tse_printf(TSE_PRINT_NOLOG,
+			   "Starting workload '%s': provided %d steps\n", ewl->wl_name, step);
 
 	return HM_WALKER_CONTINUE;
 }
@@ -482,8 +437,9 @@ int tse_run_wl_unconfigure_walk(hm_item_t* item, void* context) {
 	if(ewl->wl_status != EXPERIMENT_NOT_CONFIGURED) {
 		tsload_unconfigure_workload(ewl->wl_name);
 
-		tse_run_fprintf(running, "Unconfigured workload '%s' (status: %d)\n",
-						 ewl->wl_name, ewl->wl_status);
+		tse_printf(TSE_PRINT_NOLOG,
+				"Unconfigured workload '%s' (status: %d)\n",
+				ewl->wl_name, ewl->wl_status);
 	}
 
 	if(ewl->wl_steps) {
@@ -503,8 +459,9 @@ void tse_run_workload_status(const char* wl_name,
 
 	assert(ewl != NULL);
 
-	tse_run_fprintf(running, "Workload '%s' %s (%ld): %s\n", wl_name,
-					tse_run_wl_status_msg(status), progress, config_msg);
+	tse_printf(TSE_PRINT_NOLOG,
+			"Workload '%s' %s (%ld): %s\n", wl_name,
+			tse_run_wl_status_msg(status), progress, config_msg);
 
 	mutex_lock(&running->exp_mutex);
 
@@ -540,30 +497,30 @@ void tse_run_workload_status(const char* wl_name,
 	mutex_unlock(&running->exp_mutex);
 }
 
-void experiment_run(experiment_t* exp) {
-	ts_time_t start_time;
+static void experiment_notify_start(experiment_t* exp, ts_time_t start_time) {
 	char start_time_str[32];
 
-	if(exp->exp_runid == EXPERIMENT_ROOT) {
-		logmsg(LOG_CRIT, "Couldn't run experiment '%s' - got root experiment config", exp->exp_name);
-		return;
-	}
+	start_time_str[0] = '\0';
+	tm_datetime_print(start_time, start_time_str, 32);
 
-	mutex_lock(&running_lock);
-	if(running != NULL) {
-		logmsg(LOG_CRIT, "Couldn't run experiment '%s' - already running one", exp->exp_name);
-		mutex_unlock(&running_lock);
-		return;
-	}
-	running = exp;
-	mutex_unlock(&running_lock);
+	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("start_time"),
+				       json_new_integer(start_time), B_TRUE);
 
-	tse_run_fprintf(exp, "\n=== CONFIGURING EXPERIMENT '%s' RUN #%d === \n", exp->exp_name, exp->exp_runid);
+	tse_printf(TSE_PRINT_NOLOG, "\n=== STARTING WORKLOADS @%s === \n",
+			start_time_str);
+
+}
+
+int experiment_configure(experiment_t* exp) {
+	tse_printf(TSE_PRINT_NOLOG, "\n=== CONFIGURING EXPERIMENT '%s' RUN #%d === \n",
+			exp->exp_name, exp->exp_runid);
 
 	hash_map_walk(exp->exp_threadpools, tse_run_tp_configure_walk, exp);
 	if(exp->exp_status != EXPERIMENT_NOT_CONFIGURED) {
-		tse_run_fprintf(exp, "Failure occured while spawning threadpools\n");
-		goto unconfigure;
+		tse_experiment_error_msg(exp, EXPERR_RUN_TP_ERROR,
+				"Couldn't run experiment '%s': "
+				"Failure occurred while spawning threadpools\n", exp->exp_name);
+		return EXPERR_RUN_TP_ERROR;
 	}
 
 	hash_map_walk(exp->exp_workloads, tse_run_wl_configure_walk, NULL);
@@ -576,42 +533,22 @@ void experiment_run(experiment_t* exp) {
 	mutex_unlock(&exp->exp_mutex);
 
 	if(exp->exp_status != EXPERIMENT_NOT_CONFIGURED) {
-		tse_run_fprintf(exp, "Failure occured while configuring workloads\n");
-		goto unconfigure;
+		tse_experiment_error_msg(exp, EXPERR_RUN_WL_ERROR,
+				"Couldn't run experiment '%s': "
+				"Failure occurred while configuring workloads\n", exp->exp_name);
+		return EXPERR_RUN_WL_ERROR;
 	}
 
-	mutex_lock(&running_lock);
-	exp->exp_status = EXPERIMENT_OK;
-	mutex_unlock(&running_lock);
+	return EXPERR_RUN_OK;
+}
 
-	/* Ceil start time up to second */
-	start_time = tm_get_time() + (T_SEC / 2);
-	start_time = ((ts_time_t) (start_time / T_SEC)) * T_SEC + tse_run_wl_start_delay;
-
-	start_time_str[0] = '\0';
-	tm_datetime_print(start_time, start_time_str, 32);
-
-	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("start_time"),
-				       json_new_integer(start_time), B_TRUE);
-
-	tse_run_fprintf(exp, "\n=== STARTING WORKLOADS @%s === \n", start_time_str);
-
-	hash_map_walk(exp->exp_workloads, tse_run_wl_start_walk, &start_time);
-	if(exp->exp_status != EXPERIMENT_OK) {
-		tse_run_fprintf(exp, "Failure occured while scheduling workloads to start\n");
-		goto unconfigure;
-	}
-
-	mutex_lock(&exp->exp_mutex);
-	while(exp->exp_wl_running_count > 0 && exp->exp_status == EXPERIMENT_OK)
-		cv_wait(&exp->exp_cv, &exp->exp_mutex);
-	mutex_unlock(&exp->exp_mutex);
-
-unconfigure:
-	tse_run_fprintf(exp, "\n=== UNCONFIGURING EXPERIMENT '%s' RUN #%d === \n", exp->exp_name, exp->exp_runid);
+void experiment_unconfigure(experiment_t* exp) {
+	tse_printf(TSE_PRINT_NOLOG, "\n=== UNCONFIGURING EXPERIMENT '%s' RUN #%d === \n",
+			exp->exp_name, exp->exp_runid);
 
 	if(exp->exp_status != EXPERIMENT_OK) {
-		tse_run_fprintf(exp, "WARNING: Error encountered during experiment run\n");
+		tse_printf(TSE_PRINT_ALL,
+			"WARNING: Error encountered during experiment run\n");
 	}
 
 	hash_map_walk(exp->exp_workloads, tse_run_wl_unconfigure_walk, NULL);
@@ -622,14 +559,94 @@ unconfigure:
 	mutex_unlock(&exp->exp_mutex);
 
 	hash_map_walk(exp->exp_threadpools, tse_run_tp_unconfigure_walk, NULL);
+}
 
+int experiment_try_enter(experiment_t* exp) {
+	/* Occupy running slot */
+	mutex_lock(&running_lock);
+	if(running != NULL) {
+		tse_experiment_error_msg(exp, EXPERR_RUN_ALREADY_RUNNING,
+				"Couldn't run experiment '%s': "
+				"already running one", exp->exp_name);
+		mutex_unlock(&running_lock);
+		return EXPERR_RUN_ALREADY_RUNNING;
+	}
+
+	running = exp;
+	tse_error_set_experiment(running);
+	mutex_unlock(&running_lock);
+
+	return EXPERR_RUN_OK;
+}
+
+void experiment_leave(experiment_t* exp) {
 	mutex_lock(&running_lock);
 	running = NULL;
 	mutex_unlock(&running_lock);
+}
+
+int experiment_start(experiment_t* exp) {
+	ts_time_t start_time;
+
+	/* Ceil start time up to second */
+	start_time = tm_get_time() + (T_SEC / 2);
+	start_time = ((ts_time_t) (start_time / T_SEC)) * T_SEC + tse_run_wl_start_delay;
+
+	exp->exp_status = EXPERIMENT_OK;
+
+	hash_map_walk(exp->exp_workloads, tse_run_wl_start_walk, &start_time);
+	if(exp->exp_status != EXPERIMENT_OK) {
+		tse_experiment_error_msg(exp, EXPERR_RUN_SCHED_ERROR,
+				"Couldn't run experiment '%s': "
+				"Failure occured while scheduling workloads to start\n", exp->exp_name);
+		return EXPERR_RUN_SCHED_ERROR;
+	}
+
+	experiment_notify_start(exp, start_time);
+
+	return EXPERR_RUN_OK;
+}
+
+void experiment_wait(experiment_t* exp) {
+	mutex_lock(&exp->exp_mutex);
+	while(exp->exp_wl_running_count > 0 && exp->exp_status == EXPERIMENT_OK)
+		cv_wait(&exp->exp_cv, &exp->exp_mutex);
+	mutex_unlock(&exp->exp_mutex);
+}
+
+int experiment_run(experiment_t* exp) {
+	int ret = EXPERR_RUN_OK;
+
+	if(exp->exp_runid == EXPERIMENT_ROOT) {
+		tse_experiment_error_msg(exp, EXPERR_RUN_IS_ROOT,
+				"Couldn't run experiment '%s': "
+				"got root experiment config", exp->exp_name);
+		return EXPERR_RUN_IS_ROOT;
+	}
+
+	ret = experiment_try_enter(exp);
+	if(ret != EXPERR_RUN_OK)
+		return ret;
+
+	ret = experiment_configure(exp);
+	if(ret != EXPERR_RUN_OK)
+		goto unconfigure;
+
+	ret = experiment_start(exp);
+	if(ret != EXPERR_RUN_OK)
+		goto unconfigure;
+
+	experiment_wait(exp);
+unconfigure:
+	experiment_unconfigure(exp);
+
+	experiment_leave(exp);
 
 	if(exp->exp_status == EXPERIMENT_OK) {
 		exp->exp_status = EXPERIMENT_FINISHED;
 	}
+
+	return ret;
 }
 
 int tse_run(experiment_t* root, int argc, char* argv[]) {
@@ -641,6 +658,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 
 	char* exp_name = NULL;
 	boolean_t trace_mode = B_FALSE;
+	boolean_t batch_mode = B_FALSE;
 
 	experiment_t* base = NULL;
 	experiment_t* exp = NULL;
@@ -654,7 +672,8 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 			aas_copy(&exp_name, optarg);
 			break;
 		case 'b':
-			tse_run_batch_mode = B_TRUE;
+			batch_mode = B_TRUE;
+			tse_error_disable_dest(TSE_ERR_DEST_STDERR);
 			break;
 		case 'T':
 			trace_mode = B_TRUE;
@@ -665,9 +684,9 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 			break;
 		case '?':
 			if(optopt == 'n' || optopt == 's')
-				fprintf(stderr, "-%c option requires an argument\n", optopt);
+				tse_command_error_msg(CMD_INVALID_OPT, "-%c option requires an argument\n", optopt);
 			else
-				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+				tse_command_error_msg(CMD_INVALID_OPT, "Unknown option `-%c'.\n", optopt);
 			ret = CMD_INVALID_OPT;
 			goto end_name;
 		}
@@ -680,9 +699,10 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 
 	exp = experiment_create(root, base, exp_name);
 	if(exp == NULL) {
-		fprintf(stderr, "Couldn't create experiment from %d\n",
+		ret = CMD_GENERIC_ERROR;
+		tse_command_error_msg(CMD_GENERIC_ERROR,
+				"Couldn't create experiment from %d\n",
 				(base == NULL) ? EXPERIMENT_ROOT : base->exp_runid);
-		ret = CMD_ERROR;
 		goto end_base;
 	}
 
@@ -697,15 +717,16 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 			break;
 		case 's':
 			if(!exp->exp_trace_mode) {
-				err = tse_experiment_set(exp, optarg);
-				if(err != CMD_OK) {
-					fprintf(stderr, "Invalid set option: '%s'\n", optarg);
+				ret = tse_experiment_set(exp, optarg);
+				if(ret != CMD_OK) {
+					tse_command_error_msg(ret, "Invalid set option: '%s'\n", optarg);
 					goto end;
 				}
 			}
 			else {
 				err = CMD_INVALID_OPT;
-				fprintf(stderr, "Altering experiment options is not allowed in trace mode\n");
+				tse_command_error_msg(CMD_INVALID_OPT,
+						"Altering experiment options is not allowed in trace mode\n");
 				goto end;
 			}
 			break;
@@ -721,12 +742,10 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 		goto end;
 
 	/* Install tsload/tsfile handlers */
-	tsload_error_msg = tse_run_error_handler;
-	tsfile_error_msg = tse_run_error_handler;
 	tsload_workload_status = tse_run_workload_status;
 	tsload_requests_report = tse_run_requests_report;
 
-	if(tse_run_batch_mode) {
+	if(batch_mode) {
 		printf("%d\n", exp->exp_runid);
 	}
 
@@ -740,9 +759,9 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("agent"), hostinfo, B_TRUE);
 
 	err = experiment_write(exp);
-	if(err != EXPERIMENT_WRITE_OK) {
-		fprintf(stderr, "Couldn't write config of experiment run. Error: %d\n", err);
-		ret = CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't write config of experiment run. Error: %d\n", err);
 	}
 
 end:
@@ -781,76 +800,86 @@ int tse_experiment_set(experiment_t* exp, const char* option) {
 
 int tse_prepare_experiment(experiment_t* exp, experiment_t* base) {
 	int err;
+	int ret;
 
 	/* Add agent info and datetime here */
 
 	err = experiment_process_config(exp);
-	if(err != EXP_CONFIG_OK) {
-		fprintf(stderr, "Couldn't process experiment config. Error: %s\n", exp->exp_error_msg);
-		return CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't process experiment config. Error: %x\n", err);
+		return ret;
 	}
 
 	err = experiment_mkdir(exp);
-	if(err != EXPERIMENT_MKDIR_OK) {
-		fprintf(stderr, "Couldn't create directory for experiment run. Error: %d\n", err);
-		return CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't create directory for experiment run. Error: %x\n", err);
+		return ret;
 	}
 
 	err = experiment_write(exp);
-	if(err != EXPERIMENT_WRITE_OK) {
-		fprintf(stderr, "Couldn't write config of experiment run. Error: %d\n", err);
-		return CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't write config of experiment run. Error: %x\n", err);
+		return ret;
 	}
 
 	err = experiment_open_log(exp);
-	if(err != EXPERIMENT_OPENLOG_OK) {
-		fprintf(stderr, "Couldn't open logfile for experiment run. Error: %d\n", err);
-		return CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't open logfile for experiment run. Error: %x\n", err);
+		return ret;
 	}
 
 	if(exp->exp_trace_mode) {
 		if(base->exp_runid != EXPERIMENT_ROOT && base->exp_status != EXPERIMENT_FINISHED) {
-			fprintf(stderr, "Couldn't create trace-driven simulation based on unfinished run.\n");
-			return CMD_ERROR;
+			ret = tse_experr_to_cmderr(err);
+			tse_command_error_msg(ret, "Couldn't create trace-driven simulation based on unfinished run.\n");
+			return ret;
 		}
 
 		err = experiment_process_config(base);
-		if(err != EXP_CONFIG_OK) {
-			fprintf(stderr, "Couldn't process base experiment config. Error: %d\n", err);
-			return CMD_ERROR;
+		if(err != EXPERIMENT_OK) {
+			ret = tse_experr_to_cmderr(err);
+			tse_command_error_msg(ret, "Couldn't process base experiment config. Error: %x\n", err);
+			return ret;
 		}
 
 		err = experiment_open_workloads(base, EXP_OPEN_RQPARAMS);
-		if(err != EXP_OPEN_OK) {
-			fprintf(stderr, "Couldn't read trace files. Error: %d\n", err);
-			return CMD_ERROR;
+		if(err != EXPERIMENT_OK) {
+			ret = tse_experr_to_cmderr(err);
+			tse_command_error_msg(ret, "Couldn't read trace files. Error: %x\n", err);
+			return ret;
 		}
 	}
 
 	err = experiment_create_steps(exp, base);
 	if(err != 0) {
-		fprintf(stderr, "Couldn't create experiment steps. Error: %d\n", err);
-		return CMD_ERROR;
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't create experiment steps. Error: %x\n", err);
+		return ret;
 	}
 
 	err = experiment_open_workloads(exp, EXP_OPEN_CREATE | EXP_OPEN_RQPARAMS);
-	if(err != EXP_OPEN_OK) {
-		fprintf(stderr, "Couldn't open workload output files. Error: %d\n", err);
-		return CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't open workload output files. Error: %x\n", err);
+		return ret;
 	}
 
 	return CMD_OK;
 }
 
 int run_init(void) {
-	mutex_init(&output_lock, "output_lock");
 	mutex_init(&running_lock, "running_lock");
+
+	tuneit_set_int(ts_time_t, tse_run_wl_start_delay);
 
 	return 0;
 }
 
 void run_fini(void) {
-	mutex_destroy(&output_lock);
 	mutex_destroy(&running_lock);
 }
 

@@ -18,7 +18,6 @@
 
 
 
-#include <steps.h>
 #include <workload.h>
 #include <hashmap.h>
 #include <mempool.h>
@@ -27,6 +26,9 @@
 #include <tsload.h>
 #include <tsfile.h>
 
+#include <steps.h>
+#include <tseerror.h>
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,8 +36,6 @@
 #include <assert.h>
 
 /* TODO: Implement TSFile steps */
-
-int tse_run_fprintf(experiment_t* exp, const char* fmt, ...);
 
 int step_get_step_file(steps_file_t* sf, long* step_id, unsigned* p_num_rqs);
 int step_get_step_const(steps_const_t* sc, long* step_id, unsigned* p_num_rqs);
@@ -281,8 +281,6 @@ int step_get_step_trace(steps_trace_t* st, long* p_step_id, unsigned* p_num_rqs,
 		ret = step_trace_fetch_step(st->st_exp, stwl, step_id, num_rqs_chained);
 
 		if(ret != STEP_OK) {
-			tse_run_fprintf(st->st_exp, "Failed to fetch trace requests for workload '%s'\n",
-							stwl->ewl->wl_name, err);
 			goto end;
 		}
 
@@ -326,7 +324,8 @@ int step_get_step_trace(steps_trace_t* st, long* p_step_id, unsigned* p_num_rqs,
 									strq->rqe->rq_sched_time, strq->rq_params);
 
 		if(err != TSLOAD_OK) {
-			tse_run_fprintf(st->st_exp, "Failed to create trace request #%d for workload '%s'\n",
+			tse_experiment_error_msg(st->st_exp, EXPERR_STEPS_TRACE_REQUEST_ERROR,
+							"Failed to create trace request #%d for workload '%s'\n",
 							strq->rqe->rq_request, st->st_ewl->wl_name);
 			ret = STEP_ERROR;
 			goto end;
@@ -338,8 +337,9 @@ int step_get_step_trace(steps_trace_t* st, long* p_step_id, unsigned* p_num_rqs,
 					strq_chain->rqe->rq_sched_time, strq_chain->rq_params);
 
 			if(err != TSLOAD_OK) {
-				tse_run_fprintf(st->st_exp, "Failed to create chained trace request #%d for root workload '%s'\n",
-								strq->rqe->rq_request, st->st_ewl->wl_name);
+				tse_experiment_error_msg(st->st_exp, EXPERR_STEPS_TRACE_CHAINED_ERROR,
+						"Failed to create chained trace request #%d for root workload '%s'\n",
+						strq->rqe->rq_request, st->st_ewl->wl_name);
 				ret = STEP_ERROR;
 				goto end;
 			}
@@ -405,7 +405,8 @@ int step_trace_fetch_step(experiment_t* exp, step_workload_trace_t* stwl, long s
 		if(index == rq_count) {
 			/* Request count provided by upper generator differs
 			 * from number of reported requests. Trace failed :( */
-			tse_run_fprintf(exp, "TSFile ended prematurely on %d entry\n", index);
+			tse_experiment_error_msg(exp, EXPERR_STEPS_END_OF_TRACE,
+									 "TSFile ended prematurely on %d entry\n", index);
 			return STEP_ERROR;
 		}
 
@@ -414,7 +415,8 @@ int step_trace_fetch_step(experiment_t* exp, step_workload_trace_t* stwl, long s
 		while(index < rq_count) {
 			err = tsfile_get_entries(ewl->wl_file, strq->rqe, index, index + 1);
 			if(err != TSFILE_OK) {
-				tse_run_fprintf(exp, "TSFile read error %d\n", stwl->ewl->wl_name, err);
+				tse_experiment_error_msg(exp, EXPERR_STEPS_TRACE_TSFILE_ERROR,
+										 "TSFile read error %d\n", stwl->ewl->wl_name, err);
 
 				mp_free(strq);
 				return STEP_ERROR;

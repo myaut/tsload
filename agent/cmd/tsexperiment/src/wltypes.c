@@ -62,7 +62,7 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 			json = B_TRUE;
 			break;
 		case '?':
-			fprintf(stderr, "Invalid show suboption -%c\n", c);
+			tse_command_error_msg(CMD_INVALID_OPT, "Invalid suboption -%c for command wl\n", optopt);
 			return CMD_INVALID_OPT;
 		}
 	}

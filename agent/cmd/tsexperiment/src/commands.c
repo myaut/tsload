@@ -25,6 +25,7 @@
 
 #include <experiment.h>
 #include <commands.h>
+#include <tseerror.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -45,37 +46,43 @@ tse_command_t commands[] = {
 	{"report", tse_report, B_TRUE},
 	{"export", tse_export, B_TRUE},
 	{"run", tse_run, B_TRUE},
+
+	/* Undocumented */
+	{"experr", tse_exp_err, B_FALSE},
 	{NULL, NULL}
 };
 
 int tse_do_command(const char* path, int argc, char* argv[]) {
 	tse_command_t* command = &commands[0];
-	int ret = CMD_UNKNOWN;
+	int ret = CMD_UNKNOWN_CMD;
 	experiment_t* root = NULL;
 
 	if(argc == 0) {
 		fputs("Missing subcommand!\n", stderr);
-		return CMD_MISSING_ARG;
-	}
-
-	if(path) {
-		root = experiment_load_root(path);
-		if(root == NULL) {
-			fprintf(stderr, "Couldn't load experiment from '%s'\n", path);
-
-			if(json_errno() != JSON_OK) {
-				fprintf(stderr, "JSON error: %s\n", json_error_message());
-			}
-
-			return CMD_INVALID_PATH;
-		}
+		return CMD_MISSING_CMD;
 	}
 
 	while(command->name != NULL) {
 		if(strcmp(command->name, argv[0]) == 0) {
-			if(!root && command->needroot) {
-				fprintf(stderr, "Subcommand '%s' requires experiment root\n", command->name);
-				return CMD_MISSING_ARG;
+			if(command->needroot) {
+				if(!path) {
+					tse_command_error_msg(CMD_MISSING_ARG,
+							"Subcommand '%s' requires experiment root\n", command->name);
+					return CMD_MISSING_ARG;
+				}
+
+				root = experiment_load_root(path);
+				if(root == NULL) {
+					ret = tse_experr_to_cmderr(experiment_load_error());
+					tse_command_error_msg(ret, "Couldn't load experiment from '%s'\n", path);
+
+					return ret;
+				}
+			}
+			else if(path) {
+				tse_command_error_msg(CMD_INVALID_OPT,
+						"Subcommand '%s' does not need experiment root\n", command->name);
+				return CMD_INVALID_OPT;
 			}
 
 			ret = command->func(root, argc, argv);
@@ -96,20 +103,24 @@ experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[
 	int argi = optind++;
 	int runid;
 
+	int err;
+
 	experiment_t* exp = NULL;
 
 	if(argi < argc) {
 		runid = strtol(argv[argi], NULL, 10);
 
-		if(runid == -1) {
-			fprintf(stderr, "Invalid runid '%s' - should be integer\n", argv[argi]);
+		if(runid < 0) {
+			tse_command_error_msg(CMD_INVALID_ARG,
+					"Invalid runid '%s' - should be positive integer\n", argv[argi]);
 			return NULL;
 		}
 
 		exp = experiment_load_run(root, runid);
 
 		if(exp == NULL) {
-			fprintf(stderr, "Couldn't open experiment run with runid %d\n", runid);
+			err = tse_experr_to_cmderr(experiment_load_error());
+			tse_command_error_msg(err, "Couldn't open experiment run with runid %d\n", runid);
 			return NULL;
 		}
 	}

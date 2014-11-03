@@ -1,5 +1,7 @@
 from pathutil import *
 
+import sys
+
 tgtroot = 'tsload-standalone'
 target = 'tsexperiment'
 
@@ -18,9 +20,16 @@ cmd.AddDeps(('lib', 'libtscommon'),
             ('lib', 'libtsfile'),  
             ('lib', 'libhostinfo'), 
             ('lib', 'libtsload'))
+
+ExpErrGenBuilder = Builder(action = '%s $TSLOADPATH/tools/genexperr.py $SOURCE > $TARGET' % (sys.executable))
+cmd.Append(BUILDERS = {'ExpErrGenBuilder': ExpErrGenBuilder})
+
+experr_c = cmd.ExpErrGenBuilder('src/experr.c', 'include/experiment.h')
+
 objects = cmd.CompileProgram()
-tsexperiment = cmd.Program(target, objects)
+tsexperiment = cmd.LinkProgram(target, objects)
 
 i_tsexperiment = cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsexperiment)
+
 
 InstallExperiment('sample')

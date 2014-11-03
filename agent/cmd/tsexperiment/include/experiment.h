@@ -39,9 +39,6 @@
 
 #define EXPERIMENT_ROOT		-1
 
-#define EXP_LOAD_OK				0
-#define EXP_LOAD_ERR_OPEN_FAIL  -1
-#define EXP_LOAD_ERR_BAD_JSON	-2
 
 /**
  * Experiment config functions return values
@@ -65,31 +62,135 @@
 #define EXP_WALK_BREAK		2
 #define EXP_WALK_NEXT		3
 
+/**
+ * Experiment open flags ('opening' includes opening both config and
+ * trace files)
+ * */
 #define EXP_OPEN_NONE			0
 #define EXP_OPEN_CREATE			0x01
 #define EXP_OPEN_RQPARAMS		0x02
 #define EXP_OPEN_SCHEMA_READ	0x04
 
-#define EXP_OPEN_OK				0
-#define EXP_OPEN_NO_WORKLOADS	-1
-#define EXP_OPEN_BAD_SCHEMA		-2
-#define EXP_OPEN_ERROR_SCHEMA	-3
-#define EXP_OPEN_ERROR_TSFILE	-4
+/**
+ * Experiment error code:
+ * 0x 1x yy
+ * 		1 - means that experiment-specific error
+ *		2 - failed operation
+ *		3 - error code
+ */
+// NOTE: if you change that, update experr.c too
+#define EXPERIMENT_OK				0
+// [WKE] Well-known errors
+#define EXPERR_NOT_EXISTS			0x1
+#define EXPERR_NO_PERMS				0x2
+#define EXPERR_ALREADY_EXISTS		0x3
+#define EXPERR_IS_ROOT				0x4
+// [STAGE] Classes/stages for experiment error
+#define EXPERR_LOAD_DIR				1
+#define EXPERR_LOAD_CFG				2
+#define EXPERR_PROC_CFG				3
+#define EXPERR_CREATE				4
+#define EXPERR_WRITE				5
+#define EXPERR_MKDIR				6
+#define EXPERR_OPENLOG				7
+#define EXPERR_OPEN_WL				8
+#define EXPERR_OPEN_WL_SCHEMA		9
+#define EXPERR_OPEN_WL_TSFILE		10
+#define EXPERR_STEPS				11
+#define EXPERR_STEP_PROVIDE			12
+#define EXPERR_RUN					13
+// Macro that generates experiment error code
+// G means generic error, E - extended error
+#define EXPERRG(stage, code)			(0x4000 | (stage << 8) | code)
+#define EXPERRE(stage, code)			(0x4000 | (stage << 8) | 0x80 | code)
+// [ERRS]
+// experiment_load_*
+#define EXPERR_LOAD_OK				0
+#define EXPERR_LOAD_NO_DIR			EXPERRG(EXPERR_LOAD_DIR, EXPERR_NOT_EXISTS)
+#define EXPERR_LOAD_DIR_NO_PERMS	EXPERRG(EXPERR_LOAD_DIR, EXPERR_NO_PERMS)
+#define EXPERR_LOAD_NO_FILE	  		EXPERRG(EXPERR_LOAD_CFG, EXPERR_NOT_EXISTS)
+#define EXPERR_LOAD_FILE_NO_PERMS	EXPERRG(EXPERR_LOAD_CFG, EXPERR_NO_PERMS)
+#define EXPERR_LOAD_FILE_ERROR 		EXPERRE(EXPERR_LOAD_CFG, 1)
+#define EXPERR_LOAD_BAD_JSON		EXPERRE(EXPERR_LOAD_CFG, 2)
+// experiment_process_config()
+#define EXPERR_PROC_OK				0
+#define EXPERR_PROC_NO_WLS			EXPERRE(EXPERR_PROC_CFG, 1)
+#define EXPERR_PROC_NO_TPS			EXPERRE(EXPERR_PROC_CFG, 2)
+#define EXPERR_PROC_NO_STEPS		EXPERRE(EXPERR_PROC_CFG, 3)
+#define EXPERR_PROC_DUPLICATE_WL	EXPERRE(EXPERR_PROC_CFG, 4)
+#define EXPERR_PROC_DUPLICATE_TP	EXPERRE(EXPERR_PROC_CFG, 5)
+#define EXPERR_PROC_INVALID_WL		EXPERRE(EXPERR_PROC_CFG, 6)
+#define EXPERR_PROC_INVALID_TP		EXPERRE(EXPERR_PROC_CFG, 7)
+#define EXPERR_PROC_NO_STEP_WL		EXPERRE(EXPERR_PROC_CFG, 8)
+#define EXPERR_PROC_WL_NO_TP		EXPERRE(EXPERR_PROC_CFG, 9)
+// experiment_open_workloads()
+#define EXPERR_OPEN_OK					0
+#define EXPERR_OPEN_IS_ROOT				EXPERRG(EXPERR_OPEN_WL, EXPERR_IS_ROOT)
+#define EXPERR_OPEN_NO_DIR				EXPERRG(EXPERR_OPEN_WL, EXPERR_NOT_EXISTS)
+#define EXPERR_OPEN_DIR_NO_PERMS		EXPERRG(EXPERR_OPEN_WL, EXPERR_NO_PERMS)
+#define EXPERR_OPEN_NO_WORKLOADS		EXPERRE(EXPERR_OPEN_WL, 1)
+#define EXPERR_OPEN_NO_SCHEMA_FILE		EXPERRG(EXPERR_OPEN_WL_SCHEMA, EXPERR_NOT_EXISTS)
+#define EXPERR_OPEN_SCHEMA_NO_PERMS		EXPERRG(EXPERR_OPEN_WL_SCHEMA, EXPERR_NO_PERMS)
+#define EXPERR_OPEN_SCHEMA_EXISTS		EXPERRG(EXPERR_OPEN_WL_SCHEMA, EXPERR_ALREADY_EXISTS)
+#define EXPERR_OPEN_SCHEMA_NO_WLTYPE	EXPERRE(EXPERR_OPEN_WL_SCHEMA, 1)
+#define EXPERR_OPEN_SCHEMA_OPEN_ERROR	EXPERRE(EXPERR_OPEN_WL_SCHEMA, 2)
+#define EXPERR_OPEN_SCHEMA_CLONE_ERROR	EXPERRE(EXPERR_OPEN_WL_SCHEMA, 3)
+#define EXPERR_OPEN_SCHEMA_WRITE_ERROR	EXPERRE(EXPERR_OPEN_WL_SCHEMA, 4)
+#define EXPERR_OPEN_NO_TSF_FILE			EXPERRG(EXPERR_OPEN_WL_TSFILE, EXPERR_NOT_EXISTS)
+#define EXPERR_OPEN_TSF_NO_PERMS		EXPERRG(EXPERR_OPEN_WL_TSFILE, EXPERR_NO_PERMS)
+#define EXPERR_OPEN_TSF_EXISTS			EXPERRG(EXPERR_OPEN_WL_TSFILE, EXPERR_ALREADY_EXISTS)
+#define EXPERR_OPEN_ERROR_TSFILE		EXPERRE(EXPERR_OPEN_WL_TSFILE, 1)
+// experiment_create()
+#define EXPERR_CREATE_OK			0
+#define EXPERR_CREATE_ALLOC_RUNID 		EXPERRE(EXPERR_CREATE, 1)
+#define EXPERR_CREATE_UNNAMED			EXPERRE(EXPERR_CREATE, 2)
+// experiment_write()
+#define EXPERR_WRITE_OK				0
+#define EXPERR_WRITE_NO_DIR			EXPERRG(EXPERR_WRITE, EXPERR_NOT_EXISTS)
+#define EXPERR_WRITE_DIR_NO_PERMS	EXPERRG(EXPERR_WRITE, EXPERR_NO_PERMS)
+#define EXPERR_WRITE_RENAME_ERROR	EXPERRE(EXPERR_WRITE, 1)
+#define EXPERR_WRITE_FILE_ERROR 	EXPERRE(EXPERR_WRITE, 2)
+#define EXPERR_WRITE_FILE_JSON_FAIL EXPERRE(EXPERR_WRITE, 3)
+// experiment_mkdir()
+#define EXPERR_MKDIR_OK				0
+#define EXPERR_MKDIR_IS_ROOT		EXPERRG(EXPERR_MKDIR, EXPERR_IS_ROOT)
+#define EXPERR_MKDIR_EXISTS			EXPERRG(EXPERR_MKDIR, EXPERR_ALREADY_EXISTS)
+#define EXPERR_MKDIR_NO_PERMS		EXPERRG(EXPERR_MKDIR, EXPERR_NO_PERMS)
+#define EXPERR_MKDIR_ERROR			EXPERRE(EXPERR_MKDIR, 1)
+// experiment_open_log()
+#define EXPERR_OPENLOG_OK			0
+#define EXPERR_OPENLOG_IS_ROOT		EXPERRG(EXPERR_OPENLOG, EXPERR_IS_ROOT)
+#define EXPERR_OPENLOG_NO_DIR		EXPERRG(EXPERR_OPENLOG, EXPERR_NOT_EXISTS)
+#define EXPERR_OPENLOG_DIR_NO_PERMS	EXPERRG(EXPERR_OPENLOG, EXPERR_NO_PERMS)
+#define EXPERR_OPENLOG_EXISTS		EXPERRG(EXPERR_OPENLOG, EXPERR_ALREADY_EXISTS)
+#define EXPERR_OPENLOG_ERROR		EXPERRE(EXPERR_OPENLOG, 1)
+// experiment_create_steps()
+#define EXPERR_STEPS_OK						0
+#define EXPERR_STEPS_MISSING				EXPERRE(EXPERR_STEPS, 1)
+#define EXPERR_STEPS_INVALID_FILE			EXPERRE(EXPERR_STEPS, 2)
+#define EXPERR_STEPS_FILE_ERROR				EXPERRE(EXPERR_STEPS, 3)
+#define EXPERR_STEPS_INVALID_CONST			EXPERRE(EXPERR_STEPS, 4)
+#define EXPERR_STEPS_INVALID_TRACE			EXPERRE(EXPERR_STEPS, 5)
+#define EXPERR_STEPS_END_OF_TRACE			EXPERRE(EXPERR_STEPS, 6)
+#define EXPERR_STEPS_TRACE_TSFILE_ERROR		EXPERRE(EXPERR_STEPS, 7)
+#define EXPERR_STEPS_TRACE_REQUEST_ERROR	EXPERRE(EXPERR_STEPS, 8)
+#define EXPERR_STEPS_TRACE_CHAINED_ERROR	EXPERRE(EXPERR_STEPS, 9)
+// tse_run_wl_provide_step()
+#define EXPERR_STEP_PROVIDE_OK				0
+#define EXPERR_STEP_PROVIDE_STEP_ERROR		EXPERRE(EXPERR_STEP_PROVIDE, 1)
+#define EXPERR_STEP_PROVIDE_TSLOAD_ERROR	EXPERRE(EXPERR_STEP_PROVIDE, 2)
+#define EXPERR_STEP_PROVIDE_QFULL			EXPERRE(EXPERR_STEP_PROVIDE, 3)
+// experiment_run()
+#define EXPERR_RUN_OK				0
+#define EXPERR_RUN_IS_ROOT			EXPERRG(EXPERR_RUN, EXPERR_IS_ROOT)
+#define EXPERR_RUN_ALREADY_RUNNING	EXPERRE(EXPERR_STEP_PROVIDE, 1)
+#define EXPERR_RUN_TP_ERROR			EXPERRE(EXPERR_STEP_PROVIDE, 2)
+#define EXPERR_RUN_WL_ERROR			EXPERRE(EXPERR_STEP_PROVIDE, 3)
+#define EXPERR_RUN_SCHED_ERROR		EXPERRE(EXPERR_STEP_PROVIDE, 3)
 
-#define EXPERIMENT_WRITE_OK					0
-#define EXPERIMENT_WRITE_RENAME_ERROR		-1
-#define EXPERIMENT_WRITE_FILE_ERROR 		-2
-
-#define EXPERIMENT_MKDIR_OK			0
-#define EXPERIMENT_MKDIR_INVALID	-1
-#define EXPERIMENT_MKDIR_EXISTS		-2
-#define EXPERIMENT_MKDIR_ERROR		-3
-
-#define EXPERIMENT_OPENLOG_OK			0
-#define EXPERIMENT_OPENLOG_INVALID		-1
-#define EXPERIMENT_OPENLOG_EXISTS		-2
-#define EXPERIMENT_OPENLOG_ERROR		-3
-
+/**
+ * Experiment status codes
+ */
 #define EXPERIMENT_FINISHED				2
 #define EXPERIMENT_NOT_CONFIGURED		1
 #define EXPERIMENT_OK					0
@@ -138,6 +239,8 @@ typedef struct exp_workload {
 
 	/* Current parameters */
 	struct steps_generator* wl_steps;
+
+	exp_threadpool_t* wl_tp;
 
 	boolean_t wl_is_chained;
 
@@ -204,7 +307,6 @@ typedef struct {
 	int exp_status;
 
 	int exp_error;
-	AUTOSTRING char* exp_error_msg;
 
 	boolean_t exp_trace_mode;
 } experiment_t;
@@ -212,7 +314,10 @@ typedef struct {
 experiment_t* experiment_load_root(const char* path);
 experiment_t* experiment_load_dir(const char* root_path, int runid, const char* dir);
 experiment_t* experiment_load_run(experiment_t* root, int runid);
+unsigned experiment_load_error();
+
 experiment_t* experiment_create(experiment_t* root, experiment_t* exp, const char* name);
+unsigned experiment_create_error();
 
 void experiment_destroy(experiment_t* exp);
 
@@ -243,4 +348,5 @@ int experiment_open_workloads(experiment_t* exp, int flags);
 int experiment_open_log(experiment_t* exp);
 
 #endif /* EXPERIMENT_H_ */
+
 

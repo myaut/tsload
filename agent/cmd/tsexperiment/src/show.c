@@ -98,6 +98,8 @@ int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 	}
 
 	if(ewl->wl_tp_name != NULL) {
+		/* TODO: show steps */
+
 		printf("%-16s %-12s %-16s %-12s\n", ewl->wl_name, ewl->wl_type,
 					ewl->wl_tp_name, (rqsched == NULL)? "???" : rqsched);
 	}
@@ -112,15 +114,18 @@ int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 	return HM_WALKER_CONTINUE;
 }
 
-void tse_show_normal(experiment_t* exp) {
+int tse_show_normal(experiment_t* exp) {
 	json_node_t* agent;
 	json_node_t* start_time;
 
+	int ret;
 	int err = experiment_process_config(exp);
+
 	if(err != EXP_CONFIG_OK) {
-		fprintf(stderr, "Error processing config for experiment '%s': %s\n",
-					exp->exp_directory, exp->exp_error_msg);
-		return;
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(err, "Error processing config for experiment '%s': %x\n",
+					exp->exp_directory, ret);
+		return ret;
 	}
 
 	TSE_SHOW_PARAM("%s", "name", exp->exp_name);
@@ -162,6 +167,8 @@ void tse_show_normal(experiment_t* exp) {
 
 	printf("\n%-16s %-12s %-16s %-12s\n", "WORKLOAD", "TYPE", "THREADPOOL", "RQSCHED");
 	hash_map_walk(exp->exp_workloads, tse_show_wl_walker, NULL);
+
+	return CMD_OK;
 }
 
 int tse_show(experiment_t* root, int argc, char* argv[]) {
@@ -169,6 +176,8 @@ int tse_show(experiment_t* root, int argc, char* argv[]) {
 
 	int mode = SHOW_NORMAL;
 	int c;
+
+	int ret = CMD_OK;
 
 	while((c = plat_getopt(argc, argv, "jl")) != -1) {
 		switch(c) {
@@ -179,7 +188,7 @@ int tse_show(experiment_t* root, int argc, char* argv[]) {
 			mode = SHOW_LIST;
 			break;
 		case '?':
-			fprintf(stderr, "Invalid show suboption -%c\n", c);
+			tse_command_error_msg(CMD_INVALID_OPT, "Invalid show suboption -%c\n", c);
 			return CMD_INVALID_OPT;
 		}
 	}
@@ -197,7 +206,7 @@ int tse_show(experiment_t* root, int argc, char* argv[]) {
 		experiment_cfg_walk(exp->exp_config, tse_show_list_walk, NULL, NULL);
 		break;
 	case SHOW_NORMAL:
-		tse_show_normal(exp);
+		ret = tse_show_normal(exp);
 		break;
 	}
 
@@ -205,7 +214,7 @@ int tse_show(experiment_t* root, int argc, char* argv[]) {
 		experiment_destroy(exp);
 	}
 
-	return CMD_OK;
+	return ret;
 }
 
 

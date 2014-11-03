@@ -28,6 +28,7 @@
 
 #include <experiment.h>
 #include <commands.h>
+#include <tseerror.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -81,16 +82,16 @@ int tse_report_common(experiment_t* root, int argc, char* argv[],
 	argi = optind;
 
 	err = experiment_process_config(exp);
-	if(err != EXP_CONFIG_OK) {
-		fprintf(stderr, "Couldn't process experiment run config: %d\n", err);
-		ret = CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't process experiment run config: %x\n", err);
 		goto end;
 	}
 
 	err = experiment_open_workloads(exp, flags);
-	if(err != EXP_OPEN_OK) {
-		fprintf(stderr, "Couldn't load workload results: %d\n", err);
-		ret = CMD_ERROR;
+	if(err != EXPERIMENT_OK) {
+		ret = tse_experr_to_cmderr(err);
+		tse_command_error_msg(ret, "Couldn't load workload results: %x\n", err);
 		goto end;
 	}
 
@@ -249,7 +250,7 @@ int tse_report(experiment_t* root, int argc, char* argv[]) {
 			flags = EXP_OPEN_SCHEMA_READ;
 			break;
 		case '?':
-			fprintf(stderr, "Invalid show suboption -%c\n", c);
+			tse_command_error_msg(CMD_INVALID_OPT, "Invalid show suboption -%c\n", c);
 			return CMD_INVALID_OPT;
 		}
 	}
@@ -322,14 +323,16 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 	backend = tsfile_backend_create(ctx->backend_name);
 
 	if(backend == NULL) {
-		fprintf(stderr, "Couldn't create backend '%s'\n", ctx->backend_name);
+		tse_command_error_msg(CMD_GENERIC_ERROR,
+			"Couldn't create backend '%s'\n", ctx->backend_name);
 		return;
 	}
 
 	file = fopen(path, "w");
 
 	if(file == NULL) {
-		fprintf(stderr, "Couldn't export workload '%s' - error opening file\n", ewl->wl_name);
+		tse_command_error_msg(CMD_GENERIC_ERROR,
+				"Couldn't export workload '%s' - error opening output file\n", ewl->wl_name);
 		tsfile_backend_destroy(backend);
 		return;
 	}
@@ -348,7 +351,7 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 
 	tsfile_backend_destroy(backend);
 
-	fprintf(stderr, "Exported workload '%s' to file %s\n", ewl->wl_name, path);
+	tse_printf(TSE_PRINT_ALL, "Exported workload '%s' to file %s\n", ewl->wl_name, path);
 }
 
 static void tse_add_option(list_head_t* options, const char* optarg) {
@@ -417,9 +420,9 @@ int tse_export(experiment_t* root, int argc, char* argv[]) {
 			break;
 		case '?':
 			if(optopt == 'F' || optopt == 'd' || optopt == 'o')
-				fprintf(stderr, "-%c option requires an argument\n", optopt);
+				tse_command_error_msg(CMD_INVALID_OPT, "-%c option requires an argument\n", optopt);
 			else
-				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+				tse_command_error_msg(CMD_INVALID_OPT, "Unknown option `-%c'.\n", optopt);
 			return CMD_INVALID_OPT;
 		}
 	}

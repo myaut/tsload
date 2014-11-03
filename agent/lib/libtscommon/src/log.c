@@ -145,10 +145,23 @@ void log_gettime(char* buf, int sz) {
  *
  * @return number of written symbols or -1 if message was discarded due to severity
  */
-int logmsg_src(int severity, const char* source, const char* format, ...)
-	{
+int logmsg_src(int severity, const char* source, const char* format, ...) {
+	int ret;
+	va_list va;
+
+	va_start(va, format);
+	ret = logmsg_src_va(severity, source, format, va);
+	va_end(va);
+
+	return ret;
+}
+
+/**
+ * Same as logmsg_src(), but accepts varargs
+ */
+int logmsg_src_va(int severity, const char* source, const char* format, va_list args)
+{
 	char time[64];
-	va_list args;
 	int ret = 0;
 
 	if(!log_initialized)
@@ -165,9 +178,7 @@ int logmsg_src(int severity, const char* source, const char* format, ...)
 
 	ret = fprintf(log_file, "%s [%s:%4s] ", time, source, log_severity[severity]);
 
-	va_start(args, format);
 	ret += vfprintf(log_file, format, args);
-	va_end(args);
 
 	if(log_trace_callers) {
 		char* callers = malloc(512);
@@ -177,12 +188,16 @@ int logmsg_src(int severity, const char* source, const char* format, ...)
 		free(callers);
 	}
 
-	fputc('\n', log_file);
+	if(*(format + strlen(format) - 1) != '\n') {
+		fputc('\n', log_file);
+		ret += 1;
+	}
+
 	fflush(log_file);
 
 	mutex_unlock(&log_mutex);
 
-	return ret + 1;	/*+1 for \n*/
+	return ret;
 }
 
 /**
