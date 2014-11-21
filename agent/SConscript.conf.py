@@ -117,11 +117,33 @@ def CheckUnalignedMemAccess(context):
     
     return ret
 
+def CheckDladmOpen(context):
+    test_source = """
+    #include <libdladm.h>
+    
+    int main() {
+        dladm_handle_t h;
+        dladm_open(&h, "test");
+    }
+    """
+    
+    context.Message('Checking if dladm_open() has second argument...')
+    ret = context.sconf.TryCompile(test_source, '.c')
+    
+    if ret:
+        context.sconf.Define('HAVE_DLADM_V2', 
+                       comment='dladm_open() have second argument')
+    
+    context.Result(ret)
+    
+    return ret
+
 conf.AddTests({'CheckBinary': CheckBinary,
                'CheckDesignatedInitializers': CheckDesignatedInitializers,
                'CheckGCCSyncBuiltins': CheckGCCSyncBuiltins,
                'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins,
-               'CheckUnalignedMemAccess': CheckUnalignedMemAccess})
+               'CheckUnalignedMemAccess': CheckUnalignedMemAccess,
+               'CheckDladmOpen': CheckDladmOpen})
 
 #-------------------------------------------
 # C compiler and standard library checks
@@ -278,6 +300,9 @@ if env.SupportedPlatform('linux') or env.SupportedPlatform('solaris'):
 # hostinfo checks?
 if GetOption('trace'):
     conf.Define('HOSTINFO_TRACE', comment='--trace was enabled')
+
+if env.SupportedPlatform('solaris'):
+    conf.CheckDladmOpen()
 
 #------------------------------
 # Module checks

@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+
 /**
  * ### netinfo - Solaris implementation
  *
@@ -45,6 +46,18 @@ static dladm_handle_t dld_handle;
 
 #define LOOPBACK_IF			"lo0"
 #define LIFC_FLAGS			LIFC_NOXMIT
+
+#ifndef HAVE_DLADM_V2
+static dladm_status_t hi_net_sol_dladm_open(dladm_handle_t* handle) {
+	return dladm_open(handle);
+}
+#else
+#include <libnetcfg.h>
+
+static dladm_status_t hi_net_sol_dladm_open(dladm_handle_t* handle) {
+	return dladm_open(handle, NETADM_ACTIVE_PROFILE);
+}
+#endif
 
 static void hi_net_sol_fetch_kstat(const char *name, hi_net_device_t* netdev) {
 	kstat_ctl_t		*kc;
@@ -460,7 +473,7 @@ PLATAPI int hi_net_probe(void) {
 	/* Create loopback device (not provided by dladm) */
 	hi_net_add(hi_net_create(LOOPBACK_IF, HI_NET_LOOPBACK));
 
-	if ((dladm_status = dladm_open(&dld_handle)) != DLADM_STATUS_OK) {
+	if ((dladm_status = hi_net_sol_dladm_open(&dld_handle)) != DLADM_STATUS_OK) {
 		hi_net_dprintf("hi_net_probe: dladm open failed: %d\n", dladm_status);
 		return HI_PROBE_ERROR;
 	}

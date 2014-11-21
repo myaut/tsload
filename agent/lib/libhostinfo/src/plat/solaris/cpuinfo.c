@@ -78,7 +78,7 @@ struct hi_cpu_sol_cache solaris_caches[] =
 				4 * SZ_KB, 2 * SZ_MB, 4 * SZ_MB) },
 	{ "dtlb-4K-4M", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_DATA, 4 * SZ_KB, 4 * SZ_MB) },
 
-	/* FIXME: support for shared TLB/L2 caches i.e:
+	/* FIXME: support for shared TLB/L2 caches i.e: *
 	 *
 	 * { "shared-l2-tlb-4k", B_FALSE, HI_SOL_CPU_TLB(HI_CPU_CACHE_INSTRUCTION, 4 * SZ_KB) },*/
 
