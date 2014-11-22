@@ -1,0 +1,119 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="threads.html"><strong>Prev</strong>(Threads and syncronization primitives)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="schedutil.html"><strong>Next</strong>(schedutil)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>CPU masks</h1><h3></h3>    <p>
+CPU masks are used in sched_get_affinity()/sched_set_affinitity() functions<br />they contain set of cpuid's, on that thread is allowed to run.<br /></p>
+    <p>
+cpuid is id of strand object taken from libhostinfo<br /></p>
+<h2>Functions</h2><a name="cpumask_create"></a><h3>cpumask_create</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Allocate and initialize new CPU mask </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI cpumask_t* cpumask_create()
+</pre>
+</p>
+<a name="cpumask_destroy"></a><h3>cpumask_destroy</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Destroy CPU mask<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void cpumask_destroy(cpumask_t* mask)
+</pre>
+</p>
+<a name="cpumask_reset"></a><h3>cpumask_reset</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Remove all CPUs from mask</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void cpumask_reset(cpumask_t* mask)
+</pre>
+</p>
+<a name="cpumask_set"></a><h3>cpumask_set</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Add CPU to mask </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void cpumask_set(cpumask_t* mask, int cpuid)
+</pre>
+</p>
+<a name="cpumask_clear"></a><h3>cpumask_clear</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Remove CPU from mask </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void cpumask_clear(cpumask_t* mask, int cpuid)
+</pre>
+</p>
+<a name="cpumask_isset"></a><h3>cpumask_isset</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Test to see if CPU is inside this mask </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI boolean_t cpumask_isset(cpumask_t* mask, int cpuid)
+</pre>
+</p>
+<a name="cpumask_count"></a><h3>cpumask_count</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns count of CPUs in mask </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int cpumask_count(cpumask_t* mask)
+</pre>
+</p>
+<a name="cpumask_eq"></a><h3>cpumask_eq</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns B_TRUE if masks a and b are equal </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI boolean_t cpumask_eq(cpumask_t* a, cpumask_t* b)
+</pre>
+</p>
+<a name="cpumask_contains"></a><h3>cpumask_contains</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns B_TRUE if b is submask of a  </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI boolean_t cpumask_contains(cpumask_t* a, cpumask_t* b)
+</pre>
+</p>
+<a name="cpumask_or"></a><h3>cpumask_or</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns new CPU mask that contains CPUs that are included in<br />both a and b masks (similiar to boolean or)<br /></p>
+    <p>
+<em>NOTES</em><br />Resulting mask should be freed with cpumask_destroy() <br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI cpumask_t* cpumask_or(cpumask_t* a, cpumask_t* b)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

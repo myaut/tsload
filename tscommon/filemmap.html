@@ -1,0 +1,155 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="readlink.html"><strong>Prev</strong>(readlink)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="tstime.html"><strong>Next</strong>(tstime)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Memory-mapped files</h1><h3></h3><h2>Constants</h2><a name="Error_codes"></a><a name="MME_OK"></a><a name="MME_INVALID_FLAG"></a><a name="MME_OPEN_ERROR"></a><a name="MME_MMAP_ERROR"></a><h3>Error codes</h3>    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>MME_OK</strong> - - everything went fine<br /></li>
+            <li>
+<strong>MME_INVALID_FLAG</strong> - - invalid mmfl value<br /></li>
+            <li>
+<strong>MME_OPEN_ERROR</strong> - - failed to open file<br /></li>
+            <li>
+<strong>MME_MMAP_ERROR</strong> - - failed to create memory mapping<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define MME_OK  0
+#define MME_INVALID_FLAG    -1
+#define MME_OPEN_ERROR  -2
+#define MME_MMAP_ERROR  -3
+</pre>
+</p>
+<a name="MMF_MAP_ALL"></a><h3>MMF_MAP_ALL</h3>    <p>
+<br />Offset value to map entire file into memory<br /></p>
+<p>
+<pre>
+#define MMF_MAP_ALL -1
+</pre>
+</p>
+<a name="Memory_mapping_protection_flags"></a><a name="MMFL_RDONLY"></a><a name="MMFL_WRONLY"></a><a name="MMFL_RDWR"></a><h3>Memory mapping protection flags</h3>    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>MMFL_RDONLY</strong> - map read only<br /></li>
+            <li>
+<strong>MMFL_WRONLY</strong> - map write only<br /></li>
+            <li>
+<strong>MMFL_RDWR</strong> - allows both write and reads<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define MMFL_RDONLY 
+#define MMFL_WRONLY 
+#define MMFL_RDWR   
+</pre>
+</p>
+<h2>Functions</h2><a name="mmf_open"></a><h3>mmf_open</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Initialize mmap_file_t structure and open file<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>mmf</strong> - pointer to mmap_file_t<br /></li>
+            <li>
+<strong>filename</strong> - path to file<br /></li>
+            <li>
+<strong>mmfl</strong> - memory mapping flag<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />MME_OK if file was successfully opened or MME_OPEN_ERROR<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int mmf_open(mmap_file_t* mmf, const char* filename, int mmfl)
+</pre>
+</p>
+<a name="mmf_close"></a><h3>mmf_close</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Close memory-mapped file<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>mmf</strong> - pointer to mmap_file_t<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void mmf_close(mmap_file_t* mmf)
+</pre>
+</p>
+<a name="mmf_create"></a><h3>mmf_create</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Create new mapping <a name="offset;offset+length"></a> from file<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>mmf</strong> - pointer to mmap_file_t<br /></li>
+            <li>
+<strong>offset</strong> - offset inside file<br /></li>
+            <li>
+<strong>length</strong> - length of mapping area<br /></li>
+            <li>
+<strong>mapping_ptr</strong> - pointer to pointer to mapping area<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />MME_OK if mapping was successfully mapped, or MME_MMAP_ERROR/MME_INVALID_FLAG<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void** mapping_ptr)
+</pre>
+</p>
+<a name="mmf_destroy"></a><h3>mmf_destroy</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Unmap file area<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>mmf</strong> - pointer to mmap_file_t<br /></li>
+            <li>
+<strong>mapping</strong> - pointer to mapping returned earliear by mmf_create<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void mmf_destroy(mmap_file_t* mmf, void* mapping)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

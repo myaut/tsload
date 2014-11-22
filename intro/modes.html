@@ -1,0 +1,91 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Introduction </title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="workload.html"><strong>Prev</strong>(workloads)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="building.html"><strong>Next</strong>(building from source)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Operating modes of TSLoad</h2></p>
+<p>
+As we mentioned in <a href="intro.html">Introduction</a>, TSLoad is universal loader because it supports multiple operating modes. <br /></p>
+<p>
+<h4>Microbenchmarking mode</h4></p>
+<p>
+Microbenchmarking mode is a simplest and usually indended to measure system's throughput (which usually can be described by 'operations per second') by running as much as possible identical requests:<br />        <ul>
+        <li>
+ Random generated per-request parameters are not recommended. However for disk I/O benchmark block number still could be random.<br />    </li>
+        <li>
+ Request scheduler: 'simple'<br />    </li>
+        <li>
+ Threadpool dispatcher 'benchmark'<br />    </li>
+        <li>
+ Use constant step generators (however, number of requests per step parameters is irrelevant and could be set to 1). <br /></li>
+</ul>
+</p>
+<p>
+<h4>Simulation mode</h4></p>
+<p>
+In simulation mode TSLoad tries to reproduce real-world workload using some characteristics that was previously measured on target system. However, these characteristics may be cumulative so it is up to you to pick correct experiment parameters. Simplest example of simulation mode is G/G/n queue simulation:  <br />        <ul>
+        <li>
+ Request scheduler is 'iat'. <br />    </li>
+        <li>
+ Select primary workload parameter that affects service time - such as number of cycles or block size and user random variator for it.<br />    </li>
+        <li>
+ Set threadpool dispatcher to 'first-free'. For G/G/1 runs you may use one of queue-based dispatchers because dispatching policy is irrelevant in that case.<br />    </li>
+        <li>
+ For CPU-bound workloads, create threadpool with n workers. I/O bound workloads support only G/G/1 mode.<br />    </li>
+        <li>
+ Constant step generator is recommended for simulation mode<br /></li>
+</ul>
+</p>
+<p>
+If you set request scheduler and primary workload parameter distribution parameter to 'exponential' then you will get nearly M/M/n queue, however, it is not possible to control service time because it depends on nature of resource too.<br /></p>
+<p>
+<h4>Time-Series mode</h4></p>
+<p>
+Time series mode is identical to simulation mode with non-stationary simulations - in this case you should use file-based step generator. For example you may want to test some cloud platform that states that it supports elastic computing. So you can create two workloads that work in different phases: one generating intensive load for first 600 steps and the other for next 300 and see how hypervisor trying to adapt.<br /></p>
+<p>
+<h4>Trace-driven mode</h4></p>
+<p>
+In trace driven mode you can use trace that you collected from real system. Simplest example of trace driven load run is trace-reproduction mode of tsexperiment tool that allows to reproduce previous experiment which is enabled by specifying -T option for run subcommand. <br />        <ul>
+        <li>
+ Request scheduler is irrelevant cause it is disabled.<br />    </li>
+        <li>
+ Threadpool dispatcher should be 'trace' (tsexperiment do this automatically) <br />    </li>
+        <li>
+ Per-request parameters are irrelevant because they are read from trace file  <br />    </li>
+        <li>
+ Data provided by step generators should match number of requests in trace file <br /></li>
+</ul>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

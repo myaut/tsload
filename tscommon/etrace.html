@@ -1,0 +1,101 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="netsock.html"><strong>Prev</strong>(Network Sockets)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="getopt.html"><strong>Next</strong>(getopt)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Event tracing</h1><h3></h3>    <p>
+Cross-platform event tracing subsystem.<br />Supports DTrace or SystemTap USDT and ETW (Event Tracing for Windows)<br /></p>
+    <p>
+TODO: Type translation<br /></p>
+<h2>Functions</h2><a name="etrc_provider_init"></a><h3>etrc_provider_init</h3><span class="label label-success">public</span><p>
+<pre>
+static void etrc_provider_init(etrc_provider_t* provider) 
+</pre>
+</p>
+<a name="etrc_provider_destroy"></a><h3>etrc_provider_destroy</h3><span class="label label-success">public</span><p>
+<pre>
+static void etrc_provider_destroy(etrc_provider_t* provider) 
+</pre>
+</p>
+<a name="etrc_probe_n"></a><h3>etrc_probe_n</h3><span class="label label-success">public</span><p>
+<pre>
+TSDOC_HIDDEN static ULONG etrc_probe_n(etrc_provider_t* provider, const EVENT_DESCRIPTOR* event, int numargs,void* arg1, size_t size1, void* arg2, size_t size2, void* arg3, size_t size3, void* arg4, size_t size4,void* arg5, size_t size5, void* arg6, size_t size6) 
+</pre>
+</p>
+<a name="ETRC_DEFINE_PROVIDER"></a><a name="ETRC_DEFINE_EVENT"></a><h3>ETRC_DEFINE_PROVIDER, ETRC_DEFINE_EVENT</h3>    <p>
+<br />Define profiler and events.<br /></p>
+    <p>
+<em>NOTES</em><br />you need manually assign event id's<br /></p>
+<p>
+<pre>
+#define ETRC_DEFINE_PROVIDER(provider, guid)
+#define ETRC_DEFINE_EVENT(provider, event, id)
+</pre>
+</p>
+<a name="etrc_provider_init"></a><a name="etrc_provider_destroy"></a><h3>etrc_provider_destroy, etrc_provider_init</h3>    <p>
+<br />Initialize/destroy provider object<br /></p>
+<p>
+<pre>
+#define etrc_provider_init(provider)
+#define etrc_provider_destroy(provider)
+</pre>
+</p>
+<a name="ETRC_PROBE0"></a><a name="ETRC_PROBE1"></a><a name="ETRC_PROBE2"></a><a name="ETRC_PROBE3"></a><a name="ETRC_PROBE4"></a><a name="ETRC_PROBE5"></a><h3>ETRC_PROBE4, ETRC_PROBE5, ETRC_PROBE0, ETRC_PROBE1, ETRC_PROBE2, ETRC_PROBE3</h3>    <p>
+<br />Probe functions<br /></p>
+<p>
+<pre>
+#define ETRC_PROBE0(provider, name)
+#define ETRC_PROBE1(provider, name, type1, arg1)
+#define ETRC_PROBE2(provider, name, type1, arg1, type2, arg2)
+#define ETRC_PROBE3(provider, name, type1, arg1, type2, arg2, type3, arg3)
+#define ETRC_PROBE4(provider, name, type1, arg1, type2, arg2, type3, arg3,  type4, arg4)
+#define ETRC_PROBE5(provider, name, type1, arg1, type2, arg2, type3, arg3,  type4, arg4, type5, arg5)
+</pre>
+</p>
+<h2>Types</h2><a name="etrc_provider_t"></a><h3>etrc_provider_t</h3><p>
+<pre>
+typedef struct {
+    REGHANDLE etp_reghandle;
+    GUID      etp_guid;
+} etrc_provider_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

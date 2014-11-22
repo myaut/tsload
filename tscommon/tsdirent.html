@@ -1,0 +1,90 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="pathutil.html"><strong>Prev</strong>(Path processing utilities)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="readlink.html"><strong>Next</strong>(readlink)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>FileSystem directories</h1><h3></h3>    <p>
+Platform-independent API for directory listing<br /></p>
+<h2>Functions</h2><a name="plat_opendir"></a><a name="plat_readdir"></a><a name="plat_closedir"></a><h3>plat_closedir, plat_readdir, plat_opendir</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI plat_dir_t* plat_opendir(const char *name)
+LIBEXPORT PLATAPI plat_dir_entry_t* plat_readdir(plat_dir_t *dirp)
+LIBEXPORT PLATAPI int plat_closedir(plat_dir_t *dirp)
+</pre>
+</p>
+<a name="plat_dirent_type"></a><h3>plat_dirent_type</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t *d_entry)
+</pre>
+</p>
+<a name="plat_dirent_hidden"></a><h3>plat_dirent_hidden</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns B_TRUE if file referenced by d_entry is considered hidden.<br /></p>
+    <p>
+On Unix/Linux it is file which name starts from dot<br />On Windows it is determined by file attributes<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI boolean_t plat_dirent_hidden(plat_dir_entry_t *d_entry)
+</pre>
+</p>
+<h2>Types</h2><a name="plat_dirent_type_t"></a><h3>plat_dirent_type_t</h3><p>
+<pre>
+typedef enum {
+    DET_UNKNOWN = -3,
+
+    DET_PARENT_DIR,
+    DET_CURRENT_DIR,
+
+    DET_REG,
+    DET_DIR,
+
+    DET_CHAR_DEV,
+    DET_BLOCK_DEV,
+
+    DET_SOCKET,
+    DET_PIPE,
+
+    DET_SYMLINK,
+
+    DET_DOOR        /* Solaris-specific */
+} plat_dirent_type_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

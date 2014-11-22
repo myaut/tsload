@@ -1,0 +1,125 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tsinit.html"><strong>Prev</strong>(tsinit)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="modules.html"><strong>Next</strong>(Modules)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Logging facility</h1><h3></h3><h2>Variables</h2><a name="log_debug"></a><a name="log_trace"></a><h3>log_debug, log_trace</h3>    <p>
+<br />By default, debug and tracing are disabled<br />set log_debug or log_trace to 1 if you want to enable it<br /></p>
+<p>
+<pre>
+LIBEXPORT boolean_t log_debug 
+LIBEXPORT boolean_t log_trace 
+</pre>
+</p>
+<a name="log_trace_callers"></a><h3>log_trace_callers</h3>    <p>
+<br />Allows to dump backtraces with messages </p>
+<p>
+<pre>
+boolean_t log_trace_callers 
+</pre>
+</p>
+<h2>Constants</h2><a name="Logging_severities."></a><a name="LOG_CRIT"></a><a name="LOG_ERROR"></a><a name="LOG_WARN"></a><a name="LOG_INFO"></a><a name="LOG_DEBUG"></a><a name="LOG_TRACE"></a><h3>Logging severities.</h3>    <p>
+LOG_DEBUG and LOG_TRACE are working only if appropriate variables are set.<br /></p>
+<p>
+<pre>
+#define LOG_CRIT    0
+#define LOG_ERROR   1
+#define LOG_WARN    2
+#define LOG_INFO    3
+#define LOG_DEBUG   4
+#define LOG_TRACE   5
+</pre>
+</p>
+<h2>Functions</h2><a name="log_init"></a><a name="log_fini"></a><h3>log_fini, log_init</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int log_init()
+LIBEXPORT void log_fini()
+</pre>
+</p>
+<a name="logerror"></a><h3>logerror</h3><span class="label label-success">public</span>    <p>
+<br />Log error provided by errno<br /></p>
+<p>
+<pre>
+LIBEXPORT int logerror()
+</pre>
+</p>
+<a name="logmsg_src"></a><h3>logmsg_src</h3><span class="label label-success">public</span>    <p>
+<br />Log message to default logging location<br />No need to add \n to format string<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>severity</strong> - - level of logging (LOG_CRIT, LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG, LOG_TRACING)<br /></li>
+            <li>
+<strong>source</strong> - - origin of message<br /></li>
+            <li>
+<strong>format</strong> - - printf format<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />number of written symbols or -1 if message was discarded due to severity<br /></p>
+<p>
+<pre>
+LIBEXPORT int logmsg_src(int severity, const char* source, const char* format, ...)
+</pre>
+</p>
+<a name="logmsg_src_va"></a><h3>logmsg_src_va</h3><span class="label label-success">public</span>    <p>
+<br />Same as logmsg_src(), but accepts varargs<br /></p>
+<p>
+<pre>
+LIBEXPORT int logmsg_src_va(int severity, const char* source, const char* format, va_list args)
+</pre>
+</p>
+<a name="logmsg"></a><a name="logmsg_va"></a><h3>logmsg_va, logmsg</h3>    <p>
+<br />Logging macro. Implemented by logmsg_src()<br /></p>
+    <p>
+To use it, define LOG_SOURCE before including log.h:<br /></p>
+    <p>
+    <pre>
+#define LOG_SOURCE
+#include &lt;log.h&gt;
+</pre>
+</p>
+<p>
+<pre>
+#define logmsg(severity, ...)
+#define logmsg_va(severity, format, va)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

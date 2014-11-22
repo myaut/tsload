@@ -1,0 +1,212 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tsload.html"><strong>Prev</strong>(TSLoad high-level API)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="threadpool.html"><strong>Next</strong>(Threadpools)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Random generators and variators</h1><h3></h3>    <p>
+API for creating random generators and variators<br /></p>
+<h3></h3>    <p>
+<h4>Linear Congruential Generator</h4></p>
+    <p>
+See <a href="http://en.wikipedia.org/wiki/Linear_congruential_generator">w:Linear Congruential Generator</a><br />Uses MMIX constants, but tunable.<br /></p>
+    <p>
+Unlike libc generator (that is most likely LCG too), non-singleton, so it<br />provides independent streams of pseudo-random numbers.<br /></p>
+<h3></h3>    <p>
+<h4>libc (default) random generator</h4></p>
+    <p>
+Uses srand()/rand() functions from standard C library </p>
+<h3></h3>    <p>
+<h4>Sequental generator</h4></p>
+    <p>
+Uses API of random generators, but not really <em>random</em> generator.<br />Generates sequence with start value rg_seed and in interval \[0; ULLONG_MAX)<br /></p>
+<h3></h3>    <p>
+<h4>Erlang distribution</h4></p>
+    <p>
+See <a href="http://en.wikipedia.org/wiki/Erlang_distribution">w:Erlang distribution</a></p>
+    <p>
+Params:<br />                <ul>
+            <li>
+ shape (int)<br />        </li>
+            <li>
+ rate (double)<br /></li>
+</ul>
+</p>
+<h3></h3>    <p>
+<h4>Exponential distribution</h4></p>
+    <p>
+See <a href="http://en.wikipedia.org/wiki/Exponential_distribution">w:Exponential distribution</a></p>
+    <p>
+Params:<br />                <ul>
+            <li>
+ shape (int)</li>
+</ul>
+</p>
+<h3></h3>    <p>
+<h4>Normal distribution</h4></p>
+    <p>
+Uses Kinderman and Monahan method<br /></p>
+    <p>
+Params:<br />                <ul>
+            <li>
+ mean (double) - mean value<br />        </li>
+            <li>
+ stddev (double) - standard deviation </li>
+</ul>
+</p>
+<h3></h3>    <p>
+<h4>Uniform distribution</h4></p>
+    <p>
+Params:<br />                <ul>
+            <li>
+ min (double)<br />        </li>
+            <li>
+ max (double)<br /></li>
+</ul>
+</p>
+<h2>Variables</h2><a name="rg_libc_class"></a><a name="rg_seq_class"></a><a name="rg_lcg_class"></a><a name="rg_devrandom_class"></a><h3>rg_libc_class, rg_seq_class, rg_devrandom_class, rg_lcg_class</h3>    <p>
+<br />Random generators<br /></p>
+<p>
+<pre>
+LIBIMPORT randgen_class_t rg_libc_class
+LIBIMPORT randgen_class_t rg_seq_class
+LIBIMPORT randgen_class_t rg_lcg_class
+LIBIMPORT randgen_class_t rg_devrandom_class
+</pre>
+</p>
+<h2>Functions</h2><a name="rg_create"></a><a name="rg_destroy"></a><h3>rg_destroy, rg_create</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT randgen_t* rg_create(randgen_class_t* class, uint64_t seed)
+LIBEXPORT void rg_destroy(randgen_t* rg)
+</pre>
+</p>
+<a name="rg_generate_int"></a><h3>rg_generate_int</h3><span class="label label-success">public</span>    <p>
+<br />Generates integer with uniform distribution in range<br /><a name="0; rg_class->rg_max"></a></p>
+<p>
+<pre>
+static uint64_t rg_generate_int(randgen_t* rg) 
+</pre>
+</p>
+<a name="rg_generate_double"></a><h3>rg_generate_double</h3><span class="label label-success">public</span>    <p>
+<br />Generates double with uniform distribution in range<br /><a name="0.0; 1.0"></a></p>
+<p>
+<pre>
+LIBEXPORT double rg_generate_double(randgen_t* rg)
+</pre>
+</p>
+<a name="rv_create"></a><a name="rv_destroy"></a><h3>rv_destroy, rv_create</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT randvar_t* rv_create(randvar_class_t* class, randgen_t* rg)
+LIBEXPORT void rv_destroy(randvar_t* rv)
+</pre>
+</p>
+<a name="rv_set_int"></a><h3>rv_set_int</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE int rv_set_int(randvar_t* rv, const char* name, long value) 
+</pre>
+</p>
+<a name="rv_set_double"></a><h3>rv_set_double</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE int rv_set_double(randvar_t* rv, const char* name, double value) 
+</pre>
+</p>
+<a name="rv_variate_double"></a><h3>rv_variate_double</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE double rv_variate_double(randvar_t* rv) 
+</pre>
+</p>
+<a name="tsobj_randgen_proc"></a><a name="tsobj_randvar_proc"></a><h3>tsobj_randvar_proc, tsobj_randgen_proc</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT randgen_t* tsobj_randgen_proc(tsobj_node_t* node)
+LIBEXPORT randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg)
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_randgen"></a><h3>typedef struct randgen</h3><p>
+<pre>
+typedef struct randgen {
+    struct randgen_class* rg_class;
+    uint64_t rg_seed;
+
+    void* rg_private;
+} randgen_t;
+
+</pre>
+</p>
+<a name="typedef_struct_randgen_class"></a><h3>typedef struct randgen_class</h3><p>
+<pre>
+typedef struct randgen_class {
+    boolean_t rg_is_singleton;
+    int          rg_ref_count;
+    randgen_t* rg_object;
+
+    uint64_t rg_max;
+
+    int  (*rg_init)(randgen_t* rg);
+    void (*rg_destroy)(randgen_t* rg);
+
+    uint64_t (*rg_generate_int)(randgen_t* rg);
+} randgen_class_t;
+
+</pre>
+</p>
+<a name="typedef_struct_randvar"></a><h3>typedef struct randvar</h3><p>
+<pre>
+typedef struct randvar {
+    randgen_t*    rv_generator;
+    struct randvar_class* rv_class;
+    void* rv_private;
+} randvar_t;
+
+</pre>
+</p>
+<a name="typedef_struct_randvar_class"></a><h3>typedef struct randvar_class</h3><p>
+<pre>
+typedef struct randvar_class {
+    int (*rv_init)(randvar_t* rv);
+    void (*rv_destroy)(randvar_t* rv);
+
+    int (*rv_set_int)(randvar_t* rv, const char* name, long value);
+    int (*rv_set_double)(randvar_t* rv, const char* name, double value);
+
+    double (*rv_variate_double)(randvar_t* rv, double u);
+} randvar_class_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

@@ -1,0 +1,894 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="syncqueue.html"><strong>Next</strong>(Synchronized queue)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Double linked list</h1><h3></h3>    <p>
+Simple double linked list implementation.<br /></p>
+    <p>
+Some of the internal functions ("xxx") are useful when<br />manipulating whole lists rather than single entries, as<br />sometimes we already know the next/prev entries and we can<br />generate better code by using them directly rather than<br />using the generic single-entry routines.<br /></p>
+    <p>
+<em>NOTES</em><br />Implementation is taken from Linux Kernel<br /></p>
+<h2>Functions</h2><a name="list_node_init"></a><h3>list_node_init</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_node_init(list_node_t *list)
+</pre>
+</p>
+<a name="list_head_init"></a><h3>list_head_init</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_head_init(list_head_t *list, const char* namefmt, ...)
+</pre>
+</p>
+<a name="list_head_reset"></a><h3>list_head_reset</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_head_reset(list_head_t *list) 
+</pre>
+</p>
+<a name="list_head_node"></a><h3>list_head_node</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE list_node_t* list_head_node(list_head_t* head) 
+</pre>
+</p>
+<a name="list_head_copy"></a><h3>list_head_copy</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_head_copy(list_head_t *dst, const list_head_t *src) 
+</pre>
+</p>
+<a name="__list_add"></a><h3>__list_add</h3><span class="label label-success">public</span>    <p>
+<br />Insert a new entry between two known consecutive entries.<br /></p>
+    <p>
+This is only for internal list manipulation where we know<br />the prev/next entries already!<br /></p>
+<p>
+<pre>
+STATIC_INLINE void __list_add(list_node_t *node,list_node_t *prev,list_node_t *next)
+</pre>
+</p>
+<a name="list_add"></a><h3>list_add</h3><span class="label label-success">public</span>    <p>
+<br />list_add - add a new entry<br /></p>
+    <p>
+Insert a new entry after the specified head.<br />This is good for implementing stacks.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>new</strong> - new entry to be added<br /></li>
+            <li>
+<strong>head</strong> - list head to add it after<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_add(list_node_t *node, list_head_t *head)
+</pre>
+</p>
+<a name="list_add_tail"></a><h3>list_add_tail</h3><span class="label label-success">public</span>    <p>
+<br />list_add_tail - add a new entry<br /></p>
+    <p>
+Insert a new entry before the specified head.<br />This is useful for implementing queues.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>node</strong> - new entry to be added<br /></li>
+            <li>
+<strong>head</strong> - list head to add it before<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_add_tail(list_node_t *node, list_head_t *head)
+</pre>
+</p>
+<a name="list_insert_front"></a><h3>list_insert_front</h3><span class="label label-success">public</span>    <p>
+<br />list_insert_front - insert entry after another<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>node</strong> - new entry to be added<br /></li>
+            <li>
+<strong>iter</strong> - node after which it has to be added<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_insert_front(list_node_t *node, list_node_t *iter)
+</pre>
+</p>
+<a name="list_insert_back"></a><h3>list_insert_back</h3><span class="label label-success">public</span>    <p>
+<br />list_insert_back - insert entry before another<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>node</strong> - new entry to be added<br /></li>
+            <li>
+<strong>iter</strong> - node before which it has to be added<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_insert_back(list_node_t *node, list_node_t *iter)
+</pre>
+</p>
+<a name="__list_del"></a><h3>__list_del</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void __list_del(list_node_t * prev, list_node_t * next)
+</pre>
+</p>
+<a name="__list_del_entry"></a><h3>__list_del_entry</h3><span class="label label-success">public</span>    <p>
+<br />list_del - deletes entry from list.<br />Note: list_empty() on entry does not return true after this, the entry is<br />in an undefined state.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>entry</strong> - the element to delete from the list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void __list_del_entry(list_node_t *entry)
+</pre>
+</p>
+<a name="list_del"></a><h3>list_del</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_del(list_node_t *entry)
+</pre>
+</p>
+<a name="list_replace"></a><h3>list_replace</h3><span class="label label-success">public</span>    <p>
+<br />list_replace - replace old entry by new one<br /></p>
+    <p>
+If @old was empty, it will be overwritten.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>old</strong> - the element to be replaced<br /></li>
+            <li>
+<strong>new</strong> - the new element to insert<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_replace(list_node_t *old,list_node_t *node)
+</pre>
+</p>
+<a name="list_replace_init"></a><h3>list_replace_init</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_replace_init(list_node_t *old,list_node_t *node)
+</pre>
+</p>
+<a name="list_del_init"></a><h3>list_del_init</h3><span class="label label-success">public</span>    <p>
+<br />list_del_init - deletes entry from list and reinitialize it.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>entry</strong> - the element to delete from the list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_del_init(list_node_t *entry)
+</pre>
+</p>
+<a name="list_move"></a><h3>list_move</h3><span class="label label-success">public</span>    <p>
+<br />list_move - delete from one list and add as another's head<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - the entry to move<br /></li>
+            <li>
+<strong>head</strong> - the head that will precede our entry<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_move(list_node_t *list, list_head_t *head)
+</pre>
+</p>
+<a name="list_move_tail"></a><h3>list_move_tail</h3><span class="label label-success">public</span>    <p>
+<br />list_move_tail - delete from one list and add as another's tail<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - the entry to move<br /></li>
+            <li>
+<strong>head</strong> - the head that will follow our entry<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_move_tail(list_node_t *list,list_head_t *head)
+</pre>
+</p>
+<a name="list_is_last"></a><h3>list_is_last</h3><span class="label label-success">public</span>    <p>
+<br />list_is_last - tests whether node is the last entry in list head<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>node</strong> - the entry to test<br /></li>
+            <li>
+<strong>head</strong> - the head of the list<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_is_last(const list_node_t *node,const list_head_t *head)
+</pre>
+</p>
+<a name="list_is_first"></a><h3>list_is_first</h3><span class="label label-success">public</span>    <p>
+<br />list_is_first - tests whether node is the first entry in list head<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>node</strong> - the entry to test<br /></li>
+            <li>
+<strong>head</strong> - the head of the list<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_is_first(const list_node_t *node,const list_head_t *head)
+</pre>
+</p>
+<a name="list_is_head"></a><h3>list_is_head</h3><span class="label label-success">public</span>    <p>
+<br />list_is_head - tests whether node is the list head<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>node</strong> - the entry to test<br /></li>
+            <li>
+<strong>head</strong> - the head of the list<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_is_head(const list_node_t *node,const list_head_t *head)
+</pre>
+</p>
+<a name="list_empty"></a><h3>list_empty</h3><span class="label label-success">public</span>    <p>
+<br />list_empty - tests whether a list is empty<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the list to test.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_empty(const list_head_t *head)
+</pre>
+</p>
+<a name="list_empty_careful"></a><h3>list_empty_careful</h3><span class="label label-success">public</span>    <p>
+<br />list_empty_careful - tests whether a list is empty and not being modified<br /></p>
+    <p>
+Description:<br />tests whether a list is empty <em>and</em> checks that no other CPU might be<br />in the process of modifying either member (next or prev)<br /></p>
+    <p>
+NOTE: using list_empty_careful() without synchronization<br />can only be safe if the only activity that can happen<br />to the list entry is list_del_init(). Eg. it cannot be used<br />if another CPU could re-list_add() it.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the list to test<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_empty_careful(const list_node_t *head)
+</pre>
+</p>
+<a name="list_node_alone"></a><h3>list_node_alone</h3><span class="label label-success">public</span>    <p>
+<br />list_node_alone    - tests if node is not inserted into list<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the list to test.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_node_alone(const list_node_t *node)
+</pre>
+</p>
+<a name="list_rotate_left"></a><h3>list_rotate_left</h3><span class="label label-success">public</span>    <p>
+<br />list_rotate_left - rotate the list to the left<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the head of the list<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_rotate_left(list_head_t *head)
+</pre>
+</p>
+<a name="list_is_singular"></a><h3>list_is_singular</h3><span class="label label-success">public</span>    <p>
+<br />list_is_singular - tests whether a list has just one entry.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the list to test.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE int list_is_singular(const list_head_t *head)
+</pre>
+</p>
+<a name="__list_cut_position"></a><h3>__list_cut_position</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void __list_cut_position(list_head_t *list,list_head_t *head, list_node_t *entry)
+</pre>
+</p>
+<a name="list_cut_position"></a><h3>list_cut_position</h3><span class="label label-success">public</span>    <p>
+<br />list_cut_position - cut a list into two<br />    and if so we won't cut the list<br /></p>
+    <p>
+This helper moves the initial part of @head, up to and<br />including @entry, from @head to @list. You should<br />pass on @entry an element you know is on @head. @list<br />should be an empty list or a list you do not care about<br />losing its data.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - a new list to add all removed entries<br /></li>
+            <li>
+<strong>head</strong> - a list with entries<br /></li>
+            <li>
+<strong>entry</strong> - an entry within head, could be the head itself<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_cut_position(list_head_t *list,list_head_t *head, list_node_t *entry)
+</pre>
+</p>
+<a name="__list_splice"></a><h3>__list_splice</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void __list_splice(const list_head_t *list,list_node_t *prev,list_node_t *next)
+</pre>
+</p>
+<a name="list_splice"></a><h3>list_splice</h3><span class="label label-success">public</span>    <p>
+<br />list_splice - join two lists, this is designed for stacks<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - the new list to add.<br /></li>
+            <li>
+<strong>head</strong> - the place to add it in the first list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_splice(const list_head_t *list,list_node_t *node)
+</pre>
+</p>
+<a name="list_splice_tail"></a><h3>list_splice_tail</h3><span class="label label-success">public</span>    <p>
+<br />list_splice_tail - join two lists, each list being a queue<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - the new list to add.<br /></li>
+            <li>
+<strong>head</strong> - the place to add it in the first list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_splice_tail(list_head_t *list,list_node_t *node)
+</pre>
+</p>
+<a name="list_splice_init"></a><h3>list_splice_init</h3><span class="label label-success">public</span>    <p>
+<br />list_splice_init - join two lists and reinitialise the emptied list.<br /></p>
+    <p>
+The list at @list is reinitialised<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - the new list to add.<br /></li>
+            <li>
+<strong>node</strong> - the place to add it in the first list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_splice_init(list_head_t *list,list_node_t *node)
+</pre>
+</p>
+<a name="list_splice_tail_init"></a><h3>list_splice_tail_init</h3><span class="label label-success">public</span>    <p>
+<br />list_splice_tail_init - join two lists and reinitialise the emptied list<br /></p>
+    <p>
+Each of the lists is a queue.<br />The list at @list is reinitialised<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>list</strong> - the new list to add.<br /></li>
+            <li>
+<strong>node</strong> - the place to add it in the first list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_splice_tail_init(list_head_t *list,list_node_t *node)
+</pre>
+</p>
+<a name="list_merge_impl"></a><h3>list_merge_impl</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void list_merge_impl(list_head_t *head, list_head_t *list1,list_head_t *list2) 
+</pre>
+</p>
+<a name="list_merge"></a><h3>list_merge</h3><span class="label label-success">public</span>    <p>
+<br />Merge lists into new list - reinitializes lists 1 and 2 and<br />adds them to new list sequentally because consequent calls of<br />list_splice will provide inconsistent list.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - destination list<br /></li>
+            <li>
+<strong>list1</strong> - first list to add<br /></li>
+            <li>
+<strong>list2</strong> - second list to add<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void list_merge(list_head_t *head, list_head_t *list1,list_head_t *list2) 
+</pre>
+</p>
+<a name="list_entry"></a><h3>list_entry</h3>    <p>
+<br />list_entry - get the struct for this entry<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>ptr</strong> - the &struct list_head pointer.<br /></li>
+            <li>
+<strong>type</strong> - the type of the struct this is embedded in.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_entry(ptr, type, member)
+</pre>
+</p>
+<a name="list_first_entry"></a><h3>list_first_entry</h3>    <p>
+<br />list_first_entry - get the first element from a list<br /></p>
+    <p>
+Note, that list is expected to be not empty.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the list head to take the element from.<br /></li>
+            <li>
+<strong>type</strong> - the type of the struct this is embedded in.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_first_entry(type, head, member)
+</pre>
+</p>
+<a name="list_last_entry"></a><h3>list_last_entry</h3>    <p>
+<br />list_last_entry - get the last element from a list<br /></p>
+    <p>
+Note, that list is expected to be not empty.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>head</strong> - the list head to take the element from.<br /></li>
+            <li>
+<strong>type</strong> - the type of the struct this is embedded in.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_last_entry(type, head, member)
+</pre>
+</p>
+<a name="list_next_entry"></a><h3>list_next_entry</h3>    <p>
+<br />list_next_entry - get the element from a list after node<br /></p>
+    <p>
+Note, that node is expected not tot be last.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>ptr</strong> - pointer to current entry<br /></li>
+            <li>
+<strong>type</strong> - the type of the struct this is embedded in.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_next_entry(type, ptr, member)
+</pre>
+</p>
+<a name="list_prev_entry"></a><h3>list_prev_entry</h3>    <p>
+<br />list_prev_entry - get the element from a list before node<br /></p>
+    <p>
+Note, that node is expected not being first.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>ptr</strong> - pointer to current entry<br /></li>
+            <li>
+<strong>type</strong> - the type of the struct this is embedded in.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_prev_entry(type, ptr, member)
+</pre>
+</p>
+<a name="list_for_each"></a><h3>list_for_each</h3>    <p>
+<br />list_for_each    -    iterate over a list<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each(pos, head)
+</pre>
+</p>
+<a name="__list_for_each"></a><h3>__list_for_each</h3>    <p>
+list_for_each    -    iterate over a list<br /></p>
+    <p>
+This variant doesn't differ from list_for_each() any more.<br />We don't do prefetching in either case.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define __list_for_each(pos, head)
+</pre>
+</p>
+<a name="list_for_each_prev"></a><h3>list_for_each_prev</h3>    <p>
+<br />list_for_each_prev    -    iterate over a list backwards<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_prev(pos, head)
+</pre>
+</p>
+<a name="list_for_each_safe"></a><h3>list_for_each_safe</h3>    <p>
+<br />list_for_each_safe - iterate over a list safe against removal of list entry<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor.<br /></li>
+            <li>
+<strong>n</strong> - another &struct list_head to use as temporary storage<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_safe(pos, n, head)
+</pre>
+</p>
+<a name="list_for_each_prev_safe"></a><h3>list_for_each_prev_safe</h3>    <p>
+<br />iterate over a list backwards safe against removal of list entry<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor.<br /></li>
+            <li>
+<strong>n</strong> - another &struct list_head to use as temporary storage<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_prev_safe(pos, n, head)
+</pre>
+</p>
+<a name="list_for_each_continue"></a><h3>list_for_each_continue</h3>    <p>
+<br />list_for_each_continue    -    iterate over a list starting from pre-determined position<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor. Starting position<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_continue(pos, head)
+</pre>
+</p>
+<a name="list_for_each_continue_reverse"></a><h3>list_for_each_continue_reverse</h3>    <p>
+<br />list_for_each_prev    -    iterate over a list backwards starting from position<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the &struct list_head to use as a loop cursor. Starting position<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_continue_reverse(pos, head)
+</pre>
+</p>
+<a name="list_for_each_entry"></a><h3>list_for_each_entry</h3>    <p>
+<br />list_for_each_entry    -    iterate over list of given type<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry(type, pos, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_reverse"></a><h3>list_for_each_entry_reverse</h3>    <p>
+<br />list_for_each_entry_reverse - iterate backwards over list of given type.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_reverse(type, pos, head, member)
+</pre>
+</p>
+<a name="list_prepare_entry"></a><h3>list_prepare_entry</h3>    <p>
+<br />list_prepare_entry - prepare a pos entry for use in list_for_each_entry_continue()<br /></p>
+    <p>
+Prepares a pos entry for use as a start point in list_for_each_entry_continue().<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a start point<br /></li>
+            <li>
+<strong>head</strong> - the head of the list<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_prepare_entry(type, pos, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_continue"></a><h3>list_for_each_entry_continue</h3>    <p>
+<br />list_for_each_entry_continue - continue iteration over list of given type<br /></p>
+    <p>
+Continue to iterate over list of given type, continuing after<br />the current position.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_continue(type, pos, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_continue_reverse"></a><h3>list_for_each_entry_continue_reverse</h3>    <p>
+<br />list_for_each_entry_continue_reverse - iterate backwards from the given point<br /></p>
+    <p>
+Start to iterate over list of given type backwards, continuing after<br />the current position.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_continue_reverse(type, pos, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_from"></a><h3>list_for_each_entry_from</h3>    <p>
+<br />list_for_each_entry_from - iterate over list of given type from the current point<br /></p>
+    <p>
+Iterate over list of given type, continuing from current position.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_from(type, pos, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_safe"></a><h3>list_for_each_entry_safe</h3>    <p>
+<br />list_for_each_entry_safe - iterate over list of given type safe against removal of list entry<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>n</strong> - another type * to use as temporary storage<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_safe(type, pos, n, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_safe_continue"></a><h3>list_for_each_entry_safe_continue</h3>    <p>
+<br />list_for_each_entry_safe_continue - continue list iteration safe against removal<br /></p>
+    <p>
+Iterate over list of given type, continuing after current point,<br />safe against removal of list entry.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>n</strong> - another type * to use as temporary storage<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_safe_continue(type, pos, n, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_safe_from"></a><h3>list_for_each_entry_safe_from</h3>    <p>
+<br />list_for_each_entry_safe_from - iterate over list from current point safe against removal<br /></p>
+    <p>
+Iterate over list of given type from current point, safe against<br />removal of list entry.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>n</strong> - another type * to use as temporary storage<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_safe_from(type, pos, n, head, member)
+</pre>
+</p>
+<a name="list_for_each_entry_safe_reverse"></a><h3>list_for_each_entry_safe_reverse</h3>    <p>
+<br />list_for_each_entry_safe_reverse - iterate backwards over list safe against removal<br /></p>
+    <p>
+Iterate backwards over list of given type, safe against removal<br />of list entry.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the type * to use as a loop cursor.<br /></li>
+            <li>
+<strong>n</strong> - another type * to use as temporary storage<br /></li>
+            <li>
+<strong>head</strong> - the head for your list.<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_for_each_entry_safe_reverse(type, pos, n, head, member)
+</pre>
+</p>
+<a name="list_safe_reset_next"></a><h3>list_safe_reset_next</h3>    <p>
+<br />list_safe_reset_next - reset a stale list_for_each_entry_safe loop<br /></p>
+    <p>
+list_safe_reset_next is not safe to use in general if the list may be<br />modified concurrently (eg. the lock is dropped in the loop body). An<br />exception to this is if the cursor element (pos) is pinned in the list,<br />and list_safe_reset_next is called after re-taking the lock and before<br />completing the current iteration of the loop body.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pos</strong> - the loop cursor used in the list_for_each_entry_safe loop<br /></li>
+            <li>
+<strong>n</strong> - temporary storage used in list_for_each_entry_safe<br /></li>
+            <li>
+<strong>member</strong> - the name of the list_struct within the struct.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define list_safe_reset_next(type, pos, n, member)
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_list_node"></a><h3>typedef struct list_node</h3><p>
+<pre>
+typedef struct list_node {
+    struct list_node *next, *prev;
+} list_node_t;
+
+</pre>
+</p>
+<a name="typedef_struct_list_head"></a><h3>typedef struct list_head</h3><p>
+<pre>
+typedef struct list_head {
+    list_node_t l_head;
+
+    char l_name[LISTNAMELEN];
+} list_head_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

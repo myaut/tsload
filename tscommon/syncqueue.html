@@ -1,0 +1,134 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="list.html"><strong>Prev</strong>(Double linked list)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="hashmap.html"><strong>Next</strong>(Hash maps)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Synchronized queue</h1><h3></h3>    <p>
+This queue may be used for implementation of producer-consumer models.<br />While producer creates objects and puts them onto queue via squeue_push(),<br />consumer (one or many) waits for it objects in squeue_pop() and awakes<br />if object was put on queue.<br /></p>
+    <p>
+Since there is no way to interrupt consumers, you may put NULL onto<br />queue and handle this situation in consumer code or call squeue_destroy()<br /></p>
+<h2>Functions</h2><a name="squeue_init"></a><h3>squeue_init</h3><span class="label label-success">public</span>    <p>
+<br />Initialize synchronized queue<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sq</strong> - - queue<br /></li>
+            <li>
+<strong>name</strong> - - name of queue (for debugging purposes)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void squeue_init(squeue_t* sq, const char* namefmt, ...)
+</pre>
+</p>
+<a name="squeue_pop"></a><h3>squeue_pop</h3><span class="label label-success">public</span>    <p>
+<br />Extract element from synchronized queue.<br />If no elements on queue, blocks until squeue_push will add an element.<br /></p>
+    <p>
+May be called from multiple threads simultaneously, thread selected<br />in cv_notify_one wins (undetermined for most platforms).<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sq</strong> - queue<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />element or NULL if squeue is destroyed<br /></p>
+<p>
+<pre>
+LIBEXPORT void* squeue_pop(squeue_t* sq)
+</pre>
+</p>
+<a name="squeue_push"></a><h3>squeue_push</h3><span class="label label-success">public</span>    <p>
+<br />Put an element on synchronized queue.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>object</strong> - element<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void squeue_push(squeue_t* sq, void* object)
+</pre>
+</p>
+<a name="squeue_destroy"></a><h3>squeue_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Destroy all elements in queue and queue itself. Also notifies squeue_pop<br />Doesn't deallocate squeue_t<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sq</strong> - synchronized queue to destroy<br /></li>
+            <li>
+<strong>free</strong> - helper to destroy element's data<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />squeue_destroy() will notify consumer but doesn't guarantee that it         will leave squeue_pop(). You need to check this on your own.                 It could be easily done by joining consumer thread.<br /></p>
+<p>
+<pre>
+LIBEXPORT void squeue_destroy(squeue_t* sq, void (*el_free)(void* obj))
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_squeue_el"></a><h3>typedef struct squeue_el</h3><p>
+<pre>
+typedef struct squeue_el {
+    struct squeue_el* s_next;
+    void* s_data;
+} squeue_el_t;
+
+</pre>
+</p>
+<a name="typedef_struct_squeue"></a><h3>typedef struct squeue</h3><p>
+<pre>
+typedef struct squeue {
+    thread_mutex_t sq_mutex;
+    thread_cv_t    sq_cv;
+
+    squeue_el_t* sq_head;
+    squeue_el_t* sq_tail;
+
+    char sq_name[SQUEUENAMELEN];
+
+    boolean_t sq_is_destroyed;
+} squeue_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

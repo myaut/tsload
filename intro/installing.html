@@ -1,0 +1,95 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Introduction </title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="building.html"><strong>Prev</strong>(building from source)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="tsexperiment.html"><strong>Next</strong>(previous)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Installing TSLoad </h2></p>
+<p>
+For TSLoad 0.2 this method of installation not recommended because we still have default build mode is debug for a reason. So please use <a href="building.html">building from source</a> wherever possible. If you still decided to use binary build, do the following.<br /></p>
+<p>
+<h3>Install prerequisites</h3></p>
+<p>
+<h4>Windows</h4></p>
+<p>
+On Windows you will only need to install <a href="http://www.microsoft.com/en-us/download/details.aspx?id=13523">Microsoft Visual C++ 2010 SP1 Redistributable Package (x64)</a>.<br /></p>
+<p>
+<h4>CentOS 6</h4></p>
+<p>
+TSLoad depends on these packages:<br />        <ul>
+        <li>
+ glibc<br />    </li>
+        <li>
+ libgcc<br />    </li>
+        <li>
+ libstdc++<br /> </li>
+</ul>
+</p>
+<p>
+They are usually shipped with CentOS so no extra action is required.<br /> </p>
+<p>
+<h4>Solaris 11</h4></p>
+<p>
+TSLoad depends on these packages:<br />         <ul>
+        <li>
+ system/library<br />     </li>
+        <li>
+ system/library/storage/libdiskmgt<br />     </li>
+        <li>
+ system/linker<br />     </li>
+        <li>
+ system/library/gcc-45-runtime<br />     </li>
+        <li>
+ system/library/math<br />     </li>
+        <li>
+ system/picl<br />     </li>
+        <li>
+ system/resource-mgmt/resource-pools<br />     </li>
+        <li>
+ library/libxml2<br />     </li>
+        <li>
+ library/zlib<br />     <br />Like in CentOS case they are usually provided out of scratch except for <code>system/library/gcc-45-runtime</code> I presume.<br /></li>
+</ul>
+</p>
+<p>
+<h3>Install TSLoad</h3></p>
+<p>
+Because TSLoad is bundled as simple ZIP archive simply extract it to directory you want, for example /opt directory in CentOS:<br /></p>
+<p>
+<pre>
+$ cd /opt
+$ unzip /root/tsload-0.2.a0-centos-x86_64.zip
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

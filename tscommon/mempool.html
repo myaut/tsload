@@ -1,0 +1,403 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="modules.html"><strong>Prev</strong>(Modules)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="autostring.html"><strong>Next</strong>(Automatically allocated strings.)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>mempool</h1><h3></h3>    <p>
+<br />Memory pool<br /></p>
+    <p>
+When load is concerning on using large bunch of memory, loader itself<br />can starve of memory and so it will fail. To address this issue, we allocate<br />huge amount of memory called "segment", and using our own allocators.<br /></p>
+    <p>
+There are three allocators:<br />- Page-frag allocator that allocates memory in 256-bytes fragments.<br />- SLAB-like allocator<br />- Traditional heap for small allocations (4 bytes - 256 bytes)<br /></p>
+    <p>
+SLAB-allocator and Page-frag allocator are using bitmaps to track allocated areas<br /></p>
+<h3></h3>    <td>
+available here and will try next atomic-based bitmap. </td>
+<h3></h3>    <p>
+<br />SLAB allocator<br /></p>
+<h3></h3>    <p>
+<br />Use standard library allocator for mempool<br />It is faster than mempool, but not autonomous<br /></p>
+<h2>Functions</h2><a name="mp_cache_init_impl"></a><a name="mp_cache_destroy"></a><h3>mp_cache_init_impl, mp_cache_destroy</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void mp_cache_init_impl(mp_cache_t* cache, const char* name, size_t item_size)
+LIBEXPORT void mp_cache_destroy(mp_cache_t* cache)
+</pre>
+</p>
+<a name="mp_cache_alloc"></a><a name="mp_cache_free"></a><h3>mp_cache_alloc, mp_cache_free</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void* mp_cache_alloc(mp_cache_t* cache)
+LIBEXPORT void mp_cache_free(mp_cache_t* cache, void* ptr)
+</pre>
+</p>
+<a name="mp_cache_alloc_array"></a><a name="mp_cache_free_array"></a><h3>mp_cache_alloc_array, mp_cache_free_array</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void* mp_cache_alloc_array(mp_cache_t* cache, unsigned num)
+LIBEXPORT void mp_cache_free_array(mp_cache_t* cache, void* array, unsigned num)
+</pre>
+</p>
+<a name="mp_malloc"></a><h3>mp_malloc</h3><span class="label label-success">public</span>    <p>
+<br />Allocate at least sz bytes and return it from mempool allocators<br /></p>
+    <p>
+For large (&gt; MPHEAPMAXALLOC) or aligned (sz & MPFRAGMASK == 0) allocations uses frag allocator<br />Otherwise allocates from mempool heap<br /></p>
+    <p>
+<em>NOTES</em><br />Never returns NULL. If all memory in mempool segment is exhausted, it will abort execution<br /></p>
+<p>
+<pre>
+LIBEXPORT void* mp_malloc(size_t sz)
+</pre>
+</p>
+<a name="mp_realloc"></a><h3>mp_realloc</h3><span class="label label-success">public</span>    <p>
+<br />Reallocate memory at oldptr to size sz.<br /></p>
+    <p>
+Doesn't shrink memory<br /></p>
+<p>
+<pre>
+LIBEXPORT void* mp_realloc(void* old, size_t sz)
+</pre>
+</p>
+<a name="mp_free"></a><h3>mp_free</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void mp_free(void* ptr)
+</pre>
+</p>
+<a name="mempool_init"></a><a name="mempool_fini"></a><h3>mempool_fini, mempool_init</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int mempool_init(void)
+LIBEXPORT void mempool_fini(void)
+</pre>
+</p>
+<a name="mp_bitmap_find_region"></a><h3>mp_bitmap_find_region</h3><span class="label label-warning">private</span>    <p>
+<br />Find sequence of num zeroes in u<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />-1 if failed to do this or index of region <br /></p>
+<p>
+<pre>
+static int mp_bitmap_find_region(long u, int num) 
+</pre>
+</p>
+<a name="mp_bitmap_cell_alloc"></a><h3>mp_bitmap_cell_alloc</h3>    <p>
+<br />Allocate num items from cell<br /></p>
+    <p>
+This function is MT-safe, but if somebody already using cell<br />it will fail and return -1<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>cell</strong> - Cell where allocation proceeds<br /></li>
+            <li>
+<strong>num</strong> - Number of items to allocate<br /></li>
+            <li>
+<strong>max_items</strong> - Total number of items in cell<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />index if item inside cell or -1 if allocation was unsuccessfull<br /></p>
+<p>
+<pre>
+int mp_bitmap_cell_alloc(atomic_t* cell, int num, int max_items) 
+</pre>
+</p>
+<a name="mp_bitmap_alloc"></a><h3>mp_bitmap_alloc</h3>    <p>
+<br />Allocate items from bitmap<br /></p>
+    <p>
+If allocation would be unsuccessful, it will retry up to MPMAXRETRIES times<br />Also it sleeps between retries for MPWAITTIME<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>bitmap</strong> - Array of bitmap cells<br /></li>
+            <li>
+<strong>num_items</strong> - Total number of items in bitmap<br /></li>
+            <li>
+<strong>alloc_items</strong> - Number of items to allocate<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />Index of allocated item or -1 if all tries was failed <br /></p>
+<p>
+<pre>
+int mp_bitmap_alloc(atomic_t* bitmap, int num_items, int alloc_items) 
+</pre>
+</p>
+<a name="mp_bitmap_alloc_cells"></a><h3>mp_bitmap_alloc_cells</h3>    <p>
+<br />Allocate multiple cells from bitmap<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>bitmap</strong> - Array of bitmap cells<br /></li>
+            <li>
+<strong>num_items</strong> - Total number of items in bitmap<br /></li>
+            <li>
+<strong>alloc_items</strong> - Number of items to allocate<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />Index of allocated item or -1 if all tries was failed <br /></p>
+<p>
+<pre>
+int mp_bitmap_alloc_cells(atomic_t* bitmap, int num_items, int alloc_cells) 
+</pre>
+</p>
+<a name="mp_frag_alloc"></a><h3>mp_frag_alloc</h3>    <p>
+<br />Allocate page fragment, entire page or multiple pages<br /></p>
+    <p>
+If appropriate fragment couldn't be found, aborts<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>size</strong> - number of bytes to allocate<br /></li>
+            <li>
+<strong>flags</strong> - fragment flags FRAG_COMMON, FRAG_SLAB or FRAG_HEAP<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />pointer to fragment<br /></p>
+<p>
+<pre>
+void* mp_frag_alloc(size_t size, short flags) 
+</pre>
+</p>
+<a name="mp_heap_page_alloc"></a><h3>mp_heap_page_alloc</h3>    <p>
+<br />Allocate new heap page, initialize it. If somebody already allocating page,<br />it will wait until it's done than return  last_heap_page<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />allocated page <br /></p>
+<p>
+<pre>
+mp_heap_page_t* mp_heap_page_alloc() 
+</pre>
+</p>
+<a name="mp_heap_page_free"></a><h3>mp_heap_page_free</h3>    <p>
+<br />Free heap page<br /></p>
+<p>
+<pre>
+void mp_heap_page_free(mp_heap_page_t* page) 
+</pre>
+</p>
+<a name="mp_heap_btree_linearize"></a><h3>mp_heap_btree_linearize</h3><span class="label label-warning">private</span>    <p>
+<br />Linearize free BST from root into free starting from index recursively<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>free</strong> - Free list<br /></li>
+            <li>
+<strong>root</strong> - Root entry of free BST (may be subtree root for recursive calls)<br /></li>
+            <li>
+<strong>index</strong> - Index from which linearization should come (for recursive calls)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+static int mp_heap_btree_linearize(mp_heap_header_t** free, mp_heap_header_t* root, int index) 
+</pre>
+</p>
+<a name="mp_heap_page_defrag"></a><h3>mp_heap_page_defrag</h3>    <p>
+<br />Defragment free BST.<br /></p>
+    <p>
+Linearizes free BST, finds sibling free fragments and enlarges them.<br />Uses mp_heap_btree_insert to form new free BST </p>
+<p>
+<pre>
+void mp_heap_page_defrag(mp_heap_page_t* page) 
+</pre>
+</p>
+<a name="mp_heap_btree_insert"></a><h3>mp_heap_btree_insert</h3>    <p>
+<br />Insert entry hh to free BST<br /></p>
+    <p>
+TODO: According to mpbench measurments it's hotspot, should be optimized<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>root</strong> - Pointer to root of tree (May be altered only if NULL)<br /></li>
+            <li>
+<strong>hh</strong> - Entry to be inserted<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void mp_heap_btree_insert(mp_heap_header_t** root, mp_heap_header_t* hh) 
+</pre>
+</p>
+<a name="mp_heap_btree_delete"></a><h3>mp_heap_btree_delete</h3>    <p>
+<br />Removes element from free BST<br /></p>
+    <p>
+        MP_HH_N - No direction (hh is root and pparent == &root)<br />        MP_HH_L    - parent --(left)---&gt; hh<br />        MP_HH_R - parent --(right)--&gt; hh<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>root</strong> - Pointer to root of tree (may be altered)<br /></li>
+            <li>
+<strong>parent</strong> - Parent of hh<br /></li>
+            <li>
+<strong>hh</strong> - Header to remove<br /></li>
+            <li>
+<strong>direction</strong> - Direction from parent to hh:<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void mp_heap_btree_delete(mp_heap_header_t** root, mp_heap_header_t* parent, mp_heap_header_t* hh, int direction) 
+</pre>
+</p>
+<a name="mp_heap_btree_find_delete"></a><h3>mp_heap_btree_find_delete</h3>    <p>
+<br />Find best match, remove it from free-tree split, and return<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>root</strong> - Pointer to root of btree<br /></li>
+            <li>
+<strong>units</strong> - Minimum size of allocated fragment in units<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+mp_heap_header_t* mp_heap_btree_find_delete(mp_heap_header_t** root, size_t units) 
+</pre>
+</p>
+<a name="mp_heap_alloc"></a><h3>mp_heap_alloc</h3>    <p>
+<br />Allocate area from heap<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>size</strong> - Size of allocation area<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />allocated area<br /></p>
+<p>
+<pre>
+void* mp_heap_alloc(size_t size) 
+</pre>
+</p>
+<a name="mp_heap_free"></a><h3>mp_heap_free</h3>    <p>
+<br />Free area allocated by heap<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>ptr</strong> - Allocated area<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void mp_heap_free(void* ptr) 
+</pre>
+</p>
+<a name="mp_heap_get_size"></a><h3>mp_heap_get_size</h3><span class="label label-warning">private</span>    <p>
+<br />Get size of allocated area from heap<br /></p>
+<p>
+<pre>
+static size_t mp_heap_get_size(void* ptr) 
+</pre>
+</p>
+<h2>Types</h2><a name="mp_frag_descr_t"></a><h3>mp_frag_descr_t</h3><p>
+<pre>
+typedef struct {
+    signed short fd_type;
+
+    union {
+        unsigned short fd_size;
+        unsigned short fd_offset;    /* for FRAG_REFERENCE */
+    };
+} mp_frag_descr_t;
+
+</pre>
+</p>
+<a name="struct_mp_heap_header"></a><h3>struct mp_heap_header</h3><p>
+<pre>
+struct mp_heap_header {
+    uint16_t    hh_size     : 10;
+
+    int16_t        hh_left  : 11;
+    int16_t        hh_right : 11;
+} PACKED_STRUCT;
+
+</pre>
+</p>
+<a name="mp_heap_page_t"></a><h3>mp_heap_page_t</h3><p>
+<pre>
+typedef struct {
+    thread_mutex_t        hp_mutex;
+
+    size_t                hp_free;
+
+    list_node_t            hp_node;            /**&lt; List node (for linking with another pages)*/
+
+    ts_time_t            hp_birth;            /**&lt; Time of page allocation */
+
+    int                    hp_defrag_period;
+    unsigned            hp_allocated_count;
+    unsigned            hp_free_count;        /**&lt; Number of free fragments*/
+    mp_heap_header_t*    hp_root_free;        /**&lt; Root of free BST */
+
+    char                hp_data[0];
+} mp_heap_page_t;
+
+</pre>
+</p>
+<a name="mp_cache_page_t"></a><h3>mp_cache_page_t</h3><p>
+<pre>
+typedef struct {
+    struct mp_cache*    cp_cache;
+    list_node_t    cp_node;
+
+    atomic_t    cp_free_items;
+    void*         cp_first_item;
+
+    atomic_t    cp_bitmap[0];
+} mp_cache_page_t;
+
+</pre>
+</p>
+<a name="typedef_struct_mp_cache"></a><h3>typedef struct mp_cache</h3><p>
+<pre>
+typedef struct mp_cache {
+    thread_mutex_t    c_page_lock;
+    thread_rwlock_t    c_list_lock;
+
+    list_head_t    c_page_list;
+    mp_cache_page_t* c_last_page;
+
+    size_t        c_item_size;
+    unsigned     c_items_per_page;
+
+    ptrdiff_t    c_first_item_off;
+
+    char        c_name[MPCACHENAMELEN];
+} mp_cache_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

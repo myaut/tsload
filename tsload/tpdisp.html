@@ -1,0 +1,152 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="threadpool.html"><strong>Prev</strong>(Threadpools)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="workload.html"><strong>Next</strong>(Workloads)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>ThreadPool Dispatchers</h1><h3></h3>    <p>
+ThreadPool dispatcher is set of hooks that simulate request arrivals,<br />distributes requests between workers and reports finished requests.<br /></p>
+    <p>
+Hooks (see <code>tp_disp_class</code>):<br />         <ul>
+            <li>
+ preinit - actually called by json_tp_disp_proc factory to set params<br />    </li>
+            <li>
+ init/destroy - initialize/destroy private tpd data<br />    </li>
+            <li>
+ control_report - called when control thread wants to report data<br />      When discard policy is set, should clear worker queues and report<br />      all requests to reporter thread. If not, should split request list into<br />      two and report only finished requests.<br /> </li>
+            <li>
+ control_sleep - called when control thread finished generating requests<br />   May simulate request arrivals<br /> </li>
+            <li>
+ worker_pick - called when worker wants to pick next request from queue<br /> </li>
+            <li>
+ worker_done - called when worker finished executing request<br /> </li>
+            <li>
+ worker_finish - special hook for tp_destroy() code. If dispatcher uses<br />   external cv's, should wakeup worker because threadpool is dying.<br /> </li>
+            <li>
+ relink_request is called when request's rq_sched_time changes and it should<br />   be again linked to maintain queue sorted.<br /></li>
+</ul>
+</p>
+<h3></h3>    <p>
+<h4>Benchmark dispatcher</h4></p>
+    <p>
+Based on first-free dispatcher, but much simpler. Dispatching is handled by worker threads.<br /></p>
+    <p>
+tpd_bench_t contains cyclic list of requests bench_rq_list (copy of tp_rq_head list), and<br />each worker picks next entry from that list, clones it and runs request. On step end,<br />tpd_worker_pick_bench swaps lists.<br /></p>
+<h3></h3>    <p>
+<h4>First-Free thread pool dispatcher</h4></p>
+    <p>
+Dispatches request to first worker that finishes it's request or<br />to random worker that sleeping.<br /></p>
+<h3></h3>    <p>
+<h4>Queue-based dispatcher classes</h4></p>
+    <p>
+Starting each step, pre-distributes requests among workers then sleeps<br />Has four options:<br />        - Round-robin<br />        - Random<br />        - Fill up to N requests<br />        - Per-user<br /></p>
+<h2>Constants</h2><a name="TPD_OK"></a><a name="TPD_ERROR"></a><a name="TPD_BAD"></a><h3>TPD_ERROR, TPD_OK, TPD_BAD</h3>    <p>
+<br />ThreadPool dispatcher error code<br /></p>
+<p>
+<pre>
+#define TPD_OK  0
+#define TPD_ERROR   -1
+#define TPD_BAD -2
+</pre>
+</p>
+<h2>Functions</h2><a name="tpd_wqueue_pick"></a><h3>tpd_wqueue_pick</h3>    <p>
+<br />Wait until somebody put request onto worker's queue than return<br />this request. If threadpool dies, returns NULL.<br /></p>
+<p>
+<pre>
+request_t* tpd_wqueue_pick(thread_pool_t* tp, tp_worker_t* worker)
+</pre>
+</p>
+<a name="tpd_wqueue_put"></a><h3>tpd_wqueue_put</h3>    <p>
+<br />Put single request onto queue of worker and wake up worker<br /></p>
+<p>
+<pre>
+void tpd_wqueue_put(thread_pool_t* tp, tp_worker_t* worker, request_t* rq)
+</pre>
+</p>
+<a name="tpd_next_wid_rr"></a><h3>tpd_next_wid_rr</h3><span class="label label-success">public</span><p>
+<pre>
+static int tpd_next_wid_rr(thread_pool_t* tp, int wid, request_t* rq) 
+</pre>
+</p>
+<a name="tpd_first_wid_rand"></a><h3>tpd_first_wid_rand</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE int tpd_first_wid_rand(thread_pool_t* tp) 
+</pre>
+</p>
+<a name="tpd_next_wid_rand"></a><h3>tpd_next_wid_rand</h3><span class="label label-success">public</span><p>
+<pre>
+static int tpd_next_wid_rand(thread_pool_t* tp, int wid, request_t* rq) 
+</pre>
+</p>
+<a name="tpd_destroy"></a><h3>tpd_destroy</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void tpd_destroy(tp_disp_t* tpd)
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_tp_disp_class"></a><h3>typedef struct tp_disp_class</h3><p>
+<pre>
+typedef struct tp_disp_class {
+    const char* name;
+
+    int (*init)(thread_pool_t* tp);
+    void (*destroy)(thread_pool_t* tp);
+
+    void (*control_report)(thread_pool_t* tp);
+    void (*control_sleep)(thread_pool_t* tp);
+
+    request_t* (*worker_pick)(thread_pool_t* tp, tp_worker_t* worker);
+    void (*worker_done)(thread_pool_t* tp, tp_worker_t* worker, request_t* rq);
+    void (*worker_signal)(thread_pool_t* tp, int wid);
+
+    void (*relink_request)(thread_pool_t* tp, request_t* rq);
+} tp_disp_class_t;
+
+</pre>
+</p>
+<a name="typedef_struct_tp_disp"></a><h3>typedef struct tp_disp</h3><p>
+<pre>
+typedef struct tp_disp {
+    thread_pool_t*    tpd_tp;
+    tp_disp_class_t* tpd_class;
+    void* tpd_data;
+} tp_disp_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

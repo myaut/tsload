@@ -1,0 +1,282 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tsfutil.html"><strong>Prev</strong>(tsfutil)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="busy_wait.html"><strong>Next</strong>(busy_wait)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>experiment.json</h2></p>
+<p>
+experiment.json is a config of TSLoad experiment that is consumed by <a href="tsexperiment.html">tsexperiment</a> tool. File have JSON syntax. This document describes it's format.<br /></p>
+<p>
+<h3>Designations</h3></p>
+<p>
+Because JSON have no good human-readable schema, we use our own syntax in this document:<br /></p>
+<p>
+<pre>
+&lt;string&gt;            ::= '"' text '"'
+&lt;number&gt;            ::=  "\d+" | "\d+.\d+" | "\d+.\d+e[+-]?\d+"
+&lt;value&gt;             ::= &lt;string&gt; | &lt;number&gt;
+
+&lt;basic-type&gt;        ::= "node" | "number" | "string" | "boolean" | "node"
+&lt;enum-type-value&gt;   ::= &lt;string&gt;
+&lt;enum-type&gt;         ::=   &lt;enum-type-value&gt; "|" &lt;enum-type&gt; | &lt;enum-type-value&gt;
+&lt;type&gt;              ::= &lt;enum-type&gt; | &lt;basic-type&gt; | "ANY"
+
+&lt;node-description&gt;  ::= "[" &lt;type&gt; "] " &lt;description&gt;
+&lt;node-name&gt;         ::= &lt;string&gt;
+
+&lt;flag-condition&gt;    ::= &lt;node-name&gt; "=" "&lt;value&gt;
+&lt;flag&gt;              ::= "in" | "out" | "opt" | &lt;flag-condition&gt;
+&lt;flag-list&gt;         ::= &lt;flag-list&gt; ", " &lt;flag&gt; | &lt;flag&gt;
+
+&lt;node-body&gt;         ::=   &lt;node-description&gt; 
+                    |   "[" &lt;node-description&gt; ", ..." "]"
+                    |   "{" &lt;node&gt; ", ..." "}"
+
+&lt;node&gt;              ::= "(" &lt;flag-list&gt; ")" &lt;node-name&gt; ":" &lt;node-description&gt;        
+&lt;node-list&gt;         ::= &lt;node-list&gt; "," &lt;EOL&gt; &lt;node&gt; | &lt;node&gt;
+
+&lt;config-format&gt;     ::= "{" &lt;EOL&gt; &lt;node-list&gt; &lt;EOL&gt; "}"        
+</pre>
+</p>
+<p>
+Where flag is one of:<br />        <ul>
+        <li>
+<strong>in</strong> - This node should be provided in config<br />    </li>
+        <li>
+<strong>out</strong> - This node is written by tsexperiment tool<br />    </li>
+        <li>
+<strong>opt</strong> - This node is optional and may be ommitted<br />    </li>
+        <li>
+<strong>&lt;node-name&gt; "=" "&lt;value&gt;</strong> - This node only valid if other node have specified value<br /></li>
+</ul>
+</p>
+<p>
+<h3>experiment.json</h3></p>
+<p>
+<pre>
+{
+    (in, out) "name": [string] Name of the experiment,
+    (in) "steps" : {
+        (in) "Name of workload1" : [node] Steps, ...
+    },
+    (in) "threadpools" : {
+        (in) "Name of threadpool1" : [node] Threadpool, ...
+    },
+    (in) "workloads" : {
+        (in) "Name of workload1" : [node] Workload, ...
+    },
+    (out) "start_time": [number] Time when workload started in nanoseconds from Unix epoch
+    (out) "status": [number] Status code of experiment
+    (out) "agent": [node] Information about host and agent that was run this experiment 
+}
+</pre>
+</p>
+<p>
+<h3>Threadpool</h3></p>
+<p>
+<pre>
+{
+    (in) "num_threads" : [number] Number of workers in this threadpool,
+    (in) "quantum" : [number] Threadpool quantum in nanoseconds,
+    (in) "disp" : {
+        (in) "type" : ["round-robin" | "random" | "fill-up" | "user" | 
+                       "trace" | "first-free" | "benchmark"] Class of threadpool dispatcher,
+        (in, "type" = "fill-up") "n" : [number] Number of requests per batch
+        (in, "type" = "fill-up") "wid" : [number] First worker id
+    }
+    (in, opt) "discard" : [boolean] Discard policy. Default is false
+    (in, opt) "sched" : [
+        [node] Threadpool scheduler policy, ...
+    ] 
+}
+</pre>
+</p>
+<p>
+<h4>Threadpool scheduler policy</h4></p>
+<p>
+<pre>
+{
+    (in) "wid" : [number] Worker id - from 0 to num_threads-1
+    (in, opt) "objects" : [
+        [string] CPU Object #1, ...
+    ],
+    (in, opt) "policy" : [string] Scheduler policy
+    (in, opt) "params" : [node] Scheduler parameters    
+}
+</pre>
+</p>
+<p>
+Available scheduler parameters vary from platform to platform.<br /></p>
+<p>
+<h3>Steps </h3></p>
+<p>
+Constant steps generator:<br /></p>
+<p>
+<pre>
+{
+    (in) "num_steps" : [number] Number of steps
+    (in) "num_requests" : [number] Number of requests per step
+}
+</pre>
+</p>
+<p>
+File-based steps generator:<br /></p>
+<p>
+<pre>
+{
+    (in) "file" : [string] Name of file. It should be located in experiment directory
+}
+</pre>
+</p>
+<p>
+<h3>Workloads</h3></p>
+<p>
+<pre>
+{
+    (in) "wltype" : [string] Type of workload,
+    (in, opt) "threadpool" : [string] Name of threadpool which will execute workload's requests, 
+    (in, opt) "chain" : [node] Workload chain parameters,
+    (in) "rqsched": [node] Request scheduler parameters,
+    (in, opt) "deadline" : [node] Deadline of request - maximum time between begin of service and arrival times,
+    (in) "params" : [node] {
+        (in) "Name of parameter1" : [ANY] Workload parameter 1, ...
+    } 
+}
+</pre>
+</p>
+<p>
+<strong>NOTE</strong>: You should set "threadpool" or "chain" parameters. <br /></p>
+<p>
+<h4>Workload chain parameters</h4></p>
+<p>
+<pre>
+{
+    (in) "workload"    : [string] Workload name to which current workload is chained
+    (in, opt) "probability" : [node] Probability parameters
+}
+</pre>
+</p>
+<p>
+Where "probability" is:<br /></p>
+<p>
+<pre>
+{
+    (in) "value" : [number] Probability of request chaining (from 0.0 to 1.0),
+    (in) "randgen" : [node] Random generator
+}
+</pre>
+</p>
+<p>
+<h4>Request scheduler parameters</h4></p>
+<p>
+<pre>
+{
+    (in) "type" : ["simple" | "iat" | "think"] Type of request scheduler
+    
+    (in, "type" = "iat", "type" = "think") "distribution" :
+                 ["exponential" | "uniform" | "erlang" | "normal" ] Type of random numbers distribution,
+    (in, "distribution" = "uniform") "scope" : [number] Value from 0.0 (min = max = mean) to 1.0 (min = 0.0, max = 2 * mean),
+    (in, "distribution" = "erlang") "shape" : [number] Shape parameter for Erlang distribution,
+    (in, "distribution" = "normal") "dispersion" : [number] Desired dispersion of distribution,
+    
+    (in, "type" = "think") "user_randgen" : [node] Random generator that used to generate user ids for request,
+    (in, "type" = "think") "nusers" : [number] Number of users to be simulated by think request scheduler
+}
+</pre>
+</p>
+<p>
+Since mean value of request arrival time is calculated from number of requests per step (which specified by steps generator), options of iat and think-time request schedulers are differ from random variators options.<br /></p>
+<p>
+<h4>Random-generated request parameters</h4></p>
+<p>
+For parameters with request scope you may specify random generator options to make them generated randomly for each request:<br /></p>
+<p>
+<pre>
+{
+    (in) "randgen": [node] Random generator,
+    (in, opt) "randvar": [node] Random variator,
+    (in, opt) "pmap": [
+        [node] Probability map value 1, ...
+    ]
+}
+</pre>
+</p>
+<p>
+"randvar" and "pmap" parameters are mutually exclusive. Only parameters based on integer or floating point may use random variator or pure random generator. For other parameters (such as strings, hostinfo objects, string sets, etc., you should specify probability map that allow to choose one value from discrete set depending of probabilities of this values. Each probability map element defined as:<br /></p>
+<p>
+<pre>
+{
+    (in) "probability": [number] Probability of this element,
+    (in, opt) "value": [ANY] Chosen value
+    (in, opt) "valarray": [
+        [ANY] value #1, ...
+    ]
+}
+</pre>
+</p>
+<p>
+<code>value</code> and <code>valarray</code> parameters are mutually exclusive.<br /></p>
+<p>
+<h3>Random generator</h3></p>
+<p>
+<pre>
+{
+    (in) "class" : ["libc" | "devrandom" | "lcg" | "seq"]    Pseudo-random numbers source,
+    (in, opt) "seed" : [number] Generator seed. If not set, then system clock is used
+}
+</pre>
+</p>
+<p>
+Best option for random generators is "lcg" or Linear congruential generator. "seq" is a special generator (not random, but uses same interface) that generates values sequentially with step = 1.<br /></p>
+<p>
+<h3>Random variator</h3></p>
+<p>
+<pre>
+{
+    (in) "class" : ["exponential" | "uniform" | "erlang" | "normal" ] Type of random numbers distribution,
+    
+    (in, "class" = "exponential", "class" = "erlang") "rate" : [number] Rate parameter,
+    (in, "class" = "erlang") "rate" : [number] Shape parameter for Erlang distribution,
+    
+    (in, "class" = "uniform") "min" : [number] Minimum value for Uniform distribution
+    (in, "class" = "uniform") "max" : [number] Maximum value for Uniform distribution
+    
+    (in, "class" = "normal") "mean" : [number] Mean value for Normal distribution
+    (in, "class" = "normal") "stddev" : [number] Standard deviation for Normal distribution
+            
+}
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

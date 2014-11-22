@@ -1,0 +1,498 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tpdisp.html"><strong>Prev</strong>(ThreadPool Dispatchers)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="wltype.html"><strong>Next</strong>(Workload types)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Workloads</h1><h3></h3><h3></h3>    <p>
+<br />TSLoad supports statically-defined userspace dynamic tracing (USDT) using etrace subsystem.<br />Build with --enable-usdt (Linux + SystemTap or Solaris + DTrace) or --enable-etw<br />(Event Tracing for Windows).<br /></p>
+    <p>
+<strong>Windows</strong>:<br />                <ul>
+            <li>
+ Register provider with wevtutil:<br />            <code>C:\&gt; wevtutil im Shared\workload.man</code></li>
+            <li>
+ Start tracing with logman:<br />             <code>C:\&gt; logman start -ets TSloadWL -p "Tslaod-Workload" 0 0 -o tracelog.etl</code></li>
+            <li>
+ Run tsexperiment:<br />            <code>C:\&gt; tsexperiment -e Data\sample\ run</code></li>
+            <li>
+ Stop tracing:<br />            <code>C:\&gt; logman stop -ets TSloadWL</code></li>
+            <li>
+ Generate reports:<br />            <code>C:\&gt; tracerpt -y tracelog.etl</code></li>
+</ul>
+</p>
+    <p>
+        <ul>
+            <li>
+ If you need to uninstall provider, call wevtutil with um command:<br />            <code>C:\&gt; wevtutil um Shared\workload.man</code></li>
+</ul>
+</p>
+    <p>
+<strong>Linux</strong>:<br /></p>
+    <p>
+    <pre>
+        root@centos# stap -e '
+            probe process("../lib/libtsload.so").provider("tsload__workload").mark("request__start") {
+                println(user_string(@cast($arg1, "workload_t")-&gt;wl_name));
+            } '                 -c 'tsexperiment -e ./var/tsload/sample run'
+</pre>
+</p>
+    <p>
+<strong>Solaris</strong>:<br /></p>
+    <p>
+    <pre>
+        root@sol11# dtrace -n '
+            request-start {
+                this-&gt;wl_name = (char*) copyin(arg0, 64);
+                trace(stringof(this-&gt;wl_name));
+            }'                     -c 'tsexperiment -e ./var/tsload/sample run'
+</pre>
+</p>
+<h2>Constants</h2><a name="RQF_STARTED"></a><a name="RQF_SUCCESS"></a><a name="RQF_ONTIME"></a><a name="RQF_FINISHED"></a><h3>RQF_FINISHED, RQF_ONTIME, RQF_STARTED, RQF_SUCCESS</h3>    <p>
+<br />Request flags.<br />sibling of TSRequestFlag </p>
+<p>
+<pre>
+#define RQF_STARTED 0x0001
+#define RQF_SUCCESS 0x0002
+#define RQF_ONTIME  0x0004
+#define RQF_FINISHED    0x0008
+</pre>
+</p>
+<h2>Functions</h2><a name="wl_notify"></a><h3>wl_notify</h3><span class="label label-success">public</span>    <p>
+<br />Notify server of workload configuring progress.<br /></p>
+    <p>
+done is presented in percent. If status is WLS_FAIL - it would be set to -1,<br />if status is WLS_SUCCESS or WLS_FINISHED - it would be set to 100<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl</strong> - configuring workload<br /></li>
+            <li>
+<strong>status</strong> - configuration/execution status<br /></li>
+            <li>
+<strong>done</strong> - configuration progress (in percent)<br /></li>
+            <li>
+<strong>format</strong> - message format string<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...)
+</pre>
+</p>
+<a name="wl_destroy"></a><h3>wl_destroy</h3><span class="label label-success">public</span>    <p>
+<br />wl_destroy - destroy workload<br /></p>
+<p>
+<pre>
+LIBEXPORT void wl_destroy(workload_t* wl)
+</pre>
+</p>
+<a name="wl_search"></a><h3>wl_search</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT workload_t* wl_search(const char* name)
+</pre>
+</p>
+<a name="wl_config"></a><a name="wl_unconfig"></a><h3>wl_unconfig, wl_config</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void wl_config(workload_t* wl)
+LIBEXPORT void wl_unconfig(workload_t* wl)
+</pre>
+</p>
+<a name="wl_provide_step"></a><h3>wl_provide_step</h3>    <p>
+<br />Provide number of requests for current step<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl</strong> - workload<br /></li>
+            <li>
+<strong>step_id</strong> - step id to be provided<br /></li>
+            <li>
+<strong>num_rqs</strong> - number<br /></li>
+            <li>
+<strong>trace_rqs</strong> - linked list of trace-based request<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />0 if steps are saved, -1 if incorrect step provided or wl_requests is full<br /></p>
+<p>
+<pre>
+int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t* trace_rqs)
+</pre>
+</p>
+<a name="wl_advance_step"></a><h3>wl_advance_step</h3>    <p>
+<br />Proceed to next step, and return number of requests in it<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl</strong> - Workload to work with.<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />Workload's step or NULL of no steps are on queue<br /></p>
+<p>
+<pre>
+workload_step_t* wl_advance_step(workload_t* wl)
+</pre>
+</p>
+<a name="wl_create_request"></a><h3>wl_create_request</h3>    <p>
+<br />Create request structure, append it to requests queue, initialize<br />For chained workloads inherits parent step and request id<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl</strong> - workload for request<br /></li>
+            <li>
+<strong>parent</strong> - parent request (for chained workloads)         For unchained workloads should be set to NULL.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+request_t* wl_create_request(workload_t* wl, request_t* parent)
+</pre>
+</p>
+<a name="wl_clone_request"></a><h3>wl_clone_request</h3>    <p>
+<br />Clone request - used by benchmark threadpool dispatcher<br /></p>
+<p>
+<pre>
+request_t* wl_clone_request(request_t* origin)
+</pre>
+</p>
+<a name="wl_create_request_trace"></a><h3>wl_create_request_trace</h3>    <p>
+<br />Create trace-based requests<br /></p>
+<p>
+<pre>
+request_t* wl_create_request_trace(workload_t* wl, int rq_id, long step, int user_id, int thread_id,ts_time_t sched_time, void* rq_params)
+</pre>
+</p>
+<a name="wl_run_request"></a><h3>wl_run_request</h3>    <p>
+<br />Run request for execution </p>
+<p>
+<pre>
+void wl_run_request(request_t* rq)
+</pre>
+</p>
+<a name="wl_init"></a><a name="wl_fini"></a><h3>wl_init, wl_fini</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int wl_init(void)
+LIBEXPORT void wl_fini(void)
+</pre>
+</p>
+<a name="wl_hold"></a><a name="wl_rele"></a><h3>wl_rele, wl_hold</h3>    <p>
+<br />Workload reference tracker. It may be held by<br />    - Creator<br />    - Threadpool it attached to<br />    - Request belongs to it<br /></p>
+    <p>
+Last owner released reference frees workload,<br />but not until creator does that.<br /></p>
+<p>
+<pre>
+void wl_hold(workload_t* wl)
+void wl_rele(workload_t* wl)
+</pre>
+</p>
+<a name="wl_finish"></a><h3>wl_finish</h3>    <p>
+<br />Finish workload - notify that it was finished<br /></p>
+<p>
+<pre>
+void wl_finish(workload_t* wl)
+</pre>
+</p>
+<a name="tsobj_request_format_all"></a><a name="tsobj_workload_proc"></a><h3>tsobj_workload_proc, tsobj_request_format_all</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT tsobj_node_t* tsobj_request_format_all(list_head_t* rq_list)
+workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params)
+</pre>
+</p>
+<a name="wl_create"></a><h3>wl_create</h3>    <p>
+<br />wl_create - create new workload: allocate memory and initialize fields<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />NULL if malloc had failed or new workload object<br /></p>
+<p>
+<pre>
+workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) 
+</pre>
+</p>
+<a name="wl_destroy_impl"></a><h3>wl_destroy_impl</h3>    <p>
+<br />wl_destroy_nodetach - workload destructor<br /></p>
+<p>
+<pre>
+void wl_destroy_impl(workload_t* wl) 
+</pre>
+</p>
+<a name="wl_chain_back"></a><h3>wl_chain_back</h3>    <p>
+<br />Chain workload to backwards of request chain<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>parent</strong> - one of workloads in chain<br /></li>
+            <li>
+<strong>wl</strong> - workload that needs to be chained<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void wl_chain_back(workload_t* parent, workload_t* wl) 
+</pre>
+</p>
+<a name="wl_request_destroy"></a><h3>wl_request_destroy</h3>    <p>
+<br />Destroy request memory </p>
+<p>
+<pre>
+void wl_request_destroy(request_t* rq) 
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_request"></a><h3>typedef struct request</h3>    <p>
+<br />Request descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>rq_step</strong> - id of step to which request belongs<br /></li>
+            <li>
+<strong>rq_id</strong> - unique id of request for workload inside step<br /></li>
+            <li>
+<strong>rq_user_id</strong> - id of user (set by think-time scheduler)<br /></li>
+            <li>
+<strong>rq_thread_id</strong> - id of worker in threadpool which was run this request<br /></li>
+            <li>
+<strong>rq_sched_time</strong> - arrival time<br /></li>
+            <li>
+<strong>rq_start_time</strong> - service begin time<br /></li>
+            <li>
+<strong>rq_end_time</strong> - service end time<br /></li>
+            <li>
+<strong>rq_queue_len</strong> - count of requests in worker or threadpool queue that follow         this request and which arrival time is come.<br /></li>
+            <li>
+<strong>rq_flags</strong> - request flags<br /></li>
+            <li>
+<strong>rq_workload</strong> - workload to which it's request belongs<br /></li>
+            <li>
+<strong>rq_params</strong> - vector of request params<br /></li>
+            <li>
+<strong>rq_node</strong> - link node for threadpool queue<br /></li>
+            <li>
+<strong>rq_w_node</strong> - link node for worker queue<br /></li>
+            <li>
+<strong>rq_wl_node</strong> - link node for workload request list<br /></li>
+            <li>
+<strong>rq_chain_next</strong> - next request (for workload chaining)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct request {
+    long rq_step;
+    int rq_id;
+    int rq_user_id;
+
+    int rq_thread_id;
+
+    ts_time_t rq_sched_time;
+    ts_time_t rq_start_time;
+    ts_time_t rq_end_time;
+
+    int rq_flags;
+
+    int rq_queue_len;
+
+    struct workload* rq_workload;
+
+    void* rq_params;
+
+    list_node_t rq_node;        /* Next request in chain */
+    list_node_t rq_w_node;
+    list_node_t rq_wl_node;
+    struct request* rq_chain_next;    /* Next request in workload chain */
+} request_t;
+
+</pre>
+</p>
+<a name="typedef_struct_workload_step"></a><h3>typedef struct workload_step</h3><p>
+<pre>
+typedef struct workload_step {
+    struct workload* wls_workload;
+    unsigned wls_rq_count;
+    list_head_t wls_trace_rqs;
+} workload_step_t;
+
+</pre>
+</p>
+<a name="wl_status_t"></a><h3>wl_status_t</h3>    <p>
+<br />Workload state<br /></p>
+    <p>
+Sibling to TSWorkloadStatusCode</p>
+<p>
+<pre>
+typedef enum {
+    WLS_NEW = 0,
+    WLS_CHAINED = 1,
+    WLS_CONFIGURING = 2,
+    WLS_CFG_FAIL = 3,
+    WLS_CONFIGURED = 4,
+    WLS_STARTED = 5,
+    WLS_RUNNING    = 6,
+    WLS_FINISHED = 7,
+    WLS_DESTROYED = 8
+} wl_status_t;
+
+</pre>
+</p>
+<a name="typedef_struct_workload"></a><h3>typedef struct workload</h3>    <p>
+<br />Workload primary structure<br /></p>
+    <p>
+Workload FSM<br /></p>
+    <p>
+    <pre>
+wl_create()  -&gt; NEW / CHAINED
+                     |
+cfg_thread()    --&gt; CONFIGURING
+                    /                    /                     /                 CONFIGURED CFG_FAIL
+                |        |
+              STARTED    |
+                |        |
+              RUNNING-----+
+                |         |
+             FINISHED     |
+                |         |
+             DESTROYED &lt;--+
+</pre>
+</p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>wl_name</strong> - Name of workload<br /></li>
+            <li>
+<strong>wl_type</strong> - Reference to workload type descriptor, provided by module<br /></li>
+            <li>
+<strong>wl_tp</strong> - Reference to thread pool it was attached. May be set to NULL for chained workloads<br /></li>
+            <li>
+<strong>wl_params</strong> - Vector of workload parameters<br /></li>
+            <li>
+<strong>wl_private</strong> - Private field to keep module-specific data<br /></li>
+            <li>
+<strong>wl_cfg_thread</strong> - Thread responsible for configuration<br /></li>
+            <li>
+<strong>wl_status</strong> - Current workload state (see FSM above)<br /></li>
+            <li>
+<strong>wl_status_flags</strong> - Bitmap that contains workload states it was passed. Use WL_HAD_FLAGS to check it<br /></li>
+            <li>
+<strong>wl_ref_count</strong> - Reference counter. Workload is referenced by creator and requests                    Because after we unconfiguring workload there are requests that was not yet reported                 and it is done by separate thread, we should wait for them.<br /></li>
+            <li>
+<strong>wl_current_rq</strong> - Id of last created request<br /></li>
+            <li>
+<strong>wl_requests</strong> - List of workload's requests. Protected by wl_rq_mutex<br /></li>
+            <li>
+<strong>wl_start_time</strong> - Time when workload was scheduled to start<br /></li>
+            <li>
+<strong>wl_notify_time</strong> - Timestamp when wl_notify was called. Used to reduce number of WLS_CONFIGURING messages<br /></li>
+            <li>
+<strong>wl_start_clock</strong> - Clock when workload was run by threadpool. Used to normalize request times to            start time of workload<br /></li>
+            <li>
+<strong>wl_time</strong> - Current clock of workload: wl_start_clock + step * tp_quantum<br /></li>
+            <li>
+<strong>wl_current_step</strong> - Current step of workload<br /></li>
+            <li>
+<strong>wl_last_step</strong> - Last step id on queue<br /></li>
+            <li>
+<strong>wl_step_queue</strong> - Queue that contains requests number of requests (or trace-based). Protected by wl_step_mutex<br /></li>
+            <li>
+<strong>wl_rqsched_class</strong> - Workload request scheduler<br /></li>
+            <li>
+<strong>wl_rqsched_private</strong> - Private data for request scheduler<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct workload {
+    AUTOSTRING char* wl_name;
+
+    wl_type_t*         wl_type;
+
+    thread_pool_t*     wl_tp;
+    void*             wl_params;
+    void*             wl_private;
+
+    thread_t         wl_cfg_thread;
+
+    thread_mutex_t     wl_status_mutex;
+    wl_status_t      wl_status;
+    unsigned long     wl_status_flags;
+
+    atomic_t         wl_ref_count;
+
+    int                 wl_current_rq;
+    thread_mutex_t     wl_rq_mutex;
+    list_head_t         wl_requests;
+
+    ts_time_t         wl_start_time;
+    ts_time_t         wl_notify_time;
+    ts_time_t         wl_start_clock;
+    ts_time_t         wl_time;
+
+    /* Requests queue */
+    thread_mutex_t     wl_step_mutex;
+    long             wl_current_step;
+    long             wl_last_step;
+    workload_step_t  wl_step_queue[WLSTEPQSIZE];
+    /* End of requests queue*/
+
+    ts_time_t         wl_deadline;
+
+    struct workload* wl_chain_next;
+    randgen_t*         wl_chain_rg;
+    double             wl_chain_probability;
+
+    struct rqsched_class* wl_rqsched_class;
+    void* wl_rqsched_private;
+
+    struct workload* wl_hm_next;        /**&lt; next in workload hashmap*/
+
+    list_node_t         wl_tp_node;        /**&lt; thread pool wl list*/
+
+    list_head_t         wl_wlpgen_head;    /**&lt; per-request params*/
+} workload_t;
+
+</pre>
+</p>
+<a name="wl_notify_msg_t"></a><h3>wl_notify_msg_t</h3><p>
+<pre>
+typedef struct {
+    AUTOSTRING char* wl_name;
+    wl_status_t status;
+    long progress;
+
+    AUTOSTRING char* msg;
+} wl_notify_msg_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

@@ -1,0 +1,299 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tstime.html"><strong>Prev</strong>(tstime)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="etrace.html"><strong>Next</strong>(Event tracing)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Network Sockets</h1><h3></h3>    <p>
+Platform-independent implementation for TCP/UDP network sockets.<br />Used by agent code and be useful for network clients loader agents.<br /></p>
+<h2>Constants</h2><a name="Socket_types"></a><a name="NSK_STREAM"></a><a name="NSK_DRAM"></a><h3>Socket types</h3>    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>NSK_STREAM</strong> - TCP socket<br /></li>
+            <li>
+<strong>NSK_DRAM</strong> - UDP socket<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define NSK_STREAM  
+#define NSK_DRAM    
+</pre>
+</p>
+<a name="Return_values"></a><a name="NSK_OK"></a><a name="NSK_ERR_RESOLVE"></a><a name="NSK_ERR_SOCKET"></a><a name="NSK_ERR_CONNECT"></a><a name="NSK_ERR_BIND"></a><a name="NSK_ERR_LISTEN"></a><a name="NSK_ERR_ACCEPT"></a><a name="NSK_ERR_SETOPT"></a><a name="NSK_ERR_SETNB"></a><h3>Return values</h3>    <p>
+Each constant represents failed operation<br /></p>
+<p>
+<pre>
+#define NSK_OK  0
+#define NSK_ERR_RESOLVE -1
+#define NSK_ERR_SOCKET  -2
+#define NSK_ERR_CONNECT -3
+#define NSK_ERR_BIND    -4
+#define NSK_ERR_LISTEN  -5
+#define NSK_ERR_ACCEPT  -6
+#define NSK_ERR_SETOPT  -7
+#define NSK_ERR_SETNB   -8
+</pre>
+</p>
+<a name="nsk_poll()_return_values"></a><a name="NSK_POLL_OK"></a><a name="NSK_POLL_NEW_DATA"></a><a name="NSK_POLL_DISCONNECT"></a><a name="NSK_POLL_FAILURE"></a><h3>nsk_poll() return values</h3>    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>NSK_POLL_OK</strong> - poll successful, no incoming data<br /></li>
+            <li>
+<strong>NSK_POLL_NEW_DATA</strong> - data was received<br /></li>
+            <li>
+<strong>NSK_POLL_DISCONNECTED</strong> - local or remote node issued disconnect<br /></li>
+            <li>
+<strong>NSK_POLL_FAILURE</strong> - poll call was failed<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define NSK_POLL_OK 0
+#define NSK_POLL_NEW_DATA   1
+#define NSK_POLL_DISCONNECT 2
+#define NSK_POLL_FAILURE    3
+</pre>
+</p>
+<a name="nsk_recv()_return_values"></a><a name="NSK_RECV_DISCONNECT"></a><a name="NSK_RECV_NO_DATA"></a><a name="NSK_RECV_ERROR"></a><h3>nsk_recv() return values</h3>    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>NSK_RECV_DISCONNECT</strong> - poll successful, no incoming data<br /></li>
+            <li>
+<strong>NSK_RECV_NO_DATA</strong> - no data was received (only for non-blocking sockets)<br /></li>
+            <li>
+<strong>NSK_RECV_ERROR</strong> - recv call was failed<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define NSK_RECV_DISCONNECT -1
+#define NSK_RECV_NO_DATA    -2
+#define NSK_RECV_ERROR  -3
+</pre>
+</p>
+<a name="nsk_addr_to_string()_flags"></a><a name="NSK_ADDR_FLAG_DEFAULT"></a><a name="NSK_ADDR_FLAG_SERVICES"></a><h3>nsk_addr_to_string() flags</h3>    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>NSK_ADDR_FLAG_DEFAULT</strong> - no flags<br /></li>
+            <li>
+<strong>NSK_ADDR_FLAG_SERVICES</strong> - resolve flags using /etc/services (not implemented)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define NSK_ADDR_FLAG_DEFAULT   0x00
+#define NSK_ADDR_FLAG_SERVICES  0x01
+</pre>
+</p>
+<h2>Functions</h2><a name="nsk_resolve"></a><h3>nsk_resolve</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Resolve hostname and write result into he<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>host</strong> - hostname or string representation of IP<br /></li>
+            <li>
+<strong>he</strong> - destination buffer<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />On some platforms may lock mutexes, because implementation is not re-enterable<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_resolve(const char* host, nsk_host_entry* he)
+</pre>
+</p>
+<a name="nsk_setaddr"></a><h3>nsk_setaddr</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Set up socket address object<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sa</strong> - socket address object<br /></li>
+            <li>
+<strong>he</strong> - host entry resolved in nsk_resolve()<br /></li>
+            <li>
+<strong>port</strong> - port number<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_setaddr(nsk_addr* sa, nsk_host_entry* he, unsigned short port)
+</pre>
+</p>
+<a name="nsk_addr_to_string"></a><h3>nsk_addr_to_string</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Converts socket address into string &lt;IP&gt;:&lt;port&gt;<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sa</strong> - socket address object<br /></li>
+            <li>
+<strong>buf</strong> - destination buffer<br /></li>
+            <li>
+<strong>buflen</strong> - length of destination buffer<br /></li>
+            <li>
+<strong>default_port</strong> - if port inside sa equals this value, port is not printed to buffer<br /></li>
+            <li>
+<strong>flags</strong> - see below<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_addr_to_string(nsk_addr* sa, char* buf, size_t buflen,int default_port, int flags)
+</pre>
+</p>
+<a name="nsk_connect"></a><h3>nsk_connect</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Set up socket and connect to remote node<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>clnt_socket</strong> - socket object<br /></li>
+            <li>
+<strong>sa</strong> - socket address of remote server<br /></li>
+            <li>
+<strong>type</strong> - socket type<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_connect(nsk_socket* clnt_socket, nsk_addr* sa, int type)
+</pre>
+</p>
+<a name="nsk_listen"></a><h3>nsk_listen</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Listen on server socket<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>srv_socket</strong> - socket object<br /></li>
+            <li>
+<strong>sa</strong> - socket address of local server<br /></li>
+            <li>
+<strong>type</strong> - socket type<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_listen(nsk_socket* srv_socket, nsk_addr* sa, int type)
+</pre>
+</p>
+<a name="nsk_accept"></a><h3>nsk_accept</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Accept clients connection<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>srv_socket</strong> - server socket (earlier initialized with nsk_listen())<br /></li>
+            <li>
+<strong>clnt_socket</strong> - socket object (new object)<br /></li>
+            <li>
+<strong>sa</strong> - socket address of client<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_accept(nsk_socket* srv_socket, nsk_socket* clnt_socket, nsk_addr* clnt_sa)
+</pre>
+</p>
+<a name="nsk_disconnect"></a><h3>nsk_disconnect</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Shutdown and close connection - both for server and client sockets<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>socket</strong> - socket object<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_disconnect(nsk_socket* socket)
+</pre>
+</p>
+<a name="nsk_setopt"></a><h3>nsk_setopt</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Set socket option. Interface for platform setsockopt() or equal function.<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_setopt(nsk_socket* socket, int level, int optname,const void* optval, size_t optlen)
+</pre>
+</p>
+<a name="nsk_setnb"></a><h3>nsk_setnb</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Enable or disable nonblocking operations on socket<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>socket</strong> - socket object<br /></li>
+            <li>
+<strong>nonblocking</strong> - if set to B_TRUE, enables non-blocking operations,  if set to B_FALSE - disables them<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_setnb(nsk_socket* socket, boolean_t nonblocking)
+</pre>
+</p>
+<a name="nsk_poll"></a><h3>nsk_poll</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Wait on incoming data or disconnect of socket.<br />Polling of multiple sockets is not supported<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />One of NSK_POLL_* results<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_poll(nsk_socket* socket, ts_time_t timeout)
+</pre>
+</p>
+<a name="nsk_send"></a><h3>nsk_send</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Send data over socket<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />0 in case of disconnect, -1 on error, or number of bytes sent<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_send(nsk_socket* socket, void* data, size_t len)
+</pre>
+</p>
+<a name="nsk_recv"></a><h3>nsk_recv</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Receive data from socket<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />one of NSK_RECV_* value<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int nsk_recv(nsk_socket* socket, void* data, size_t len)
+</pre>
+</p>
+<a name="nsk_init"></a><a name="nsk_fini"></a><h3>nsk_init, nsk_fini</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI int nsk_init(void)
+LIBEXPORT PLATAPI void nsk_fini(void)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

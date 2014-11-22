@@ -1,0 +1,195 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="atomic.html"><strong>Prev</strong>(atomic)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="tsdirent.html"><strong>Next</strong>(FileSystem directories)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Path processing utilities</h1><h3></h3><h2>Constants</h2><a name="PATHMAXLEN"></a><a name="PATHPARTMAXLEN"></a><h3>PATHMAXLEN, PATHPARTMAXLEN</h3>    <p>
+<br />Maximum length of path<br /></p>
+<p>
+<pre>
+#define PATHMAXLEN  1024
+#define PATHPARTMAXLEN  256
+</pre>
+</p>
+<h2>Functions</h2><a name="path_join_array"></a><h3>path_join_array</h3><span class="label label-success">public</span>    <p>
+<br />Create path from array into string. Similiar to python's os.path.join<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>dest</strong> - Destination string<br /></li>
+            <li>
+<strong>len</strong> - Length of destination string<br /></li>
+            <li>
+<strong>num_parts</strong> - Number of parts provided<br /></li>
+            <li>
+<strong>parts</strong> - Parts of path<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />destination with formed path or NULL if destination was overflown<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
+</pre>
+</p>
+<a name="path_join"></a><h3>path_join</h3><span class="label label-success">public</span>    <p>
+<br />Create path from various arguments<br /></p>
+    <p>
+Example: path_join(path, PATHMAXLEN, "/tmp", tmpdir, "file", NULL)<br /></p>
+    <p>
+<em>NOTES</em><br />Last argument should be always NULL<br /></p>
+    <p>
+<em>REFERENCE</em><br />path_join_array<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_join(char* dest, size_t len, ...)
+</pre>
+</p>
+<a name="path_join_aas"></a><h3>path_join_aas</h3><span class="label label-success">public</span>    <p>
+<br />Join paths into auto-allocated string<br /></p>
+    <p>
+<em>NOTES</em><br />Last argument should be always NULL<br /></p>
+    <p>
+<em>REFERENCE</em><br />path_join<br />aas_init<br />aas_free<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_join_aas(char** aas, ...)
+</pre>
+</p>
+<a name="path_split"></a><h3>path_split</h3><span class="label label-success">public</span>    <p>
+<br />Split path into parts. Saves result into path iterator which may be walked using<br />path_split_next. Returns first part of path or NULL if max is too large.<br /></p>
+    <p>
+If max value is negative, path_split would put paths in reverse order, so<br />first part would be filename.<br /></p>
+    <p>
+Uses iter as temporary storage, it is re-enterable.<br /></p>
+    <p>
+First (or last for reverse order) component is root path item. For Windows it is<br />drive letter, on POSIX - empty string.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>iter</strong> - pre-allocated split path iterator<br /></li>
+            <li>
+<strong>max</strong> - maximum number parts which will be processed<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />Pointer to first part or NULL in case of error<br /></p>
+    <p>
+<em>NOTES</em><br />if number of parts exceeds PATHMAXPARTS, will fail and returns NULL<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_split(path_split_iter_t* iter, int max, const char* path)
+</pre>
+</p>
+<a name="path_split_next"></a><h3>path_split_next</h3><span class="label label-success">public</span>    <p>
+<br />Returns next path part from iterator or NULL if all parts was<br />walked.<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_split_next(path_split_iter_t* iter)
+</pre>
+</p>
+<a name="path_split_reset"></a><h3>path_split_reset</h3><span class="label label-success">public</span>    <p>
+<br />Resets iterator to beginning<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_split_reset(path_split_iter_t* iter)
+</pre>
+</p>
+<a name="path_dirname"></a><h3>path_dirname</h3><span class="label label-success">public</span>    <p>
+<br />Returns directory name. Uses iter as temporary storage<br /></p>
+    <p>
+<em>NOTES</em><br />uses path_split <br /></p>
+<p>
+<pre>
+STATIC_INLINE char* path_dirname(path_split_iter_t* iter, const char* path) 
+</pre>
+</p>
+<a name="path_basename"></a><h3>path_basename</h3><span class="label label-success">public</span>    <p>
+<br />Returns name of file. Uses iter as temporary storage<br /></p>
+    <p>
+<em>NOTES</em><br />uses path_split <br /></p>
+<p>
+<pre>
+STATIC_INLINE char* path_basename(path_split_iter_t* iter, const char* path) 
+</pre>
+</p>
+<a name="path_remove"></a><h3>path_remove</h3><span class="label label-success">public</span>    <p>
+<br />Remove relative path element <em>path</em> from the end of absolute path.<br /></p>
+    <p>
+For example:<br /><code>path_remove("/opt/tsload/var/tsload", "var/tsload") -&gt; "/opt/tsload"</code></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>result</strong> - resulting buffer that contains all elements of abspath             but path<br /></li>
+            <li>
+<strong>len</strong> - length of result buffer<br /></li>
+            <li>
+<strong>abspath</strong> - absolute path to be filtered<br /></li>
+            <li>
+<strong>path</strong> - path element<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />NULL if path is not element of abspath or result<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_remove(char* result, size_t len, const char* abspath, const char* path)
+</pre>
+</p>
+<h2>Types</h2><a name="path_split_iter_t"></a><h3>path_split_iter_t</h3>    <p>
+<br />Temporary storage for path splitting operations<br /></p>
+<p>
+<pre>
+typedef struct {
+    char ps_storage[PATHMAXLEN];
+    char* ps_dest;
+
+    int     ps_part;
+    int     ps_num_parts;
+    char*  ps_parts[PATHMAXPARTS];
+
+#ifdef PLAT_POSIX
+    boolean_t ps_last_is_root;
+#endif
+} path_split_iter_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

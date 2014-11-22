@@ -1,0 +1,282 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="randgen.html"><strong>Prev</strong>(Random generators and variators)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="tpdisp.html"><strong>Next</strong>(ThreadPool Dispatchers)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Threadpools</h1><h3></h3>    <p>
+Thread pools are set of threads for executing load requests.<br /></p>
+    <p>
+It consists of two type of threads:<br />- Control thread which processes step data and distribute requests across workers<br />- Worker thread whose are running requests for execution<br /></p>
+<h2>Variables</h2><a name="tp_worker_min_sleep"></a><h3>tp_worker_min_sleep</h3>    <p>
+<br />tunable: minimum time worker (or control thread) will sleep waiting for request arrival.<br />Because OS have granular scheduling if we go to sleep, for example for 100us, we may wakeup<br />only after 178us because nanosleep is not precise (however OS may use high-resolution timer).<br /></p>
+    <p>
+So TSLoad may prefer early arrival and ignore sleeping if time interval lesser than tp_worker_min_sleep<br /></p>
+<p>
+<pre>
+ts_time_t tp_worker_min_sleep 
+</pre>
+</p>
+<a name="tp_worker_overhead"></a><h3>tp_worker_overhead</h3>    <p>
+<br />tunable: estimated time consumed by worker between handling of arrival and calling module's<br />mod_run_request method. Like tp_worker_min_sleep used to make arrivals more precise<br /></p>
+<p>
+<pre>
+ts_time_t tp_worker_overhead 
+</pre>
+</p>
+<h2>Functions</h2><a name="tp_create"></a><h3>tp_create</h3><span class="label label-success">public</span>    <p>
+<br />Create new thread pool<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>num_threads</strong> - Numbber of worker threads in this pool<br /></li>
+            <li>
+<strong>name</strong> - Name of thread pool<br /></li>
+            <li>
+<strong>quantum</strong> - Worker's quantum<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT thread_pool_t* tp_create(const char* name, unsigned num_threads,ts_time_t quantum, boolean_t discard,struct tp_disp* disp)
+</pre>
+</p>
+<a name="tp_destroy"></a><h3>tp_destroy</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void tp_destroy(thread_pool_t* tp)
+</pre>
+</p>
+<a name="tp_search"></a><h3>tp_search</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT thread_pool_t* tp_search(const char* name)
+</pre>
+</p>
+<a name="tp_attach"></a><h3>tp_attach</h3>    <p>
+<br />Insert workload into thread pool's list<br /></p>
+<p>
+<pre>
+void tp_attach(thread_pool_t* tp, struct workload* wl)
+</pre>
+</p>
+<a name="tp_detach"></a><h3>tp_detach</h3>    <p>
+<br />Remove workload from thread pool list<br /></p>
+<p>
+<pre>
+void tp_detach(thread_pool_t* tp, struct workload* wl)
+</pre>
+</p>
+<a name="tp_compare_requests"></a><h3>tp_compare_requests</h3>    <p>
+<br />Compare two requests. Returns &gt;= 0 if request rq2 is going after rq1<br /></p>
+<p>
+<pre>
+int tp_compare_requests(struct request* rq1, struct request* rq2)
+</pre>
+</p>
+<a name="tp_insert_request_impl"></a><h3>tp_insert_request_impl</h3>    <p>
+<br />Insert request into request queue. Keeps requests sorted by their sched-time.<br />Doesn't walks entire list, but uses prev_rq and next_rq as hint parameters.<br /></p>
+    <p>
+I.e. if we have requests on queue with schedule times 10,20,30,40,50 and 60<br />and want to add request from another workload with sched time 45, prev request<br />should point to 60, and we walk back. Then we will get prev_rq = 40 and next_rq<br />is 50, so to insert request with 55, we shouldn't walk entire list of requests.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>rq_list</strong> - request queue<br /></li>
+            <li>
+<strong>rq</strong> - request to be inserted<br /></li>
+            <li>
+<strong>p_prev_rq</strong> - hint that contains previous request inside queue<br /></li>
+            <li>
+<strong>p_next_rq</strong> - hint that contains next request inside queue<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void tp_insert_request_impl(list_head_t* rq_list, list_node_t* rq_node,list_node_t** p_prev_node, list_node_t** p_next_node, ptrdiff_t offset)
+</pre>
+</p>
+<a name="tp_insert_request_initnodes"></a><h3>tp_insert_request_initnodes</h3>    <p>
+<br />Make preliminary initialization of previous and next node if<br />list already contains requests. Sets prev and next node to NULL<br />otherwise.<br /></p>
+<p>
+<pre>
+void tp_insert_request_initnodes(list_head_t* rq_list, list_node_t** p_prev_node, list_node_t** p_next_node)
+</pre>
+</p>
+<a name="tp_distribute_requests"></a><h3>tp_distribute_requests</h3>    <p>
+<br />Create requests instances according to step data or attach<br />trace-based requests to threadpool request queue. Automatically sorts<br />requests by its arrival time.<br /></p>
+    <p>
+Distribution across workers is actually done by threadpool dispatcher. </p>
+<p>
+<pre>
+void tp_distribute_requests(struct workload_step* step, thread_pool_t* tp)
+</pre>
+</p>
+<a name="tp_init"></a><a name="tp_fini"></a><h3>tp_fini, tp_init</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int tp_init(void)
+LIBEXPORT void tp_fini(void)
+</pre>
+</p>
+<a name="tp_rele"></a><h3>tp_rele</h3>    <p>
+Some tp_rele's may be called from control/worker thread<br />In this case we may deadlock because we will join ourselves<br />Do not destroy tp in this case - leave it to collector/tp_fini<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>may_destroy</strong> - - may tp_rele free thread_pool<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void tp_rele(thread_pool_t* tp, boolean_t may_destroy)
+</pre>
+</p>
+<a name="control_thread"></a><h3>control_thread</h3>    <p>
+<br />Control thread<br /></p>
+    <p>
+Control thread notifies workers after each quantum ending<br />and processes each step for each workload on thread pool<br /></p>
+<p>
+<pre>
+thread_result_t control_thread(thread_arg_t arg) 
+</pre>
+</p>
+<a name="worker_thread"></a><h3>worker_thread</h3>    <p>
+<br />Worker thread<br /></p>
+<p>
+<pre>
+thread_result_t worker_thread(thread_arg_t arg) 
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_tp_worker"></a><h3>typedef struct tp_worker</h3>    <p>
+<br />Threadpool worker<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>w_tp</strong> - backward link to threadpool<br /></li>
+            <li>
+<strong>w_thread</strong> - associated thread<br /></li>
+            <li>
+<strong>w_rq_mutex</strong> - mutex that protects cv and queue of requests<br /></li>
+            <li>
+<strong>w_rq_cv</strong> - condition variable for notifying sleeping worker<br /></li>
+            <li>
+<strong>w_rq_head</strong> - list of requets attached to this worker<br /></li>
+            <li>
+<strong>w_tpd_data</strong> - threadpool dispatcher per-worker data field<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct tp_worker {
+    struct thread_pool* w_tp;
+    thread_t w_thread;
+
+    thread_mutex_t w_rq_mutex;
+    thread_cv_t w_rq_cv;
+    list_head_t w_rq_head;
+
+    void* w_tpd_data;
+} tp_worker_t;
+
+</pre>
+</p>
+<a name="typedef_struct_thread_pool"></a><h3>typedef struct thread_pool</h3>    <p>
+<br />Threadpool main descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>tp_num_threads</strong> - number of worker threads<br /></li>
+            <li>
+<strong>tp_name</strong> - threadpool name<br /></li>
+            <li>
+<strong>tp_is_dead</strong> - flag that set when threadpool is destroyed<br /></li>
+            <li>
+<strong>tp_started</strong> - internal flag that says that tp_create already started threads<br /></li>
+            <li>
+<strong>tp_quantum</strong> - control thread's quantum duration (in ns)<br /></li>
+            <li>
+<strong>tp_time</strong> - last time control thread had woken up (in ns)<br /></li>
+            <li>
+<strong>tp_ctl_thread</strong> - control thread of threadpool<br /></li>
+            <li>
+<strong>tp_workers</strong> - array of threadpool workers<br /></li>
+            <li>
+<strong>tp_mutex</strong> - mutex that protects list of workloads attached to threadpool<br /></li>
+            <li>
+<strong>tp_ref_count</strong> - reference counter for threadpool<br /></li>
+            <li>
+<strong>tp_disp</strong> - pointer to dispatcher structure<br /></li>
+            <li>
+<strong>tp_discard</strong> - see discard parameter for tsload_create_threadpool<br /></li>
+            <li>
+<strong>tp_rq_head</strong> - list of requests that are executing by this threadpool<br /></li>
+            <li>
+<strong>tp_wl_head</strong> - list of workloads attached to this threadpool<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct thread_pool {
+    unsigned tp_num_threads;
+    AUTOSTRING char* tp_name;
+
+    boolean_t tp_is_dead;
+    boolean_t tp_started;
+
+    ts_time_t tp_quantum;
+    ts_time_t tp_time;
+
+    thread_t  tp_ctl_thread;
+    tp_worker_t* tp_workers;
+
+    thread_mutex_t tp_mutex;
+    atomic_t       tp_ref_count;
+
+    struct tp_disp* tp_disp;
+    boolean_t tp_discard;
+
+    list_head_t       tp_rq_head;
+
+    list_head_t       tp_wl_head;
+    int tp_wl_count;
+    boolean_t tp_wl_changed;
+
+    struct thread_pool* tp_next;
+} thread_pool_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

@@ -1,0 +1,419 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="autostring.html"><strong>Prev</strong>(Automatically allocated strings.)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="cpumask.html"><strong>Next</strong>(CPU masks)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Threads and syncronization primitives</h1><h3></h3>    <p>
+Provides cross-platform interface for threads handling and synchronization primitives.<br /></p>
+    <p>
+Example of thread's function:<br /></p>
+    <p>
+    <pre>
+thread_result_t worker_thread(thread_arg_t arg) {
+   THREAD_ENTRY(arg, workload_t, wl);
+
+   ...
+   if(cond)
+     THREAD_EXIT(1);
+   ...
+
+THREAD_END:
+      smth_destroy(...);
+      THREAD_FINISH(arg);
+}
+</pre>
+</p>
+    <p>
+You may pass an context variable into thread in t_init(), like workload_t<br />in this example. THREAD_ENTRY macro declares it and special variable 'thread':<br /></p>
+    <p>
+    <pre>
+   thread_t* thread;
+      workload_t* wl;
+</pre>
+</p>
+    <p>
+<em>NOTES</em><br />On Solaris mutex_* and cv_* function names are reserved by libc, so threads library          prefixes it's names with ts.<br /></p>
+<h2>Constants</h2><a name="THREAD_EVENT_INITIALIZER"></a><a name="THREAD_MUTEX_INITIALIZER"></a><a name="THREAD_KEY_INITIALIZER"></a><h3>THREAD_KEY_INITIALIZER, THREAD_EVENT_INITIALIZER, THREAD_MUTEX_INITIALIZER</h3>    <p>
+<br />Default object initializers </p>
+<p>
+<pre>
+#define THREAD_EVENT_INITIALIZER    { SM_INIT(.te_impl, PLAT_THREAD_EVENT_INITIALIZER),        SM_INIT(.te_name, "\0") }
+#define THREAD_MUTEX_INITIALIZER    { SM_INIT(.tm_impl, PLAT_THREAD_MUTEX_INITIALIZER),        SM_INIT(.tm_name, "\0"),                              SM_INIT(.tm_is_recursive, B_FALSE) }
+#define THREAD_KEY_INITIALIZER  { SM_INIT(.tk_impl, PLAT_THREAD_KEY_INITIALIZER),        SM_INIT(.tk_name, "\0") }
+</pre>
+</p>
+<a name="TSTACKSIZE"></a><h3>TSTACKSIZE</h3>    <p>
+<br />Default stack size of thread </p>
+<p>
+<pre>
+#define TSTACKSIZE  (64 * SZ_KB)
+</pre>
+</p>
+<h2>Functions</h2><a name="THREAD_ENTRY"></a><h3>THREAD_ENTRY</h3>    <p>
+<br />THREAD_ENTRY macro should be inserted into beginning of thread function<br />declares thread_t* thread and argtype_t* arg_name (private argument passed to t_init)<br /></p>
+<p>
+<pre>
+#define THREAD_ENTRY(arg, arg_type, arg_name)
+</pre>
+</p>
+<a name="THREAD_END"></a><a name="THREAD_FINISH"></a><h3>THREAD_FINISH, THREAD_END</h3>    <p>
+<br />THREAD_END and THREAD_FINISH are used as thread's epilogue:<br /></p>
+    <p>
+THREAD_END:<br />    De-initialization code goes here<br />       THREAD_FINISH(arg);<br />}<br /></p>
+<p>
+<pre>
+#define THREAD_END  _l_thread_exit
+#define THREAD_FINISH(arg)
+</pre>
+</p>
+<a name="THREAD_EXIT"></a><h3>THREAD_EXIT</h3>    <p>
+<br />THREAD_EXIT - prematurely exit from thread (works only in main function of thread)<br /></p>
+<p>
+<pre>
+#define THREAD_EXIT(code)
+</pre>
+</p>
+<a name="thread_start_func"></a><h3>thread_start_func</h3>    <p>
+<br />Prototype of thread's function </p>
+<p>
+<pre>
+typedef thread_result_t (*thread_start_func)(thread_arg_t arg);
+</pre>
+</p>
+<a name="mutex_init"></a><a name="rmutex_init"></a><a name="mutex_try_lock"></a><a name="mutex_lock"></a><a name="mutex_unlock"></a><a name="mutex_destroy"></a><h3>mutex_init, mutex_unlock, mutex_lock, mutex_try_lock, rmutex_init, mutex_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Mutexes<br /></p>
+    <p>
+<em>NOTES</em><br />rmutex_init() is deprecated<br /></p>
+<p>
+<pre>
+LIBEXPORT void mutex_init(thread_mutex_t* mutex, const char* namefmt, ...)
+LIBEXPORT void rmutex_init(thread_mutex_t* mutex, const char* namefmt, ...)
+LIBEXPORT boolean_t mutex_try_lock(thread_mutex_t* mutex)
+LIBEXPORT void mutex_lock(thread_mutex_t* mutex)
+LIBEXPORT void mutex_unlock(thread_mutex_t* mutex)
+LIBEXPORT void mutex_destroy(thread_mutex_t* mutex)
+</pre>
+</p>
+<a name="rwlock_init"></a><a name="rwlock_lock_read"></a><a name="rwlock_lock_write"></a><a name="rwlock_unlock"></a><a name="rwlock_destroy"></a><h3>rwlock_unlock, rwlock_lock_write, rwlock_lock_read, rwlock_init, rwlock_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Read-write locks<br /></p>
+<p>
+<pre>
+LIBEXPORT void rwlock_init(thread_rwlock_t* rwlock, const char* namefmt, ...)
+LIBEXPORT void rwlock_lock_read(thread_rwlock_t* rwlock)
+LIBEXPORT void rwlock_lock_write(thread_rwlock_t* rwlock)
+LIBEXPORT void rwlock_unlock(thread_rwlock_t* rwlock)
+LIBEXPORT void rwlock_destroy(thread_rwlock_t* rwlock)
+</pre>
+</p>
+<a name="cv_init"></a><a name="cv_wait"></a><a name="cv_wait_timed"></a><a name="cv_notify_one"></a><a name="cv_notify_all"></a><a name="cv_destroy"></a><h3>cv_destroy, cv_wait_timed, cv_wait, cv_init, cv_notify_one, cv_notify_all</h3><span class="label label-success">public</span>    <p>
+<br />Condition variables<br /></p>
+<p>
+<pre>
+LIBEXPORT void cv_init(thread_cv_t* cv, const char* namefmt, ...)
+LIBEXPORT void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex)
+LIBEXPORT void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout)
+LIBEXPORT void cv_notify_one(thread_cv_t* cv)
+LIBEXPORT void cv_notify_all(thread_cv_t* cv)
+LIBEXPORT void cv_destroy(thread_cv_t* cv)
+</pre>
+</p>
+<a name="event_init"></a><a name="event_wait"></a><a name="event_wait_timed"></a><a name="event_notify_one"></a><a name="event_notify_all"></a><a name="event_destroy"></a><h3>event_destroy, event_notify_all, event_notify_one, event_wait_timed, event_wait, event_init</h3><span class="label label-success">public</span>    <p>
+<br />Events<br /></p>
+    <p>
+<em>NOTES</em><br />this API is deprecated. Use condition variable + mutex pair<br /></p>
+<p>
+<pre>
+LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...)
+LIBEXPORT void event_wait(thread_event_t* event)
+LIBEXPORT void event_wait_timed(thread_event_t* event, ts_time_t timeout)
+LIBEXPORT void event_notify_one(thread_event_t* event)
+LIBEXPORT void event_notify_all(thread_event_t* event)
+LIBEXPORT void event_destroy(thread_event_t* event)
+</pre>
+</p>
+<a name="tkey_init"></a><a name="tkey_destroy"></a><a name="tkey_set"></a><a name="tkey_get"></a><h3>tkey_get, tkey_init, tkey_set, tkey_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Thread-local storage<br /></p>
+<p>
+<pre>
+LIBEXPORT void tkey_init(thread_key_t* key,const char* namefmt, ...)
+LIBEXPORT void tkey_destroy(thread_key_t* key)
+LIBEXPORT void tkey_set(thread_key_t* key, void* value)
+LIBEXPORT void* tkey_get(thread_key_t* key)
+</pre>
+</p>
+<a name="t_self"></a><h3>t_self</h3><span class="label label-success">public</span>    <p>
+<br />returns pointer to current thread <br />Used to monitor mutex/event deadlock and starvation (see tutil.c)<br /> </p>
+<p>
+<pre>
+LIBEXPORT thread_t* t_self()
+</pre>
+</p>
+<a name="t_init"></a><h3>t_init</h3><span class="label label-success">public</span>    <p>
+<br />Initialize and run thread<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>thread</strong> - pointer to thread<br /></li>
+            <li>
+<strong>arg</strong> - argument passed to thread<br /></li>
+            <li>
+<strong>start</strong> - thread function<br /></li>
+            <li>
+<strong>namefmt</strong> - format string and it's arguments for thread name<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void t_init(thread_t* thread, void* arg,thread_start_func start,const char* namefmt, ...)
+</pre>
+</p>
+<a name="t_post_init"></a><h3>t_post_init</h3><span class="label label-success">public</span>    <p>
+<br />Post-initialize thread. Called from context of thread by THREAD_ENTRY<br />Inserts it to hash-map and sets platform thread id if possible<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>t</strong> - - current thread<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />t (for THREAD_ENTRY)<br /></p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly, use THREAD_ENTRY macro<br /></p>
+<p>
+<pre>
+LIBEXPORT thread_t* t_post_init(thread_t* t)
+</pre>
+</p>
+<a name="t_exit"></a><h3>t_exit</h3><span class="label label-success">public</span>    <p>
+<br />Exit from thread. Called from context of thread: notifies thread which is joined to t<br />and remove thread from hash_map.<br /></p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly, use THREAD_EXIT macro<br /></p>
+<p>
+<pre>
+LIBEXPORT void t_exit(thread_t* t)
+</pre>
+</p>
+<a name="t_wait_start"></a><h3>t_wait_start</h3><span class="label label-success">public</span>    <p>
+<br />Wait until thread starts<br /></p>
+<p>
+<pre>
+LIBEXPORT void t_wait_start(thread_t* thread)
+</pre>
+</p>
+<a name="t_join"></a><h3>t_join</h3><span class="label label-success">public</span>    <p>
+<br />Wait until thread finishes<br /></p>
+<p>
+<pre>
+LIBEXPORT void t_join(thread_t* thread)
+</pre>
+</p>
+<a name="t_destroy"></a><h3>t_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Destroy thread. If thread is still alive - join to it.<br /></p>
+    <p>
+<em>NOTES</em><br />blocks until thread exits from itself!<br /></p>
+<p>
+<pre>
+LIBEXPORT void t_destroy(thread_t* thread)
+</pre>
+</p>
+<a name="threads_init"></a><a name="threads_fini"></a><h3>threads_init, threads_fini</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int threads_init(void)
+LIBEXPORT void threads_fini(void)
+</pre>
+</p>
+<a name="t_eternal_wait"></a><h3>t_eternal_wait</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI void t_eternal_wait(void)
+</pre>
+</p>
+<a name="t_get_pid"></a><h3>t_get_pid</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI long t_get_pid(void)
+</pre>
+</p>
+<a name="t_dump_threads"></a><h3>t_dump_threads</h3>    <p>
+<br />Logs how many time each thread spent on event/mutex<br /></p>
+<p>
+<pre>
+void t_dump_threads() 
+</pre>
+</p>
+<h2>Types</h2><a name="thread_state_t"></a><h3>thread_state_t</h3>    <p>
+<br />Thread states:<br /></p>
+    <p>
+    <pre>
+      |
+    t_init              +----------------------------------------------+
+      |                 |                                              |
+TS_INITIALIZED --&gt; TS_RUNNABLE --+--event_wait--&gt; TS_WAITING ----------+
+                        |        \                                     |
+                      t_exit      \--mutex_lock--&gt; TS_LOCKED ----------+
+                        |
+                        v
+                     TS_DEAD
+</pre>
+</p>
+<p>
+<pre>
+typedef enum {
+    TS_INITIALIZED,
+    TS_RUNNABLE,
+    TS_WAITING,
+    TS_LOCKED,
+    TS_DEAD
+} thread_state_t;
+
+</pre>
+</p>
+<a name="thread_cv_t"></a><h3>thread_cv_t</h3><p>
+<pre>
+typedef struct {
+    plat_thread_cv_t tcv_impl;
+
+    char            tcv_name[TEVENTNAMELEN];
+} thread_cv_t;
+
+</pre>
+</p>
+<a name="thread_mutex_t"></a><h3>thread_mutex_t</h3><p>
+<pre>
+typedef struct {
+    plat_thread_mutex_t tm_impl;
+
+    char             tm_name[TMUTEXNAMELEN];
+    boolean_t        tm_is_recursive;
+} thread_mutex_t;
+
+</pre>
+</p>
+<a name="thread_rwlock_t"></a><h3>thread_rwlock_t</h3><p>
+<pre>
+typedef struct {
+    plat_thread_rwlock_t tl_impl;
+
+    char             tl_name[TRWLOCKNAMELEN];
+} thread_rwlock_t;
+
+</pre>
+</p>
+<a name="thread_key_t"></a><h3>thread_key_t</h3><p>
+<pre>
+typedef struct {
+    plat_thread_key_t tk_impl;
+
+    char            tk_name[TKEYNAMELEN];
+} thread_key_t;
+
+</pre>
+</p>
+<a name="thread_event_t"></a><h3>thread_event_t</h3><p>
+<pre>
+typedef struct {
+    thread_mutex_t    te_mutex;
+    thread_cv_t     te_cv;
+
+    char            te_name[TEVENTNAMELEN];
+} thread_event_t;
+
+</pre>
+</p>
+<h3></h3><p>
+<pre>
+typedef unsigned    thread_id_t;
+
+</pre>
+</p>
+<a name="typedef_struct_thread"></a><h3>typedef struct thread</h3>    <p>
+<br />Thread structure<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>t_state</strong> - current state of thread. May be accessed atomically<br /></li>
+            <li>
+<strong>t_id</strong> - unique thread id assigned by implementation library                         (i.e. pthreads)<br /></li>
+            <li>
+<strong>t_local_id</strong> - local thread id assigned by user code<br /></li>
+            <li>
+<strong>t_system_id</strong> - platform-dependent thread id (optional).<br /></li>
+            <li>
+<strong>t_name</strong> - name of thread<br /></li>
+            <li>
+<strong>t_arg</strong> - argument to a thread (processed in THREAD_ENTRY)<br /></li>
+            <li>
+<strong>t_ret_code</strong> - return code of thread<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct thread {
+    plat_thread_t    t_impl;
+    plat_sched_t    t_sched_impl;
+
+    atomic_t        t_state_atomic;
+
+    thread_id_t      t_id;
+    int                t_local_id;
+
+    unsigned long   t_system_id;
+
+    char             t_name[TNAMELEN];
+
+    /* When thread finishes, it notifies parent thread thru t_event
+     * FIXME: Rewrite with cv/mutex, non-atomic t_state */
+    thread_event_t*    t_event;
+
+    void*            t_arg;
+    unsigned        t_ret_code;
+
+#ifdef TS_LOCK_DEBUG
+    ts_time_t        t_block_time;
+    thread_cv_t*    t_block_cv;
+    thread_mutex_t* t_block_mutex;
+    thread_mutex_t* t_block_rwlock;
+#endif
+
+    struct thread*    t_next;            /*&lt; Next thread in global thread list*/
+    struct thread*    t_pool_next;    /*&lt; Next thread in pool*/
+} thread_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

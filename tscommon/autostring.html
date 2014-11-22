@@ -1,0 +1,190 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="mempool.html"><strong>Prev</strong>(mempool)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="threads.html"><strong>Next</strong>(Threads and syncronization primitives)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Automatically allocated strings.</h1><h3></h3>    <p>
+Used instead of statically-allocated strings as read-only buffers<br />(after allocation, string should be freed and allocated again)<br /></p>
+    <p>
+Since arguments passed to AAS may be mutable (but should not be),<br />it uses "n" functions to protect from possible buffer overflow.<br /></p>
+<h2>Constants</h2><a name="AAS_BUF_NOT_EMPTY"></a><a name="AAS_ALLOCATION_ERROR"></a><a name="AAS_INVALID_ARGUMENT"></a><h3>AAS_ALLOCATION_ERROR, AAS_BUF_NOT_EMPTY, AAS_INVALID_ARGUMENT</h3>    <p>
+<br />AAS errors<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>AAS_BUF_NOT_EMPTY</strong> - string was already allocated<br /></li>
+            <li>
+<strong>AAS_ALLOCATION_ERROR</strong> - failed to allocate new buffer<br /></li>
+            <li>
+<strong>AAS_INVALID_ARGUMENT</strong> - one of required argument is invalid (probably NULL)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define AAS_BUF_NOT_EMPTY   ((size_t) -1)
+#define AAS_ALLOCATION_ERROR    ((size_t) -2)
+#define AAS_INVALID_ARGUMENT    ((size_t) -3)
+</pre>
+</p>
+<h2>Functions</h2><a name="AAS_IS_OK"></a><h3>AAS_IS_OK</h3>    <p>
+<br />Checks if error was occured in aas function<br /></p>
+<p>
+<pre>
+#define AAS_IS_OK(ret)
+</pre>
+</p>
+<a name="aas_allocate"></a><h3>aas_allocate</h3><span class="label label-success">public</span>    <p>
+<br />Allocate new auto-allocated string.<br />Use only with pair of aas_free<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>count</strong> - number of characters without null-terminator<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />NULL or pointer to allocated buffer<br /></p>
+<p>
+<pre>
+LIBEXPORT char* aas_allocate(size_t count)
+</pre>
+</p>
+<a name="aas_vprintf"></a><h3>aas_vprintf</h3><span class="label label-success">public</span>    <p>
+<br />Formatted print for auto-allocated strings<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - pointer to auto-allocated string<br /></li>
+            <li>
+<strong>format</strong> - printf's format string<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />number of printed characters or AAS error<br /></p>
+<p>
+<pre>
+LIBEXPORT size_t aas_vprintf(char** aas, const char* format, va_list va)
+</pre>
+</p>
+<a name="aas_printf"></a><h3>aas_printf</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE size_t aas_printf(char** aas, const char* format, ...) 
+</pre>
+</p>
+<a name="aas_merge"></a><h3>aas_merge</h3><span class="label label-success">public</span>    <p>
+<br />Merge several strings into one and allocate it<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - pointer to auto-allocated string<br /></li>
+            <li>
+<strong>str</strong> - first piece of strings<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />number of printed characters or AAS error<br /></p>
+    <p>
+<em>NOTES</em><br />last string should be set to NULL<br /></p>
+<p>
+<pre>
+LIBEXPORT size_t aas_merge(char** aas, const char* str, ...)
+</pre>
+</p>
+<a name="aas_copy_n"></a><h3>aas_copy_n</h3><span class="label label-success">public</span>    <p>
+<br />Copy up to count characters<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - pointer to auto-allocated string<br /></li>
+            <li>
+<strong>str</strong> - source string<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />number of copied characters or AAS error<br /></p>
+<p>
+<pre>
+LIBEXPORT size_t aas_copy_n(char** aas, const char* str, size_t count)
+</pre>
+</p>
+<a name="aas_copy"></a><h3>aas_copy</h3><span class="label label-success">public</span>    <p>
+<br />Copy string to auto-allocated string<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - pointer to auto-allocated string<br /></li>
+            <li>
+<strong>str</strong> - source string<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />number of copied characters or AAS error<br /></p>
+<p>
+<pre>
+LIBEXPORT size_t aas_copy(char** aas, const char* str)
+</pre>
+</p>
+<a name="aas_set_impl"></a><h3>aas_set_impl</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void aas_set_impl(char** aas, const char* str)
+</pre>
+</p>
+<a name="AAS_CONST_STR"></a><a name="aas_set"></a><h3>AAS_CONST_STR, aas_set</h3>    <p>
+<br />Set auto-allocated string to compile-time constant value<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - pointer to auto-allocated string<br /></li>
+            <li>
+<strong>str</strong> - constant string literal<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define AAS_CONST_STR(str)
+#define aas_set(aas, str)
+</pre>
+</p>
+<a name="aas_init"></a><a name="aas_free"></a><h3>aas_free, aas_init</h3><span class="label label-success">public</span><p>
+<pre>
+static char** aas_init(char** aas) 
+LIBEXPORT void aas_free(char** aas)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

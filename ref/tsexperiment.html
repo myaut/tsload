@@ -1,0 +1,212 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-right">
+<li><a href="tshostinfo.html"><strong>Next</strong>(tshostinfo)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>tsexperiment</h2></p>
+<p>
+TS Experiment - standalone agent to run TSLoad experiments <br /></p>
+<p>
+<code>$ tsexperiment [global options] subcommand [options and arguments]</code></p>
+<p>
+Where global options are:<br />        <ul>
+        <li>
+ -e &lt;experiment_path&gt;<br />        Path to experiment root directory<br />    </li>
+        <li>
+ -d|-t <br />        Enable debug or tracing<br /></li>
+</ul>
+</p>
+<p>
+Experiment constsists of current config and several "runs", that contain versions of config (maybe with altered parameters) and experiment results. Experiment config is a file named <a href="experiment_json.html">experiment.json</a> Each run identified by it's unique number called <strong>runid</strong>. <br /></p>
+<p>
+<h3>List available workload types</h3></p>
+<p>
+<a name="workload"></a></p>
+<p>
+<code>$ tsexperiment workload|wl [-j] [WLT]...</code><br />Lists supported workload types with it's parameters. If WLT arguments are specified, shows only information on desired workload types.<br /></p>
+<p>
+Option:<br />        <ul>
+        <li>
+ -j - Print in JSON format   <br /></li>
+</ul>
+</p>
+<p>
+<h4>Output description</h4></p>
+<p>
+Output columns for workload types:<br />       <ul>
+        <li>
+<strong>WLTYPE</strong> - name of workload type<br />   </li>
+        <li>
+<strong>MODULE</strong> - name of the module that provides it<br />   </li>
+        <li>
+<strong>CLASS</strong> - bitmask of workload class<br />       </li>
+        <ul>
+            <li>
+<em>C</em> - CPU intensive workloads. May be followed by <em>i</em> or <em>f</em> flags: integer or floating-point operations respectively and <em>m</em> flag for memory-intensive workloads.<br />       </li>
+            <li>
+<em>M</em> - virtual memory workloads. Only available subflag is <em>a</em> for memory allocation<br />       </li>
+            <li>
+<em>F</em> - filesystem workloads. Subflag <em>o</em> stands for operations such as making directories, creating/deleting files, etc. while <em>rw</em> subflag means read-write workload.<br />       </li>
+            <li>
+<em>D</em> - disk workload. Only available subflag is <em>rw</em> for read-write<br />       </li>
+            <li>
+<em>N</em> - network workload. May be followed by <em>c</em> meaning that actual workload is for some network application<br />       </li>
+            <li>
+<em>O</em> - miscellanous OS-level workload<br /></li>
+</ul>
+</ul>
+</p>
+<p>
+Output columns for workload params:<br />        <ul>
+        <li>
+<strong>PARAM</strong> - name of parameter<br />    </li>
+        <li>
+<strong>SCOPE</strong> - scope of parameter (<em>WL</em> for workload, <em>RQ</em> for per-request parameters and <em>OUT</em> for output parameters)<br />    </li>
+        <li>
+<strong>OPT</strong> - flag that parameter is optional<br />    </li>
+        <li>
+<strong>TYPE</strong> - type of parameter<br />    </li>
+        <li>
+<strong>RANGE</strong> - minimum and maximum values for integer and float types, maximum length of string or available values for string sets<br />    </li>
+        <li>
+<strong>DEFAULT</strong> - default parameter value (if provided by module)<br />        </li>
+</ul>
+</p>
+<p>
+<h3>Working with experiments</h3></p>
+<p>
+<h4>Show information about experiment</h4></p>
+<p>
+<code>tsexperiment -e &lt;experiment_path&gt; list</code><br />Lists experiment runs<br /></p>
+<p>
+Output columns:<br />        <ul>
+        <li>
+<strong>ID</strong> - id of experiment or so-called <strong>runid</strong></li>
+        <li>
+<strong>NAME</strong> - name of experiment run<br />    </li>
+        <li>
+<strong>STATUS</strong> - status of experiment run. <em>FINISHED</em> - run was successfully finished, <strong>ERROR</strong> - error was encountered during experiment run, <strong>NOTCFG</strong> - experiment was not configured<br />    </li>
+        <li>
+<strong>DATE</strong> - date and time when workload start was scheduled<br />    </li>
+        <li>
+<strong>HOSTNAME</strong> - name of host where experiment was run<br /></li>
+</ul>
+</p>
+<p>
+<code>tsexperiment -e &lt;experiment_path&gt; show [-j] [-l] [RUNID]</code><br />Shows experiment run information and config: enlists global options such as runtime, information of host where experiment was run, workloads and threadpools.<br /></p>
+<p>
+Options:<br />        <ul>
+        <li>
+ -j - Show in JSON format<br />    </li>
+        <li>
+ -l - Show as name-value list (useful to create run -s option arguments)<br /></li>
+</ul>
+</p>
+<p>
+<h4>Running experiments</h4></p>
+<p>
+<code>tsexperiment -e &lt;experiment_path&gt; run [-n name] [-s param=value] [-b] [-T] [RUNID]</code><br />Creates new experiment run and starts it<br /></p>
+<p>
+Options and arguments: <br />        <ul>
+        <li>
+ -n - sets name of experiment <br />    </li>
+        <li>
+ -s - sets variable of experiment config only for current run (see below)<br />    </li>
+        <li>
+ -b - enables batch mode (see below)<br />    </li>
+        <li>
+ -T - enables trace-driven mode. In this mode tsexperiment uses traces generated during previous run (specified as runid). It also changes dispatchers of all threadpools to trace mode. Request arrival time, per-request parameters are used, and also requests are dispatched to same workers it was executed during baseline run.<br /></li>
+</ul>
+</p>
+<p>
+<h5>Running experiments in batch mode</h5></p>
+<p>
+Batch mode is intended to run set of experiments from shell-script and enabled by setting <code>-b</code> option. In this mode <code>tsexperiment</code> doesn't print information about course of experiment (it is still saved in &lt;run_directory&gt;/tsexperiment.out file) and only prints runid to stdout so you can use it in your script. For example you may write bash script:<br /></p>
+<p>
+<pre>
+#!/bin/bash
+EXPERIMENT=/var/tsload/sample/
+RUNID=$(tsexperiment -e $EXPERIMENT run -b)
+tsexperiment -e $EXPERIMENT show $RUNID
+</pre>
+</p>
+<p>
+Also experiment config variables may be altered by using -s option, where param name is path to JSON node inside config. I.e:<br /></p>
+<p>
+<pre>
+run -s threadpools:tp_test:num_threads=10
+run -s workloads:workload1:params:cycles:pmap:0:probability = 0.3
+</pre>
+</p>
+<p>
+<h4>Working with experiment results</h4></p>
+<p>
+<code>tsexperiment -e &lt;experiment_path&gt; report RUNID [WL]...</code>  <br />Show some statistics report about experiment run. If WL arguments are specified than tsexperiment reports only particular workloads. RUNID argument is mandatory.<br /></p>
+<p>
+Output columns:<br />        <ul>
+        <li>
+<strong>STEP</strong> - id of step<br />    </li>
+        <li>
+ Request numbers<br />        </li>
+        <ul>
+            <li>
+<strong>COUNT</strong> - requests that were scheduled to be executed during this step<br />        </li>
+            <li>
+<strong>ONTIME</strong> - requests that were started their execution according to its arrival time<br />        </li>
+            <li>
+<strong>ONSTEP</strong> - requests that were finished before it's step ended<br />        </li>
+            <li>
+<strong>DISCARD</strong> - requests that were discarded due to threadpool policy or request scheduler deadline parameter<br />    </li>
+</ul>
+        <li>
+ Times in milliseconds - mean and standard deviation<br />        </li>
+        <ul>
+            <li>
+<strong>WAIT TIME</strong> - time between request arrival and start of service<br />        </li>
+            <li>
+<strong>SERVICE TIME</strong> - time that was spent by worker while executing request<br /></li>
+</ul>
+</ul>
+</p>
+<p>
+<code>tsexperiment -e &lt;experiment_path&gt; export [-d DEST] [-F csv|json|jsonraw] [-o option] [-o wl_name:option] RUNID [WL]...   </code><br />Export workload measurement data into text files<br /></p>
+<p>
+Options: <br />        <ul>
+        <li>
+ -d - destination directory of output. If not set, then experiment run directory is used<br />    </li>
+        <li>
+ -F - desired format of output.<br />    </li>
+        <li>
+ -o option - options for TSFile backend. See more at <a href="tsfutil.html">tsfutil</a></li>
+</ul>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

@@ -1,0 +1,114 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="filemmap.html"><strong>Prev</strong>(Memory-mapped files)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="netsock.html"><strong>Next</strong>(Network Sockets)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>tstime</h1><h2>Functions</h2><a name="tm_get_time"></a><h3>tm_get_time</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns time since Epoch.<br />Guarantees millisecond precision </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI ts_time_t tm_get_time()
+</pre>
+</p>
+<a name="tm_get_clock"></a><h3>tm_get_clock</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns clock (monotonic time since some unspecified starting point)<br />Guarantees 100-nanosecond precision (Windows) or better (Unix) </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI ts_time_t tm_get_clock()
+</pre>
+</p>
+<a name="tm_get_clock_res"></a><h3>tm_get_clock_res</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns clock's resolution </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI ts_time_t tm_get_clock_res()
+</pre>
+</p>
+<a name="tm_diff"></a><h3>tm_diff</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT ts_time_t tm_diff(ts_time_t a, ts_time_t b)
+</pre>
+</p>
+<a name="tm_sleep_milli"></a><h3>tm_sleep_milli</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Sleep with millisecond precision </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void tm_sleep_milli(ts_time_t t)
+</pre>
+</p>
+<a name="tm_sleep_nano"></a><h3>tm_sleep_nano</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Sleep with nanosecond precision </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI void tm_sleep_nano(ts_time_t t)
+</pre>
+</p>
+<a name="tm_ceil_diff"></a><h3>tm_ceil_diff</h3><span class="label label-success">public</span>    <p>
+<br />Ceils time tm with precision and returns difference between ceiled<br />value and original tm.<br /></p>
+<p>
+<pre>
+LIBEXPORT ts_time_t tm_ceil_diff(ts_time_t tm, ts_time_t precision)
+</pre>
+</p>
+<a name="tm_human_print"></a><h3>tm_human_print</h3><span class="label label-success">public</span>    <p>
+<br />Prints seconds - nanoseconds in human-readable format<br />Recommended buffer size is 40<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />0 if dst was not enough or number of printed characters<br /></p>
+<p>
+<pre>
+LIBEXPORT size_t tm_human_print(ts_time_t t, const char* dst, size_t size)
+</pre>
+</p>
+<a name="tm_datetime_print"></a><h3>tm_datetime_print</h3><span class="label label-success">public</span>    <p>
+<br />Prints date-time in nice format (%H:%M:%S %d.%m.%Y)<br /></p>
+<p>
+<pre>
+LIBEXPORT size_t tm_datetime_print(ts_time_t t, const char* dst, size_t size)
+</pre>
+</p>
+<h2>Types</h2><h3></h3>    <p>
+<br />64-bit integer is enough to keep time up to XXIIIth century<br />with nanosecond precision. I hope, that we will release patch until then.<br /></p>
+<p>
+<pre>
+typedef int64_t ts_time_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

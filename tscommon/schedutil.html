@@ -1,0 +1,141 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="cpumask.html"><strong>Prev</strong>(CPU masks)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="atomic.html"><strong>Next</strong>(atomic)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>schedutil</h1><h3></h3>    <p>
+<br />schedutil - various routines that work with OS scheduler<br /></p>
+<h2>Functions</h2><a name="sched_get_cpuid"></a><h3>sched_get_cpuid</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns cpuid of current thread</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int sched_get_cpuid(void)
+</pre>
+</p>
+<a name="sched_switch"></a><h3>sched_switch</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Yield CPU to another thread<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int sched_switch(void)
+</pre>
+</p>
+<a name="sched_set_affinity"></a><a name="sched_get_affinity"></a><h3>sched_get_affinity, sched_set_affinity</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI int sched_set_affinity(thread_t* thread , cpumask_t* mask)
+LIBEXPORT PLATAPI int sched_get_affinity(thread_t* thread , cpumask_t* mask)
+</pre>
+</p>
+<a name="sched_policy_find_byname"></a><a name="sched_policy_find_byid"></a><h3>sched_policy_find_byname, sched_policy_find_byid</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT sched_policy_t* sched_policy_find_byname(const char* name)
+LIBEXPORT sched_policy_t* sched_policy_find_byid(int id)
+</pre>
+</p>
+<a name="sched_get_policies"></a><h3>sched_get_policies</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns array of available scheduler policies on current system<br />NULL is a mark for end of array<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI sched_policy_t** sched_get_policies()
+</pre>
+</p>
+<a name="sched_set_policy"></a><h3>sched_set_policy</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Sets policy of a thread, but doesn't call operating system until you<br />call sched_commit. This is because some OSes (like Linux) need to set<br />policy and param simultaneously, and others (like Solaris) may have multiple<br />params to set.<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />SCHED_INVALID_POLICY if name is invalid or SCHED_OK if everything went fine.<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int sched_set_policy(thread_t* thread, const char* name)
+</pre>
+</p>
+<a name="sched_set_param"></a><h3>sched_set_param</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Sets scheduler parameter<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />SCHED_INVALID_PARAM if name is invalid, SCHED_INVALID_POLICY if policy is   not yet set and SCHED_OK if everything went fine.<br /></p>
+    <p>
+<em>NOTES</em><br />if this function fails, you should start again from sched_set_policy<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int sched_set_param(thread_t* thread, const char* name, int64_t value)
+</pre>
+</p>
+<a name="sched_commit"></a><h3>sched_commit</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Calls operating system to commit changes made by sched_set_policy() and sched_set_param()<br /></p>
+    <p>
+<em>RETURN VALUES</em><br />SCHED_ERROR in case of system error, SCHED_INVALID_PARAM/SCHED_INVALID_POLICY if     thread was not properly initialized<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI int sched_commit(thread_t* thread)
+</pre>
+</p>
+<a name="sched_get_param"></a><a name="sched_get_policy"></a><h3>sched_get_param, sched_get_policy</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI int sched_get_param(thread_t* thread, const char* name, int64_t* value)
+LIBEXPORT PLATAPI int sched_get_policy(thread_t* thread, char* name, size_t len)
+</pre>
+</p>
+<a name="sched_init"></a><a name="sched_fini"></a><h3>sched_init, sched_fini</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI int sched_init(void)
+LIBEXPORT PLATAPI void sched_fini(void)
+</pre>
+</p>
+<h2>Types</h2><a name="sched_param_t"></a><h3>sched_param_t</h3><p>
+<pre>
+typedef struct {
+    const char* name;
+    int         min;
+    int         max;
+} sched_param_t;
+
+</pre>
+</p>
+<a name="sched_policy_t"></a><h3>sched_policy_t</h3><p>
+<pre>
+typedef struct {
+    const char* name;
+    sched_param_t* params;
+
+    int   id;
+    void* private;
+} sched_policy_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

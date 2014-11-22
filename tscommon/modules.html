@@ -1,0 +1,163 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="log.html"><strong>Prev</strong>(Logging facility)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="mempool.html"><strong>Next</strong>(mempool)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Modules</h1><h3></h3>    <p>
+API for working with plugins.<br /></p>
+    <p>
+mod_init() walks mod_search_path, loads every shared file, checks if it is<br />compliant with 'modapi' and runs mod_config() from it.<br /></p>
+    <p>
+mod_fini() calls mod_unconfig() for each loaded module and unmaps them<br /></p>
+    <p>
+<br />Module states<br /></p>
+    <p>
+    <pre>
+                      +----------&gt; CONFIG_ERROR
+                         |
+UNITIALIZED ---&gt; UNCONFIGURED ---&gt; READY ---&gt; REQUEST_ERROR
+                                    ^                |
+                                    +----------------+
+</pre>
+</p>
+    <p>
+<em>NOTES</em><br />Modules are not signed, so do not play with permissions to module path<br /></p>
+<h2>Constants</h2><a name="MOD_TSLOAD"></a><a name="MOD_MONITOR"></a><h3>MOD_TSLOAD, MOD_MONITOR</h3>    <p>
+<br />Module types<br /></p>
+<p>
+<pre>
+#define MOD_TSLOAD  1
+#define MOD_MONITOR 2
+</pre>
+</p>
+<a name="MOD_OK"></a><a name="MOD_ERROR"></a><h3>MOD_ERROR, MOD_OK</h3>    <p>
+<br />Return values for mod_config() and mod_unconfig() functions<br /></p>
+<p>
+<pre>
+#define MOD_OK  0
+#define MOD_ERROR   -1
+</pre>
+</p>
+<h2>Functions</h2><a name="mod_search"></a><a name="mod_error"></a><h3>mod_search, mod_error</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT module_t* mod_search(const char* name)
+LIBEXPORT int mod_error(module_t* mod, char* fmtstr, ...)
+</pre>
+</p>
+<a name="mod_load_symbol"></a><h3>mod_load_symbol</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void* mod_load_symbol(module_t* mod, const char* name)
+</pre>
+</p>
+<a name="mod_get_first"></a><h3>mod_get_first</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT module_t* mod_get_first()
+</pre>
+</p>
+<a name="mod_init"></a><a name="mod_fini"></a><h3>mod_init, mod_fini</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int mod_init(void)
+LIBEXPORT void mod_fini(void)
+</pre>
+</p>
+<a name="DECLARE_MODAPI_VERSION"></a><a name="DECLARE_MOD_TYPE"></a><a name="DECLARE_MOD_NAME"></a><h3>DECLARE_MOD_NAME, DECLARE_MOD_TYPE, DECLARE_MODAPI_VERSION</h3>    <p>
+<br />Module head declarations<br /></p>
+<p>
+<pre>
+#define DECLARE_MODAPI_VERSION(version)
+#define DECLARE_MOD_TYPE(type)
+#define DECLARE_MOD_NAME(name)
+</pre>
+</p>
+<a name="mod_config_func"></a><h3>mod_config_func</h3>    <p>
+<br />Prototype for mod_config() and mod_unconfig() functions<br /></p>
+<p>
+<pre>
+typedef int (* mod_config_func)(struct module* mod);
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_enum_mod_status"></a><h3>typedef enum mod_status</h3><p>
+<pre>
+typedef enum mod_status {
+    MOD_UNITIALIZED,
+    MOD_UNCONFIGURED,
+    MOD_READY,
+    MOD_CONFIG_ERROR,
+    MOD_REQUEST_ERROR
+} mod_status_t;
+
+</pre>
+</p>
+<a name="typedef_struct_module"></a><h3>typedef struct module</h3>    <p>
+<br />Module main structure<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>mod_path</strong> - Path to module file (realpath)<br /></li>
+            <li>
+<strong>mod_name</strong> - Internal module name<br /></li>
+            <li>
+<strong>mod_status_msg</strong> - Status message reported by module<br /></li>
+            <li>
+<strong>mod_private</strong> - Field available to module for it's internals<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct module {
+    char mod_path[MODPATHLEN];
+    plat_mod_library_t mod_library;
+
+    char* mod_name;
+
+    mod_status_t mod_status;
+    char* mod_status_msg;
+
+    mod_config_func mod_config;
+    mod_config_func mod_unconfig;
+
+    void* mod_private;
+
+    struct module* mod_next;
+} module_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

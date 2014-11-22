@@ -1,0 +1,327 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="wltype.html"><strong>Prev</strong>(Workload types)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="rqsched.html"><strong>Next</strong>(Request schedulers)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Workload parameters</h1><h3></h3>    <p>
+These declarations used to provide module description to server<br />and simply parse workload parameters in JSON format.<br /></p>
+    <p>
+Each parameter declaration has:<br />    - type @see wlp_type_t<br />    - limitations (like string max length, number range, possible values, etc.) @see wlp_range_t and macroses<br />    - name and description (text)<br />    - offset in control structure which is used during parsing<br /></p>
+    <p>
+Parameter declaration are saved as array of wlp_descr_t structures with "NULL-terminator" with type WLP_NULL.<br /></p>
+<h3></h3>    <p>
+<h4>Workload parameter generators</h4></p>
+    <p>
+Some of workload parameters may be set on per-request basis. For example,<br />disk i/o generator with random or sequental access to blocks needs number<br />of block per each request. Thus, it would be generated in this module.<br /></p>
+    <p>
+There are two main generators:<br />         <ul>
+            <li>
+<strong>WLPG_VALUE</strong> - uses same value would be used for all requests. If<br />   value is omitted in config, <em>wlpgen</em> will try to use default value.<br /> </li>
+            <li>
+<strong>WLPG_RANDOM</strong> - like it's name says, it will generate value per each<br />   request using random generators and variators.<br />     </li>
+            <ul>
+                <li>
+ for integer and float wlparam types it will take pure generator/variator value<br />     </li>
+                <li>
+ for other wlparam types it uses probability map and random generator only<br /></li>
+</ul>
+</ul>
+</p>
+<h2>Constants</h2><a name="WLPF_NO_FLAGS"></a><a name="WLPF_OPTIONAL"></a><a name="WLPF_REQUEST"></a><a name="WLPF_OUTPUT"></a><h3>WLPF_OUTPUT, WLPF_REQUEST, WLPF_NO_FLAGS, WLPF_OPTIONAL</h3>    <p>
+<br />Workload parameter flags<br /><a name="wlparam-flags"></a></p>
+<p>
+<pre>
+#define WLPF_NO_FLAGS   0x00
+#define WLPF_OPTIONAL   0x01
+#define WLPF_REQUEST    0x02
+#define WLPF_OUTPUT (WLPF_REQUEST | 0x04)
+</pre>
+</p>
+<h2>Functions</h2><a name="WLP_NO_RANGE"></a><a name="WLP_STRING_LENGTH"></a><a name="WLP_INT_RANGE"></a><a name="WLP_FLOAT_RANGE"></a><a name="WLP_STRING_SET_RANGE"></a><h3>WLP_NO_RANGE, WLP_STRING_SET_RANGE, WLP_FLOAT_RANGE, WLP_INT_RANGE, WLP_STRING_LENGTH</h3>    <p>
+<br />Range declaration<br /><a name="wlparam-range"></a></p>
+<p>
+<pre>
+#define WLP_NO_RANGE()
+#define WLP_STRING_LENGTH(length)
+#define WLP_INT_RANGE(min, max)
+#define WLP_FLOAT_RANGE(min, max)
+#define WLP_STRING_SET_RANGE(set)
+</pre>
+</p>
+<a name="WLP_NO_DEFAULT"></a><a name="WLP_BOOLEAN_DEFAULT"></a><a name="WLP_INT_DEFAULT"></a><a name="WLP_FLOAT_DEFAULT"></a><a name="WLP_STRING_DEFAULT"></a><a name="WLP_STRING_SET_DEFAULT"></a><h3>WLP_FLOAT_DEFAULT, WLP_STRING_SET_DEFAULT, WLP_NO_DEFAULT, WLP_INT_DEFAULT, WLP_STRING_DEFAULT, WLP_BOOLEAN_DEFAULT</h3>    <p>
+<br />Default wl parameter value<br /><a name="wlparam-default"></a></p>
+<p>
+<pre>
+#define WLP_NO_DEFAULT()
+#define WLP_BOOLEAN_DEFAULT(b)
+#define WLP_INT_DEFAULT(i)
+#define WLP_FLOAT_DEFAULT(f)
+#define WLP_STRING_DEFAULT(s)
+#define WLP_STRING_SET_DEFAULT(ssi)
+</pre>
+</p>
+<a name="wlp_get_base_type"></a><h3>wlp_get_base_type</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT wlp_type_t wlp_get_base_type(wlp_descr_t* wlp)
+</pre>
+</p>
+<a name="wlpgen_generate"></a><h3>wlpgen_generate</h3>    <p>
+<br />Generate request parameter structure for workload wl<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl</strong> - workload<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />pointer to that structure or NULL if no request params         exist for this workload type<br /></p>
+    <p>
+<em>NOTES</em><br />structure is freed on wl_request_destroy()<br /></p>
+<p>
+<pre>
+void* wlpgen_generate(struct workload* wl)
+</pre>
+</p>
+<h2>Types</h2><h3></h3>    <p>
+<br />Workload parameter type definitions<br /></p>
+<p>
+<pre>
+typedef int64_t     wlp_integer_t;
+
+typedef double      wlp_float_t;
+
+typedef char        wlp_string_t;
+
+typedef boolean_t   wlp_bool_t;
+
+typedef int         wlp_strset_t;
+
+typedef void*       wlp_hiobject_t;
+
+</pre>
+</p>
+<a name="wlp_type_t"></a><h3>wlp_type_t</h3>    <p>
+<br />Workload paramter type<br /><a name="wlparam-type"></a></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>WLP_NULL</strong> - Used to mark end of param list<br /></li>
+            <li>
+<strong>WLP_BOOL</strong> - Boolean type<br /></li>
+            <li>
+<strong>WLP_INTEGER</strong> - Integer type<br /></li>
+            <li>
+<strong>WLP_FLOAT</strong> - Floating point type<br /></li>
+            <li>
+<strong>WLP_RAW_STRING</strong> - String. Use range to define maximum length<br /></li>
+            <li>
+<strong>WLP_STRING_SET</strong> - Depending on input strings, selects one of possible outcomes.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef enum {
+    WLP_NULL,
+
+    WLP_BOOL,
+    WLP_INTEGER,
+    WLP_FLOAT,
+    WLP_RAW_STRING, /*Any string*/
+
+    WLP_STRING_SET,  /*string - one of possible values*/
+
+    /* metatypes - using primitive types in serialization
+     * but have different meanings */
+    WLP_SIZE,        /* size - in Kb, etc. */
+    WLP_TIME,
+
+    WLP_FILE_PATH,
+    WLP_CPU_OBJECT,
+    WLP_DISK,
+
+    WLP_TYPE_MAX,
+
+    WLP_HI_OBJECT        /* Base type - not really used */
+} wlp_type_t;
+
+</pre>
+</p>
+<a name="wlp_range_t"></a><h3>wlp_range_t</h3><p>
+<pre>
+typedef struct {
+    boolean_t range;        /*enabled flag*/
+
+    /* Here should be union, but because of some smart people, who decided that
+     * | ISO C++03 8.5.1[dcl.init.aggr]/15:
+     * | When a union is initialized with a brace-enclosed initializer,
+     * | the braces shall only contain an initializer for the first member of the union.
+     * and another smart people from Microsoft who ignoring C99 compliance
+     * we will waste memory to provide nice macros like WLP_STRING_LENGTH
+     *  */
+    struct {
+        /*WLP_RAW_STRING*/
+        struct {
+            unsigned str_length;
+        };
+        /*WLP_INTEGER*/
+        struct {
+            wlp_integer_t i_min;
+            wlp_integer_t i_max;
+        };
+        /*WLP_FLOAT*/
+        struct {
+            wlp_float_t d_min;
+            wlp_float_t d_max;
+        };
+        /*WLP_STRING_SET*/
+        struct {
+            int ss_num;
+            char** ss_strings;
+        };
+    };
+} wlp_range_t;
+
+</pre>
+</p>
+<a name="wlp_default_t"></a><h3>wlp_default_t</h3><p>
+<pre>
+typedef struct {
+    boolean_t enabled;
+
+    wlp_bool_t b;
+    wlp_integer_t i;
+    wlp_float_t f;
+    char* s;
+    wlp_strset_t ssi;
+} wlp_default_t;
+
+</pre>
+</p>
+<a name="wlp_descr_t"></a><h3>wlp_descr_t</h3>    <p>
+<br />Workload parameter descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>type</strong> - Parameter type<br /></li>
+            <li>
+<strong>flags</strong> - <br /></li>
+            <li>
+<strong>off</strong> - Offset in data structure where param value would be written <br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct {
+    wlp_type_t type;
+    unsigned long flags;
+
+    wlp_range_t range;
+    wlp_default_t defval;
+
+    char* name;
+    char* description;
+
+    size_t off;
+} wlp_descr_t;
+
+</pre>
+</p>
+<a name="typedef_enum_wlpgen_type"></a><h3>typedef enum wlpgen_type</h3><p>
+<pre>
+typedef enum wlpgen_type {
+    WLPG_VALUE,
+    WLPG_RANDOM
+} wlpgen_type_t;
+
+</pre>
+</p>
+<a name="typedef_union_wlpgen_value"></a><h3>typedef union wlpgen_value</h3><p>
+<pre>
+typedef union wlpgen_value {
+    char value[16];
+    char* string;
+} wlpgen_value_t;
+
+</pre>
+</p>
+<a name="wlpgen_probability_t"></a><h3>wlpgen_probability_t</h3><p>
+<pre>
+typedef struct {
+    wlpgen_value_t  value;
+
+    wlpgen_value_t* valarray;
+    int                length;
+
+    double probability;
+} wlpgen_probability_t;
+
+</pre>
+</p>
+<a name="typedef_struct_wlpgen_randgen"></a><h3>typedef struct wlpgen_randgen</h3><p>
+<pre>
+typedef struct wlpgen_randgen {
+    randgen_t*    rg;
+    randvar_t*     rv;
+
+    /* For boolean/stringset - probability map */
+    int pcount;
+    wlpgen_probability_t* pmap;
+} wlpgen_randgen_t;
+
+</pre>
+</p>
+<a name="typedef_struct_wlp_generator"></a><h3>typedef struct wlp_generator</h3><p>
+<pre>
+typedef struct wlp_generator {
+    wlpgen_type_t type;
+    wlp_descr_t* wlp;
+    struct workload* wl;
+
+    union {
+        wlpgen_value_t value;
+        wlpgen_randgen_t randgen;
+    } generator;
+
+    list_node_t    node;
+} wlp_generator_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

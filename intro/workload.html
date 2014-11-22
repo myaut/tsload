@@ -1,0 +1,324 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Introduction </title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="threadpool.html"><strong>Prev</strong>(threadpools)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="modes.html"><strong>Next</strong>(Operating modes)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Key concepts: Workloads</h2></p>
+<p>
+To understand term <em>workload</em>, first we need to deal with term <em>request</em>. Good explanation is given by authors of Magpie tool:<br /></p>
+<blockquote>
+ A <strong>request</strong> is system-wide activity that takes place in response to any external stimulus of the application(s) being traced. For example, the stimulus of an HTTP request may trigger the opening of a file locally or the execution of multiple database queries on one or more remote machines, all of which should be accounted to the HTTP request. <a href="#1">1</a></blockquote>
+<p>
+However, such definition is correct for OS or application point of view. In the TSLoad we could define <em>request</em> quite different: "A <strong>request</strong> is a set of parameters that cause desired system-wide activities and another set of characteristics that describe these activities". Thus <strong>workload</strong> is a batch of related requests:<br /></p>
+<blockquote>
+ The requests made by users of system are called workloads. For example, CPU workload would consist of the instructions it is asked to execute. The workload of a database system would consist of queries and other requests it executes for users. <a href="#2">2</a></blockquote>
+<p>
+<h4>Defining workloads</h4></p>
+<p>
+To define workload, we have to characterize it and pick proper module that implements such workload. First of all you need to determine which computing resource you want load: i.e. network or level 1 cache of processor. Then you have to select <strong>workload type</strong> that generates correct workload for this resource. All workload types in TSLoad are classified by resource they loading (this is represented by bitmask <a href="../tsload/wltype.html#typedef_enum_wl_class">wl_class</a> values).  Lets run tsexperiment with subcommand <code>workload</code> to determine which workload types are available:<br /></p>
+<p>
+<pre>
+$ ./bin/tsexperiment workload
+WLTYPE           CLASS              MODULE      
+http             --------------Nc-- http        
+bigmem           C--m-------------- bigmem      
+simpleio_write   ------F-rwDrw----- simpleio    
+simpleio_read    ------F-rwDrw----- simpleio    
+busy_wait        C----------------- busy_wait 
+
+(some output is omitted)
+</pre>
+</p>
+<p>
+As you can see from this output, there are two CPU-intensive workload types - bigmem and busy_wait, two disk I/O intensive workloads (the are labeled by large 'D' letters that stands for 'Disk' and large 'F' which stands for 'Filesystem') from simpleio module, and one network client workload type - 'http'. These letters are described in <a href="../ref/tsexperiment.html#workload">tsexperiment</a> page.<br /></p>
+<p>
+When you have chosen workload type, it's time to attach it to <strong>threadpool</strong>. It could be done directly (by simply specifying its name as 'threadpool' parameter) or indirectly - through 'chain' parameter. In second case TSLoad will chain workloads requests and execute them sequentially without any delay. <em>Chaining workloads</em> is useful when you want to run batch of CPU instructions followed by some I/O and do not want to write new module for it. You could also set chaining 'probability' if not all requests have subsidiaries.<br /></p>
+<p>
+<strong>NOTE</strong>: Due to logic of chaining mechanism, you should multiply probabilities. For example if you have chain consisting from workloads abc, pqr and xyz, and you set probabilities to 0.5, than actual probability of workload 'xyz' would be 0.25 beause if pqr request wouldn't be chained to abc, then TSLoad wouldn't try to do the same with xyz request.<br /></p>
+<p>
+Third main characteristic of workload is time series of number of requests per step, called 'steps'. They are provided by <strong>step generator</strong> which run on server-side or inside tsexperiment tool. Latter supports two step generators: <em>constant</em>, which would generate stationary workload with equal number of requests on each steps and <em>file</em> which allows to set number of requests on per-step basis.<br /></p>
+<p>
+<h4>Request scheduling</h4></p>
+<p>
+Schedulers are responsible for generating request arrival times. There are three request schedulers available in TSLoad:<br />     <ul>
+        <li>
+<strong>simple</strong>. This scheduler sets arrival time for all requests to zero, so it forces threadpool to execute request ASAP. It is reasonable option for benchmark runs and also may be of use with <em>fill-up</em> threadpool dispatcher cause it allows to create huge batch of requests (but run them from beginning of step however).<br /> </li>
+        <li>
+<strong>iat</strong>. This scheduler generates inter-arrival time according to selected distribution law and commonly used, because it allows to create M/M/n experiments.<br /> </li>
+        <li>
+<strong>think</strong>. This is more complicated version of <em>iat</em> scheduler that intended to be more realistic. While <em>iat</em> assumes that all requests are independent, actually when user works with dialog system (like website), time of next arrival (click on hyperlink) depends on service time for previous page. In this case time interval between loading page (end of service #n) and click on hyperlink (arrival time #n+1) should be distributed randomly. So, <em>think</em> dispatcher assigns request two one of N users (while N is configurable variable) and distributes interarrival times according to selected distribution law. But when user X finishes it's request, it walks over requests queue and adds service time two scheduled arrival time of each request of that user. <br />   However, this scheduler induces more performance effects, and we recommend to use <strong>iat</strong> scheduler where possible. It is also useful along with <em>user</em> threadpool dispatcher that was described earlier. <br /></li>
+</ul>
+</p>
+<p>
+Also there is common parameter called <strong>deadline</strong> that is useful in simulating real-time processes. If request start it's execution after (arrival time + deadline), then TSLoad discards such request. Default value for that parameter is 292 years.<br /></p>
+<p>
+<h4>Parameters</h4></p>
+<p>
+Request <em>parameters</em> are passed from JSON-based config to workload module to describe how it should behave to run request. Like variable they could have different scopes. <br />        <ul>
+        <li>
+<em>Workload</em> parameters that do not change during lifetime of workload - so they ususally affect workload preliminary configuration (for example, for filesystem I/O simulation if space for files is preallocated file size would be workload parameter).<br />    </li>
+        <li>
+<em>Request</em> parameters are opposite: they could be set individually per each request. For example, it could be block number for disk i/o benchmark or length of network packet. <br />        </li>
+        <ul>
+            <li>
+<em>Output</em> parameter is a kind of request parameter that is not configurable and filled in by module. For example, for HTTP workload it could be HTTP status code for request<br />    Some parameters are optional and have default value, so they could be omitted from config.<br /></li>
+</ul>
+</ul>
+</p>
+<p>
+    Each parameter have type which says TSLoad how to process it. Type is identified by <a href="../tsload/wlparam.html#wlp_type_t">wlp_type_t</a> enumeration value:<br /> </p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+<strong>Base type</strong></td>
+            <td>
+<strong>Type</strong></td>
+            <td>
+<strong>JSON node in config</strong></td>
+            <td>
+<strong>C variable type</strong></td>
+            <td>
+<strong>Description</strong></td>
+</tr>
+        <tr>
+            <td colspan="2">
+ WLP_BOOL </td>
+            <td>
+ Boolean </td>
+            <td>
+ wlp_bool_t </td>
+            <td>
+ Boolean type</td>
+</tr>
+        <tr>
+            <td rowspan="3">
+ WLP_INTEGER </td>
+            <td>
+ WLP_INTEGER </td>
+            <td>
+ Number </td>
+            <td>
+ wlp_integer_t </td>
+            <td>
+ Abstract 64-bit signed integer</td>
+</tr>
+        <tr>
+            <td>
+ WLP_SIZE </td>
+            <td>
+ Number </td>
+            <td>
+ wlp_integer_t </td>
+            <td>
+ Size in bytes </td>
+</tr>
+        <tr>
+            <td>
+ WLP_TIME </td>
+            <td>
+ Number </td>
+            <td>
+ wlp_integer_t </td>
+            <td>
+ Time interval</td>
+</tr>
+        <tr>
+            <td colspan="2">
+ WLP_FLOAT </td>
+            <td>
+ Number </td>
+            <td>
+ wlp_float_t </td>
+            <td>
+ Floating point number with double precision</td>
+</tr>
+        <tr>
+            <td rowspan="2">
+ WLP_RAW_STRING </td>
+            <td>
+ WLP_RAW_STRING </td>
+            <td>
+ String </td>
+            <td>
+ char</td>
+            <td>
+ String</td>
+</tr>
+        <tr>
+            <td>
+ WLP_FILE_PATH </td>
+            <td>
+ String </td>
+            <td>
+ char</td>
+            <td>
+ Path to file</td>
+</tr>
+        <tr>
+            <td colspan="2">
+ WLP_STRING_SET </td>
+            <td>
+ String </td>
+            <td>
+ wlp_strset_t (int) </td>
+            <td>
+ Special type to create enumerations</td>
+</tr>
+        <tr>
+            <td rowspan="2">
+ WLP_HI_OBJECT </td>
+            <td>
+ WLP_CPU_OBJECT </td>
+            <td>
+ String </td>
+            <td>
+ wlp_hiobject_t </td>
+            <td>
+ hostinfo CPU object</td>
+</tr>
+        <tr>
+            <td>
+  WLP_DISK </td>
+            <td>
+ String </td>
+            <td>
+ wlp_hiobject_t </td>
+            <td>
+ hostinfo disk object</td>
+</tr>
+        <tr>
+            <td>
+</td>
+</tr>
+</table>
+</p>
+<p>
+However, some of these types are just hints, for example WLP_TIME is alias for WLP_INTEGER. Let's again run tsexperiment tool and take closer look at parameter view of bigmem workload.<br /></p>
+<p>
+<pre>
+$ ./bin/tsexperiment workload
+WLTYPE           CLASS              MODULE      
+        PARAM            SCOPE OPT  TYPE   RANGE      DEFAULT
+bigmem           C--m-------------- bigmem      
+        mempool_size     WL        SIZE                    
+                Memory pool size
+        cycles           RQ        INT                     
+                Number of cycles
+        offset           RQ        INT                     
+                Starting offset inside memory pool
+        step             RQ        INT                     
+                Iteration step over memory pool
+        access           RQ        STRSET mm,mr,rr         
+                Indicates if operation is memory-intensive or not 
+        instruction      RQ        STRSET sum,mul,cmp       
+                Instruction to be executed (sum, mul, cmp)
+</pre>
+</p>
+<p>
+As you can see, there are on workload-scoped parameter called <code>mempool_size</code> which is integer - but have 'SIZE' hint. It  Other four types are request scoped. <code>access</code> and <code>instruction</code> parameters are enumerations. Let's create parameters vector for that workload:<br /></p>
+<p>
+<pre>
+        ...
+        "params": {
+            "mempool_size": 268435456,
+            "cycles": 100000,
+            "offset": 0,
+            "step": 64,
+            "access": "mm",
+            "instruction": "mul"
+        }
+        ...
+</pre>
+</p>
+<p>
+Good, but not enough. First of all, despite <code>access</code> variable says that transfers should be memory-memory, they won't be. Thats because with step = 64, offset = 0, and cycles = 100000, so all requests will walk first 6.4 megabytes of memory pool, so they basically will do cache-cache transfers, because modern L3 caches are enough to store such amounts of memory. Also, have you seen workloads that only multiply? We just created one. So we need to make per-request parameters random.<br /></p>
+<p>
+TSLoad have three possibilities to create random-generated request parameters:<br />        <ul>
+        <li>
+<strong>Random generator</strong>. Because they are uniformally distributed, they are good for generating integers which distribution is irrelevant - in our case it is <code>offset</code> variable. But do not forget to modulo offset by mempool_size if you write such module or you will get "Segmentation fault"<br />    </li>
+        <li>
+<strong>Random variator</strong>. They use random generators and variate their number according to selected distribution. Obvious candidate to do so is <code>cycles</code> parameter which is related to duration of executing requests. By creating exponential variator for cycles parameter we will make our workload closer to M/M/n queue. <br />    </li>
+        <li>
+<strong>Probability map</strong>. It also uses random generator, but to generate discrete values with different probabilities. So we could modify <code>instruction</code> parameter to create mix of instructions. Also it is possible to create <code>valarray</code> - in that case all elements in it will have equal probabilities. This is better because algorithm of picking element from valarray is O(1) while picking element from pmap costs O(n).<br />     <br />    <br />So our new configuration would look like:<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+        ...
+        "params": {
+            "mempool_size": 268435456,
+            "cycles":  {
+                "randgen" : { "class" : "lcg" },
+                "randvar" : {
+                    "class": "exponential",
+                    "rate": 1e-05
+                }
+            },
+            "offset": {
+                "randgen" : { "class" : "lcg" }
+            },
+            "step": 64,
+            "access": "mm",
+            "instruction": {
+                "randgen" : { "class" : "lcg" },
+                "pmap": [
+                    {
+                       "valarray": ["cmp", "sum", "mul"], 
+                       "probability": 0.2
+                    }, 
+                    {
+                       "value": "sum", 
+                       "probability": 0.2
+                    }, 
+                    {
+                       "value": "mul", 
+                       "probability": 0.6
+                    }
+                ]
+            }
+        }
+        ...
+</pre>
+</p>
+<p>
+In this example <code>cmp</code> have probability of 0.2 / 3 = ~0.067, <code>sum</code> - 0.2 + (0.2 / 3) = 0.267 and <code>mul</code> - 0.0667. <br /></p>
+<p>
+LCG is a abbreviation for <a href="http://en.wikipedia.org/wiki/Linear_congruential_generator">Linear congruential generator</a>.<br /></p>
+<p>
+<h5>References</h5></p>
+<p>
+1. <a name="1"></a> Paul Barham, Austin Donnelly, Rebecca Isaacs, and Richard Mortier. 2004. Using magpie for request extraction and workload modelling. In <em>Proceedings of the 6th conference on Symposium on Opearting Systems Design & Implementation - Volume 6 (OSDI'04)</em>, Vol. 6. USENIX Association, Berkeley, CA, USA, p. 260.<br />2. <a name="2"></a> The Art of Computer Systems Performance Analysis - by Raj Jain (ISBN 0471-50336-3, 1991, 685 pages, John Wiley & Sons Inc., New York), p. 4.</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

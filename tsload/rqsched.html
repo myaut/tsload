@@ -1,0 +1,98 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="wlparam.html"><strong>Prev</strong>(Workload parameters)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Request schedulers</h1><h3></h3><h3></h3>    <p>
+<h4>Inter-arrival time request scheduler</h4></p>
+<h3></h3>    <p>
+<h4>Think-time based request scheduler</h4></p>
+<h2>Types</h2><a name="typedef_struct_rqsched_class"></a><h3>typedef struct rqsched_class</h3><p>
+<pre>
+typedef struct rqsched_class {
+    char rqsched_name[RQSCHEDNAMELEN];
+
+    void (*rqsched_fini)(workload_t* wl);
+
+    void (*rqsched_step)(workload_step_t* step);        /* Called when new step starts */
+
+    void (*rqsched_pre_request)(request_t* rq);        /* Called while request is scheduling */
+    void (*rqsched_post_request)(request_t* rq);        /* Called when request is complete */
+} rqsched_class_t;
+
+</pre>
+</p>
+<a name="rqsched_distribution_t"></a><h3>rqsched_distribution_t</h3><p>
+<pre>
+typedef enum {
+    RQSD_UNIFORM,
+    RQSD_EXPONENTIAL,
+    RQSD_ERLANG,
+    RQSD_NORMAL
+} rqsched_distribution_t;
+
+</pre>
+</p>
+<a name="typedef_struct_rqsched_common"></a><h3>typedef struct rqsched_common</h3><p>
+<pre>
+typedef struct rqsched_common {
+    rqsched_distribution_t rqs_distribution;
+
+    randgen_t* rqs_randgen;
+    randvar_t* rqs_randvar;
+
+    union {
+        double u_scope;
+        int    e_shape;
+        double n_dispersion;
+    } rqs_params;
+} rqsched_common_t;
+
+</pre>
+</p>
+<a name="typedef_struct_rqsched_think"></a><h3>typedef struct rqsched_think</h3><p>
+<pre>
+typedef struct rqsched_think {
+    rqsched_common_t common;
+
+    randgen_t* rqs_user_randgen;
+    int rqs_nusers;
+} rqsched_think_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

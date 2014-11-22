@@ -1,0 +1,186 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Introduction </title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="modes.html"><strong>Prev</strong>(Operating modes)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="installing.html"><strong>Next</strong>(Installing agent from bundles)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Prerequisites </h2>    <ul>
+        <li>
+ Python 2.6 or 2.7 (for SCons build system and various build scripts) - <a href="http://www.python.org/">www.python.org</a>.    <br />    Also you will need to install pywin32 extensions on Windows: <a href="http://sourceforge.net/projects/pywin32/">sourceforge.net/projects/pywin32/</a></li>
+        <li>
+ SCons build  2.1 or newer - <a href="http://www.scons.org/">www.scons.org</a>.    <br /></li>
+        <li>
+ Compiler and linker<br />    </li>
+        <ul>
+            <li>
+ For Unix and Linux - GNU C/C++ Compiler 4.4. Proprietary Unix compilers such as IBM XLc and SunCC are currenly <strong>not</strong> supported<br />    </li>
+            <li>
+ For Windows - Visual Studio 2010 Express (MinGW is not tested)<br />    </li>
+</ul>
+</ul>
+</p>
+<p>
+<h3>Installing prerequisites on Linux</h3></p>
+<p>
+    <ul>
+        <li>
+ Simply install them using your preferrable packaging system. Most Linux systems provide Python 2 out-of-box.<br />    </li>
+        <ul>
+            <li>
+ RHEL/OEL/CentOS/   <br />    <code># yum install scons gcc binutils</code>   <br />    NOTE: that RHEL 5 ships GCC 4 in separate package called gcc-44<br />    </li>
+            <li>
+ SLES/openSUSE   <br />    <code># zypper in scons gcc binutils</code></li>
+            <li>
+ Debian/Ubuntu   <br />    <code># apt-get install scons gcc binutils</code></li>
+</ul>
+</ul>
+</p>
+<p>
+<h3>Installing prerequisites on Solaris 11</h3></p>
+<p>
+    <ul>
+        <li>
+ Install SCons from sources:    <br />    </li>
+</ul>
+</p>
+<p>
+<pre>
+    # wget 'http://prdownloads.sourceforge.net/scons/scons-2.2.0.tar.gz'
+    # tar xzvf scons-2.2.0.tar.gz
+    # cd scons-2.2.0/
+    # python setup.py install
+    </pre>
+</p>
+<p>
+    <ul>
+        <li>
+ Install additional packages from IPS:    <br />    </li>
+</ul>
+</p>
+<p>
+<pre>
+    # pkg install pkg:/developer/gcc-45
+    # pkg install pkg:/system/header
+    # pkg install pkg:/developer/build/onbld
+    </pre>
+</p>
+<p>
+    NOTE: onbld provides ctfmerge and ctfconvert utilities which are used to convert debugging information from DWARF to CTF format (latter is supported by Solaris Modular DeBugger). They are not necessary.<br /></p>
+<p>
+On Solaris 10 you will probably need to use <a href="http://www.opencsw.org/">OpenCSW</a> repositories.<br /></p>
+<p>
+<h3>Installing prerequisites on Windows</h3></p>
+<p>
+    <ul>
+        <li>
+ Download and install Python: <a href="http://www.python.org/download/">www.python.org/download/</a></li>
+        <li>
+ Add Python directory to system's PATH:<br />    </li>
+        <ul>
+            <li>
+ Go to "Start" menu, then right click on Computer<br />    </li>
+            <li>
+ Select "Properties" in drop down list<br />    </li>
+            <li>
+ (on Windows 2008 and later) Press on "Advanced system settings" hyperlink<br />    </li>
+            <li>
+ Select "Advanced" tab<br />    </li>
+            <li>
+ Press "Environment Variables..." button<br />    </li>
+            <li>
+ Find "Path" in System Variables, select it, click on Edit...<br />    </li>
+            <li>
+ Append ";C:\Python27" (depending on installation) to PATH<br />    </li>
+            <li>
+ Save your settings<br /></li>
+</ul>
+        <li>
+ Install pywin32 extensions and SCons. First option is to install them using binary installers (.exe). However there is a bug in autodist, so installer couldn't detect python if you have been installed x86-64 python. In this case you will need download source, than run:    <br />    <code>C:\...\scons-2.2.0&gt; python setup.py install</code>    <br />SCons installs to python root so there is no need for changing system's path.<br /></li>
+        <li>
+ Install Visual Studio<br /></li>
+</ul>
+</p>
+<p>
+<h2>Building </h2></p>
+<p>
+To build TSLoad agent you need to change your working directory to directory containing sources than run SCons:    <br /><code># scons [options] [arguments] [targets]</code></p>
+<p>
+To list SCons options (both own SCons options and project options), use:   <br /><code># scons --help</code></p>
+<p>
+SCons supports parallel make:    <br /><code># scons -j 8</code>    <br />NOTE: PLATAPI processor uses file locking to protect plat_cache database. It may hang build process.<br /></p>
+<p>
+To make SCons quiet, specify <code>-Q</code> option.<br /></p>
+<p>
+There are several targets provided by agent:<br />    <ul>
+        <li>
+<strong>configure</strong> - only configures build system, generates genconfig.h and genbuild.h<br /></li>
+        <li>
+ if no target name provided, it builds agent from source<br /></li>
+        <li>
+<strong>tests</strong> - run TSLoad unit tests<br /></li>
+        <li>
+<strong>doc</strong> - generates documentation  <br /></li>
+        <li>
+<strong>install</strong> - builds agent and installs it to desired location (specified by --prefix option)<br /></li>
+        <li>
+<strong>zip</strong> - builds agent, installs it and makes zip file from that<br /></li>
+        <li>
+ To clean up after build (analogue to make clean), run scons with <code>-c</code> option (you may also run <code>scons install -c</code>)<br /></li>
+</ul>
+</p>
+<p>
+To build debug version of loader (currently it is built by default), you need to specify <code>--enable-debug</code> option. <code>--enable-trace</code> adds additional tracing facilities into loader. These options has <code>--disable-*</code> siblings that disable debug/trace options.<br /></p>
+<p>
+To generate custom tsload.cfg for agent you may specify <code>--tsload-log-file</code> and <code>--tsload-server</code> options.<br /></p>
+<p>
+<h2>Testing</h2></p>
+<p>
+So let's make test build of our loader (this example is for Linux).<br /></p>
+<p>
+    <ul>
+        <li>
+ Clone sources from GitHub. You may also use rsync to clone them from designated location.<br /></li>
+        <li>
+ Change dir to generator-agent:   <br />    <code># cd &lt;...&gt;/agent</code></li>
+        <li>
+ Run SCons:   <br />    <code># scons install</code></li>
+        <li>
+ Change dir to default install directory (build/$TSPROJECT-$TSVERSION-$PLATFORM):   <br />    <code># cd build/tsload-agent-0.2-linux2/</code></li>
+        <li>
+ Check version of tsexperiment:   <br />    <code># bin/tsexperiment -v</code></li>
+        <li>
+ Try to run test experiment:   <br />    <code># bin/tseexperiment -e var/tsload/sample run</code></li>
+</ul>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

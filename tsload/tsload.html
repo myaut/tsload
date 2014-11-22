@@ -1,0 +1,285 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad Core API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSLoad Core API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="randgen.html"><strong>Next</strong>(Random generators and variators)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>TSLoad high-level API</h1><h3></h3>    <p>
+Use this API to build custom agent on top of libtsload<br /></p>
+<h2>Constants</h2><a name="TSLOAD_ERROR"></a><a name="TSLOAD_OK"></a><h3>TSLOAD_ERROR, TSLOAD_OK</h3>    <p>
+<br />TSLoad error codes<br /></p>
+<p>
+<pre>
+#define TSLOAD_ERROR    1
+#define TSLOAD_OK   0
+</pre>
+</p>
+<h2>Functions</h2><a name="tsload_error_msg_func"></a><a name="tsload_error_msg"></a><h3>tsload_error_msg, tsload_error_msg_func</h3>    <p>
+<br />Hook that called when one of high-level operations encounters errors.<br />May be called multiple times during one call<br /></p>
+<p>
+<pre>
+typedef void (*tsload_error_msg_func)(ts_errcode_t code, const char* format, ...);
+LIBIMPORT tsload_error_msg_func tsload_error_msg
+</pre>
+</p>
+<a name="tsload_workload_status_func"></a><a name="tsload_workload_status"></a><h3>tsload_workload_status, tsload_workload_status_func</h3>    <p>
+<br />Hook for reporting workload statuses<br /></p>
+<p>
+<pre>
+typedef void (*tsload_workload_status_func)(const char* wl_name,int status,long progress,const char* config_msg);
+LIBIMPORT tsload_workload_status_func tsload_workload_status
+</pre>
+</p>
+<a name="tsload_requests_report_func"></a><a name="tsload_requests_report"></a><h3>tsload_requests_report_func, tsload_requests_report</h3>    <p>
+<br />Hook for reporting requests and it's params<br /></p>
+<p>
+<pre>
+typedef void (*tsload_requests_report_func)(list_head_t* rq_list);
+LIBIMPORT tsload_requests_report_func tsload_requests_report
+</pre>
+</p>
+<a name="tsload_walk_workload_types"></a><h3>tsload_walk_workload_types</h3><span class="label label-success">public</span>    <p>
+<br />Walk over workload types registered within TSLoad<br /></p>
+<p>
+<pre>
+LIBEXPORT void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+</pre>
+</p>
+<a name="tsload_get_resources"></a><a name="tsload_get_hostinfo"></a><h3>tsload_get_resources, tsload_get_hostinfo</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT tsobj_node_t* tsload_get_resources(void)
+LIBEXPORT tsobj_node_t* tsload_get_hostinfo(void)
+</pre>
+</p>
+<a name="tsload_configure_workload"></a><h3>tsload_configure_workload</h3><span class="label label-success">public</span>    <p>
+<br />Create and configure new workload<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl_name</strong> - name of workload<br /></li>
+            <li>
+<strong>wl_type</strong> - name of workload type<br /></li>
+            <li>
+<strong>tp_name</strong> - name of threadpool where workload would be attached. For chained workloads             should be NULL<br /></li>
+            <li>
+<strong>deadline</strong> - deadline for request execution<br /></li>
+            <li>
+<strong>wl_chain_params</strong> - parameters of chaining in [experiment.json][ref/experiment_json] format<br /></li>
+            <li>
+<strong>rqsched_params</strong> - parameters of request scheduler in [experiment.json][ref/experiment_json] format<br /></li>
+            <li>
+<strong>wl_params</strong> - workload and request param configuration<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params)
+</pre>
+</p>
+<a name="tsload_provide_step"></a><h3>tsload_provide_step</h3><span class="label label-success">public</span>    <p>
+<br />Provide step for workload<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl_name</strong> - name of workload<br /></li>
+            <li>
+<strong>step_id</strong> - id of step. This argument is used to control that no tsload_provide_step calls was missed<br /></li>
+            <li>
+<strong>num_rqs</strong> - number of request that should be generated<br /></li>
+            <li>
+<strong>trace_rqs</strong> - queue of requests that created earlier from trace through tsload_create_request().      If this list not empty, than TSLoad would generate num_rqs requests<br /></li>
+            <li>
+<strong>pstatus</strong> - output field that set to WL_STEP_QUEUE_FULL if function returns TSLOAD_OK, but queue of      workload requests is overrun.<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, list_head_t* trace_rqs,int* pstatus)
+</pre>
+</p>
+<a name="tsload_create_request"></a><h3>tsload_create_request</h3><span class="label label-success">public</span>    <p>
+<br />Create request and link it into rq_list to create trace-driven workloads<br /></p>
+    <p>
+If chained is set B_TRUE, then it actually chains to last request in rq_list<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl_name</strong> - name of workload<br /></li>
+            <li>
+<strong>rq_list</strong> - linked list where new request should be put<br /></li>
+            <li>
+<strong>chained</strong> - is request chained?<br /></li>
+            <li>
+<strong>rq_id</strong> - id of request<br /></li>
+            <li>
+<strong>step</strong> - id of step. Not neccessary be current/next step of workload<br /></li>
+            <li>
+<strong>user_id</strong> - Id of user for user threadpool dispatcher<br /></li>
+            <li>
+<strong>thread_id</strong> - Id of thread for trace threadpool dispatcher<br /></li>
+            <li>
+<strong>sched_time</strong> - Scheduled time of request execution<br /></li>
+            <li>
+<strong>rq_params</strong> - Vector of request params (copied inside this function, so         it could be safely deallocated after call)<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />If error occurs, tsload_create_request() will empty rq_list<br /></p>
+<p>
+<pre>
+LIBEXPORT int tsload_create_request(const char* wl_name, list_head_t* rq_list, boolean_t chained,int rq_id, long step, int user_id, int thread_id,ts_time_t sched_time, void* rq_params)
+</pre>
+</p>
+<a name="tsload_start_workload"></a><h3>tsload_start_workload</h3><span class="label label-success">public</span>    <p>
+<br />Schedule workload to start<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl_name</strong> - name of workload<br /></li>
+            <li>
+<strong>start_time</strong> - scheduled start time<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_start_workload(const char* wl_name, ts_time_t start_time)
+</pre>
+</p>
+<a name="tsload_unconfigure_workload"></a><h3>tsload_unconfigure_workload</h3><span class="label label-success">public</span>    <p>
+<br />Unconfigure workload. Couldn't be called for workload that<br />currenly have "WLS_CONFIGURING" state because we couldn't interrupt<br />module routine<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wl_name</strong> - name of workload<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_unconfigure_workload(const char* wl_name)
+</pre>
+</p>
+<a name="tsload_create_threadpool"></a><h3>tsload_create_threadpool</h3><span class="label label-success">public</span>    <p>
+<br />Create threadpool<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>tp_name</strong> - name of threadpool<br /></li>
+            <li>
+<strong>num_threads</strong> - number of threads inside threadpool<br /></li>
+            <li>
+<strong>quantum</strong> - threadpool's quantum<br /></li>
+            <li>
+<strong>discard</strong> - if set to B_TRUE, threadpool will discard requests that missed their step<br /></li>
+            <li>
+<strong>disp</strong> - parameters of threadpool dispatcher according to [experiment.json][ref/experiment_json] format<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,boolean_t discard, tsobj_node_t* disp)
+</pre>
+</p>
+<a name="tsload_schedule_threadpool"></a><h3>tsload_schedule_threadpool</h3><span class="label label-success">public</span>    <p>
+<br />Set threadpool scheduler options<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>tp_name</strong> - name of threadpool<br /></li>
+            <li>
+<strong>sched</strong> - scheduling parameters according to [experiment.json][ref/experiment_json] format<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_schedule_threadpool(const char* tp_name, tsobj_node_t* sched)
+</pre>
+</p>
+<a name="tsload_walk_threadpools"></a><a name="tsload_destroy_threadpool"></a><h3>tsload_destroy_threadpool, tsload_walk_threadpools</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void* tsload_walk_threadpools(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+LIBEXPORT int tsload_destroy_threadpool(const char* tp_name)
+</pre>
+</p>
+<a name="tsload_init"></a><h3>tsload_init</h3><span class="label label-success">public</span>    <p>
+<br />Initialize TSLoad engine<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>pre_subsys</strong> - array of subsystems that should be initialized before libtsload subsystems<br /></li>
+            <li>
+<strong>pre_count</strong> - count of elements in pre_subsys<br /></li>
+            <li>
+<strong>post_subsys</strong> - array of subsystems that initialized after libtsload<br /></li>
+            <li>
+<strong>post_count</strong> - count of elements in post_subsys<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,struct subsystem* post_subsys, unsigned post_count)
+</pre>
+</p>
+<a name="tsload_start"></a><h3>tsload_start</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int tsload_start(const char* basename)
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_enum_tsload_walk_op"></a><h3>typedef enum tsload_walk_op</h3>    <p>
+<br />Walkie-talkie. Operations for tsload_walk_ functions<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>TSLOAD_WALK_FIND</strong> - Find element identified by key stored in arg<br /></li>
+            <li>
+<strong>TSLOAD_WALK_JSON</strong> - Do TSLOAD_WALK_FIND but return formatted JSONNODE<br /></li>
+            <li>
+<strong>TSLOAD_WALK_JSON_ALL</strong> - Walks over hashmap and return json representation of all items. args are ignored<br /></li>
+            <li>
+<strong>TSLOAD_WALK_WALK</strong> - Walk over hashmap traditionally. arg - context of the walker<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef enum tsload_walk_op {
+    TSLOAD_WALK_FIND,
+    TSLOAD_WALK_TSOBJ,
+    TSLOAD_WALK_TSOBJ_ALL,
+    TSLOAD_WALK_WALK
+} tsload_walk_op_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

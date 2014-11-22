@@ -1,0 +1,266 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="syncqueue.html"><strong>Prev</strong>(Synchronized queue)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="tsinit.html"><strong>Next</strong>(tsinit)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>Hash maps</h1><h3></h3><h2>Constants</h2><a name="HASH_MAP_OK"></a><a name="HASH_MAP_DUPLICATE"></a><a name="HASH_MAP_NOT_FOUND"></a><h3>HASH_MAP_DUPLICATE, HASH_MAP_NOT_FOUND, HASH_MAP_OK</h3>    <p>
+<br />hm_ functions return codes<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>HASH_MAP_OK</strong> - everything went fine<br /></li>
+            <li>
+<strong>HASH_MAP_DUPLICATE</strong> - element with such key exists<br /></li>
+            <li>
+<strong>HASH_MAP_NOT_FOUND</strong> - such element not found<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define HASH_MAP_OK 0
+#define HASH_MAP_DUPLICATE  -1
+#define HASH_MAP_NOT_FOUND  -2
+</pre>
+</p>
+<a name="HM_WALKER_CONTINUE"></a><a name="HM_WALKER_STOP"></a><a name="HM_WALKER_REMOVE"></a><h3>HM_WALKER_CONTINUE, HM_WALKER_REMOVE, HM_WALKER_STOP</h3>    <p>
+<br />Walker flags for hash_map_walk. Returned by walker func.<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>HM_WALKER_CONTINUE</strong> - continue walking<br /></li>
+            <li>
+<strong>HM_WALKER_STOP</strong> - stop walking here and return current object (useful for "find")<br /></li>
+            <li>
+<strong>HM_WALKER_REMOVE</strong> - remove current element<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define HM_WALKER_CONTINUE  0
+#define HM_WALKER_STOP  0x01
+#define HM_WALKER_REMOVE    0x02
+</pre>
+</p>
+<h2>Functions</h2><a name="hash_map_init"></a><h3>hash_map_init</h3><span class="label label-success">public</span>    <p>
+<br />Initialize static hash map.<br /></p>
+    <p>
+Because hash map usually a global object, it doesn't<br />support formatted names<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>hm</strong> - hash map to initialize<br /></li>
+            <li>
+<strong>name</strong> - identifier for hash map<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void hash_map_init(hashmap_t* hm, const char* name)
+</pre>
+</p>
+<a name="hash_map_create"></a><h3>hash_map_create</h3><span class="label label-success">public</span>    <p>
+<br />Create dynamic hashmap<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>base</strong> - static hashmap, that contains compare/hash functions, size and offsets<br /></li>
+            <li>
+<strong>namefmt</strong> - name format<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...)
+</pre>
+</p>
+<a name="hash_map_destroy"></a><h3>hash_map_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Destroy hash map<br /></p>
+    <p>
+It shouldn't contain objects (or assertion will rise)<br /></p>
+<p>
+<pre>
+LIBEXPORT void hash_map_destroy(hashmap_t* hm)
+</pre>
+</p>
+<a name="hash_map_insert"></a><h3>hash_map_insert</h3><span class="label label-success">public</span>    <p>
+<br />Insert element into hash map<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>hm</strong> - hash map<br /></li>
+            <li>
+<strong>object</strong> - object to be inserted<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HASH_MAP_OK if object was successfully inserted or HASH_MAP_DUPLICATE if object with same key (not hash!) already exists in hash map<br /></p>
+<p>
+<pre>
+LIBEXPORT int  hash_map_insert(hashmap_t* hm, hm_item_t* object)
+</pre>
+</p>
+<a name="hash_map_remove"></a><h3>hash_map_remove</h3><span class="label label-success">public</span>    <p>
+<br />Remove element from hash map<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>hm</strong> - hash map<br /></li>
+            <li>
+<strong>object</strong> - object to be removed<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HASH_MAP_OK if object was successfully remove or HASH_MAP_NOT_FOUND if object is not<br /></p>
+<p>
+<pre>
+LIBEXPORT int  hash_map_remove(hashmap_t* hm, hm_item_t* object)
+</pre>
+</p>
+<a name="hash_map_find_nolock"></a><h3>hash_map_find_nolock</h3><span class="label label-success">public</span>    <p>
+<br />Find object in hash map by key without locking hashmap<br />call it only from walker context!<br /></p>
+<p>
+<pre>
+LIBEXPORT void* hash_map_find_nolock(hashmap_t* hm, const hm_key_t* key)
+</pre>
+</p>
+<a name="hash_map_find"></a><h3>hash_map_find</h3><span class="label label-success">public</span>    <p>
+<br />Find object in hash map by key<br /></p>
+<p>
+<pre>
+LIBEXPORT void* hash_map_find(hashmap_t* hm, const hm_key_t* key)
+</pre>
+</p>
+<a name="hash_map_walk"></a><h3>hash_map_walk</h3><span class="label label-success">public</span>    <p>
+<br />Walk over objects in hash map and execute func for each object.<br /></p>
+    <p>
+Func proto: int (<em>func)(void</em> object, void* arg)<br />Function func may return HM_WALKER_CONTINUE or HM_WALKER_STOP.<br /></p>
+    <p>
+For HM_WALKER_STOP, hash_map_walk will stop walking over hash map and return<br />current object<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>hm</strong> - hash map<br /></li>
+            <li>
+<strong>func</strong> - function that will be called for each object<br /></li>
+            <li>
+<strong>arg</strong> - argument that will be passed as second argument for func<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />NULL or object where func returned STOP<br /></p>
+    <p>
+<em>NOTES</em><br />because of nature of hash maps, walking order is undefined<br /></p>
+<p>
+<pre>
+LIBEXPORT void* hash_map_walk(hashmap_t* hm, hm_walker_func func, void* arg)
+</pre>
+</p>
+<a name="hm_string_hash"></a><h3>hm_string_hash</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask)
+</pre>
+</p>
+<a name="DECLARE_HASH_MAP"></a><h3>DECLARE_HASH_MAP</h3>    <p>
+<br />Declare hash map<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>name</strong> - name of hash map var (all corresponding objects will be named hm_(object)_(name))<br /></li>
+            <li>
+<strong>type</strong> - type of elements<br /></li>
+            <li>
+<strong>size</strong> - size of hash map (not of type)<br /></li>
+            <li>
+<strong>key_field</strong> - field of element that contains key<br /></li>
+            <li>
+<strong>next_field</strong> - field of element that contains pointer to next object<br /></li>
+            <li>
+<strong>hm_hash_body</strong> - function body {} that hashes key and returns hash (params: const void* key)<br /></li>
+            <li>
+<strong>hm_compare_body</strong> - function body {} that compares to keys (params: const void* key1, const void* key2)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define DECLARE_HASH_MAP(name, is_indirect, type, size, key_field, next_field, hm_hash_body, hm_compare_body)
+</pre>
+</p>
+<a name="DECLARE_HASH_MAP_STRKEY"></a><h3>DECLARE_HASH_MAP_STRKEY</h3>    <p>
+<br />Same as DECLARE_HASH_MAP, but assumes that key field is string declared as char* (AAS)<br /></p>
+<p>
+<pre>
+#define DECLARE_HASH_MAP_STRKEY(name, type, size, key_field, next_field, mask)
+</pre>
+</p>
+<h2>Types</h2><h3></h3><p>
+<pre>
+typedef char hm_item_t;
+
+typedef char hm_key_t;
+
+typedef void hm_item_t;
+
+typedef void hm_key_t;
+
+</pre>
+</p>
+<a name="hashmap_t"></a><h3>hashmap_t</h3><p>
+<pre>
+typedef struct {
+    size_t            hm_size;
+    hm_item_t**     hm_heads;
+
+    boolean_t        hm_indirect;
+    int             hm_type;
+
+    thread_mutex_t hm_mutex;
+
+    ptrdiff_t hm_off_key;
+    ptrdiff_t hm_off_next;
+
+    char* hm_name;
+
+    unsigned (*hm_hash_key)(const hm_key_t* key);
+    boolean_t (*hm_compare)(const hm_key_t* key1, const hm_key_t* key2);
+} hashmap_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

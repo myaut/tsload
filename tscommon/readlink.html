@@ -1,0 +1,64 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSCommon API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tsdirent.html"><strong>Prev</strong>(FileSystem directories)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="filemmap.html"><strong>Next</strong>(Memory-mapped files)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>readlink</h1><h2>Functions</h2><a name="plat_readlink"></a><h3>plat_readlink</h3><span class="label label-info">plat</span>    <p>
+<br />Read's symlink (may be determined by DET_SYMLINK) and returns original file path.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>path</strong> - path to symbolic link<br /></li>
+            <li>
+<strong>buffer</strong> - destination buffer<br /></li>
+            <li>
+<strong>buflen</strong> - length of destination buffer<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />length of original file path. In case of error returns -1<br /></p>
+    <p>
+<em>NOTES</em><br />may not be implemented on some platforms<br /></p>
+<p>
+<pre>
+PLATAPI int plat_readlink(const char* path, char* buffer, size_t buflen)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

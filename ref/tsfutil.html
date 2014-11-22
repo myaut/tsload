@@ -1,0 +1,89 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="tshostinfo.html"><strong>Prev</strong>(tshostinfo)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="experiment_json.html"><strong>Next</strong>(experiment.json)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>tsfutil</h2></p>
+<p>
+TS File utility - tool to convert TSF files from/to JSON or CSV.<br /></p>
+<p>
+Usage:<br /><code>$ tsfutil [global options] command [options] &lt;tsffile&gt; [infile|outfile]</code></p>
+<p>
+Where global options are:<br />        <ul>
+        <li>
+<code>-s schema.json</code>    <br />        Path to file that contains TSF schema<br />    </li>
+        <li>
+<code>-F json|jsonraw|csv</code> <br />        Input/output tsfutil format - default is json<br /></li>
+</ul>
+</p>
+<p>
+Subcommand is one of:<br />        <ul>
+        <li>
+<strong>create</strong><br />        creates new TSF file from specified schema<br />    </li>
+        <li>
+<strong>count</strong><br />        prints number of entries in TSF file<br />    </li>
+        <li>
+<strong>get</strong><br />        read entries from tsffile and write them to outfile or stdin<br />        if it is not specified. By default reads all entries from file.<br />        To specify desired range of entries, specify option -g:<br />          </li>
+        <ul>
+            <li>
+ -g N<a name=":M|$"></a><br />                Where N - start entry, M - last entry, and $ - alias for last<br />                entry in tsffile. <br />    </li>
+</ul>
+        <li>
+<strong>add</strong><br />        adds entries from infile to tsffile<br /></li>
+</ul>
+</p>
+<p>
+Also, one of backend options may be specified using -o option:<br />    -o &lt;backend option&gt;<br /></p>
+<p>
+JSON options:<br />        <ul>
+        <li>
+ one - if getting only one entry, print it alone, not array of single nodes<br /></li>
+</ul>
+</p>
+<p>
+CSV options:<br />        <ul>
+        <li>
+<em>header=&lt;header&gt;</em> - additional CSV header if not specified in CSV file (for 'add' command) or header that would be used during export for 'get' command. You may specify not all columns to create tsffile slice. Also through this option you may provide header hints. For boolean columns you may change default true and false literals:<br />        <code>-o header=somefield:yes:no</code><br />    For integer values you may append "unsigned" or "hex" hint:<br />        <code>-o header=int1:unsigned,flags:hex</code></li>
+        <li>
+<em>noheader</em> - if specified for 'get' subcommand, tsfutil don't write header into file. If specified for 'add' subcommand, means that CSV file do not contain valid header and header, specified by 'header=' option should be used.<br />    </li>
+        <li>
+<em>all</em> - for 'get' subcommand - retrieve all fields from tsffile, not just specified in 'header=' option<br />    </li>
+        <li>
+<em>valsep</em> - separator for columns. Default is comma<br />    </li>
+        <li>
+<em>optsep</em> - separator for column hints inside header. Default is semicolon.    <br /></li>
+</ul>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>
