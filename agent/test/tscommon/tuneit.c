@@ -18,10 +18,13 @@
 
 
 
-#include <tuneit.h>
+#include <tsload/defs.h>
+
+#include <tsload/tuneit.h>
 
 #include <string.h>
 #include <assert.h>
+
 
 int test_main() {
 	short so1;

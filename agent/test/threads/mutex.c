@@ -19,10 +19,13 @@
 
 
 
-#include <threads.h>
-#include <tstime.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
+#include <tsload/threads.h>
 
 #include <assert.h>
+
 
 #define NUM_THREADS		16
 #define STEPS			60

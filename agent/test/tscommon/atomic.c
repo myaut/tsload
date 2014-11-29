@@ -1,6 +1,9 @@
-#include <atomic.h>
+#include <tsload/defs.h>
+
+#include <tsload/atomic.h>
 
 #include <assert.h>
+
 
 /* Checks atomic operations
  *

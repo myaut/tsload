@@ -10,7 +10,7 @@ Import('env')
 # Prepares platform-specific build
 # 1. Copies includes from plat/<platform>/*.h to plat/*.h
 # 2. Creates tasks for source platform preprocessing
-def PreparePlatform(self):
+def PreparePlatform(self, inc_dir):
     self.Append(ENV = {'PLATCACHE': PathJoin(Dir('.').path, self['PLATCACHE'])})
     self.Append(ENV = {'PLATDEBUG': self['PLATDEBUG']})
     
@@ -20,27 +20,34 @@ def PreparePlatform(self):
     plat_cache = self['PLATCACHE']
     plat_includes = []
     
-    self.PlatIncBuilder(plat_cache, Dir('include').glob('*.h'))
+    # Includes are located in several directories:
+    #    BUILD/include/.../plat     - build_inc_dir - for platform-specific headers
+    #    #include/.../              - inc_dir       - for headers with PLATAPI (public)
+    #    include/                   -               - for headers with PLATAPI (private)
+    build_inc_dir = self.BuildDir(inc_dir)
+    inc_dir = '#' + inc_dir
+    
+    self.PlatIncBuilder(plat_cache, Dir(inc_dir).glob('*.h') + Dir('include').glob('*.h'))
     
     # Build platform-chained includes and sources
     
     for plat_name in plat_chain:      
         # For each platform-dependent include select best match and copy
-        # it from plat/<platform>/include.h to plat/include.h
-        for inc_file in Dir('include').Dir('plat').Dir(plat_name).glob('*.h'): 
+        # it from plat/<platform>/include.h to <inc_dir>/plat/include.h
+        for inc_file in Dir('plat').Dir(plat_name).glob('*.h'): 
             base_name = PathBaseName(str(inc_file))
-            dest_file = PathJoin('include/plat', base_name)
+            dest_file = PathJoin(build_inc_dir, 'plat', base_name)
             
-            if base_name not in plat_includes:
+            if base_name not in plat_includes:                
                 self.Command(dest_file, inc_file, Copy("$TARGET", "$SOURCE"))
                 
                 plat_includes.append(base_name)
     
     for plat_name in rev_plat_chain:
         # Parse source files for platform-api function implementation
-        # and select best match for it
-        for src_file in Dir('src').Dir('plat').Dir(plat_name).glob('*.c'):            
-            tgt_file = File(str(src_file).replace(PathJoin('src', 'plat'), 'plat'))            
+        # and select best match for it. Destination is `curplat'
+        for src_file in Dir('plat').Dir(plat_name).glob('*.c'):            
+            tgt_file = File(str(src_file).replace('plat', self['PLATDIR']))            
             
             # Each source file depends on platform cache
             # and all source that are more specific than this file
@@ -48,21 +55,21 @@ def PreparePlatform(self):
             base_name = PathBaseName(str(src_file))
             
             # We need it for dependent platforms, because VariantDir was not processed yet
-            src_path = Dir('src').srcnode().abspath
+            src_path = Dir('.').srcnode().abspath
             
             self.Depends(tgt_file, plat_cache)
             
             # Add dependencies for all available platforms to ensure that
             # most specific platform will be built earlier than "generic" platform
             for dep_plat_name in rev_plat_chain[rev_plat_chain.index(plat_name) + 1:]:
-                dep_plat_path = PathJoin('plat', dep_plat_name, base_name)
+                dep_plat_path = PathJoin(dep_plat_name, base_name)
                 
                 # Cannot use SCons.Node here because it creates dependencies for non-existent files
-                dep_file = PathJoin(src_path, dep_plat_path)
+                dep_file = PathJoin(src_path, 'plat', dep_plat_path)
                 if not PathExists(dep_file):
                     continue
                 
-                self.Depends(tgt_file, File(dep_plat_path))
+                self.Depends(tgt_file, File(PathJoin(self['PLATDIR'], dep_plat_path)))
             
             # Add builder 
             self.PlatSrcBuilder(tgt_file, src_file)
@@ -83,6 +90,7 @@ env.Macroses(*('PLAT_' + plat.upper() for plat in env['PLATCHAIN']))
 
 env['PLATDEBUG'] = True
 env['PLATCACHE'] = 'plat_cache.pch'
+env['PLATDIR'] = 'curplat'
 
 PlatIncBuilder = Builder(action = '%s tools/plat/parse-include.py $SOURCES' % (sys.executable),
                          src_suffix = '.h')

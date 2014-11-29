@@ -1,6 +1,9 @@
-#include <ilog2.h>
+#include <tsload/defs.h>
+
+#include <tsload/ilog2.h>
 
 #include <assert.h>
+
 
 int test_main() {
 	assert(ilog2l(0x80000000) == 31);

@@ -5,14 +5,16 @@
  *      Author: myaut
  */
 
-#include <tsobj.h>
-#include <randgen.h>
+#include <tsload/defs.h>
 
-#include "helpers.h"
+#include <tsload/obj/obj.h>
+
+#include <tsload/load/randgen.h>
 
 #include <stdio.h>
-
 #include <assert.h>
+
+#include "helpers.h"
 
 randgen_t* generator = NULL;
 

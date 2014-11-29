@@ -5,18 +5,23 @@
  *      Author: myaut
  */
 
-#include <defs.h>
-#include <tsobj.h>
-#include <mempool.h>
-#include <workload.h>
-#include <autostring.h>
-#include <wlparam.h>
+#include <tsload/defs.h>
+
+#include <tsload/mempool.h>
+#include <tsload/autostring.h>
+
+#include <tsload/obj/obj.h>
+
+#include <tsload/load/workload.h>
+#include <tsload/load/wlparam.h>
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdio.h>
+#include <assert.h>
 
 #include "helpers.h"
 
-#include <stdio.h>
-
-#include <assert.h>
 
 workload_t* wl;
 

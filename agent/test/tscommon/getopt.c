@@ -1,9 +1,12 @@
-#include <getopt.h>
+#include <tsload/defs.h>
+
+#include <tsload/getopt.h>
 
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+
 
 /**
  * Test getopt() for correctness

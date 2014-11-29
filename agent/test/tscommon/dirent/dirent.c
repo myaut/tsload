@@ -1,7 +1,10 @@
-#include <tsdirent.h>
+#include <tsload/defs.h>
+
+#include <tsload/dirent.h>
 
 #include <string.h>
 #include <assert.h>
+
 
 int test_main() {
 	plat_dir_t* dir = plat_opendir("test");

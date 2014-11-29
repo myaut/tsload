@@ -18,13 +18,16 @@
 
 
 
-#include <threads.h>
-#include <schedutil.h>
-#include <mempool.h>
+#include <tsload/defs.h>
 
-#include <cpuinfo.h>
+#include <tsload/mempool.h>
+#include <tsload/threads.h>
+#include <tsload/schedutil.h>
+
+#include <hostinfo/cpuinfo.h>
 
 #include <assert.h>
+
 
 #define NUM_THREADS 	2
 #define NUM_CYCLES		20000

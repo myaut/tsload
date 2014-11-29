@@ -21,13 +21,15 @@
 #ifndef JSONIMPL_H_
 #define JSONIMPL_H_
 
-#include <defs.h>
-#include <atomic.h>
+#include <tsload/defs.h>
 
-#include <json.h>
+#include <tsload/atomic.h>
+
+#include <tsload/json/json.h>
 
 #include <stdlib.h>
 #include <stdarg.h>
+
 
 struct json_parser {
 	int	lineno;			/* Number of line */

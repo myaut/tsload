@@ -1,7 +1,10 @@
-#include <pathutil.h>
+#include <tsload/defs.h>
+
+#include <tsload/pathutil.h>
 
 #include <string.h>
 #include <assert.h>
+
 
 #if defined(PLAT_WIN)
 #define ROOT	"C:"

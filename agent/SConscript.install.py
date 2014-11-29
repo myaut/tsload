@@ -24,7 +24,7 @@ if not env['PREFIX']:
 if not PathIsAbs(env['PREFIX']):
     env['PREFIX'] = PathAbsolute(env['PREFIX'])
 
-gen_inc_dir = Dir(env.BuildDir('include'))
+gen_inc_dir = Dir(env.BuildDir(PathJoin('include', 'tsload')))
 gen_install = gen_inc_dir.File('geninstall.h')
 
 conf_install = Configure(env, config_h = str(gen_install))

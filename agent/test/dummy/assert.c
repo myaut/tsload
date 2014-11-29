@@ -4,7 +4,10 @@
  * Checks if assert reported correctly to stderr
  */
 
+#include <tsload/defs.h>
+
 #include <assert.h>
+
 
 int test_main() {
 	assert(1 == 0);

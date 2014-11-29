@@ -19,10 +19,13 @@
 
 
 
-#include <threads.h>
-#include <atomic.h>
+#include <tsload/defs.h>
+
+#include <tsload/atomic.h>
+#include <tsload/threads.h>
 
 #include <assert.h>
+
 
 #define NUM_THREADS		16
 #define STEPS			4096

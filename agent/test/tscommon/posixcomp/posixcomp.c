@@ -1,6 +1,9 @@
+#include <tsload/defs.h>
+
+#include <tsload/posixdecl.h>
+
 #include <stdio.h>
 
-#include <plat/posixdecl.h>
 
 /**
  * Test POSIX compability interfaces:

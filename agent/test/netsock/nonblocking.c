@@ -18,10 +18,13 @@
 
 
 
-#include <threads.h>
-#include <netsock.h>
+#include <tsload/defs.h>
+
+#include <tsload/netsock.h>
+#include <tsload/threads.h>
 
 #include <assert.h>
+
 
 #define BUFSIZE		8
 

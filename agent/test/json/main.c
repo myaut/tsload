@@ -18,12 +18,14 @@
 
 
 
-#include <mempool.h>
-#include <threads.h>
+#include <tsload/defs.h>
 
-#include <json.h>
+#include <tsload/mempool.h>
+
+#include <tsload/json/json.h>
 
 #include <stdio.h>
+
 
 extern int json_test_main(void);
 

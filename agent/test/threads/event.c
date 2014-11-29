@@ -18,12 +18,14 @@
 
 
 
-#include <defs.h>
-#include <threads.h>
-#include <tstime.h>
-#include <atomic.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
+#include <tsload/atomic.h>
+#include <tsload/threads.h>
 
 #include <assert.h>
+
 
 #define TESTS			4
 

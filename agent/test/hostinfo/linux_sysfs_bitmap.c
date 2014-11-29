@@ -18,18 +18,15 @@
 
 
 
-#include <hitrace.h>
+#include <tsload/defs.h>
 
 #include <assert.h>
+
 
 extern int hi_linux_sysfs_parsebitmap(const char* str, uint32_t* bitmap, int len);
 
 int test_main() {
 	uint32_t bitmap;
-
-#ifdef HOSTINFO_TRACE
-	hi_trace_flags |= HI_TRACE_SYSFS;
-#endif
 
 	hi_linux_sysfs_parsebitmap("1", &bitmap, 1);
 	assert(bitmap == 0x2);

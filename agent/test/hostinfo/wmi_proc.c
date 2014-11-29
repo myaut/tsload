@@ -18,10 +18,13 @@
 
 
 
-#include <plat/win/wmi.h>
+#include <tsload/defs.h>
+
+#include <hostinfo/plat/wmi.h>
 
 #include <stdio.h>
 #include <assert.h>
+
 
 int test_main() {
 	hi_wmi_t wmi;

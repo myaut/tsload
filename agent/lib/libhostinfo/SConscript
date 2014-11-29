@@ -5,7 +5,7 @@ Import('env')
 
 lib = env.Clone()
 
-lib.PreparePlatform()
+lib.PreparePlatform('include/hostinfo')
 
 if lib.SupportedPlatform('solaris'):
     lib.Append(LIBS = ['diskmgt', 'lgrp', 'nvpair', 'kstat', 'dladm'])
@@ -19,7 +19,7 @@ lib.AddDeps(('lib', 'libtscommon'),
 
 extra_sources = []
 if lib.SupportedPlatform('win'):
-    extra_sources = ['src/plat/win/wmi.cpp']
+    extra_sources = ['plat/win/wmi.cpp']
 
 objects = lib.CompileSharedLibrary(extra_sources)
 library = lib.LinkSharedLibrary(target, objects)

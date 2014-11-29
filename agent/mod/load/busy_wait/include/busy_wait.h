@@ -21,7 +21,10 @@
 #ifndef BUSY_WAIT_H_
 #define BUSY_WAIT_H_
 
-#include <wlparam.h>
+#include <tsload/defs.h>
+
+#include <tsload/load/wlparam.h>
+
 
 struct busy_wait_workload {
 	int unused;

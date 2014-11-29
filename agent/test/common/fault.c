@@ -4,10 +4,11 @@
  *
  * Also enables corefiles for UNIX*/
 
-#include <defs.h>
+#include <tsload/defs.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+
 
 #if defined(PLAT_WIN)
 #include <windows.h>

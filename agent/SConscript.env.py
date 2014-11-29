@@ -47,7 +47,9 @@ def InstallTarget(self, tgtroot, tgtdir, target):
 # Compile and build various targets
 def CompileSharedLibrary(self, extra_sources = [], 
                          ctfconvert = True):
-    objects = self.SharedObject(Glob("src/*.c") + Glob("plat/*/*.c") + extra_sources)
+    objects = self.SharedObject(Glob('*.c') +                              \
+                                Glob(PathJoin(env['PLATDIR'], '*/*.c')) +  \
+                                extra_sources)
     
     # In Solaris we need to convert types from DWARF into CTF
     if self['DEBUG'] and ctfconvert and self.SupportedPlatform('solaris') and self['CTFCONVERT']:
@@ -58,10 +60,12 @@ def CompileSharedLibrary(self, extra_sources = [],
     return objects
     
 def CompileProgram(self, extra_sources = []):
-    usage = self.UsageBuilder('src/usage.txt')
+    usage = self.UsageBuilder('usage.txt')
     
-    objects = self.Object(Glob("src/*.c") + Glob("plat/*/*.c") + \
+    objects = self.Object(Glob("*.c") +                                \
+                          Glob(PathJoin(env['PLATDIR'], '*/*.c')) +    \
                           extra_sources)
+    
     return objects
 
 def LinkProgram(self, target, objects):

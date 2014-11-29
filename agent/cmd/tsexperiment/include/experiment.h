@@ -21,16 +21,18 @@
 #ifndef EXPERIMENT_H_
 #define EXPERIMENT_H_
 
-#include <defs.h>
-#include <hashmap.h>
-#include <pathutil.h>
+#include <tsload/defs.h>
+
+#include <tsload/hashmap.h>
+#include <tsload/pathutil.h>
+
+#include <tsload/json/json.h>
+
 #include <tsfile.h>
-#include <threads.h>
 
-#include <threadpool.h>
-#include <workload.h>
+#include <tsload/load/threadpool.h>
+#include <tsload/load/workload.h>
 
-#include <json.h>
 
 #define EWLHASHSIZE			8
 #define EWLHASHMASK			3

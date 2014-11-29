@@ -21,12 +21,14 @@
 #ifndef STEPS_H_
 #define STEPS_H_
 
-#include <defs.h>
-#include <list.h>
+#include <tsload/defs.h>
+
+#include <tsload/list.h>
 
 #include <experiment.h>
 
 #include <stdio.h>
+
 
 #define STEP_OK			0
 #define STEP_NO_RQS		-1

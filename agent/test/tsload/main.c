@@ -5,12 +5,14 @@
  *      Author: myaut
  */
 
-#include <log.h>
-#include <modules.h>
-#include <pathutil.h>
-#include <plat/posixdecl.h>
+#include <tsload/log.h>
 
-#include <tsinit.h>
+#include <tsload/defs.h>
+#include <tsload/posixdecl.h>
+
+#include <tsload/pathutil.h>
+#include <tsload/init.h>
+
 #include <tsload.h>
 
 extern int tsload_test_main();

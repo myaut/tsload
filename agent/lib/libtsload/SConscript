@@ -20,27 +20,27 @@ lib.AddDeps(('lib', 'libtscommon'),
             ('lib', 'libtsobj'),
             ('lib', 'libhostinfo'))
 
-lib.PreparePlatform()
-objects = lib.CompileSharedLibrary(Glob("src/rqsched/*.c") + Glob("src/randgen/*.c") + \
-                                   Glob("src/tpdisp/*.c"))
+lib.PreparePlatform('include/tsload/load')
+objects = lib.CompileSharedLibrary(Glob("rqsched/*.c") + Glob("randgen/*.c") + \
+                                   Glob("tpdisp/*.c"))
 
-etrace_files, man_files = env.PreprocessETrace(['src/workload.c'] + objects, 
+etrace_files, man_files = env.PreprocessETrace(['workload.c'] + objects, 
                                                 target + lib['SHLIBSUFFIX'])
 
 library = lib.LinkSharedLibrary(target, objects + etrace_files)
 
 lib.Append(TSDOC_SPACE='tsload')
-tsdoc = [lib.DocBuilder(['include/randgen.h', 'src/randgen.c', Glob('src/randgen/*.c')]),
+tsdoc = [lib.DocBuilder(['#include/tsload/load/randgen.h', 'randgen.c', Glob('randgen/*.c')]),
         
-        lib.DocBuilder(['include/threadpool.h', 'src/threadpool.c', 'src/worker.c']),
-        lib.DocBuilder(['include/tpdisp.h', 'src/tpdisp.c', Glob('src/tpdisp/*.c')]),
+        lib.DocBuilder(['#include/tsload/load/threadpool.h', 'threadpool.c', 'worker.c']),
+        lib.DocBuilder(['#include/tsload/load/tpdisp.h', 'tpdisp.c', Glob('tpdisp/*.c')]),
         
-        lib.DocBuilder(['include/workload.h', 'src/workload.c']),
-        lib.DocBuilder(['include/wltype.h', 'src/wltype.c']),
-        lib.DocBuilder(['include/wlparam.h', 'src/wlparam.c', 'src/wlpgen.c']),
-        lib.DocBuilder(['include/rqsched.h', 'src/rqsched.c', Glob('src/rqsched/*.c')]),
+        lib.DocBuilder(['#include/tsload/load/workload.h', 'workload.c']),
+        lib.DocBuilder(['#include/tsload/load/wltype.h', 'wltype.c']),
+        lib.DocBuilder(['#include/tsload/load/wlparam.h', 'wlparam.c', 'wlpgen.c']),
+        lib.DocBuilder(['#include/tsload/load/rqsched.h', 'rqsched.c', Glob('rqsched/*.c')]),
         
-        lib.DocBuilder(['include/tsload.h', 'src/tsload.c']),
+        lib.DocBuilder(['#include/tsload.h', 'tsload.c']),
         ]
         
 env.Append(TSDOC = tsdoc)

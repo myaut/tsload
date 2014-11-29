@@ -21,8 +21,10 @@
 #ifndef HIPRINT_H_
 #define HIPRINT_H_
 
-#include <defs.h>
+#include <tsload/defs.h>
+
 #include <stdio.h>
+
 
 #define INFO_DEFAULT	0
 #define INFO_ALL		0x1

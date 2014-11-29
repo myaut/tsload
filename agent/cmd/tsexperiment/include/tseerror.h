@@ -18,9 +18,10 @@
 #ifndef TSEERROR_H_
 #define TSEERROR_H_
 
-#include <defs.h>
+#include <tsload/defs.h>
 
 #include <experiment.h>
+
 
 #define TSE_ERR_DEST_STDERR		0x1
 #define TSE_ERR_DEST_EXPERIMENT	0x2

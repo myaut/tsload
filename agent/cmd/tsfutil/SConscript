@@ -8,8 +8,6 @@ Import('env')
 
 cmd = env.Clone()
 
-cmd.PreparePlatform()
-
 cmd.AddDeps(('lib', 'libtscommon'),
             ('lib', 'libtsjson'),
             ('lib', 'libtsfile'))

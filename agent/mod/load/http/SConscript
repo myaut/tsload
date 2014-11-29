@@ -6,6 +6,6 @@ if env['HAVE_CURL']:
     mod = env.Clone()
     
     mod.Append(LIBS = ['curl'])
-    mod.PreparePlatform()
+    mod.PreparePlatform('include')
     
     mod.Module('load', 'http')

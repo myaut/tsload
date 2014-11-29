@@ -18,10 +18,13 @@
 
 
 
-#include <json.h>
+#include <tsload/defs.h>
+
+#include <tsload/json/json.h>
 
 #include <string.h>
 #include <assert.h>
+
 
 void dump_error(void);
 void dump_node(json_node_t* node);

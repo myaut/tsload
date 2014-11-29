@@ -19,13 +19,15 @@
 
 
 
-#include <threads.h>
-#include <schedutil.h>
-#include <tstime.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
+#include <tsload/threads.h>
+#include <tsload/schedutil.h>
 
 #include <string.h>
-
 #include <assert.h>
+
 
 thread_t t;
 thread_event_t ev;

@@ -21,8 +21,12 @@
 #ifndef LOADAGENT_H_
 #define LOADAGENT_H_
 
-#include <list.h>
-#include <agent.h>
+#include <tsload/defs.h>
+
+#include <tsload/list.h>
+
+#include <tsload/agent/agent.h>
+
 
 void agent_workload_status(const char* wl_name, int status, long progress, const char* config_msg);
 void agent_requests_report(list_head_t* rq_list);

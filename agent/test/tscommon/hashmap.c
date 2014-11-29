@@ -1,10 +1,12 @@
-#include <defs.h>
-#include <hashmap.h>
+#include <tsload/defs.h>
+
+#include <tsload/hashmap.h>
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
 
 /**
  * Hash map test

@@ -18,12 +18,16 @@
 
 
 
-#include <randgen.h>
-#include <tstime.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
+
+#include <tsload/load/randgen.h>
 
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+
 
 /**
  * Chi-Square is a simplest test to check random generators/variators.

@@ -21,6 +21,8 @@
 #ifndef COMMANDS_H_
 #define COMMANDS_H_
 
+#include <tsload/defs.h>
+
 #include <experiment.h>
 
 #define CMD_OK		    	0

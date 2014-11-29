@@ -18,11 +18,13 @@
 
 
 
-#include <cpumask.h>
+#include <tsload/defs.h>
+
+#include <tsload/cpumask.h>
 
 #include <stdio.h>
-
 #include <assert.h>
+
 
 #define CPUID1		100
 #define CPUID2		200

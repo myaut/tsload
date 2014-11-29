@@ -21,11 +21,13 @@
 #ifndef SWAT_H_
 #define SWAT_H_
 
-#include <defs.h>
-#include <tstime.h>
-#include <list.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
+#include <tsload/list.h>
 
 #include <stdint.h>
+
 
 #define SWATWLNAMELEN		32
 

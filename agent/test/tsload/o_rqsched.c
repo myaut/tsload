@@ -5,15 +5,19 @@
  *      Author: myaut
  */
 
-#include <tsobj.h>
-#include <mempool.h>
-#include <workload.h>
-#include <rqsched.h>
-#include <autostring.h>
+#include <tsload/defs.h>
 
-#include "helpers.h"
+#include <tsload/mempool.h>
+#include <tsload/autostring.h>
+
+#include <tsload/obj/obj.h>
+
+#include <tsload/load/workload.h>
+#include <tsload/load/rqsched.h>
 
 #include <assert.h>
+
+#include "helpers.h"
 
 workload_t* wl;
 

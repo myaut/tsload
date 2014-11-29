@@ -21,8 +21,10 @@
 #ifndef TSFUTIL_H_
 #define TSFUTIL_H_
 
-#include <tsfile.h>
+#include <tsload/defs.h>
+
 #include <stdio.h>
+
 
 #define COMMAND_CREATE		0
 #define COMMAND_ADD			1

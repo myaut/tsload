@@ -21,7 +21,8 @@
 #ifndef HITRACE_H_
 #define HITRACE_H_
 
-#include <defs.h>
+#include <tsload/defs.h>
+
 
 /**
  * HostInfo tracing flags

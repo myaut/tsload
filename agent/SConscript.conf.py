@@ -9,7 +9,7 @@ Import('env')
 if 'configure' in BUILD_TARGETS:
     SCons.SConf.SetCacheMode('force')
 
-gen_inc_dir = Dir(env.BuildDir('include'))
+gen_inc_dir = Dir(env.BuildDir(PathJoin('include','tsload')))
 gen_config = gen_inc_dir.File('genconfig.h')
 gen_build = gen_inc_dir.File('genbuild.h')
 

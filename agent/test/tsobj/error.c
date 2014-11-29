@@ -5,14 +5,17 @@
  *      Author: myaut
  */
 
-#include <threads.h>
-#include <mempool.h>
-#include <json.h>
-#include <tsobj.h>
+#include <tsload/defs.h>
+
+#include <tsload/mempool.h>
+
+#include <tsload/json/json.h>
+
+#include <tsload/obj/obj.h>
 
 #include <stdio.h>
-
 #include <assert.h>
+
 
 void test_not_found() {
 	tsobj_node_t* node = tsobj_new_node(NULL);

@@ -18,11 +18,14 @@
 
 
 
-#include <json.h>
+#include <tsload/defs.h>
+
+#include <tsload/json/json.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+
 
 #define WRITER_SIMPLE_RESULT		"{\"i\":12790}"
 void test_writer_simple(void) {

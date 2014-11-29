@@ -21,8 +21,12 @@
 #ifndef SWATMAP_H_
 #define SWATMAP_H_
 
+#include <tsload/defs.h>
+
+#include <tsload/list.h>
+
 #include <stdint.h>
-#include <list.h>
+
 
 #define SWAPMAPPATHLEN	512
 

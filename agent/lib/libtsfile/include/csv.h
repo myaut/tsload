@@ -21,7 +21,10 @@
 #ifndef CSV_H_
 #define CSV_H_
 
+#include <tsload/defs.h>
+
 #include <tsfile.h>
+
 
 #define CSV_HEADER_LENGTH	1024
 #define CSVBOOLLEN			12

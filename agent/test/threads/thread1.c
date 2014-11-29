@@ -1,7 +1,10 @@
-#include <threads.h>
-#include <tstime.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
+#include <tsload/threads.h>
 
 #include <assert.h>
+
 
 #define TEST_THREAD_MAGIC		0x146ead
 

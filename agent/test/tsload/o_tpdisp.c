@@ -5,14 +5,17 @@
  *      Author: myaut
  */
 
-#include <tsobj.h>
-#include <tpdisp.h>
+#include <tsload/defs.h>
+
+#include <tsload/obj/obj.h>
+
+#include <tsload/load/tpdisp.h>
+
+#include <stdio.h>
+#include <assert.h>
 
 #include "helpers.h"
 
-#include <stdio.h>
-
-#include <assert.h>
 
 void tpd_destroy_impl(tp_disp_t* tpd) {
 	thread_pool_t tp;

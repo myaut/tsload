@@ -21,12 +21,14 @@
 #ifndef MOD_LOAD_HTTP_
 #define MOD_LOAD_HTTP_
 
-#include <netsock.h>
-#include <wlparam.h>
+#include <tsload/defs.h>
+
+#include <tsload/load/wlparam.h>
+
+#include <stdio.h>
 
 #include <curl/curl.h>
 
-#include <stdio.h>
 
 #define MAXHOSTNAMELEN	256
 #define MAXURILEN		2048

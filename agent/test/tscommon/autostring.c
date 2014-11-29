@@ -1,9 +1,11 @@
-#include <autostring.h>
-#include <mempool.h>
+#include <tsload/defs.h>
+
+#include <tsload/autostring.h>
+#include <tsload/mempool.h>
 
 #include <assert.h>
-
 #include <string.h>
+
 
 void test_aas_copy(void) {
 	char* aas;

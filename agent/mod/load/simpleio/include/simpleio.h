@@ -21,12 +21,14 @@
 #ifndef DUMMY_H_
 #define DUMMY_H_
 
-#include <defs.h>
-#include <pathutil.h>
+#include <tsload/defs.h>
 
-#include <wlparam.h>
+#include <tsload/pathutil.h>
+
+#include <tsload/load/wlparam.h>
 
 #include <plat/iofile.h>
+
 
 enum simpleio_test {
 	SIMPLEIO_READ,

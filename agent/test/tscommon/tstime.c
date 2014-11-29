@@ -1,7 +1,9 @@
-#include <defs.h>
-#include <tstime.h>
+#include <tsload/defs.h>
+
+#include <tsload/time.h>
 
 #include <assert.h>
+
 
 /**
  * TS time test.

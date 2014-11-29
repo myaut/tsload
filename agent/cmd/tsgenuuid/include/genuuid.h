@@ -21,7 +21,8 @@
 #ifndef GENUUID_H_
 #define GENUUID_H_
 
-#include <defs.h>
+#include <tsload/defs.h>
+
 
 #define UUID_OK				0
 #define UUID_ERROR			1

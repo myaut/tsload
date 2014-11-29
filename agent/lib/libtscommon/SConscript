@@ -25,7 +25,7 @@ if lib.SupportedPlatform('solaris'):
     lib.Append(LIBS = ['socket', 'nsl'])
 
 # Process PLATAPIs
-lib.PreparePlatform()
+lib.PreparePlatform('include/tsload')
 
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)
@@ -33,36 +33,36 @@ library = lib.LinkSharedLibrary(target, objects)
 lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 
 lib.Append(TSDOC_SPACE='tscommon')
-tsdoc = [lib.DocBuilder(['include/hashmap.h', 'src/hashmap.c']),
-         lib.DocBuilder(['include/syncqueue.h', 'src/syncqueue.c']),
-         lib.DocBuilder(['include/list.h']),         
+tsdoc = [lib.DocBuilder(['#include/tsload/hashmap.h', 'hashmap.c']),
+         lib.DocBuilder(['#include/tsload/syncqueue.h', 'syncqueue.c']),
+         lib.DocBuilder(['#include/tsload/list.h']),         
          
-         lib.DocBuilder(['include/pathutil.h', 'src/pathutil.c']),
-         lib.DocBuilder(['include/tsdirent.h']),
-         lib.DocBuilder(['include/readlink.h']),
-         lib.DocBuilder(['include/filemmap.h']),
+         lib.DocBuilder(['#include/tsload/pathutil.h', 'pathutil.c']),
+         lib.DocBuilder(['#include/tsload/dirent.h']),
+         lib.DocBuilder(['#include/tsload/readlink.h']),
+         lib.DocBuilder(['#include/tsload/filemmap.h']),
          
-         lib.DocBuilder(['include/threads.h', 'src/threads.c', 'src/tutil.c']),
-         lib.DocBuilder(['include/cpumask.h']),
-         lib.DocBuilder(['include/schedutil.h']),
-         lib.DocBuilder(['include/atomic.h']),
+         lib.DocBuilder(['#include/tsload/threads.h', 'threads.c', 'tutil.c']),
+         lib.DocBuilder(['#include/tsload/cpumask.h']),
+         lib.DocBuilder(['#include/tsload/schedutil.h']),
+         lib.DocBuilder(['#include/tsload/atomic.h']),
          
-         lib.DocBuilder(['include/tstime.h', 'src/tstime.c']),
-         lib.DocBuilder(['include/mempool.h', 'src/mempool.c', 'src/mempool_libc.c']),
+         lib.DocBuilder(['#include/tsload/time.h', 'time.c']),
+         lib.DocBuilder(['#include/tsload/mempool.h', 'mempool.c', 'mempool_libc.c']),
          
-         lib.DocBuilder(['include/autostring.h', 'src/autostring.c']),
+         lib.DocBuilder(['#include/tsload/autostring.h', 'autostring.c']),
          
-         lib.DocBuilder(['include/ilog2.h']),
-         lib.DocBuilder(['include/getopt.h']),
+         lib.DocBuilder(['#include/tsload/ilog2.h']),
+         lib.DocBuilder(['#include/tsload/getopt.h']),
          
-         lib.DocBuilder(['include/log.h', 'src/log.c']),
-         lib.DocBuilder(['include/netsock.h']),
-         lib.DocBuilder(['include/modules.h', 'include/modapi.h']),
-         lib.DocBuilder(['include/etrace.h']),
+         lib.DocBuilder(['#include/tsload/log.h', 'log.c']),
+         lib.DocBuilder(['#include/tsload/netsock.h']),
+         lib.DocBuilder(['#include/tsload/modules.h', '#include/tsload/modapi.h']),
+         lib.DocBuilder(['#include/tsload/etrace.h']),
          
-         lib.DocBuilder(['include/tsinit.h', 'src/tsinit.c']),
+         lib.DocBuilder(['#include/tsload/init.h', 'init.c']),
         ]
-        
+
 env.Append(TSDOC = tsdoc)
 
 Export('env')

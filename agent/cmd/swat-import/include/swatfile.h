@@ -21,7 +21,8 @@
 #ifndef SWATFILE_H_
 #define SWATFILE_H_
 
-#include <defs.h>
+#include <tsload/defs.h>
+
 
 #define SWAT_FLAT_RECORD	5
 #define SWAT_LONG_SIZE		8
