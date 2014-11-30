@@ -21,10 +21,15 @@ def PreparePlatform(self, inc_dir):
     plat_includes = []
     
     # Includes are located in several directories:
-    #    BUILD/include/.../plat     - build_inc_dir - for platform-specific headers
-    #    #include/.../              - inc_dir       - for headers with PLATAPI (public)
+    #    BUILD/include/.../plat     - build_inc_dir - for platform-specific headers    
+    #    #include/.../              - root_inc_dir  - for headers with PLATAPI (public)
     #    include/                   -               - for headers with PLATAPI (private)
+    # inc_dir contains include/ as first part of path, replace it with real include prefix
+    inc_dir = os.path.normcase(inc_dir)
+    inc_dir_parts = inc_dir.split(os.sep)
+    # ...
     build_inc_dir = self.BuildDir(inc_dir)
+    dest_dir = PathJoin(env['INSTALL_INCLUDE'], *(inc_dir_parts[1:] + ['plat']))    
     inc_dir = '#' + inc_dir
     
     self.PlatIncBuilder(plat_cache, Dir(inc_dir).glob('*.h') + Dir('include').glob('*.h'))
@@ -40,6 +45,10 @@ def PreparePlatform(self, inc_dir):
             
             if base_name not in plat_includes:                
                 self.Command(dest_file, inc_file, Copy("$TARGET", "$SOURCE"))
+                
+                # Install plat include into tsload-devel
+                if not env['_MODULE']:
+                    env.InstallTarget('tsload-devel', dest_dir, dest_file)
                 
                 plat_includes.append(base_name)
     
@@ -76,21 +85,22 @@ def PreparePlatform(self, inc_dir):
 
 env.AddMethod(PreparePlatform)
 
-PLATFORM_CHAIN = {'win32': ['win', 'generic'],
-                  'linux2': ['linux', 'posix', 'generic'],
-                  'sunos5': ['solaris', 'posix', 'generic']
-                  }
-
-try:
-    env['PLATCHAIN'] = PLATFORM_CHAIN[sys.platform]
-except KeyError:
-    raise StopError('Unsupported platform "%s"' % sys.platform)
-
-env.Macroses(*('PLAT_' + plat.upper() for plat in env['PLATCHAIN']))
-
-env['PLATDEBUG'] = True
-env['PLATCACHE'] = 'plat_cache.pch'
-env['PLATDIR'] = 'curplat'
+if env['_INTERNAL']:
+    PLATFORM_CHAIN = {'win32': ['win', 'generic'],
+                      'linux2': ['linux', 'posix', 'generic'],
+                      'sunos5': ['solaris', 'posix', 'generic']
+                      }
+    
+    try:
+        env['PLATCHAIN'] = PLATFORM_CHAIN[sys.platform]
+    except KeyError:
+        raise StopError('Unsupported platform "%s"' % sys.platform)
+    
+    env.Macroses(*('PLAT_' + plat.upper() for plat in env['PLATCHAIN']))
+    
+    env['PLATDEBUG'] = True
+    env['PLATCACHE'] = 'plat_cache.pch'
+    env['PLATDIR'] = 'curplat'
 
 PlatIncBuilder = Builder(action = '%s tools/plat/parse-include.py $SOURCES' % (sys.executable),
                          src_suffix = '.h')

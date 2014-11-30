@@ -83,6 +83,10 @@ AddOption('--test-dir',  dest='test_directory', action="store", default='',
 AddEnableOption('fast-randgen',  dest='fast_randgen', default=False,
                 help='Use faster (but less precise) method in rg_calculate_double()')
 
+# installation option
+AddEnableOption('zip-packages', dest='zip_packages', default=False, 
+                help='create individial zip packages like tsload-doc-*.zip')
+
 # Installation directories options are specified below
 
 # -------------------------
@@ -91,10 +95,15 @@ AddEnableOption('fast-randgen',  dest='fast_randgen', default=False,
 env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
                          TARGET_ARCH = GetOption('mach'))
 
+# name of the project, version, root path
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
 env['TSVERSION'] = '0.2.a1'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
+
+# this variable is a hint for build system that we 
+# are building TSLoad itself, not some extensions 
+env['_INTERNAL'] = True
 
 env['DEBUG'] = GetOption('debug')
 
@@ -151,6 +160,10 @@ if env.SupportedPlatform('posix') and env['CC'] == 'gcc':
 #------------
 # DOC
 SConscript('SConscript.doc.py', 'env')
+
+#------------
+# DEVEL
+SConscript('SConscript.devel.py', 'env')
 
 # -------------------------
 # BUILD ITEMS   
@@ -228,7 +241,8 @@ packages = ['tsload-core',
             'tsload-agents', 
             'tsload-standalone', 
             'tsload-doc',
-            'tsload-modules']
+            'tsload-modules',
+            'tsload-devel']
 
 # Packages dependencies
 
@@ -244,9 +258,10 @@ for pkg in packages:
     zip_name = '-'.join((pkg, env['TSVERSION']))   + '.zip'
     zip_path = PathJoin('#build', 'pkg', zip_name)
     
-    # zip_files = env.ZipArchive(zip_path, alias.children())
-    # env.Depends('zip', pkg)
-    # env.Alias('zip', zip_files)
+    if GetOption('zip_packages'):
+        zip_files = env.ZipArchive(zip_path, alias.children())
+        env.Depends('zip', pkg)
+        env.Alias('zip', zip_files)
     
     all_files.extend(alias.children())
     

@@ -88,7 +88,7 @@ typedef json_type_t tsobj_type_t;
 typedef json_str_t tsobj_str_t;
 
 #define TSOBJ_GEN
-#include <tsobjgen.h>
+#include <tsload/obj/tsobjgen.h>
 #undef TSOBJ_GEN
 
 #define DEFINE_TYPED_GET_INTEGER(suffix, type)								\

@@ -1,5 +1,7 @@
 import sys
 
+from pathutil import PathJoin
+
 tgtroot = 'tsload-core'
 target = 'libtsobj'
 
@@ -15,8 +17,10 @@ lib.AddDeps(('lib', 'libtscommon'), ('lib', 'libtsjson'))
 TSObjGenBuilder = Builder(action = '%s $TSLOADPATH/tools/gentsobjapi.py $SOURCE > $TARGET' % (sys.executable))
 lib.Append(BUILDERS = {'TSObjGenBuilder': TSObjGenBuilder})
 
-tsobjgen_h = lib.TSObjGenBuilder('include/tsobjgen.h', 'tsobjgen.in')
+tsobjgen_path = lib.BuildDir(PathJoin('include', 'tsload', 'obj', 'tsobjgen.h'))
+tsobjgen_h = lib.TSObjGenBuilder(tsobjgen_path, 'tsobjgen.in')
 lib.Depends('include/tsobj.h', tsobjgen_h)
+lib.InstallTarget(tgtroot, PathJoin(lib['INSTALL_INCLUDE'], 'tsload', 'obj'), tsobjgen_h)
 
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)

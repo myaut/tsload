@@ -16,7 +16,8 @@ AddOption('--prefix',  dest='prefix', action="store", default = '',
           metavar='PREFIX', help='Installation prefix') 
 
 # Define installation prefixes
-env['PREFIX'] = GetOption('prefix')
+if not env['PREFIX']:
+    env['PREFIX'] = GetOption('prefix')
 
 if not env['PREFIX']:
     env['PREFIX'] = PathJoin(env['TSLOADPATH'], 'build', env['TSNAME'])
@@ -24,21 +25,24 @@ if not env['PREFIX']:
 if not PathIsAbs(env['PREFIX']):
     env['PREFIX'] = PathAbsolute(env['PREFIX'])
 
-gen_inc_dir = Dir(env.BuildDir(PathJoin('include', 'tsload')))
-gen_install = gen_inc_dir.File('geninstall.h')
-
-conf_install = Configure(env, config_h = str(gen_install))
-
-for key, dir, win_dir, param, help in install_dirs:
-    default = win_dir if env.SupportedPlatform('win') else dir    
+if env['_INTERNAL']:
+    gen_inc_dir = Dir(env.BuildDir(PathJoin('include', 'tsload')))
+    gen_install = gen_inc_dir.File('geninstall.h')
     
-    AddOption('--' + param,  dest=param, action="store", default=default,
-              metavar='DIR', help=help + ' [EPREFIX/%default]')
-    env[key] = GetOption(param)
+    conf_install = Configure(env, config_h = str(gen_install))
     
-    conf_install.Define(key, Stringify(env[key]), comment = help)
-
-conf_install.Finish()
+    for key, dir, win_dir, param, help in install_dirs:
+        default = win_dir if env.SupportedPlatform('win') else dir    
+        
+        AddOption('--' + param,  dest=param, action="store", default=default,
+                  metavar='DIR', help=help + ' [EPREFIX/%default]')
+        env[key] = GetOption(param)
+        
+        conf_install.Define(key, Stringify(env[key]), comment = help)
+    
+    conf_install.Finish()
+    
+    env.Append(GENERATED_FILES = [gen_install])
 
 def ZipArchive(target, source, env):
     # Since default Zip target in SCons will add variant_dir, 

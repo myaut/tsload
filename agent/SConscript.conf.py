@@ -9,7 +9,7 @@ Import('env')
 if 'configure' in BUILD_TARGETS:
     SCons.SConf.SetCacheMode('force')
 
-gen_inc_dir = Dir(env.BuildDir(PathJoin('include','tsload')))
+gen_inc_dir = Dir(env.BuildDir(PathJoin('include', 'tsload')))
 gen_config = gen_inc_dir.File('genconfig.h')
 gen_build = gen_inc_dir.File('genbuild.h')
 
@@ -323,3 +323,7 @@ env = conf.Finish()
 # Generate build strings
 if GetOption('update_build'):
     env.AlwaysBuild(env.Command(gen_build, [], GenerateBuildFile))
+
+env.Append(GENERATED_FILES = [gen_build, gen_config])
+
+Export('env')

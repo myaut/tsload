@@ -21,15 +21,19 @@ else:
     raise StopError("Invalid documentation format '%s'" % doc_format)
 
 def modify_doc_targets(target, source, env):
-    def variant_tgt(entry):
+    def variant_tgt(entry):    
         # header files are located in the global directory (include/)
         # however, emitter will get an absolute path
-        # so, make it again relative and put targets into build dir
+        # so, make it again relative and put targets into build dir        
         name = str(Dir('#').rel_path(entry))    
+        name = env.BuildDir(PathJoin('tsdoc', name))    
         
-        if name[0] == '#':
-            name = name[1:]
-            name = self.env.BuildDir(PathJoin('tsdoc', name))    
+        # XXX: SCons do not deletes old targets from in-memory fs 
+        # causing glob() to emit them. Do it manually!
+        entries = entry.get_dir().entries
+        basename = PathBaseName(name)
+        if basename in entries:        
+            del entries[basename]
         
         return env.fs.File(name)
     
@@ -38,7 +42,7 @@ def modify_doc_targets(target, source, env):
 env.Append(ENV = {'TSDOC_FORMAT': doc_format})
 
 DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/build-doc.py $TSDOC_SPACE $SOURCES > $TARGET' % (sys.executable),
-                     suffix = '.tsdoc', 
+                     suffix = '.tsdoc',
                      emitter = modify_doc_targets)
 DocGenerator = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCE $TSDOC' % (sys.executable))
 

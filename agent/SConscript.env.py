@@ -3,14 +3,9 @@ import os
 import re
 
 from itertools import product
+from pathutil import *
 
 from SCons.Action import CommandAction, ActionFactory
-
-PathJoin = os.path.join
-PathBaseName = os.path.basename
-PathExists = os.path.exists
-PathAccess = os.access
-PathIsFile = os.path.isfile
 
 Import('env')
 
@@ -24,15 +19,19 @@ def SupportedPlatform(self, platform):
     return platform in self['PLATCHAIN']
 
 def BuildDir(self, dir):
-    return PathJoin(self['TSLOADPATH'], 'build', 'build', dir)
+    root_path = self['TSLOADPATH'] if self['_INTERNAL'] else self['TSEXTPATH']
+    
+    return PathJoin(root_path, 'build', 'build', dir)
  
 def AddDeps(self, *deps):
     for dir, dep in deps:
-        inc_dir = PathJoin(dir, dep, 'include')
-        lib_dir = PathJoin(dir, dep)
+        # there is no build directory for external builds, ignore it
+        if self['_INTERNAL']:
+            inc_dir = PathJoin(dir, dep, 'include')
+            lib_dir = PathJoin(dir, dep)
         
-        self['CPPPATH'] += [self.BuildDir(inc_dir)]
-        self['LIBPATH'] += [self.BuildDir(lib_dir)]
+            self['CPPPATH'] += [self.BuildDir(inc_dir)]
+            self['LIBPATH'] += [self.BuildDir(lib_dir)]
         self['LIBS'] += [dep]
 
 def InstallTarget(self, tgtroot, tgtdir, target):
@@ -98,6 +97,8 @@ def LinkSharedLibrary(self, target, objects,
 def Module(self, mod_type, mod_name, etrace_sources = []):   
     mod = self
     mod['SHLIBPREFIX'] = ''
+    
+    mod['_MODULE'] = True
     
     etrace_files = []
     man_files = []
@@ -176,12 +177,39 @@ env.AddMethod(LinkSharedLibrary)
 env.AddMethod(FindMicrosoftSDK)
 env.AddMethod(CheckBinary)
 
-env.Append(CPPPATH = [PathJoin(env['TSLOADPATH'], 'include'),   # TSLoad include directory (defs.h)
-                      env.BuildDir('include'),                  # Generated includes (genbuild.h, genconfig.h) 
-                      'include'])                               # Own subproject includes  
-env.Append(LIBPATH = [])
+env.SetDefault(_INTERNAL = False)
+env.SetDefault(_MODULE = False)
+env.SetDefault(PREFIX = None)
+
+if not env['_INTERNAL']:
+    # Read environment
+    import json
+    
+    buildenv = file(PathJoin(env['TSLOAD_DEVEL_PATH'], 'buildenv.json'))    
+    benv = json.load(buildenv)
+    
+    env.Append(**benv)
+    
+    # guess TSLOADPATH (prefix)
+    tgtdevel = PathJoin(env['INSTALL_SHARE'], 'devel')
+    env['PREFIX'] = env['TSLOADPATH'] = PathRemove(env['TSLOAD_DEVEL_PATH'], tgtdevel)
+
+# Add paths
+if env['_INTERNAL']:
+    env.Append(CPPPATH = [PathJoin(env['TSLOADPATH'], 'include'),   # TSLoad include directory (defs.h)
+                          env.BuildDir('include'),                  # Generated includes (genbuild.h, genconfig.h) 
+                          'include'])                               # Own subproject includes
+    env.Append(LIBPATH = [])
+else:
+    env.Append(CPPPATH = [PathJoin(env['TSLOADPATH'], env['INSTALL_INCLUDE']), 
+                          'include'])
+    
+    env.Append(LIBPATH = [PathJoin(env['TSLOADPATH'], env['INSTALL_LIB'])])
+
 env.Append(LIBS = [])
 env.Append(WINRESOURCES = [])
+
+env.Append(GENERATED_FILES = [])
 
 # Usage Builder
 UsageBuilder = Builder(action = '%s $TSLOADPATH/tools/genusage.py $SOURCE > $TARGET' % (sys.executable),
@@ -194,42 +222,45 @@ env.Append(TESTLIBS = {})
 env.Append(TESTMODS = {})
 env.Append(TESTBINS = {})
 
-# Add verbosity of warnings but disable unnecessary warnings
-if env['CC'] == 'gcc': 
-    env.Append(CCFLAGS = ['-Wall'])
-    env.Append(CCFLAGS = ['-Wno-unused-label', '-Wno-unused-variable', 
-                          '-Wno-unused-function', '-Wno-switch', 
-                          '-Werror-implicit-function-declaration'])
-elif env['CC'] == 'cl':
-    env.Append(CCFLAGS = ['/W3'])
-
-mach = env['TARGET_ARCH']
-if mach:
+if env['_INTERNAL']:
+    # Set default compilation parameters if we are building TSLoad from scratch
+    
+    # Add verbosity of warnings but disable unnecessary warnings
     if env['CC'] == 'gcc': 
-        if re.match('i\d86', mach) or mach == 'x86' or mach == 'sparc':
-            env.Append(CCFLAGS = ["-m32"])
-            env.Append(LINKFLAGS = ["-m32"])
-            env['DTRACEOPTS'] = '-32'
-        else:
-            env.Append(CCFLAGS = ["-m64"])
-            env.Append(LINKFLAGS = ["-m64"])
-            env['DTRACEOPTS'] = '-64'
-
-# Determine build flags (debug/release)
-if env['DEBUG']:
-    if env['CC'] == 'gcc':
-        env.Append(CCFLAGS = ["-g"])
+        env.Append(CCFLAGS = ['-Wall'])
+        env.Append(CCFLAGS = ['-Wno-unused-label', '-Wno-unused-variable', 
+                              '-Wno-unused-function', '-Wno-switch', 
+                              '-Werror-implicit-function-declaration'])
     elif env['CC'] == 'cl':
-        # FIXME: Build service fails when creating PDBs on Windows
-        # C1902 - looks like cl.exe couldn't connect to mspdbsrv.exe
-        if 'TSLOAD_PDBSERV_DISABLE' not in os.environ:
-            env.Append(CCFLAGS = ["/Zi"])
-            env.Append(LINKFLAGS =  ["/debug"])
-        env.Append(CCFLAGS = ['/Od'])           
-else:
-    if env['CC'] == 'gcc':
-        env.Append(CCFLAGS = ['-O2'])
-    elif env['CC'] == 'cl':
-        env.Append(CCFLAGS = ['/O2'])
+        env.Append(CCFLAGS = ['/W3'])
+    
+    mach = env['TARGET_ARCH']
+    if mach:
+        if env['CC'] == 'gcc': 
+            if re.match('i\d86', mach) or mach == 'x86' or mach == 'sparc':
+                env.Append(CCFLAGS = ["-m32"])
+                env.Append(LINKFLAGS = ["-m32"])
+                env['DTRACEOPTS'] = '-32'
+            else:
+                env.Append(CCFLAGS = ["-m64"])
+                env.Append(LINKFLAGS = ["-m64"])
+                env['DTRACEOPTS'] = '-64'
+    
+    # Determine build flags (debug/release)
+    if env['DEBUG']:
+        if env['CC'] == 'gcc':
+            env.Append(CCFLAGS = ["-g"])
+        elif env['CC'] == 'cl':
+            # FIXME: Build service fails when creating PDBs on Windows
+            # C1902 - looks like cl.exe couldn't connect to mspdbsrv.exe
+            if 'TSLOAD_PDBSERV_DISABLE' not in os.environ:
+                env.Append(CCFLAGS = ["/Zi"])
+                env.Append(LINKFLAGS =  ["/debug"])
+            env.Append(CCFLAGS = ['/Od'])           
+    else:
+        if env['CC'] == 'gcc':
+            env.Append(CCFLAGS = ['-O2'])
+        elif env['CC'] == 'cl':
+            env.Append(CCFLAGS = ['/O2'])
     
 Export('env')
