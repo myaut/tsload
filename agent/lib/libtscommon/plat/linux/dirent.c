@@ -22,17 +22,7 @@
 
 #include <tsload/dirent.h>
 
-PLATAPI plat_dir_t* plat_opendir(const char *name) {
-	return opendir(name);
-}
-
-PLATAPI plat_dir_entry_t* plat_readdir(plat_dir_t *dirp) {
-	return readdir(dirp);
-}
-
-PLATAPI int plat_closedir(plat_dir_t *dirp) {
-	return closedir(dirp);
-}
+plat_dirent_type_t plat_dirent_type_posix(plat_dir_entry_t* d_entry);
 
 PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 	if(d_entry->d_name[0] == '.') {
@@ -46,7 +36,7 @@ PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 		}
 	}
 
-	switch(d_entry->d_type) {
+	switch(d_entry->_d_entry->d_type) {
 		case DT_REG:	return DET_REG;
 		case DT_DIR:	return DET_DIR;
 		case DT_LNK:	return DET_SYMLINK;
@@ -57,7 +47,9 @@ PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 		case DT_SOCK:	return DET_SOCKET;
 	}
 
-	return DET_UNKNOWN;
+	/* Some filesystems like XFS do not support dt_type field
+	 * Fall back to POSIX implementation that will call stat() on it */
+	return plat_dirent_type_posix(d_entry);
 }
 
 

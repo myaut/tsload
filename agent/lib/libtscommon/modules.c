@@ -66,7 +66,7 @@ static int load_modules() {
 	}
 
 	while((d = plat_readdir(dir)) != NULL) {
-		if( plat_dirent_hidden(d))
+		if(plat_dirent_hidden(d))
 			continue;
 
 		if(plat_dirent_type(d) == DET_REG) {
