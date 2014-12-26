@@ -321,8 +321,9 @@ env = conf.Finish()
 
 #------------------------------------
 # Generate build strings
+env.Command(gen_build, [], GenerateBuildFile)
 if GetOption('update_build'):
-    env.AlwaysBuild(env.Command(gen_build, [], GenerateBuildFile))
+    env.AlwaysBuild(gen_build)
 
 env.Append(GENERATED_FILES = [gen_build, gen_config])
 
