@@ -269,3 +269,6 @@ zip_name = '-'.join((env['TSPROJECT'], env['TSVERSION'], env['TARGET_ARCH']))   
 zip_path = PathJoin('#build', 'pkg', zip_name)
 zip_file = env.ZipArchive(zip_path, all_files)
 env.Alias('zip', zip_file)
+
+# By default only build files, not install/build docs/make packages
+Default('build/build')
