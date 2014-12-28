@@ -16,7 +16,12 @@
     `# zypper in scons gcc binutils`
     * Debian/Ubuntu   
     `# apt-get install scons gcc binutils`
-    
+* RHEL/CentOS 7 do not ship SCons, download and install them directly:
+	```
+	# wget 'http://prdownloads.sourceforge.net/scons/scons-2.3.4-1.noarch.rpm'
+	# rpm -i scons-2.3.4-1.noarch.rpm
+	```
+
 ### Installing prerequisites on Solaris 11
 
 * Install SCons from sources:    

@@ -30,7 +30,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-
 PLATAPI plat_dir_t* plat_opendir(const char *name) {
 	plat_dir_t* dir;
 	DIR* d_dirp = opendir(name);
@@ -74,7 +73,7 @@ PLATAPI int plat_closedir(plat_dir_t *dirp) {
  *
  * Also to save $DIR name, we use plat_dir_t structure that proxies
  * requests to readdir/opendir/closedir */
-PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
+plat_dirent_type_t plat_dirent_type_posix(plat_dir_entry_t* d_entry) {
 	struct stat statbuf;
 	char path[PATHMAXLEN];
 
@@ -107,6 +106,10 @@ PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
 	}
 
 	return DET_UNKNOWN;
+}
+
+PLATAPI plat_dirent_type_t plat_dirent_type(plat_dir_entry_t* d_entry) {
+	return plat_dirent_type_posix(d_entry);
 }
 
 PLATAPI boolean_t plat_dirent_hidden(plat_dir_entry_t *d_entry) {
