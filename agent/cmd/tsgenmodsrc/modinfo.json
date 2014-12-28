@@ -1,0 +1,6 @@
+{ 
+	"name": "test_module",
+	"vars": {
+		"WLT_ABBR": "t"
+	}
+}

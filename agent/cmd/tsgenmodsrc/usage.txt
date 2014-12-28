@@ -1,0 +1,17 @@
+tsgenmodsrc - Generate source code for TSLoad module
+
+command line: 
+    tsgenmodsrc [-b scons|make] [-t int|ext] modinfo.json
+    
+Where options are:
+	-b 
+		scons - Generate build files for SCons (default)
+		make - Generate build files for GNU Make
+	-t (only valid with -b scons)
+		int - Generate SConscript to be used inside TSLoad
+		ext - Generate SConstruct to build module outside (default)
+		
+Environment variables (may be deduced automatically):
+	TSLOADPATH - root directory where TSLoad is installed
+	TS_SHARE_PATH - path to share directory relative to TSLOADPATH
+	TS_INCLUDE_PATH - path to include directory relative to TSLOADPATH

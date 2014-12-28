@@ -1,0 +1,137 @@
+#define LOG_SOURCE "@MODNAME@"
+#include <tsload/log.h>
+
+#include <tsload/defs.h>
+
+#include <tsload/mempool.h>
+#include <tsload/modapi.h>
+#include <tsload/autostring.h>
+
+#include <tsload/load/workload.h>
+#include <tsload/load/wltype.h>
+
+#include <@HEADER_FILENAME@>
+
+#include <stdlib.h>
+
+DECLARE_MODAPI_VERSION(MOD_API_VERSION);
+DECLARE_MOD_NAME("@MODNAME@");
+DECLARE_MOD_TYPE(MOD_TSLOAD);
+
+MODEXPORT wlp_descr_t @WL_PARAMS_VARNAME@[] = {
+	@WL_PARAMS_ARRAY@
+	{ WLP_NULL }
+};
+
+module_t* self = NULL;
+
+MODEXPORT int @FUNC_CONFIG@(workload_t* wl) {
+@ifdef WL_PARAM_VARNAME
+	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
+			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
+@endif
+@ifdef WL_DATA_STRUCT
+	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ = NULL;
+	
+	@WL_DATA_VARNAME@ = (struct @WL_DATA_STRUCT@*) mp_malloc(sizeof(struct @WL_DATA_STRUCT@));
+	
+	if(@WL_DATA_VARNAME@ == NULL) {
+		wl_notify(wl, WLS_CFG_FAIL, 0, "Cannot allocate data structure");
+		return -1;
+	}
+	
+	wl->wl_private = @WL_DATA_VARNAME@;
+@endif
+
+	/* TODO: Insert workload configuration code here */
+
+	return 0;
+}
+
+MODEXPORT int @FUNC_UNCONFIG@(workload_t* wl) {
+@ifdef WL_PARAM_VARNAME
+	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
+			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
+@endif
+@ifdef WL_DATA_STRUCT
+	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
+			(struct @WL_DATA_STRUCT@*) wl->wl_private;
+@endif
+
+	/* TODO: Insert workload cleanup code here */
+
+	return 0;
+}
+
+MODEXPORT int @FUNC_REQUEST@(request_t* rq) {
+	workload_t* wl = rq->rq_workload;
+
+@ifdef WL_PARAM_VARNAME
+	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
+			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
+@endif
+@ifdef WL_DATA_STRUCT
+	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
+			(struct @WL_DATA_STRUCT@*) wl->wl_private;
+@endif  
+@ifdef RQ_PARAM_VARNAME
+	struct @RQ_PARAM_STRUCT@* @RQ_PARAM_VARNAME@ =
+			(struct @RQ_PARAM_STRUCT@*) rq->rq_params;
+@endif 
+	
+	/* TODO: Implement request function */
+
+	return 0;
+}
+
+@ifdef FUNC_STEP
+MODEXPORT int @FUNC_STEP@(workload_step_t* wls) {
+	workload_t* wl = wls->wl;
+@ifdef WL_PARAM_VARNAME
+	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
+			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
+@endif
+@ifdef WL_DATA_STRUCT
+	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
+			(struct @WL_DATA_STRUCT@*) wl->wl_private;
+@endif 	
+	
+
+	return 0;
+}
+@endif
+
+wl_type_t @WLT_VARNAME@ = {
+	AAS_CONST_STR("@WLT_NAME@"),		/* wlt_name */
+
+	@WLT_CLASS@,						/* wlt_class */
+
+	@WL_PARAMS_NAME@,					/* wlt_params */
+	sizeof(struct @WL_PARAM_STRUCT@),	/* wlt_params_size*/
+	sizeof(struct @RQ_PARAM_STRUCT@), 	/* wlt_rqparams_size*/
+
+	@FUNC_CONFIG@,						/* wlt_wl_config */
+	@FUNC_UNCONFIG@,					/* wlt_wl_unconfig */
+
+@ifdef FUNC_STEP
+	@FUNC_STEP@
+@else
+	NULL,								/* wlt_wl_step */
+@endif
+
+	@FUNC_REQUEST@						/* wlt_run_request */
+};
+
+MODEXPORT int mod_config(module_t* mod) {
+	self = mod;
+
+	wl_type_register(mod, &@WLT_VARNAME@);
+
+	return MOD_OK;
+}
+
+MODEXPORT int mod_unconfig(module_t* mod) {
+	wl_type_unregister(mod, &@WLT_VARNAME@);
+
+	return MOD_OK;
+}

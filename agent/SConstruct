@@ -176,7 +176,8 @@ build_items = [ # tsload-core
                ('lib', 'libtsfile'),
                ('lib', 'libtsload'),               
                ('cmd', 'tshostinfo'),
-               ('cmd', 'tsfutil'),               
+               ('cmd', 'tsfutil'),
+               ('cmd', 'tsgenmodsrc'),               
                
                # tsload-standalone
                ('cmd', 'tsexperiment'),

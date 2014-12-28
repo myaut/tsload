@@ -1,0 +1,21 @@
+from pathutil import *
+
+tgtroot = 'tsload-core'
+tgtdir = 'bin'
+target = 'tsgenmodsrc'
+
+Import('env')
+
+cmd = env.Clone()
+
+cmd.AddDeps(('lib', 'libtscommon'),
+            ('lib', 'libtsjson'))
+
+objects = cmd.CompileProgram()
+tsgenmodsrc = cmd.Program(target, objects)
+
+cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsgenmodsrc)
+cmd.InstallTarget(tgtroot, PathJoin(env['INSTALL_VAR'], 'modsrc'), File('modinfo.json'))
+
+for modsrc_file in Glob('modsrc/*'):
+    cmd.InstallTarget(tgtroot, PathJoin(env['INSTALL_SHARE'], 'devel', 'modsrc'), modsrc_file)
