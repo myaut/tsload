@@ -14,6 +14,15 @@
 * [Reproducing disk workload with SWAT and simpleio][intro/swat]
 * [Instrumenting and tuning TSLoad][intro/calibrate]
 
+### Developers guide
+[__docspace__:devel]
+
+* [Architecture][devel/arch]
+* [Coding guidelines][devel/codestyle]
+* [Build system][devel/build]
+* [Platform-specific builds][devel/plat]
+* [TSDoc][devel/tsdoc]
+* [Tests][devel/tsdoc]
 
 ### TSLoad reference
 [__docspace__:ref]
