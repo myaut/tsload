@@ -1,8 +1,15 @@
 tsgenmodsrc - Generate source code for TSLoad module
 
 command line: 
-    tsgenmodsrc [-b scons|make] [-t int|ext] modinfo.json
-    
+    tsgenmodsrc [-b scons|make] [-t int|ext] command modinfo.json
+
+Where commands are:
+	vars		- Show variables
+	source|src	- Generate source files and write to stdout
+	header|hdr	- Generate header file and write to stdout
+	makefile	- Generate build file (SCons/Make) and write to stdout
+	genmod    	- Generate all files and put them into directory containing modinfo.json
+	
 Where options are:
 	-b 
 		scons - Generate build files for SCons (default)

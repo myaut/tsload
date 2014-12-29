@@ -38,7 +38,8 @@ modvar_t* modvar_create_impl(int nametype, const char* name) {
 		aas_copy(aas_init(&var->name), name);
 
 	aas_init(&var->value);
-	var->value_generator = NULL;
+	var->valgen = NULL;
+	var->valgen_arg = NULL;
 
 	var->next = NULL;
 
@@ -51,6 +52,10 @@ modvar_t* modvar_create_impl(int nametype, const char* name) {
 }
 
 void modvar_destroy(modvar_t* var) {
+	if(var->valgen_dtor) {
+		var->valgen_dtor(var->valgen_arg);
+	}
+
 	aas_free(&var->value);
 	aas_free(&var->name);
 	mp_cache_free(&var_cache, var);
@@ -69,25 +74,41 @@ modvar_t* modvar_printf(modvar_t* var, const char* fmtstr, ...) {
 	return var;
 }
 
-modvar_t* modvar_gen(modvar_t* var, modsrc_value_gen_func value_gen) {
+modvar_t* modvar_set_gen(modvar_t* var, modsrc_value_gen_func valgen,
+					 	 modsrc_dtor_func dtor, void* arg) {
 	if(var == NULL)
 		return NULL;
 
-	var->value_generator = value_gen;
+	var->valgen = valgen;
+	var->valgen_dtor = dtor;
+	var->valgen_arg = arg;
 
 	return var;
 }
 
+modvar_t* modvar_get(const char* name) {
+	return hash_map_find(&var_hash_map, name);
+}
+
 int modvar_unset(const char* name) {
-	modvar_t* var = hash_map_find(&var_cache, name);
+	modvar_t* var = hash_map_find(&var_hash_map, name);
 
 	if(var == NULL)
 		return MODVAR_NOTFOUND;
 
-	hash_map_remove(&var_cache, var);
+	hash_map_remove(&var_hash_map, var);
 	modvar_destroy(var);
 
 	return MODVAR_OK;
+}
+
+boolean_t modvar_is_set(const char* name) {
+	modvar_t* var = hash_map_find(&var_hash_map, name);
+
+	if(var == NULL)
+		return B_TRUE;
+
+	return B_FALSE;
 }
 
 

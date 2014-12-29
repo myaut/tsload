@@ -28,12 +28,21 @@
 #define VARHASHMASK				(VARHASHSIZE - 1)
 
 #define DEVEL_DIR				"devel"
+#define MODSRC_DIR				"modsrc"
+#define HEADER_IN_FN			"modsrc.h.in"
+#define SOURCE_IN_FN			"modsrc.c.in"
 
 #define MOD_BUILD_SCONS			0
 #define MOD_BUILD_MAKE			1
 
 #define MOD_INTERNAL			0
 #define MOD_EXTERNAL			1
+
+#define MODSRC_SHOW_VARS			0
+#define MODSRC_SHOW_HEADER			1
+#define MODSRC_SHOW_SOURCE			2
+#define MODSRC_SHOW_MAKEFILE		3
+#define MODSRC_GENERATE				4
 
 #define MODVAR_OK				0
 #define MODVAR_NOTFOUND			-1
@@ -46,13 +55,17 @@
 #define MODINFO_CFG_MISSING_NAME	-5
 #define MODINFO_CFG_INVALID_VAR		-6
 
-typedef int (*modsrc_value_gen_func)(FILE* f);
+typedef void (*modsrc_value_gen_func)(FILE* outf, void* arg);
+typedef void (*modsrc_dtor_func)(void* arg);
 
 typedef struct modvar {
 	AUTOSTRING char* name;
 
 	AUTOSTRING char* value;
-	modsrc_value_gen_func value_generator;
+
+	modsrc_value_gen_func valgen;
+	modsrc_dtor_func valgen_dtor;
+	void* valgen_arg;
 
 	struct modvar* 	next;
 } modvar_t;
@@ -78,9 +91,15 @@ STATIC_INLINE modvar_t* modvar_vprintf(modvar_t* var, const char* fmtstr, va_lis
 
 	return var;
 }
+
 modvar_t* modvar_printf(modvar_t* var, const char* fmtstr, ...);
-modvar_t* modvar_gen(modvar_t* var, modsrc_value_gen_func value_gen);
+
+modvar_t* modvar_set_gen(modvar_t* var, modsrc_value_gen_func valgen,
+					 	 modsrc_dtor_func dtor, void* arg);
+
+modvar_t* modvar_get(const char* name);
 int modvar_unset(const char* name);
+boolean_t modvar_is_set(const char* name);
 
 void modvar_destroy(modvar_t* var);
 

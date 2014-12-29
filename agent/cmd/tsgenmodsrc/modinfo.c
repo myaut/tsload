@@ -233,16 +233,22 @@ int modinfo_read_vars(const char* modname, json_node_t* vars) {
 	MODINFO_READ_VAR(vars, "RQ_PARAM_VARNAME", "%srq", wlt_abbr);
 
 	/* TODO: WLT_CLASS */
+	modvar_set(modvar_create("WLT_CLASS"), "@WLT_CLASS@");
 
 	MODINFO_READ_VAR(vars, "WLT_VARNAME", "%s_wlt", wlt_name);
 	MODINFO_READ_VAR(vars, "WL_PARAMS_VARNAME", "%s_params", wlt_name);
 
 	MODINFO_READ_VAR(vars, "FUNC_CONFIG", "%s_wl_config", wlt_name);
-	MODINFO_READ_VAR(vars, "FUNC_UNCONFIG", "%s_wl_config", wlt_name);
+	MODINFO_READ_VAR(vars, "FUNC_UNCONFIG", "%s_wl_unconfig", wlt_name);
 	MODINFO_READ_VAR(vars, "FUNC_RUN_REQUEST", "%s_run_request", wlt_name);
 
 	/* FIXME: Read only if step function is needed */
 	MODINFO_READ_VAR(vars, "FUNC_STEP", "%s_step", wlt_name);
+
+	/* TODO: Implement real params */
+	modvar_set(modvar_create("WL_PARAM_FIELDS"), "@WL_PARAM_FIELDS@");
+	/* modvar_set(modvar_create("RQ_PARAM_FIELDS"), "@RQ_PARAM_FIELDS@"); */
+	modvar_set(modvar_create("WL_PARAMS_ARRAY"), "@WL_PARAMS_ARRAY@");
 
 	ret = MODINFO_OK;
 

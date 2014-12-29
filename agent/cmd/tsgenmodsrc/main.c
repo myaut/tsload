@@ -32,6 +32,7 @@
 #include <tsload/json/json.h>
 
 #include <genmodsrc.h>
+#include <preproc.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -46,17 +47,20 @@ char root_path[PATHMAXLEN];
 char devel_path[PATHPARTMAXLEN];
 char include_path[PATHPARTMAXLEN];
 
+extern boolean_t modpp_trace;
+
 int build_system = MOD_BUILD_SCONS;
 int module_type  = MOD_EXTERNAL;
+int command = 0;
 
 void usage(int ret, const char* reason, ...);
 
 static void parse_options(int argc, char* argv[]) {
 	int ok = 1;
-
+	int argi;
 	int c;
 
-	while((c = plat_getopt(argc, argv, "hvb:t:")) != -1) {
+	while((c = plat_getopt(argc, argv, "hvb:t:T")) != -1) {
 		switch(c) {
 		case 'v':
 			print_ts_version("Module source generator");
@@ -72,6 +76,9 @@ static void parse_options(int argc, char* argv[]) {
 			else {
 				usage(1, "Invalid build system '%s'\n", optarg);
 			}
+			break;
+		case 'T':
+			modpp_trace = B_TRUE;
 			break;
 		case 't':
 			if(strcmp(optarg, "int") == 0) {
@@ -97,11 +104,38 @@ static void parse_options(int argc, char* argv[]) {
 		usage(1, "Invalid arguments: internal modules couln't be built by GNU make\n");
 	}
 
-	if(optind == argc) {
+	/* Check subcommand */
+	argi = optind;
+	if(argi == argc) {
+		usage(1, "Missing subcommand\n");
+	}
+
+	if(strcmp(argv[optind], "vars") == 0) {
+		command = MODSRC_SHOW_VARS;
+	}
+	else if(strcmp(argv[optind], "header") == 0 || strcmp(argv[optind], "hdr") == 0) {
+		command = MODSRC_SHOW_HEADER;
+	}
+	else if(strcmp(argv[optind], "source") == 0 || strcmp(argv[optind], "src") == 0) {
+		command = MODSRC_SHOW_SOURCE;
+	}
+	else if(strcmp(argv[optind], "makefile") == 0) {
+		command = MODSRC_SHOW_MAKEFILE;
+	}
+	else if(strcmp(argv[optind], "generate") == 0) {
+		command = MODSRC_GENERATE;
+	}
+	else {
+		usage(1, "Invalid subcommand\n");
+	}
+
+	/* Read modinfo path */
+	++argi;
+	if(argi == argc) {
 		usage(1, "Missing modinfo.json path\n");
 	}
 
-	strncpy(modinfo_path, argv[optind], PATHMAXLEN);
+	strncpy(modinfo_path, argv[argi], PATHMAXLEN);
 }
 
 /* Builds path relative to root from subpath and extrapath (may be NULL).
@@ -176,6 +210,28 @@ static void deduce_paths(void) {
 	}
 }
 
+int tsgenmodsrc_pp(const char* fname, FILE* outf) {
+	char path[PATHMAXLEN];
+	FILE* inf;
+	int err = MODPP_OK;
+
+	path_join(path, PATHMAXLEN, devel_path, MODSRC_DIR,
+			  fname, NULL);
+
+	inf = fopen(path, "r");
+
+	if(inf == NULL) {
+		fprintf(stderr, "Cannot open template file '%s'", path);
+		return 1;
+	}
+
+	modpp_subst(inf, outf);
+
+	fclose(inf);
+
+	return 0;
+}
+
 int tsgenmodsrc_init(void) {
 	struct subsystem subsys[] = {
 		SUBSYSTEM("log", log_init, log_fini),
@@ -220,7 +276,7 @@ int main(int argc, char* argv[]) {
 	modvar_set(modvar_create("TS_INSTALL_INCLUDE"), include_path);
 	modvar_set(modvar_create("TS_INSTALL_DEVEL"), devel_path);
 
-	if(modinfo_check_dir(modinfo_path) != 0) {
+	if(command == MODSRC_GENERATE && modinfo_check_dir(modinfo_path) != 0) {
 		return 1;
 	}
 
@@ -228,7 +284,17 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	modsrc_dump_vars();
+	switch(command) {
+	case MODSRC_SHOW_VARS:
+		modsrc_dump_vars();
+		break;
+	case MODSRC_SHOW_HEADER:
+		tsgenmodsrc_pp(HEADER_IN_FN, stdout);
+		break;
+	case MODSRC_SHOW_SOURCE:
+		tsgenmodsrc_pp(SOURCE_IN_FN, stdout);
+		break;
+	}
 
 	return 0;
 }

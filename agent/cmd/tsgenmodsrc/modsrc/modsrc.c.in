@@ -23,13 +23,31 @@ MODEXPORT wlp_descr_t @WL_PARAMS_VARNAME@[] = {
 	{ WLP_NULL }
 };
 
+@define WL_GET_PARAMS
+@ifdef WL_PARAM_FIELDS
+struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
+		(struct @WL_PARAM_STRUCT@*) wl->wl_params;
+@endif
+@enddef
+
+@define WL_GET_DATA
+@ifdef WL_DATA_STRUCT
+struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
+		(struct @WL_DATA_STRUCT@*) wl->wl_private;
+@endif
+@enddef 
+
+@define RQ_GET_PARAMS
+@ifdef RQ_PARAM_FIELDS
+struct @RQ_PARAM_STRUCT@* @RQ_PARAM_VARNAME@ =
+		(struct @RQ_PARAM_STRUCT@*) rq->rq_params;
+@endif
+@enddef
+
 module_t* self = NULL;
 
 MODEXPORT int @FUNC_CONFIG@(workload_t* wl) {
-@ifdef WL_PARAM_VARNAME
-	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
-			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
-@endif
+	@WL_GET_PARAMS@
 @ifdef WL_DATA_STRUCT
 	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ = NULL;
 	
@@ -49,35 +67,23 @@ MODEXPORT int @FUNC_CONFIG@(workload_t* wl) {
 }
 
 MODEXPORT int @FUNC_UNCONFIG@(workload_t* wl) {
-@ifdef WL_PARAM_VARNAME
-	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
-			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
-@endif
-@ifdef WL_DATA_STRUCT
-	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
-			(struct @WL_DATA_STRUCT@*) wl->wl_private;
-@endif
+	@WL_GET_PARAMS@
+	@WL_GET_DATA@
 
 	/* TODO: Insert workload cleanup code here */
+
+@ifdef WL_DATA_STRUCT
+	mp_free(@WL_DATA_VARNAME@);
+@endif
 
 	return 0;
 }
 
-MODEXPORT int @FUNC_REQUEST@(request_t* rq) {
+MODEXPORT int @FUNC_RUN_REQUEST@(request_t* rq) {
 	workload_t* wl = rq->rq_workload;
-
-@ifdef WL_PARAM_VARNAME
-	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
-			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
-@endif
-@ifdef WL_DATA_STRUCT
-	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
-			(struct @WL_DATA_STRUCT@*) wl->wl_private;
-@endif  
-@ifdef RQ_PARAM_VARNAME
-	struct @RQ_PARAM_STRUCT@* @RQ_PARAM_VARNAME@ =
-			(struct @RQ_PARAM_STRUCT@*) rq->rq_params;
-@endif 
+ 	@WL_GET_PARAMS@
+	@WL_GET_DATA@
+	@RQ_GET_PARAMS@
 	
 	/* TODO: Implement request function */
 
@@ -87,16 +93,11 @@ MODEXPORT int @FUNC_REQUEST@(request_t* rq) {
 @ifdef FUNC_STEP
 MODEXPORT int @FUNC_STEP@(workload_step_t* wls) {
 	workload_t* wl = wls->wl;
-@ifdef WL_PARAM_VARNAME
-	struct @WL_PARAM_STRUCT@* @WL_PARAM_VARNAME@ =
-			(struct @WL_PARAM_STRUCT@*) wl->wl_params;
-@endif
-@ifdef WL_DATA_STRUCT
-	struct @WL_DATA_STRUCT@* @WL_DATA_VARNAME@ =
-			(struct @WL_DATA_STRUCT@*) wl->wl_private;
-@endif 	
-	
+	@WL_GET_PARAMS@
+	@WL_GET_DATA@
 
+	/* TODO: Implement step function */
+	
 	return 0;
 }
 @endif
@@ -106,9 +107,17 @@ wl_type_t @WLT_VARNAME@ = {
 
 	@WLT_CLASS@,						/* wlt_class */
 
-	@WL_PARAMS_NAME@,					/* wlt_params */
+	@WL_PARAMS_VARNAME@,					/* wlt_params */
+@ifdef WL_PARAM_FIELDS
 	sizeof(struct @WL_PARAM_STRUCT@),	/* wlt_params_size*/
+@else
+	0,									/* wlt_params_size*/
+@endif
+@ifdef RQ_PARAM_FIELDS
 	sizeof(struct @RQ_PARAM_STRUCT@), 	/* wlt_rqparams_size*/
+@else
+	0,									/* wlt_rqparams_size*/
+@endif
 
 	@FUNC_CONFIG@,						/* wlt_wl_config */
 	@FUNC_UNCONFIG@,					/* wlt_wl_unconfig */
@@ -119,7 +128,7 @@ wl_type_t @WLT_VARNAME@ = {
 	NULL,								/* wlt_wl_step */
 @endif
 
-	@FUNC_REQUEST@						/* wlt_run_request */
+	@FUNC_RUN_REQUEST@					/* wlt_run_request */
 };
 
 MODEXPORT int mod_config(module_t* mod) {
