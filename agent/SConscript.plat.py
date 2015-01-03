@@ -12,7 +12,8 @@ Import('env')
 # 2. Creates tasks for source platform preprocessing
 def PreparePlatform(self, inc_dir):
     self.Append(ENV = {'PLATCACHE': PathJoin(Dir('.').path, self['PLATCACHE'])})
-    self.Append(ENV = {'PLATDEBUG': self['PLATDEBUG']})
+    if self['PLATDEBUG']:
+        self.Append(ENV = {'PLATDEBUG': self['PLATDEBUG']})
     
     plat_chain = self['PLATCHAIN']
     rev_plat_chain = list(reversed(plat_chain))
@@ -98,13 +99,15 @@ if env['_INTERNAL']:
     
     env.Macroses(*('PLAT_' + plat.upper() for plat in env['PLATCHAIN']))
     
-    env['PLATDEBUG'] = True
+    env['PLATDEBUG'] = 'plat' in env['VERBOSE_BUILD']
     env['PLATCACHE'] = 'plat_cache.pch'
     env['PLATDIR'] = 'curplat'
 
-PlatIncBuilder = Builder(action = '%s tools/plat/parse-include.py $SOURCES' % (sys.executable),
+PlatIncBuilder = Builder(action = Action('%s tools/plat/parse-include.py $SOURCES' % (sys.executable), 
+                                         env.PrintCommandLine('PLATINC')),
                          src_suffix = '.h')
-PlatSrcBuilder = Builder(action = '%s tools/plat/proc-source.py $SOURCE > $TARGET' % (sys.executable),
+PlatSrcBuilder = Builder(action = Action('%s tools/plat/proc-source.py $SOURCE > $TARGET' % (sys.executable),
+                                         env.PrintCommandLine('PLATSRC')),
                          suffix = '.c',
                          src_suffix = '.c')
 env.Append(BUILDERS = {'PlatIncBuilder': PlatIncBuilder, 

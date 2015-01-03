@@ -14,7 +14,7 @@ from collections import defaultdict
 from tsdoc import *
 
 _DEBUG = False
-TRACE_DEFINITIONS = True
+TRACE_DEFINITIONS = os.getenv('TSDOC_VERBOSE', None) is not None
 
 __all__ = ['SourceParser', 'TSDocParserError', 'TSDocDefinitionError']
 

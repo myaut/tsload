@@ -6,6 +6,7 @@ from itertools import product
 from pathutil import *
 
 from SCons.Action import CommandAction, ActionFactory
+from SCons.Node.FS import Base
 
 Import('env')
 
@@ -166,6 +167,31 @@ def FindMicrosoftSDK(self):
         self.Append(LIBPATH = [PathJoin(winsdk_path, 'Lib')])
     self.Append(LIBS = ['Kernel32.lib'])
 
+def PostPrintCommandLine(s, target, source, env):    
+    try:    
+        # Print each target onto console
+        if s.startswith('Copy('):
+            action = 'COPY'
+        else:
+            action, _ = s.split(':')
+        
+        for tgtnode in target:
+            if isinstance(tgtnode, Base):
+                try:
+                    path = PathRemoveAbs(tgtnode.abspath, env.BuildDir(''))
+                except ValueError:
+                    path = PathRemoveAbs(tgtnode.abspath, env['PREFIX'])
+            else:
+                path = tgtnode
+            print ' %-12s %s' % (action, path) 
+    except Exception:
+        print s
+
+def PrintCommandLine(self, action):
+    ''' Hide build/install directory and pretty print action to console '''    
+    if 'cmdline' in env['VERBOSE_BUILD']:
+        return lambda target, source, env: '%s:$TARGET' % action
+
 env.AddMethod(AddDeps)
 env.AddMethod(Macroses)
 env.AddMethod(BuildDir)
@@ -178,7 +204,9 @@ env.AddMethod(LinkProgram)
 env.AddMethod(LinkSharedLibrary)
 env.AddMethod(FindMicrosoftSDK)
 env.AddMethod(CheckBinary)
+env.AddMethod(PrintCommandLine)
 
+env.SetDefault(VERBOSE_BUILD = [])
 env.SetDefault(_INTERNAL = False)
 env.SetDefault(_MODULE = False)
 env.SetDefault(PREFIX = None)
@@ -214,10 +242,21 @@ env.Append(WINRESOURCES = [])
 env.Append(GENERATED_FILES = [])
 
 # Usage Builder
-UsageBuilder = Builder(action = '%s $TSLOADPATH/tools/genusage.py $SOURCE > $TARGET' % (sys.executable),
+UsageBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genusage.py $SOURCE > $TARGET' % (sys.executable),
+                                       env.PrintCommandLine('USAGE')),
                        src_suffix = '.txt',
                        suffix = '.c')
 env.Append(BUILDERS = {'UsageBuilder': UsageBuilder})
+
+# Prettify SCons output
+if 'cmdline' not in env['VERBOSE_BUILD']:
+    env.Append(CCCOMSTR     = 'CC:$TARGET',
+               SHCCCOMSTR   = 'CC [SH]:$TARGET',
+               LINKCOMSTR   = 'LD:$TARGET',
+               ARCOMSTR     = 'LD:$TARGET',
+               SHLINKCOMSTR = 'LD [SH]:$TARGET',
+               INSTALLSTR   = 'INSTALL:$TARGET')
+    env['PRINT_CMD_LINE_FUNC'] = PostPrintCommandLine
 
 # This maps library/module/binary under test name to path to it
 env.Append(TESTLIBS = {})

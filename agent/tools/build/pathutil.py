@@ -28,3 +28,15 @@ def PathRemove(abspath, path):
         return os.sep.join(parts_abspath[:-len(parts_path)])
     
     raise ValueError("Path '%s' is not a part of a absolute path '%s'" % (path, abspath))
+
+def PathRemoveAbs(abspath, absdir):
+    ''' This is the opposite to PathRemove '''
+    parts_abspath = filter(None, abspath.split(os.sep))
+    parts_absdir = filter(None, absdir.split(os.sep))
+    
+    abspath_tail = parts_abspath[:len(parts_absdir)]
+    
+    if abspath_tail == parts_absdir:
+        return os.sep.join(parts_abspath[len(parts_absdir):])
+    
+    raise ValueError("Path '%s' is not a part of a absolute path '%s'" % (absdir, abspath))

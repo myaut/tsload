@@ -34,6 +34,10 @@ SConsEnvironment.Chmod = ActionFactory(os.chmod,
 # ------------------------
 # BUILD OPTIONS
 
+AddOption('--verbose-build',  dest='verbose_build', action="store", default='',
+          metavar='LIST', 
+          help='Allow additional output: comma-separated list of cmdline, plat, tsdoc, etrace')
+
 AddOption('--mach',  dest='mach', action="store", default='',
           help='Machine architecture')
 
@@ -106,6 +110,7 @@ env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 env['_INTERNAL'] = True
 
 env['DEBUG'] = GetOption('debug')
+env['VERBOSE_BUILD']= GetOption('verbose_build').split(',')
 
 env['TARGET_ARCH'] = GetOption('mach')
 

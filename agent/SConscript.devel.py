@@ -52,7 +52,7 @@ def SaveEnvironment(env, bldenv, command):
                  ('lib', 'libtsobj'),
                  ('lib', 'libtsload'))
     saveenv = File(benv.BuildDir(bldenv)) 
-    benv.Command(saveenv, [], command)
+    benv.Command(saveenv, [], Action(command, benv.PrintCommandLine('SAVEENV')))
     benv.Alias('install', saveenv)
     benv.InstallTarget(tgtroot, tgtdevel, saveenv)
 

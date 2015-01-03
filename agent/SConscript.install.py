@@ -73,7 +73,8 @@ def ZipArchive(target, source, env):
             zf.write(path, arcpath)
     zf.close()
 
-ZipArchiveBuilder = Builder(action = ZipArchive, suffix = '.zip')
+ZipArchiveBuilder = Builder(action = Action(ZipArchive, env.PrintCommandLine('ZIP')), 
+                            suffix = '.zip')
 
 env.Append(BUILDERS = {'ZipArchive': ZipArchiveBuilder})
 

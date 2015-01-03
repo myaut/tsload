@@ -9,6 +9,7 @@ from tsdoc import *
 from tsdoc.blocks import *
 from tsdoc.mdparser import MarkdownParser
 
+VERBOSE = os.getenv('TSDOC_VERBOSE', None) is not None
 _TRACE_DOCS = []
 
 class TSDocProcessError(Exception):
@@ -487,7 +488,8 @@ class IndexPage(MarkdownPage):
                     printer.do_print_pages(stream, self.header, pages)
             else:    
                 for page in pages:
-                    print 'Generating %s...' % page.doc_path
+                    if VERBOSE:
+                        print 'Generating %s...' % page.doc_path
                     
                     stream = file(page.doc_path, 'w')
                     printer.do_print(stream, self.header, page)
@@ -649,7 +651,8 @@ class IndexPage(MarkdownPage):
         
         # Generate index itself
         if not printer.single_doc:
-            print 'Generating index...'
+            if VERBOSE:
+                print 'Generating index...'
         
             self.prep_print()
             

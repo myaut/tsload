@@ -14,7 +14,8 @@ lib.Append(CCFLAGS = ['-O2'])
 # lib.PreparePlatform()
 lib.AddDeps(('lib', 'libtscommon'), ('lib', 'libtsjson'))
 
-TSObjGenBuilder = Builder(action = '%s $TSLOADPATH/tools/gentsobjapi.py $SOURCE > $TARGET' % (sys.executable))
+TSObjGenBuilder = Builder(action = Action('%s $TSLOADPATH/tools/gentsobjapi.py $SOURCE > $TARGET' % (sys.executable),
+                                          lib.PrintCommandLine('GENTSOBJAPI')))
 lib.Append(BUILDERS = {'TSObjGenBuilder': TSObjGenBuilder})
 
 tsobjgen_path = lib.BuildDir(PathJoin('include', 'tsload', 'obj', 'tsobjgen.h'))

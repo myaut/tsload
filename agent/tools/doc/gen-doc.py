@@ -13,7 +13,6 @@ from tsdoc.blocks.latex import LatexPrinter
 from tsdoc.blocks.creole import CreolePrinter
 
 # Main code
-
 _ = sys.argv.pop(0)
 index_path = sys.argv.pop(0) 
 
@@ -23,6 +22,7 @@ doc_dir = os.path.dirname(index_path)
 # Output format
 doc_format = os.getenv('TSDOC_FORMAT', 'markdown')
 doc_header = os.getenv('TSDOC_HEADER', '')
+verbose = os.getenv('TSDOC_VERBOSE', None) is not None
 
 if doc_format == 'html':
     doc_suffix = '.html'
@@ -42,7 +42,8 @@ else:
 pages = defaultdict(OrderedDict)
 tsdoc_pages = []
 
-print 'Parsing ', 
+if verbose:
+    print 'Parsing ', 
 
 for page_path in sys.argv:
     page_name = os.path.basename(page_path)
@@ -55,13 +56,15 @@ for page_path in sys.argv:
     
     pages[page.docspace][page.name] = page
 
-print '\nProcessing',
+if verbose:
+    print '\nProcessing',
 
 for page in tsdoc_pages:
     print '%s/%s' % (page.docspace, page.name),
     page.process()
 
-print '\nBuilding index...'
+if verbose:
+    print '\nBuilding index...'
 
 # Build indexes and Cross-References
 index_page = IndexPage(index_path, doc_header, pages)

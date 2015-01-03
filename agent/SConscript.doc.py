@@ -40,11 +40,15 @@ def modify_doc_targets(target, source, env):
     return map(variant_tgt, target), source
 
 env.Append(ENV = {'TSDOC_FORMAT': doc_format})
+if 'tsdoc' in env['VERBOSE_BUILD']:
+    env.Append(ENV = {'TSDOC_VERBOSE': True})
 
-DocBuilder = Builder(action = '%s $TSLOADPATH/tools/doc/build-doc.py $TSDOC_SPACE $SOURCES > $TARGET' % (sys.executable),
+DocBuilder = Builder(action = Action('%s $TSLOADPATH/tools/doc/build-doc.py $TSDOC_SPACE $SOURCES > $TARGET' % (sys.executable),
+                                     env.PrintCommandLine('DOCBUILD')),
                      suffix = '.tsdoc',
                      emitter = modify_doc_targets)
-DocGenerator = Builder(action = '%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCE $TSDOC' % (sys.executable))
+DocGenerator = Builder(action = Action('%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCE $TSDOC' % (sys.executable),
+                                       env.PrintCommandLine('DOCGEN')))
 
 env.Append(BUILDERS = {'DocBuilder': DocBuilder,
                        'DocGenerator': DocGenerator})

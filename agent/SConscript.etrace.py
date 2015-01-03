@@ -5,24 +5,30 @@ from pathutil import *
 
 Import('env')
 
-env.Append(ENV = {'ETRACEDEBUG': True})
+if 'etrace' in env['VERBOSE_BUILD']:
+    env.Append(ENV = {'ETRACEDEBUG': True})
 
 if env.SupportedPlatform('win') and env['ETRACEENABLED']:
-    EtraceBuilder = Builder(action = '%s $TSLOADPATH/tools/genetrace.py -m ETW $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
+    EtraceBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genetrace.py -m ETW $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
+                                            env.PrintCommandLine('ETRACE')),
                             suffix = '.man')
-    EtraceRCBuilder = Builder(action = 'mc -r $ETRACEDIR -h $ETRACEDIR $SOURCE', suffix = '.rc', src_suffix = '.man')
-    EtraceRESBuilder = Builder(action = 'rc /fo $TARGET $SOURCE', suffix = '.res', src_suffix = '.rc')
+    EtraceRCBuilder = Builder(action = Action('mc -r $ETRACEDIR -h $ETRACEDIR $SOURCE', env.PrintCommandLine('ETRACE [MC]')), 
+                                              suffix = '.rc', src_suffix = '.man')
+    EtraceRESBuilder = Builder(action = Action('rc /fo $TARGET $SOURCE', env.PrintCommandLine('ETRACE [RC]')), 
+                                               suffix = '.res', src_suffix = '.rc')
     env.Append(BUILDERS = {'EtraceBuilder': EtraceBuilder,
                            'EtraceRCBuilder': EtraceRCBuilder,
                            'EtraceRESBuilder': EtraceRESBuilder})
     env['ETRACESUFFIX'] = '.man'
 elif env.SupportedPlatform('linux') or env.SupportedPlatform('solaris') and env['ETRACEENABLED']:
-    EtraceBuilder = Builder(action = '%s $TSLOADPATH/tools/genetrace.py -m USDT $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
+    EtraceBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genetrace.py -m USDT $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
+                                            env.PrintCommandLine('ETRACE')),
                             suffix = '.d')
     env.Append(BUILDERS = {'EtraceBuilder': EtraceBuilder})
     
     if env.SupportedPlatform('solaris'):
-        DTraceBuilder = Builder(action = 'dtrace -xnolibs -G $DTRACEOPTS -o $TARGET -s $SOURCES',
+        DTraceBuilder = Builder(action = Action('dtrace -xnolibs -G $DTRACEOPTS -o $TARGET -s $SOURCES',
+                                                env.PrintCommandLine('DTRACE')),
                                 suffix = '.o')
         env.Append(BUILDERS = {'DTraceBuilder': DTraceBuilder})
     

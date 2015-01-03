@@ -21,7 +21,8 @@ cmd.AddDeps(('lib', 'libtscommon'),
             ('lib', 'libhostinfo'), 
             ('lib', 'libtsload'))
 
-ExpErrGenBuilder = Builder(action = '%s $TSLOADPATH/tools/genexperr.py $SOURCE > $TARGET' % (sys.executable))
+ExpErrGenBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genexperr.py $SOURCE > $TARGET' % (sys.executable),
+                                           cmd.PrintCommandLine('GENEXPERR')))
 cmd.Append(BUILDERS = {'ExpErrGenBuilder': ExpErrGenBuilder})
 
 experr_c = cmd.ExpErrGenBuilder('experr.c', 'include/experiment.h')
