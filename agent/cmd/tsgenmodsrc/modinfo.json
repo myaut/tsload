@@ -1,5 +1,15 @@
 { 
 	"name": "test_module",
+	"wlt_class": [ "cpu_integer", "cpu_misc" ],
+	"params": {
+		"size_test": {                                                                                                                                                                       
+	        "_type": "tsload.wlparam.WLParamSize",
+	        "description": "Memory pool size",
+	        "min": 8192,
+	        "max": 4398046511104
+	    }
+	},
+	"has_step": true,
 	"vars": {
 		"WLT_ABBR": "t"
 	}

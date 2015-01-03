@@ -56,6 +56,7 @@ typedef struct modpp_state {
 typedef struct modpp {
 	int pp_lineno;
 	char* pp_buf;
+	char* pp_start;
 	char* pp_end;
 	size_t pp_size;
 

@@ -7,7 +7,7 @@
 
 @ifdef WL_PARAM_FIELDS
 struct @WL_PARAM_STRUCT@ {
-	@WL_PARAM_FIELDS@
+@WL_PARAM_FIELDS@
 };
 @endif
 
@@ -19,7 +19,7 @@ struct @WL_DATA_STRUCT@ {
 
 @ifdef RQ_PARAM_FIELDS
 struct @RQ_PARAM_STRUCT@ {
-	@RQ_PARAM_FIELDS@
+@RQ_PARAM_FIELDS@
 };
 @endif
 

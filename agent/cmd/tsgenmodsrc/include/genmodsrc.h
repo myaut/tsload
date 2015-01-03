@@ -53,7 +53,12 @@
 #define MODINFO_CFG_CANNOT_OPEN		-3
 #define MODINFO_CFG_PARSE_ERROR		-4
 #define MODINFO_CFG_MISSING_NAME	-5
-#define MODINFO_CFG_INVALID_VAR		-6
+#define MODINFO_CFG_INVALID_OPT		-6
+#define MODINFO_CFG_INVALID_VAR		-7
+#define MODINFO_CFG_NO_WLT_CLASS	-8
+#define MODINFO_CFG_INVAL_WLT_CLASS	-9
+#define MODINFO_CFG_NO_PARAMS		-10
+#define MODINFO_CFG_INVALID_PARAM	-11
 
 typedef void (*modsrc_value_gen_func)(FILE* outf, void* arg);
 typedef void (*modsrc_dtor_func)(void* arg);

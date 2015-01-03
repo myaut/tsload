@@ -53,6 +53,14 @@ int build_system = MOD_BUILD_SCONS;
 int module_type  = MOD_EXTERNAL;
 int command = 0;
 
+struct subsystem subsys[] = {
+	SUBSYSTEM("log", log_init, log_fini),
+	SUBSYSTEM("mempool", mempool_init, mempool_fini),
+	SUBSYSTEM("threads", threads_init, threads_fini),
+	SUBSYSTEM("json", json_init, json_fini),
+	SUBSYSTEM("modsrc", modsrc_init, modsrc_fini)
+};
+
 void usage(int ret, const char* reason, ...);
 
 static void parse_options(int argc, char* argv[]) {
@@ -233,14 +241,6 @@ int tsgenmodsrc_pp(const char* fname, FILE* outf) {
 }
 
 int tsgenmodsrc_init(void) {
-	struct subsystem subsys[] = {
-		SUBSYSTEM("log", log_init, log_fini),
-		SUBSYSTEM("mempool", mempool_init, mempool_fini),
-		SUBSYSTEM("threads", threads_init, threads_fini),
-		SUBSYSTEM("json", json_init, json_fini),
-		SUBSYSTEM("modsrc", modsrc_init, modsrc_fini)
-	};
-
 	int count = sizeof(subsys) / sizeof(struct subsystem);
 	int i = 0;
 

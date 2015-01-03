@@ -46,7 +46,7 @@ DECLARE_FIELD_FUNCTIONS(wlp_bool_t);
 DECLARE_FIELD_FUNCTIONS(wlp_strset_t);
 DECLARE_FIELD_FUNCTIONS(wlp_hiobject_t);
 
-const char* wlt_type_tsobj_classes[WLP_TYPE_MAX] = {
+LIBEXPORT const char* wlt_type_tsobj_classes[WLP_TYPE_MAX] = {
 	"tsload.wlparam.WLParamNull",
 	"tsload.wlparam.WLParamBoolean",
 	"tsload.wlparam.WLParamInteger",

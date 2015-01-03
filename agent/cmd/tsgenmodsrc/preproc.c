@@ -113,7 +113,7 @@ void modpp_do_trace(const char* action, modpp_t* pp, modpp_state_t* state, char*
 			pp->pp_lineno, (unsigned long) pp,
 			action, modpp_state_str(state->type),
 			(state->varname) ? state->varname : "",
-			state->start - pp->pp_buf, end - pp->pp_buf);
+			state->start - pp->pp_start, end - pp->pp_start);
 }
 
 /**
@@ -206,6 +206,7 @@ void modpp_destroy_state(void* obj) {
 	aas_free(&state->varname);
 	list_del(&state->node);
 
+	mp_free(state);
 }
 
 /**
@@ -224,7 +225,8 @@ modpp_t* modpp_create_pp(int lineno, char* p, size_t size, FILE* outf) {
 
 	pp->pp_lineno = lineno;
 	pp->pp_size = size;
-	pp->pp_buf = p;
+	pp->pp_buf = NULL;
+	pp->pp_start = p;
 	pp->pp_end = p + size;
 
 	pp->pp_last = NULL;
@@ -265,8 +267,9 @@ int modpp_destroy_pp(modpp_t* pp) {
 		mp_free(pp->pp_last);
 	}
 
-	if(pp->pp_buf)
+	if(pp->pp_buf) {
 		mp_free(pp->pp_buf);
+	}
 
 	mp_free(pp);
 
@@ -343,7 +346,7 @@ void modpp_define_generate(FILE* outf, void* arg) {
 	modpp_subst_impl(pp);
 
 	/* Rewind normal state to begin */
-	state->start = pp->pp_buf;
+	state->start = pp->pp_start;
 }
 
 /**
@@ -365,7 +368,7 @@ static int modpp_commit_define(modpp_t* pp, modpp_state_t* def, char* end) {
 	defpp = modpp_create_pp(def->lineno + 1, def->start, end - def->start, NULL);
 
 	var = modvar_set_gen(modvar_create_dn(def->varname), modpp_define_generate,
-						 modpp_destroy_state, defpp);
+						 modpp_destroy_pp, defpp);
 
 	if(var == NULL) {
 		fprintf(stderr, "Cannot create define '%s' - may be already exists",
@@ -649,7 +652,7 @@ int modpp_parse_dir_novar(modpp_t* pp, modpp_state_t* state, char** ptr, char en
  */
 int modpp_subst_impl(modpp_t* pp) {
 	int ret = MODPP_OK;
-	char* p = pp->pp_buf;
+	char* p = pp->pp_start;
 	modpp_state_t* state = NULL;
 
 	while(p != pp->pp_end) {
@@ -718,6 +721,7 @@ int modpp_subst(FILE* inf, FILE* outf) {
 		goto end;
 
 	pp = modpp_create_pp(1, buffer, size, outf);
+	pp->pp_buf = buffer;
 
 	ret = modpp_subst_impl(pp);
 

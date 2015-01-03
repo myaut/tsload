@@ -9,7 +9,10 @@ Import('env')
 cmd = env.Clone()
 
 cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libtsjson'))
+            ('lib', 'libtsjson'),
+            ('lib', 'libtsobj'),
+            ('lib', 'libhostinfo'),
+            ('lib', 'libtsload'))
 
 objects = cmd.CompileProgram()
 tsgenmodsrc = cmd.Program(target, objects)

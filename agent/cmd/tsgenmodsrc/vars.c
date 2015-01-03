@@ -40,6 +40,7 @@ modvar_t* modvar_create_impl(int nametype, const char* name) {
 	aas_init(&var->value);
 	var->valgen = NULL;
 	var->valgen_arg = NULL;
+	var->valgen_dtor = NULL;
 
 	var->next = NULL;
 
@@ -117,10 +118,10 @@ boolean_t modvar_is_set(const char* name) {
 static int modvar_dump(hm_item_t* object, void* arg) {
 	modvar_t* var = (modvar_t*) object;
 
-	fprintf(stdout, "%s=%s\n", var->name,
-				(var->value)
-					? var->value
-					: "generated");
+	if(var->value)
+		fprintf(stdout, "%s=%s\n", var->name, var->value);
+	else
+		fprintf(stdout, "%s [generated]\n", var->name);
 
 	return HM_WALKER_CONTINUE;
 }
