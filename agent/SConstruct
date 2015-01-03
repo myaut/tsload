@@ -111,14 +111,6 @@ env['TARGET_ARCH'] = GetOption('mach')
 
 SConscript('SConscript.env.py', 'env')
 
-# Build options for libjson. Because libjson.h uses across all agent code,
-# define these settings globally
-if GetOption('debug'):
-    env.Macroses('JSON_DEBUG')
-    
-
-env.Macroses('JSON_MEMORY_CALLBACKS', 'JSON_INT_TYPE=long long')
-
 # --------------------------
 # PLATFORM-SPECIFIC BUILD
 SConscript('SConscript.plat.py', 'env')
