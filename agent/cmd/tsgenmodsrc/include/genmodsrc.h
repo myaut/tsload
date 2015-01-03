@@ -27,10 +27,18 @@
 #define VARHASHSIZE				32
 #define VARHASHMASK				(VARHASHSIZE - 1)
 
+#define MODTARGETPARTS			8
+
 #define DEVEL_DIR				"devel"
+#define BUILD_DIR				"build/build"
 #define MODSRC_DIR				"modsrc"
 #define HEADER_IN_FN			"modsrc.h.in"
 #define SOURCE_IN_FN			"modsrc.c.in"
+#define BUILDENV_FN				"make.bldenv.json"
+#define MAKEFILE_IN_FN			"Makefile.in"
+#define SCONSCRIPT_IN_FN		"SConscript.in"
+#define SCONSTRUCT_IN_FN		"SConstruct.in"
+#define CTIME_CACHE_FN			".ctime_cache"
 
 #define MOD_BUILD_SCONS			0
 #define MOD_BUILD_MAKE			1
@@ -43,6 +51,7 @@
 #define MODSRC_SHOW_SOURCE			2
 #define MODSRC_SHOW_MAKEFILE		3
 #define MODSRC_GENERATE				4
+#define MODSRC_CLEAN				5
 
 #define MODVAR_OK				0
 #define MODVAR_NOTFOUND			-1
@@ -74,6 +83,19 @@ typedef struct modvar {
 
 	struct modvar* 	next;
 } modvar_t;
+
+typedef struct modtarget {
+	const char* src;
+	const char* dst[MODTARGETPARTS];
+} modtarget_t;
+
+#define MOD_TARGET(src, ...) 		{src, { __VA_ARGS__, NULL } }
+#define MOD_TARGET_ROOT(src, ...)	{src, { "@MODINFODIR", __VA_ARGS__, NULL } }
+#define MOD_TARGET_BUILD(src, ...)	{src, { "@MODINFODIR", BUILD_DIR, "@MODNAME", "@MODNAME", __VA_ARGS__, NULL } }
+#define MOD_TARGET_MOD(src, ...)	{src, { "@MODINFODIR", "@MODNAME", __VA_ARGS__, NULL } }
+#define MOD_TARGET_END				MOD_TARGET(NULL, NULL)
+
+typedef int (*modsrc_generate_walk_func)(modtarget_t* tgt, const char* path, const char* dirname, void* arg);
 
 modvar_t* modvar_create_impl(int nametype, const char* name);
 #define modvar_create(name)													\
@@ -110,8 +132,10 @@ void modvar_destroy(modvar_t* var);
 
 void modsrc_dump_vars(void);
 
-int modinfo_check_dir(const char* modinfo_path);
+int modinfo_check_dir(const char* modinfo_path, boolean_t silent);
 int modinfo_read_config(const char* modinfo_path);
+
+int modinfo_read_buildenv(const char* root_path, const char* bldenv_path);
 
 int modsrc_init(void);
 void modsrc_fini(void);

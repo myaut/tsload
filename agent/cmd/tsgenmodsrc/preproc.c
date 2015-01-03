@@ -655,7 +655,13 @@ int modpp_subst_impl(modpp_t* pp) {
 	char* p = pp->pp_start;
 	modpp_state_t* state = NULL;
 
-	while(p != pp->pp_end) {
+	while(p < pp->pp_end) {
+		/* XXX: this is a hack for GNU Make expression '$@' */
+		if(*p == '$') {
+			p += 2;
+			continue;
+		}
+
 		if(*p == '@') {
 			ret = modpp_parse_directive(pp, &p);
 		}

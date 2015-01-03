@@ -137,7 +137,10 @@ SConscript('SConscript.etrace.py', 'env')
 
 env.Append(CPPPATH = [env.BuildDir('include')])
 
+# XXX: conf.CheckLib poisons LIBS, purify it!
+env['_LIBS'] = env['LIBS']
 SConscript('SConscript.conf.py', 'env')
+env['LIBS'] = env['_LIBS']
 
 # ------------------------
 # INSTALLATION DIRECTORIES

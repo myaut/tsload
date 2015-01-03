@@ -1,0 +1,6 @@
+target = '@MODNAME@'
+
+Import('env')
+
+mod = env.Clone()
+@MODNAME@ = mod.Module('@MODTYPE@', target)

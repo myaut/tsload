@@ -104,7 +104,7 @@ struct modpp_wlt_class_name {
 
 /* Checks that directory containing modinfo is clear except for
  * the modinfo.json itself */
-int modinfo_check_dir(const char* modinfo_path) {
+int modinfo_check_dir(const char* modinfo_path, boolean_t silent) {
 	path_split_iter_t iter;
 	const char* modinfo_dir;
 	const char* modinfo_filename;
@@ -116,11 +116,15 @@ int modinfo_check_dir(const char* modinfo_path) {
 
 	modinfo_filename = path_split(&iter, -2, modinfo_path);
 	modinfo_dir = path_split_next(&iter);
+	if(modinfo_dir == NULL) {
+		modinfo_dir = path_curdir;
+	}
 
 	dir = plat_opendir(modinfo_dir);
 
 	if(!dir) {
-		fprintf(stderr, "Failed to check modinfo: cannot open directory '%s'\n", modinfo_dir);
+		if(!silent)
+			fprintf(stderr, "Failed to check modinfo: cannot open directory '%s'\n", modinfo_dir);
 		return MODINFO_DIR_ERROR;
 	}
 
@@ -130,20 +134,27 @@ int modinfo_check_dir(const char* modinfo_path) {
 			if(strcmp(d->d_name, modinfo_filename) == 0) {
 				continue;
 			}
+			if(strcmp(d->d_name, CTIME_CACHE_FN) == 0) {
+				continue;
+			}
 			break;
 		case DET_PARENT_DIR:
 		case DET_CURRENT_DIR:
 			continue;
 		}
 
-		fprintf(stderr, "Failed to check modinfo: directory '%s' isn't empty, "
-				"found file '%s'\n", modinfo_dir, d->d_name);
+		if(!silent) {
+			fprintf(stderr, "Failed to check modinfo: directory '%s' isn't empty, "
+					"found file '%s'\n", modinfo_dir, d->d_name);
+		}
 
 		ret = MODINFO_DIR_NOT_EMPTY;
 		break;
 	}
 
 	plat_closedir(dir);
+
+	modvar_set(modvar_create("MODINFODIR"), modinfo_dir);
 
 	return ret;
 }
@@ -271,6 +282,14 @@ int modinfo_read_vars(const char* modname, json_node_t* vars, boolean_t has_step
 
 	MODINFO_READ_VAR(vars, "SOURCE_FILENAME", "%s.c", modname);
 	MODINFO_READ_VAR2(vars, header_name, "HEADER_FILENAME", "%s.h", modname);
+	MODINFO_READ_VAR(vars, "OBJECT_FILENAME", "%s%s", modname,
+			modvar_get("SHOBJSUFFIX")->value);
+	MODINFO_READ_VAR(vars, "MODULE_FILENAME", "%s%s", modname,
+			modvar_get("SHLIBSUFFIX")->value);
+
+	MODINFO_READ_VAR(vars, "MAKEFILE_FILENAME", "%s", "Makefile");
+	MODINFO_READ_VAR(vars, "SCONSCRIPT_FILENAME", "%s", "SConscript");
+	MODINFO_READ_VAR(vars, "SCONSTRUCT_FILENAME", "%s", "SConstruct");
 
 	header_def_tmp = modinfo_header_def(header_name);
 	MODINFO_READ_VAR2(vars, header_def, "HEADER_DEF", "%s", header_def_tmp);
@@ -361,7 +380,7 @@ void modinfo_gen_wlparam_strset(FILE* outf, void* obj) {
 			fprintf(outf, "const char* %s_strset[] = {", param->name);
 
 			for(i = 0; i < count; ++i) {
-				fprintf("\"%s\"", param->range.ss_strings[i]);
+				fprintf(outf, "\"%s\"", param->range.ss_strings[i]);
 
 				if(i < (count - 1))
 					fputs(", ", outf);
@@ -465,7 +484,7 @@ void modinfo_gen_wlparam_array(FILE* outf, void* obj) {
 		fprintf(outf, WLPLINE("\"%s\""), param->name);
 		fprintf(outf, WLPLINE("\"%s\""), param->description);
 
-		fprintf(outf, WLPLINE("offsetof(%s, %s) }"),
+		fprintf(outf, WLPLINE("offsetof(struct %s, %s) }"),
 				(param->flags & WLPF_REQUEST)
 					? rq_struct_name->value
 					: wl_struct_name->value, param->name);
@@ -811,6 +830,7 @@ int modinfo_read_config(const char* modinfo_path) {
 	json_node_t* vars = NULL;
 
 	char* modname = NULL;
+	char* modtype = "load";
 	boolean_t has_step = B_FALSE;
 
 	int ret = MODINFO_OK;
@@ -830,20 +850,27 @@ int modinfo_read_config(const char* modinfo_path) {
 	modvar_set_gen(modvar_create("_CONFIG"), NULL,
 				   modinfo_destroy_config, root);
 
-	/* Read name */
+	/* Read MODNAME */
 	if(json_get_string(root, "name", &modname) != JSON_OK) {
-		fprintf(stderr, "%s", json_error_message());
+		fprintf(stderr, "Failed to process modinfo: %s", json_error_message());
 		return MODINFO_CFG_MISSING_NAME;
 	}
 	modvar_set(modvar_create("MODNAME"), modname);
 
+	/* Read MODTYPE */
+	if(json_get_string(root, "type", &modtype) == JSON_INVALID_TYPE) {
+		fprintf(stderr, "Failed to process modinfo: %s", json_error_message());
+		return MODINFO_CFG_INVALID_OPT;
+	}
+	modvar_set(modvar_create("MODTYPE"), modtype);
+
 	if(json_get_boolean(root, "has_step", &has_step) == JSON_INVALID_TYPE) {
-		fprintf(stderr, "Failed to parse modinfo: %s\n", json_error_message());
+		fprintf(stderr, "Failed to process modinfo: %s\n", json_error_message());
 		return MODINFO_CFG_INVALID_OPT;
 	}
 
 	if(json_get_node(root, "vars", &vars) == JSON_INVALID_TYPE) {
-		fprintf(stderr, "Failed to parse modinfo: %s\n", json_error_message());
+		fprintf(stderr, "Failed to process modinfo: %s\n", json_error_message());
 		return MODINFO_CFG_INVALID_VAR;
 	}
 
@@ -860,3 +887,126 @@ int modinfo_read_config(const char* modinfo_path) {
 	return ret;
 }
 
+int modinfo_create_cflags(json_node_t* bldenv, const char* varname, const char* prefix) {
+	json_node_t* cflags;
+	json_node_t* cflag;
+	int cfid;
+	char* cflag_str;
+
+	size_t len = 0, cflag_len, capacity = 512;
+	char* str = NULL;
+
+	int err;
+	int ret = MODINFO_OK;
+	const char* errmsg;
+
+	if(json_get_array(bldenv, varname, &cflags) != JSON_OK) {
+		ret = MODINFO_CFG_INVALID_OPT;
+		errmsg = json_error_message();
+		goto end;
+	}
+
+	/* Assemble CFLAGS string */
+	str = mp_malloc(capacity);
+
+	json_for_each(cflags, cflag, cfid) {
+		cflag_str = json_as_string(cflag);
+		if(cflag_str == NULL) {
+			ret = MODINFO_CFG_INVALID_OPT;
+			errmsg = json_error_message();
+			goto end;
+		}
+
+		cflag_len = strlen(cflag_str);
+		while(cflag_len > (capacity - len)) {
+			capacity += 512;
+			str = mp_realloc(str, capacity);
+		}
+
+		if(strchr(cflag_str, ' ') == NULL)
+			err = snprintf(str + len, capacity - len, "%s%s ", prefix, cflag_str);
+		else
+			err = snprintf(str + len, capacity - len, "\"%s%s\" ", prefix, cflag_str);
+
+		if(err < 0) {
+			ret = MODINFO_CFG_INVALID_OPT;
+			errmsg = "snprintf returned -1";
+			goto end;
+		}
+
+		len += err;
+	}
+
+	/* Everything went fine, define a variable */
+	modvar_set(modvar_create_dn(varname), str);
+
+end:
+	if(str)
+		mp_free(str);
+	if(ret != MODINFO_OK)
+		fprintf(stderr, "Failed to process build environment: %s\n", errmsg);
+	return ret;
+}
+
+/**
+ * Read build environment file buildenv.json that is generated during SCons build
+ *
+ * It is used to save some SCons variables set by main SConstruct and should be
+ * reused by SConstructs of modules. By default, it is read by SCons internally,
+ * but for GNU Make build we should read them from tsgenmodsrc and write to
+ * Makefile explicitly.
+ */
+int modinfo_read_buildenv(const char* root_path, const char* bldenv_path) {
+	json_node_t* bldenv;
+	int ret = MODINFO_OK;
+	char path[PATHMAXLEN];
+	char* value;
+
+	json_buffer_t* buf = NULL;
+
+	path_join(path, PATHMAXLEN, root_path, bldenv_path, NULL);
+	buf = json_buf_from_file(path);
+
+	if(buf == NULL) {
+		fprintf(stderr, "Failed to open build environment: %s\n", json_error_message());
+		return MODINFO_CFG_CANNOT_OPEN;
+	}
+
+	if(json_parse(buf, &bldenv) != JSON_OK) {
+		fprintf(stderr, "Failed to parse build environment: %s\n", json_error_message());
+		return MODINFO_CFG_PARSE_ERROR;
+	}
+
+	ret = modinfo_create_cflags(bldenv, "CCFLAGS", "");
+	if(ret != MODINFO_OK)
+		goto end;
+
+	ret = modinfo_create_cflags(bldenv, "SHCCFLAGS", "");
+	if(ret != MODINFO_OK)
+		goto end;
+
+	ret = modinfo_create_cflags(bldenv, "LIBS", "-l");
+	if(ret != MODINFO_OK)
+		goto end;
+
+	ret = modinfo_create_cflags(bldenv, "SHLINKFLAGS", "");
+	if(ret != MODINFO_OK)
+		goto end;
+
+	if(json_get_string(bldenv, "SHOBJSUFFIX", &value) != JSON_OK) {
+		ret = MODINFO_CFG_INVALID_OPT;
+		goto end;
+	}
+	modvar_set(modvar_create("SHOBJSUFFIX"), value);
+
+	if(json_get_string(bldenv, "SHLIBSUFFIX", &value) != JSON_OK) {
+		ret = MODINFO_CFG_INVALID_OPT;
+		goto end;
+	}
+	modvar_set(modvar_create("SHLIBSUFFIX"), value);
+
+end:
+	json_node_destroy(bldenv);
+
+	return ret;
+}

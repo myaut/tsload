@@ -94,7 +94,7 @@ MODEXPORT int @FUNC_RUN_REQUEST@(request_t* rq) {
 
 @ifdef FUNC_STEP
 MODEXPORT int @FUNC_STEP@(workload_step_t* wls) {
-	workload_t* wl = wls->wl;
+	workload_t* wl = wls->wls_workload;
 	@WL_GET_PARAMS@
 	@WL_GET_DATA@
 
@@ -105,32 +105,29 @@ MODEXPORT int @FUNC_STEP@(workload_step_t* wls) {
 @endif
 
 wl_type_t @WLT_VARNAME@ = {
-	AAS_CONST_STR("@WLT_NAME@"),		/* wlt_name */
-
-	@WLT_CLASS@,						/* wlt_class */
-
-	@WL_PARAMS_VARNAME@,					/* wlt_params */
+	/* wlt_name */			AAS_CONST_STR("@WLT_NAME@"),
+	/* wlt_class */			@WLT_CLASS@,
+	/* wlt_params */		@WL_PARAMS_VARNAME@,
+						
 @ifdef WL_PARAM_FIELDS
-	sizeof(struct @WL_PARAM_STRUCT@),	/* wlt_params_size*/
+	/* wlt_params_size*/	sizeof(struct @WL_PARAM_STRUCT@),
 @else
-	0,									/* wlt_params_size*/
+	/* wlt_params_size*/	0,
 @endif
 @ifdef RQ_PARAM_FIELDS
-	sizeof(struct @RQ_PARAM_STRUCT@), 	/* wlt_rqparams_size*/
+	/* wlt_rqparams_size*/	sizeof(struct @RQ_PARAM_STRUCT@),
 @else
-	0,									/* wlt_rqparams_size*/
+	/* wlt_rqparams_size*/	0,
 @endif
 
-	@FUNC_CONFIG@,						/* wlt_wl_config */
-	@FUNC_UNCONFIG@,					/* wlt_wl_unconfig */
-
+	/* wlt_wl_config */		@FUNC_CONFIG@,
+	/* wlt_wl_unconfig */	@FUNC_UNCONFIG@,
 @ifdef FUNC_STEP
-	@FUNC_STEP@
+	/* wlt_wl_step */		@FUNC_STEP@,
 @else
-	NULL,								/* wlt_wl_step */
+	/* wlt_wl_step */		NULL,
 @endif
-
-	@FUNC_RUN_REQUEST@					/* wlt_run_request */
+	/* wlt_run_request */	@FUNC_RUN_REQUEST@
 };
 
 MODEXPORT int mod_config(module_t* mod) {

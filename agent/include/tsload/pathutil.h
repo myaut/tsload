@@ -38,6 +38,9 @@
 
 #define PATHMAXPARTS   32
 
+LIBIMPORT const char* path_curdir;
+LIBIMPORT const char* path_separator;
+
 /**
  * Temporary storage for path splitting operations
  */
@@ -67,8 +70,14 @@ LIBEXPORT char* path_split_reset(path_split_iter_t* iter);
  *
  * @note uses path_split */
 STATIC_INLINE char* path_dirname(path_split_iter_t* iter, const char* path) {
+	char* dirname = NULL;
 	path_split(iter, -2, path);
-	return path_split_next(iter);
+
+	dirname = path_split_next(iter);
+	if(dirname == NULL)
+		return path_curdir;
+
+	return dirname;
 }
 
 /**

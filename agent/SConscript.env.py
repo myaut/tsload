@@ -30,9 +30,11 @@ def AddDeps(self, *deps):
             inc_dir = PathJoin(dir, dep, 'include')
             lib_dir = PathJoin(dir, dep)
         
-            self['CPPPATH'] += [self.BuildDir(inc_dir)]
-            self['LIBPATH'] += [self.BuildDir(lib_dir)]
-        self['LIBS'] += [dep]
+            self.Append(CPPPATH = [self.BuildDir(inc_dir)])
+            self.Append(LIBPATH = [self.BuildDir(lib_dir)])
+        
+        lib_name = dep[3:] if dep.startswith('lib') else dep
+        self.Append(LIBS = [lib_name])
 
 def InstallTarget(self, tgtroot, tgtdir, target):
     tgtdir = Dir(PathJoin(self['PREFIX'], tgtdir))
@@ -185,7 +187,7 @@ if not env['_INTERNAL']:
     # Read environment
     import json
     
-    buildenv = file(PathJoin(env['TSLOAD_DEVEL_PATH'], 'buildenv.json'))    
+    buildenv = file(PathJoin(env['TSLOAD_DEVEL_PATH'], 'scons.bldenv.json'))    
     benv = json.load(buildenv)
     
     env.Append(**benv)

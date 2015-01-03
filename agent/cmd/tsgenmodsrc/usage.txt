@@ -4,11 +4,12 @@ command line:
     tsgenmodsrc [-b scons|make] [-t int|ext] command modinfo.json
 
 Where commands are:
-	vars		- Show variables
-	source|src	- Generate source files and write to stdout
-	header|hdr	- Generate header file and write to stdout
-	makefile	- Generate build file (SCons/Make) and write to stdout
-	genmod    	- Generate all files and put them into directory containing modinfo.json
+	vars			- Show variables
+	source|src		- Generate source files and write to stdout
+	header|hdr		- Generate header file and write to stdout
+	makefile		- Generate build file (SCons/Make) and write to stdout
+	generate|gen 	- Generate all files and put them into directory containing modinfo.json
+	clean 			- Clean all generated files (only if they have not been modified)
 	
 Where options are:
 	-b 
