@@ -21,5 +21,5 @@ Where options are:
 		
 Environment variables (may be deduced automatically):
 	TSLOADPATH - root directory where TSLoad is installed
-	TS_SHARE_PATH - path to share directory relative to TSLOADPATH
-	TS_INCLUDE_PATH - path to include directory relative to TSLOADPATH
+	TS_INSTALL_SHARE, TS_INSTALL_INCLUDE, TS_INSTALL_LIB, TS_INSTALL_MOD_LOAD - 
+				path to various TSLoad sub-directories relative to TSLOADPATH

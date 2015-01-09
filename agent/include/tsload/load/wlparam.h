@@ -51,6 +51,8 @@
 struct workload;
 
 /**
+ * [wlparam-typedef]
+ *
  * Workload parameter type definitions
  */
 typedef int64_t		wlp_integer_t;
@@ -61,15 +63,37 @@ typedef int  		wlp_strset_t;
 typedef void*		wlp_hiobject_t;
 
 /**
- * Workload paramter type
  * [wlparam-type]
  *
- * @value WLP_NULL	Used to mark end of param list
- * @value WLP_BOOL  Boolean type
- * @value WLP_INTEGER Integer type
- * @value WLP_FLOAT Floating point type
- * @value WLP_RAW_STRING String. Use range to define maximum length
- * @value WLP_STRING_SET Depending on input strings, selects one of possible outcomes.
+ * Workload parameter type hint.
+ *
+ * When TSLoad generates a value that is passed to a module as a workload or a request
+ * parameter, it relies on that hint to correctly handle incoming value and write it to
+ * memory.
+ *
+ * There are "base" types which define that factors but doesn't know nature of a
+ * value and a "meta" types that add meaning to a value. Meta-types rely on a corresponding
+ * base value in how they handled but add some meaning to values.
+ *
+ * I.e. there is WLP_INTEGER that is used for keeping integers (base type) that expect
+ * "integer" number from config and wlp_integer_t residing in data structure. But if it
+ * represent a size (i.e. size of disk block) it is reasonable to use WLP_SIZE - metatype
+ * that has same constraints as WLP_INTEGER but may provide nice formatting (i.e. "8 kb")
+ * in some cases.
+ *
+ * @value WLP_NULL Special value - used to mark end of parameter list
+ * @value WLP_TYPE_MAX Special value - maximum number of types
+ * @value WLP_BOOL Boolean type (wlp_bool_t)
+ * @value WLP_INTEGER Integer numbers (wlp_integer_t)
+ * @value WLP_FLOAT Floating point number (wlp_float_t)
+ * @value WLP_RAW_STRING String, statically allocated (char[]). Use range to provide its length
+ * @value WLP_STRING_SET Enumeration (int/wlp_strset_t) - parses incoming string and picks index \
+ * 						 of it in array defined by range.
+ * @value WLP_SIZE Volume of digital information in bytes (wlp_integer_t)
+ * @value WLP_TIME Time intervals (ts_time_t)
+ * @value WLP_FILE_PATH Path on a file system (char[])
+ * @value WLP_CPU_OBJECT HostInfo object representing a processor object (hi_object_t*)
+ * @value WLP_DISK HostInfo object representing a disk, volume, etc. (hi_object_t*)
  */
 typedef enum {
 	WLP_NULL,
@@ -77,13 +101,13 @@ typedef enum {
 	WLP_BOOL,
 	WLP_INTEGER,
 	WLP_FLOAT,
-	WLP_RAW_STRING, /*Any string*/
+	WLP_RAW_STRING, 	/*Any string*/
 
-	WLP_STRING_SET,  /*string - one of possible values*/
+	WLP_STRING_SET,  	/*string - one of possible values*/
 
 	/* metatypes - using primitive types in serialization
 	 * but have different meanings */
-	WLP_SIZE,		/* size - in Kb, etc. */
+	WLP_SIZE,
 	WLP_TIME,
 
 	WLP_FILE_PATH,
@@ -139,8 +163,9 @@ typedef struct {
 } wlp_default_t;
 
 /**
- * Range declaration
  * [wlparam-range]
+ *
+ * Range declaration
  */
 #define WLP_NO_RANGE()				{ B_FALSE, { {0} } }
 #define WLP_STRING_LENGTH(length) 	{ B_TRUE, { {length}, {0, 0}, {0.0, 0.0}, {0, NULL} } }
@@ -150,8 +175,9 @@ typedef struct {
 									    {sizeof((set)) / sizeof(char*), (set) } } }
 
 /**
- * Default wl parameter value
  * [wlparam-default]
+ *
+ * Default wl parameter value
  */
 #define WLP_NO_DEFAULT()				{ B_FALSE, B_FALSE }
 #define WLP_BOOLEAN_DEFAULT(b)			{ B_TRUE, b }
@@ -161,8 +187,9 @@ typedef struct {
 #define WLP_STRING_SET_DEFAULT(ssi)		{ B_TRUE, B_FALSE, 0, 0.0, NULL, ssi }
 
 /**
- * Workload parameter flags
  * [wlparam-flags]
+ *
+ * Workload parameter flags
  */
 #define WLPF_NO_FLAGS				0x00
 #define WLPF_OPTIONAL				0x01
@@ -172,9 +199,16 @@ typedef struct {
 /**
  * Workload parameter descriptor
  *
- * @member type Parameter type
- * @member flags
- * @member off Offset in data structure where param value would be written */
+ * @member type Parameter type hint
+ * @member flags Parameter flags
+ * @member range Pre-defined range of acceptable parameter values. If set, TSLoad will pre-check 				\
+ * 				 value passed from config or a server and will raise an error, if it is outside this range.
+ * @member defval Default value of parameter. Could be a hint, or if WLPF_OPTIONAL flag is set, could really	\
+ * 				  be a default value that would be used if parameter is omitted from config.
+ * @member name Name of parameter
+ * @member description Description of a parameter
+ * @member off Offset in data structure where param value would be written
+ * */
 typedef struct {
 	wlp_type_t type;
 	unsigned long flags;

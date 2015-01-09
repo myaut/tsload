@@ -32,10 +32,12 @@
 * [tsexperiment][ref/tsexperiment]
 * [tshostinfo][ref/tshostinfo]
 * [tsfutil][ref/tsfutil]
+* [tsgenmodsrc][ref/tsgenmodsrc]
 
 #### Configuration files
 
 * [experiment.json][ref/experiment_json]
+* [modinfo.json][ref/modinfo_json]
 
 #### Modules
 

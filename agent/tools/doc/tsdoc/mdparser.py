@@ -493,7 +493,8 @@ class MarkdownParser:
             eidx -= self.text_pos            
             ftext += etext[idx:eidx]
             idx = eidx + 1
-        ftext += etext[eidx:]
+            
+        ftext += etext[eidx + 1:]
         
         return ftext
     
