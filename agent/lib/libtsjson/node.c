@@ -456,7 +456,7 @@ void json_set_double(json_node_t* node, double val) {
 void json_set_string(json_node_t* node, json_str_t val) {
 	if(node->jn_type == JSON_STRING) {
 		if(node->jn_data.s != NULL) {
-			json_str_free(node->jn_data.s, NULL);
+			json_str_free(node->jn_data.s, node->jn_buf);
 		}
 
 		node->jn_data.s = val;
@@ -476,7 +476,7 @@ int json_set_number(json_node_t* node, const char* val) {
 	buf.buffer = val;
 	buf.size = strlen(val);
 
-	return json_parse_number(&parser, &buf, val);
+	return json_parse_number(&parser, &buf, &node);
 }
 
 void json_set_boolean(json_node_t* node, boolean_t val) {

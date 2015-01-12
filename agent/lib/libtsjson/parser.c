@@ -367,7 +367,9 @@ int json_parse_number(struct json_parser* parser, json_buffer_t* buf, json_node_
 									 "NUMBER literal '%s' is invalid", literal);
 	}
 
-	*object = json_node_create(buf, JSON_NUMBER);
+	if(*object == NULL) {
+		*object = json_node_create(buf, JSON_NUMBER);
+	}
 
 	if(mode & JSON_NUM_MODE_FLOAT) {
 		(*object)->jn_is_integer = B_FALSE;
