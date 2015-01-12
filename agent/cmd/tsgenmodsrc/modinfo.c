@@ -264,7 +264,7 @@ static char* modinfo_header_def(const char* header_name) {
 						fmtstr, __VA_ARGS__)) == NULL) 			\
 		goto end;
 
-int modinfo_read_vars(const char* modname, json_node_t* vars, boolean_t has_step) {
+int modinfo_read_vars(const char* modname, json_node_t* vars, boolean_t has_step, boolean_t has_data) {
 	const char* wlt_name = NULL;
 	const char* header_name = NULL;
 	const char* wlt_abbr = NULL;
@@ -297,9 +297,10 @@ int modinfo_read_vars(const char* modname, json_node_t* vars, boolean_t has_step
 	MODINFO_READ_VAR(vars, "WL_PARAM_STRUCT", "%s_workload", wlt_name);
 	MODINFO_READ_VAR(vars, "WL_PARAM_VARNAME", "%swl", wlt_abbr);
 
-	/* FIXME: Read only if data structure is needed */
-	MODINFO_READ_VAR(vars, "WL_DATA_STRUCT", "%s_data", wlt_name);
-	MODINFO_READ_VAR(vars, "WL_DATA_VARNAME", "%sdata", wlt_abbr);
+	if(has_data) {
+		MODINFO_READ_VAR(vars, "WL_DATA_STRUCT", "%s_data", wlt_name);
+		MODINFO_READ_VAR(vars, "WL_DATA_VARNAME", "%sdata", wlt_abbr);
+	}
 
 	MODINFO_READ_VAR(vars, "RQ_PARAM_STRUCT", "%s_request", wlt_name);
 	MODINFO_READ_VAR(vars, "RQ_PARAM_VARNAME", "%srq", wlt_abbr);
@@ -337,8 +338,10 @@ void modinfo_gen_wlparam_fields(FILE* outf, wlp_descr_t* params, boolean_t is_re
 	wlp_descr_t* param = params;
 
 	while(param->type != WLP_NULL) {
-		if(TO_BOOLEAN(param->flags & WLPF_REQUEST) != is_request)
+		if(TO_BOOLEAN(param->flags & WLPF_REQUEST) != is_request) {
+			++param;
 			continue;
+		}
 
 		fputc('\t', outf);
 		fputs(wlp_type_names[param->type], outf);
@@ -409,7 +412,7 @@ void modinfo_gen_wlparam_array(FILE* outf, void* obj) {
 		/* Write flags to outf - use intermediate flag has_flag
 		 * to know if another flag was set previously and | should be added */
 		has_flag = B_FALSE;
-		if(param->flags & WLPF_OUTPUT) {
+		if((param->flags & WLPF_OUTPUT) == WLPF_OUTPUT) {
 			fputs("WLPF_OUTPUT", outf);
 			has_flag = B_TRUE;
 		}
@@ -449,7 +452,7 @@ void modinfo_gen_wlparam_array(FILE* outf, void* obj) {
 			}
 		}
 		else {
-			fputs("WLP_NO_RANGE(), \n", outf);
+			fputs(WLPLINE("WLP_NO_RANGE()"), outf);
 		}
 
 		if(param->defval.enabled) {
@@ -628,6 +631,7 @@ int modinfo_parse_wlparam(wlp_descr_t* param, json_node_t* j_param) {
 		case WLP_RAW_STRING:
 			if(json_get_integer_u(j_param, "len", &param->range.str_length) != JSON_OK)
 				goto bad_json;
+			param->range.range = B_TRUE;
 			/* FALLTHROUGH */
 		case WLP_CPU_OBJECT:
 		case WLP_DISK:
@@ -726,16 +730,12 @@ int modinfo_parse_wlparams(json_node_t* root) {
 	json_for_each(j_params, j_param, paramid) {
 		ret = modinfo_parse_wlparam(param, j_param);
 		if(ret != MODINFO_OK)
-			goto end;
+			return ret;
 
 		++param;
 	}
 
 	modinfo_wlparam_set_gen(params);
-
-end:
-	if(ret != MODINFO_OK)
-		mp_free(params);
 
 	return ret;
 }
@@ -832,6 +832,7 @@ int modinfo_read_config(const char* modinfo_path) {
 	char* modname = NULL;
 	char* modtype = "load";
 	boolean_t has_step = B_FALSE;
+	boolean_t has_data = B_FALSE;
 
 	int ret = MODINFO_OK;
 
@@ -869,12 +870,17 @@ int modinfo_read_config(const char* modinfo_path) {
 		return MODINFO_CFG_INVALID_OPT;
 	}
 
+	if(json_get_boolean(root, "has_data", &has_data) == JSON_INVALID_TYPE) {
+		fprintf(stderr, "Failed to process modinfo: %s\n", json_error_message());
+		return MODINFO_CFG_INVALID_OPT;
+	}
+
 	if(json_get_node(root, "vars", &vars) == JSON_INVALID_TYPE) {
 		fprintf(stderr, "Failed to process modinfo: %s\n", json_error_message());
 		return MODINFO_CFG_INVALID_VAR;
 	}
 
-	ret = modinfo_read_vars(modname, vars, has_step);
+	ret = modinfo_read_vars(modname, vars, has_step, has_data);
 	if(ret != MODINFO_OK)
 		return ret;
 
