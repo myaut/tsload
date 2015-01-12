@@ -58,7 +58,9 @@ There are two main generators:<br />         <ul>
 </ul>
 </p>
 <h2>Constants</h2><a name="WLPF_NO_FLAGS"></a><a name="WLPF_OPTIONAL"></a><a name="WLPF_REQUEST"></a><a name="WLPF_OUTPUT"></a><h3>WLPF_OUTPUT, WLPF_REQUEST, WLPF_NO_FLAGS, WLPF_OPTIONAL</h3>    <p>
-<br />Workload parameter flags<br /><a name="wlparam-flags"></a></p>
+<a name="wlparam-flags"></a></p>
+    <p>
+Workload parameter flags<br /></p>
 <p>
 <pre>
 #define WLPF_NO_FLAGS   0x00
@@ -68,7 +70,9 @@ There are two main generators:<br />         <ul>
 </pre>
 </p>
 <h2>Functions</h2><a name="WLP_NO_RANGE"></a><a name="WLP_STRING_LENGTH"></a><a name="WLP_INT_RANGE"></a><a name="WLP_FLOAT_RANGE"></a><a name="WLP_STRING_SET_RANGE"></a><h3>WLP_NO_RANGE, WLP_STRING_SET_RANGE, WLP_FLOAT_RANGE, WLP_INT_RANGE, WLP_STRING_LENGTH</h3>    <p>
-<br />Range declaration<br /><a name="wlparam-range"></a></p>
+<a name="wlparam-range"></a></p>
+    <p>
+Range declaration<br /></p>
 <p>
 <pre>
 #define WLP_NO_RANGE()
@@ -79,7 +83,9 @@ There are two main generators:<br />         <ul>
 </pre>
 </p>
 <a name="WLP_NO_DEFAULT"></a><a name="WLP_BOOLEAN_DEFAULT"></a><a name="WLP_INT_DEFAULT"></a><a name="WLP_FLOAT_DEFAULT"></a><a name="WLP_STRING_DEFAULT"></a><a name="WLP_STRING_SET_DEFAULT"></a><h3>WLP_FLOAT_DEFAULT, WLP_STRING_SET_DEFAULT, WLP_NO_DEFAULT, WLP_INT_DEFAULT, WLP_STRING_DEFAULT, WLP_BOOLEAN_DEFAULT</h3>    <p>
-<br />Default wl parameter value<br /><a name="wlparam-default"></a></p>
+<a name="wlparam-default"></a></p>
+    <p>
+Default wl parameter value<br /></p>
 <p>
 <pre>
 #define WLP_NO_DEFAULT()
@@ -113,7 +119,9 @@ void* wlpgen_generate(struct workload* wl)
 </pre>
 </p>
 <h2>Types</h2><h3></h3>    <p>
-<br />Workload parameter type definitions<br /></p>
+<a name="wlparam-typedef"></a></p>
+    <p>
+Workload parameter type definitions<br /></p>
 <p>
 <pre>
 typedef int64_t     wlp_integer_t;
@@ -131,21 +139,41 @@ typedef void*       wlp_hiobject_t;
 </pre>
 </p>
 <a name="wlp_type_t"></a><h3>wlp_type_t</h3>    <p>
-<br />Workload paramter type<br /><a name="wlparam-type"></a></p>
+<a name="wlparam-type"></a></p>
+    <p>
+Workload parameter type hint.<br /></p>
+    <p>
+When TSLoad generates a value that is passed to a module as a workload or a request<br />parameter, it relies on that hint to correctly handle incoming value and write it to<br />memory.<br /></p>
+    <p>
+There are "base" types which define that factors but doesn't know nature of a<br />value and a "meta" types that add meaning to a value. Meta-types rely on a corresponding<br />base value in how they handled but add some meaning to values.<br /></p>
+    <p>
+I.e. there is WLP_INTEGER that is used for keeping integers (base type) that expect<br />"integer" number from config and wlp_integer_t residing in data structure. But if it<br />represent a size (i.e. size of disk block) it is reasonable to use WLP_SIZE - metatype<br />that has same constraints as WLP_INTEGER but may provide nice formatting (i.e. "8 kb")<br />in some cases.<br /></p>
     <p>
 <em>VALUES</em><br />        <ul>
             <li>
-<strong>WLP_NULL</strong> - Used to mark end of param list<br /></li>
+<strong>WLP_NULL</strong> - Special value - used to mark end of parameter list<br /></li>
             <li>
-<strong>WLP_BOOL</strong> - Boolean type<br /></li>
+<strong>WLP_TYPE_MAX</strong> - Special value - maximum number of types<br /></li>
             <li>
-<strong>WLP_INTEGER</strong> - Integer type<br /></li>
+<strong>WLP_BOOL</strong> - Boolean type (wlp_bool_t)<br /></li>
             <li>
-<strong>WLP_FLOAT</strong> - Floating point type<br /></li>
+<strong>WLP_INTEGER</strong> - Integer numbers (wlp_integer_t)<br /></li>
             <li>
-<strong>WLP_RAW_STRING</strong> - String. Use range to define maximum length<br /></li>
+<strong>WLP_FLOAT</strong> - Floating point number (wlp_float_t)<br /></li>
             <li>
-<strong>WLP_STRING_SET</strong> - Depending on input strings, selects one of possible outcomes.<br /></li>
+<strong>WLP_RAW_STRING</strong> - String, statically allocated (char[]). Use range to provide its length<br /></li>
+            <li>
+<strong>WLP_STRING_SET</strong> - Enumeration (int/wlp_strset_t) - parses incoming string and picks index                          of it in array defined by range.<br /></li>
+            <li>
+<strong>WLP_SIZE</strong> - Volume of digital information in bytes (wlp_integer_t)<br /></li>
+            <li>
+<strong>WLP_TIME</strong> - Time intervals (ts_time_t)<br /></li>
+            <li>
+<strong>WLP_FILE_PATH</strong> - Path on a file system (char[])<br /></li>
+            <li>
+<strong>WLP_CPU_OBJECT</strong> - HostInfo object representing a processor object (hi_object_t*)<br /></li>
+            <li>
+<strong>WLP_DISK</strong> - HostInfo object representing a disk, volume, etc. (hi_object_t*)<br /></li>
 </ul>
 </p>
 <p>
@@ -156,13 +184,13 @@ typedef enum {
     WLP_BOOL,
     WLP_INTEGER,
     WLP_FLOAT,
-    WLP_RAW_STRING, /*Any string*/
+    WLP_RAW_STRING,     /*Any string*/
 
-    WLP_STRING_SET,  /*string - one of possible values*/
+    WLP_STRING_SET,      /*string - one of possible values*/
 
     /* metatypes - using primitive types in serialization
      * but have different meanings */
-    WLP_SIZE,        /* size - in Kb, etc. */
+    WLP_SIZE,
     WLP_TIME,
 
     WLP_FILE_PATH,
@@ -232,11 +260,19 @@ typedef struct {
     <p>
 <em>MEMBERS</em><br />        <ul>
             <li>
-<strong>type</strong> - Parameter type<br /></li>
+<strong>type</strong> - Parameter type hint<br /></li>
             <li>
-<strong>flags</strong> - <br /></li>
+<strong>flags</strong> - Parameter flags<br /></li>
             <li>
-<strong>off</strong> - Offset in data structure where param value would be written <br /></li>
+<strong>range</strong> - Pre-defined range of acceptable parameter values. If set, TSLoad will pre-check                                  value passed from config or a server and will raise an error, if it is outside this range.<br /></li>
+            <li>
+<strong>defval</strong> - Default value of parameter. Could be a hint, or if WLPF_OPTIONAL flag is set, could really                      be a default value that would be used if parameter is omitted from config.<br /></li>
+            <li>
+<strong>name</strong> - Name of parameter<br /></li>
+            <li>
+<strong>description</strong> - Description of a parameter<br /></li>
+            <li>
+<strong>off</strong> - Offset in data structure where param value would be written<br /></li>
 </ul>
 </p>
 <p>

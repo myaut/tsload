@@ -315,73 +315,14 @@ void mp_heap_free(void* ptr)
 static size_t mp_heap_get_size(void* ptr) 
 </pre>
 </p>
-<h2>Types</h2><a name="mp_frag_descr_t"></a><h3>mp_frag_descr_t</h3><p>
-<pre>
-typedef struct {
-    signed short fd_type;
-
-    union {
-        unsigned short fd_size;
-        unsigned short fd_offset;    /* for FRAG_REFERENCE */
-    };
-} mp_frag_descr_t;
-
-</pre>
-</p>
-<a name="struct_mp_heap_header"></a><h3>struct mp_heap_header</h3><p>
-<pre>
-struct mp_heap_header {
-    uint16_t    hh_size     : 10;
-
-    int16_t        hh_left  : 11;
-    int16_t        hh_right : 11;
-} PACKED_STRUCT;
-
-</pre>
-</p>
-<a name="mp_heap_page_t"></a><h3>mp_heap_page_t</h3><p>
-<pre>
-typedef struct {
-    thread_mutex_t        hp_mutex;
-
-    size_t                hp_free;
-
-    list_node_t            hp_node;            /**&lt; List node (for linking with another pages)*/
-
-    ts_time_t            hp_birth;            /**&lt; Time of page allocation */
-
-    int                    hp_defrag_period;
-    unsigned            hp_allocated_count;
-    unsigned            hp_free_count;        /**&lt; Number of free fragments*/
-    mp_heap_header_t*    hp_root_free;        /**&lt; Root of free BST */
-
-    char                hp_data[0];
-} mp_heap_page_t;
-
-</pre>
-</p>
-<a name="mp_cache_page_t"></a><h3>mp_cache_page_t</h3><p>
-<pre>
-typedef struct {
-    struct mp_cache*    cp_cache;
-    list_node_t    cp_node;
-
-    atomic_t    cp_free_items;
-    void*         cp_first_item;
-
-    atomic_t    cp_bitmap[0];
-} mp_cache_page_t;
-
-</pre>
-</p>
-<a name="typedef_struct_mp_cache"></a><h3>typedef struct mp_cache</h3><p>
+<h2>Types</h2><a name="typedef_struct_mp_cache"></a><h3>typedef struct mp_cache</h3><p>
 <pre>
 typedef struct mp_cache {
     thread_mutex_t    c_page_lock;
     thread_rwlock_t    c_list_lock;
 
     list_head_t    c_page_list;
-    mp_cache_page_t* c_last_page;
+    struct mp_cache_page* c_last_page;
 
     size_t        c_item_size;
     unsigned     c_items_per_page;

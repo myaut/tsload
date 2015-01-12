@@ -1,0 +1,101 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Developers guide</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-right">
+<li><a href="codestyle.html"><strong>Next</strong>(coding guidelines)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Architecture</h2></p>
+<p>
+<h3>Agents and TSLoad Core</h3></p>
+<p>
+The key component of TSLoad is an agent, an executable that receives requests from user and sends them to <em>TSLoad Core</em> which is implemented by <strong>libtsload</strong> library. There are several meanings of "receiving requests", but each of them is represented by an appropriate function call. These functions form an <em>High-level TSLoad API</em> which is described in <a href="../tsload/tsload.html">TSLoad high-level API</a>. <br /></p>
+<p>
+Most arguments of high-level API function have simple types, but some of them are complex, that is they have multiple variables inside, and some of they may be optional. Complex values are represented by so-called <em>TSObjects</em> (their C type is pointer to tsobj_node_t) which true nature depends on agent. Let's take for example function tsload_schedule_threadpool which allows to change OS scheduler parameters for threads of a threadpool as described in <a href="../intro/threadpool.html">Key concepts: threadpools</a>:<br /></p>
+<p>
+<pre>
+LIBEXPORT int tsload_schedule_threadpool(const char* tp_name, tsobj_node_t* sched);
+</pre>
+</p>
+<p>
+First argument of that function is name of threadpool. Note that high-level doesn't provide access to an object representing threadpool opposite to a low-level TSLoad functions which are work directly with objects. Second argument is an TSObject. That allows this function being quite flexible. If TSLoad didn't have such parameters, tsload_schedule_threadpool had to be separated into several functions:<br /></p>
+<p>
+<pre>
+LIBEXPORT int tsload_tp_set_sched_policy(const char* tp_name, int wid, const char* name);
+LIBEXPORT int tsload_tp_set_sched_param(const char* tp_name, int wid, const char* param, long value);
+LIBEXPORT int tsload_tp_sched_commit(const char* tp_name, int wid);
+LIBEXPORT int tsload_tp_bind(const char* tp_name, int wid, cpumask_t*);
+</pre>
+</p>
+<p>
+<br />This approach less convenient: for example you may wonder what tsload_tp_sched_commit do. I will only say that if you will write your own agent and forget to call that function, scheduler parameters won't be altered. For a details, see implementation of scheduler utils: <a href="../tscommon/schedutil.html">schedutil</a>. <br /></p>
+<p>
+Summarizing all of this, <em>TSLoad</em> capabilities is implemented by one of available agents:<br />    <ul>
+        <li>
+<strong>TSExperiment</strong> - as of TSLoad 0.2. Standalone agent that consumes request as a an <code>experiment.json</code> configuration file which is is JSON format and calls TSLoad High-Level API. Note that TSExperiment don't use TSLoad Core low-level APIs, even if it allows some performance optimizations (i.e. each call with a name of object requires an hash-map search). For TSExperiment, TSObject is nothing by JSON nodes that are parts of <code>experiment.json</code> config file. Its sources are located in directory <code>cmd/tsexperiment</code>.  <br /></li>
+        <li>
+<strong>TSLoad Daemon</strong> - partially implemented. This type of agent receives user requests from an <em>TSLoad server</em>. Communication protocol is based on JSON, so each request is pre-parsed and TSObjects are passed to a functions calls in "as-is" fashion. Its sources are located in directory <code>cmd/tsloadd</code>.<br /></li>
+        <li>
+<strong>TSLoad JNI</strong> and <strong>TSLoad Python</strong> - planned. Libraries that allow to call TSLoad APIs from Java or Python, thus TSObjects here arise from VM/Interpreters. <br /></li>
+</ul>
+</p>
+<p>
+<h3>Common libraries</h3></p>
+<p>
+TSLoad requires only standard C library, and all needed functionality is implemented in <em>Common libraries</em>. I had considered using GLib as an primary library for TSLoad, but it too heavy to be built (and finding and building it for exotic platforms may be hard). Also, TSLoad needs good control of its source code base because each change of it may impose unpredictable experiment result shifts. TSLoad had also used <strong>libjson</strong> to parse incoming JSON, but this library has plenty of problems (i.e. if you miss a comma in experiment configuration file it will say 'Not JSON' and return NULL it a place where NULL shouldn't be returned). libjson was replaced with <strong>libtsjson</strong> which is light-weight, written in C and compatible with TSObject API.<br /></p>
+<p>
+Common libraries are:<br />    <ul>
+        <li>
+<strong>libtsload</strong> - as was mentioned earlier, it is <em>TSLoad Core</em> library. <br /></li>
+        <li>
+<strong>libtscommon</strong> - library that contains various utilities and facilities, such as memory management, logging, data types, cross-platform filesystem file functions, threads API with scheduler management capabilies. Some of its API functions are inspired by Python, i.e. pathutil.  <br /></li>
+        <li>
+<strong>libtjson</strong> - light-weight JSON parser & writer.<br /></li>
+        <li>
+<strong>libtsobj</strong> - TSObject access interface. By default it maps all of its functions to a <strong>libtsjson</strong> functions, but this behaviour may be overriden.<br /></li>
+        <li>
+<strong>libtsfile</strong> - library for working with Time-Series File Format (TSF). This format is internally used to keep experiment results by <strong>TSExperiment</strong> and <strong>TSLoad Daemon</strong>. It is binary file format that has header with schema: offsets of fields, their names and types and array of structures that are written according to schema. <br /></li>
+        <li>
+<strong>libhostinfo</strong> - library to get platform information from a computer or a VM where TSLoad agent runs, i.e. number of processors.<br /></li>
+        <li>
+<strong>libtsagent</strong> - library that implements JSON-TS protocol in C. It is used for communication between <strong>Server</strong> and <strong>TSLoad Daemon</strong>.<br /></li>
+</ul>
+</p>
+<p>
+Sources for all libraries are located in <code>lib</code> directory.<br /></p>
+<p>
+<h3>Modules</h3></p>
+<p>
+As mentioned in <a href="../intro/intro.html">Introduction</a>, TSLoad is modular, thus it dynamically loads external libraries from <code>INSTALL_MOD_LOAD</code> directory, and runs their <code>mod_config</code> functions. Than that function is called, module registers workload types that it is capable to run, i.e. <em>http</em> module may run web workloads. Modules may be written outside of TSLoad as described in <a href="../intro/module.html">Writing your own module</a>. Modules that are shipped with TSLoad are located in <code>mod</code> subdirectory.<br /></p>
+<p>
+<h3>Server</h3></p>
+<p>
+<strong>TSLoad Server</strong> allows to manage multiple instances of agents. Technically server is only a router that receives JSON-TS messages from multiple endpoints, check ACLs for that endpoints and forwards them to a desired agent. Server is written in Python and works on top of <a href="https://twistedmatrix.com/">Twisted framework</a>. <br /></p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

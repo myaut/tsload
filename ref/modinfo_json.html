@@ -1,0 +1,164 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>TSLoad reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="experiment_json.html"><strong>Prev</strong>(experiment.json)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="busy_wait.html"><strong>Next</strong>(busy_wait)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>modinfo.json</h2></p>
+<p>
+modinfo.json file is a configuration file that is used by <a href="tsgenmodsrc.html">tsgenmodsrc</a> for generating source code of modules. <br /></p>
+<p>
+This document uses same JSON schema that is used in <a href="experiment_json.html">experiment.json</a>.<br /></p>
+<p>
+<h3>modinfo.json</h3></p>
+<p>
+<pre>
+{
+    (in) "name": [string] Name of module,
+    (in, opt) "type": ["load"] Type of the module, currently only "load" supported,
+    (in) "wlt_class": [
+        (in) ["cpu_integer" | "cpu_float" | "cpu_memory" | "cpu_misc" | 
+                 "mem_allocation" | "fs_op" | "fs_rw" | "disk_rw" | "network" | "os"]
+                 Classes that this workload implements         
+        ...
+    ],
+    (in, opt) "has_step": [boolean] Set to true if you want step function to be generated,    
+    (in) "params": [node] {
+        (in) "Name of parameter #1": [node] Parameter,
+        ...
+    },
+    (in) "vars": [node] {
+        (in) "Variable name #1": [string] Value,
+        ...
+    }
+}
+</pre>
+</p>
+<p>
+<h3>Parameters</h3></p>
+<p>
+<pre>
+{
+    (in) "_type": [string] Data type of a parameter,
+    
+    (in, opt) "request": [boolean] Parameter is per-request,
+    (in, opt) "output": [boolean] Parameter is output,
+    (in, opt) "optional": [boolean] Parameter is optional,
+    
+    (in, opt) "default": [ANY] Default value of a parameter
+                    (not supported by CPU objects and disks),
+    (in, opt, max is set) "min": [ANY] Minimum acceptable value
+    (in, opt, max is set) "max": [ANY] Maximum acceptable value
+                    (only for floats, integers and integer-based types),
+    (in, opt) "len": [number] Maximum length of string
+}
+</pre>
+</p>
+<p>
+<code>_type</code> field contains pseudo-class name of a corresponding parameter. Here are a table of mappings of this field values to <code>wlp_type_t</code> constants (as described in <a href="../intro/workload.html">Key concepts: workloads</a>)<br /></p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+wlp_type_t     </td>
+            <td>
+ _type value</td>
+</tr>
+        <tr>
+            <td>
+WLP_BOOL         </td>
+            <td>
+ tsload.wlparam.WLParamBoolean</td>
+</tr>
+        <tr>
+            <td>
+WLP_INTEGER      </td>
+            <td>
+ tsload.wlparam.WLParamInteger</td>
+</tr>
+        <tr>
+            <td>
+WLP_FLOAT        </td>
+            <td>
+ tsload.wlparam.WLParamFloat</td>
+</tr>
+        <tr>
+            <td>
+WLP_RAW_STRING   </td>
+            <td>
+ tsload.wlparam.WLParamString</td>
+</tr>
+        <tr>
+            <td>
+WLP_STRING_SET   </td>
+            <td>
+ tsload.wlparam.WLParamStringSet</td>
+</tr>
+        <tr>
+            <td>
+WLP_SIZE         </td>
+            <td>
+ tsload.wlparam.WLParamSize</td>
+</tr>
+        <tr>
+            <td>
+WLP_TIME         </td>
+            <td>
+ tsload.wlparam.WLParamTime</td>
+</tr>
+        <tr>
+            <td>
+WLP_FILE_PATH    </td>
+            <td>
+ tsload.wlparam.WLParamFilePath</td>
+</tr>
+        <tr>
+            <td>
+WLP_CPU_OBJECT   </td>
+            <td>
+ tsload.wlparam.WLParamCPUObject</td>
+</tr>
+        <tr>
+            <td>
+WLP_DISK         </td>
+            <td>
+ tsload.wlparam.WLParamDisk</td>
+</tr>
+        <tr>
+            <td>
+</td>
+</tr>
+</table>
+<br />Note: this format is conformant with data returned by <code>tsexperiment wls -j</code> command with one exception: how flags are represented.<br /></p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

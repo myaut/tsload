@@ -1,0 +1,344 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Developers guide</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="arch.html"><strong>Prev</strong>(Architecture)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Coding guidelines</h2></p>
+<p>
+<strong>TSLoad</strong> agents are written in C, while server is written in Python. This document covers guidelines for agent code. Coding style was inspired by Solaris mostly.These rules are not strict, but recommended and followed by most of the code of TSLoad. <br /></p>
+<p>
+<h3>Basic coding guidelines</h3></p>
+<p>
+<strong>Line length</strong>. There are no limits for line lengths. Common, we live in an era of Full HD displays. But also note that long lines makes code hard to comprehend.<br /></p>
+<p>
+<strong>Indentation</strong>. four character block indent using tabs with additional spaces where needed. <br />       <ul>
+        <li>
+<em>Case</em>s have same indentation as corresponding <em>switch</em>. <br />   </li>
+        <li>
+ When you break function declaration and call into separate lines, arguments should be aligned to a left brace:<br /> </li>
+</ul>
+</p>
+<p>
+<pre>
+        json_set_parser_error(parser, JSON_END_OF_BUFFER,
+                              "Unexpected end of buffer while parsing %s",
+                              (is_array)? "ARRAY": "OBJECT");
+ </pre>
+</p>
+<p>
+    <ul>
+        <li>
+ When you break if- or while- condition into separate lines, indent should go deeper than corresponding block<br />   </li>
+</ul>
+</p>
+<p>
+<strong>Curly braces</strong>. TSLoad code follows 1TBS style with a small exception: <code>else</code> keyword is put onto new line<br /></p>
+<p>
+<strong>Pointer declaration</strong>. Put asterisk sign (<code>*</code>) closer to a type. If you want to make several pointers, declare them one per line.   <br /></p>
+<p>
+<strong>Spaces</strong>. Surround operators like <code>&lt;</code> and <code>=</code> with spaces. Do not put spaces around braces. Put single space after commas as punctuation rules require.<br /></p>
+<p>
+<strong>Return value checking</strong>. It is OK to put assignment of return value variable to a function call result and check it in one if:<br /> </p>
+<p>
+<pre>
+    if ((dladm_status = hi_net_sol_dladm_open(&dld_handle)) != DLADM_STATUS_OK) {
+        hi_net_dprintf("hi_net_probe: dladm open failed: %d\n", dladm_status);
+        return HI_PROBE_ERROR;
+    }
+ </pre>
+</p>
+<p>
+<strong>ifdefs</strong>. Avoid ifdefs in function bodies: use <a style="color: red" href="devel/plat">PLATAPI</a> where possible or create separate subsets of functions. <br /></p>
+<p>
+<strong>goto</strong>. It is OK to use <code>goto</code> keyword in one case: you need to cleanup before you will return error code.<br /></p>
+<p>
+<strong>Error handling</strong>. Preferable way to handle errors is to return <code>int</code> that represents error code. For functions returning pointers it should be <code>NULL</code>. Each subsystem defines its own subset error codes using macro-definitions starting with NAME_OK = 0, and following NAME_ERR_... values that are negative. For subsystems which save error messages or additional data for errors, there should exist thread-local errno structure and API for accessing it.<br /></p>
+<p>
+<h3>Source tree organization</h3></p>
+<p>
+Each component of TSLoad: library or a binary consists of smaller pieces called <em>subsystems</em>. Usually front-end of such subsystem is a data structure and operations applicable to it (which could be recognized as class). Subsystem is defined in <em>main header</em> file placed under <code>agent/include/&lt;library subdirectory&gt;/&lt;subsystem name&gt;.h</code>. It can also place its implementation details into separate header located in <code>agent/&lt;path-to-component&gt;/include/&lt;subsystem name&gt;.h</code>. Platform-independent implementation is placed into source file <code>agent/&lt;path-to-component&gt;/&lt;subsystem name&gt;.c</code>, while its platform-specific code (both headers and sources) is placed in <code>plat</code> subdirectory:  <code>agent/&lt;path-to-component&gt;/plat/&lt;platform-name&gt;/&lt;subsystem name&gt;.[ch]</code>. <br /></p>
+<p>
+For example, <a href="../tscommon/threads.html">threads</a> implementation consists of the following files:<br /></p>
+<p>
+    <ul>
+        <li>
+<code>agent/include/tsload/threads.h</code> - global data definitions like <code>thread_t</code> or <code>mutex_t</code>, and operations with them: <code>t_join</code> and <code>mutex_unlock</code>. <br /> </li>
+        <li>
+<code>agent/lib/libtscommon/threads.c</code> - platform-independent implementation for <code>thread_t</code> operations<br /> </li>
+        <li>
+<code>agent/lib/libtscommon/tutil.c</code> - platform-independent implementation for mutexes, condition variables, events and thread-local storage (they called thread key in TSLoad)<br /> </li>
+        <li>
+<code>agent/lib/libtscommon/plat/posix/threads.h</code> - POSIX definitions for threads and synchronization mechanisms, that are typedefing <em>libpthread</em> types that makes them usable in global headers. I.e. <code>thread_t</code> type contains <code>t_impl</code> of type <code>plat_thread_t</code>, which is aliased name for <code>pthread_t</code>, and this file contains such typedef.<br /> </li>
+        <li>
+<code>agent/lib/libtscommon/plat/posix/threads.c</code> - POSIX implementation for <code>thread_t</code> operations<br /> </li>
+        <li>
+<code>agent/lib/libtscommon/plat/posix/tutil.c</code> - POSIX implementation for synchronization mechanisms<br /></li>
+</ul>
+</p>
+<p>
+<h3>Source structure </h3></p>
+<p>
+Structure of main header goes as follows:<br /></p>
+<p>
+    <ul>
+        <li>
+ Header<br />  </li>
+        <ul>
+            <li>
+ GPL preamble with copyright.<br />  </li>
+            <li>
+ #ifdef/#define from header name ending with _H_. Platform-specific headers should contain PLAT_&lt;platform name&gt; prefix<br />  </li>
+            <li>
+ #include directives<br />  </li>
+            <li>
+ TSDoc header for subsystem with <code>@module</code> helper<br /> </li>
+</ul>
+        <li>
+ Constants, types and shared data<br />  </li>
+        <ul>
+            <li>
+ Constants defined with macros, i.e. size of statically allocated arrays, default tuneable values<br />  </li>
+            <li>
+ Shared data with <code>LIBIMPORT</code> prefixes<br />  </li>
+            <li>
+ Hooks types definitions and <code>LIBIMPORT</code> functions pointers to hooks<br />  </li>
+            <li>
+ Types definitions and #define-based enumerations. C types should be typedefed with its typename ended with<br /> </li>
+</ul>
+        <li>
+ Functions and macros that are work as functions<br />  </li>
+        <ul>
+            <li>
+ Operations applicable to that types grouped by its purpose. Groups are separated with one empty line with a comment on top of group, that is needed <br />  </li>
+            <li>
+ Global functions, including <code>_init()/_fini()</code> functions (see below).<br />  </li>
+            <li>
+ Functions that build TSObject from subsystem main type or vice versa<br /> </li>
+</ul>
+        <li>
+ Tailer <br />  </li>
+        <ul>
+            <li>
+ #endif followed by a newline<br />  </li>
+</ul>
+</ul>
+</p>
+<p>
+Structure for source files is similiar:<br /></p>
+<p>
+    <ul>
+        <li>
+ Header<br />  </li>
+        <ul>
+            <li>
+ GPL preamble with copyright.<br />  </li>
+            <li>
+ #include directives<br /> </li>
+</ul>
+        <li>
+ Global data definitions<br /> </li>
+        <li>
+ Function implementation with the same rules as for headers<br /> </li>
+</ul>
+</p>
+<p>
+<h3>Naming conventions </h3></p>
+<p>
+Because C doesn't support namespaces, which is actually useful feature and allows to distinguish functions and types, we "emulate" it by using prefixes: <em>each name should begin with subsystem name</em>. Subsystem name may be abbreviated or shortened. Naming conventions are similiar to GNU C.<br /></p>
+<p>
+<h4>Types</h4></p>
+<p>
+All types names should be lower-cased with underscores.<br /></p>
+<p>
+    <ul>
+        <li>
+ Each type should have typedefed alias that has suffix <code>_t</code>, except for function pointers that should end with <code>_func</code>, the name should be lower-cased with under scores. <br /> </li>
+        <li>
+ Enumerations (both typed and define-based) should have upper-cased names with underscores. <br /> </li>
+        <li>
+ (<em>Optional</em>) Structure member names should have prefixes that match structure name or its abbreviation.<br /> </li>
+</ul>
+</p>
+<p>
+<h4>Macro names</h4></p>
+<p>
+Generally speaking, macros should be named upper-cased with underscores, but there are couple exceptions for it  <br /></p>
+<p>
+    <ul>
+        <li>
+ Macro that define constants may not have underscores. Usually they are size related use upper-score abbreviation without underscores - these names should end with <code>SIZE</code> or <code>LEN</code>.<br /> </li>
+        <li>
+ Some macros should be lower cased:<br />   </li>
+        <ul>
+            <li>
+ Foreach-like helpers should be lower-cased.<br />   </li>
+            <li>
+ Function aliases that set default parameter values and should look-like functions should share name with it and through it are lower-cased.<br />   </li>
+            <li>
+ Functions that should be type generics, but due to lack of that capability in C, became macros should be lower-cased, i.e.: <a href="../tscommon/list.html">list operations</a>.<br />   </li>
+</ul>
+</ul>
+</p>
+<p>
+<h4>Function names   </h4></p>
+<p>
+All function names should be lower-cased. Function name consists of several components that are separated by underscores:<br /></p>
+<p>
+    <ul>
+        <li>
+ Prefixes<br />  </li>
+        <ul>
+            <li>
+<code>plat</code> - prefix for platform-specific functions (optional). I.e. <code>mod_load_symbol</code> and <code>plat_mod_load_symbol</code>.<br />  </li>
+            <li>
+ Subsystem or object name.<br /> </li>
+</ul>
+        <li>
+ Operation name.<br /> </li>
+        <li>
+ If operation is working on distingushable part of the object, name of it. I.e. workloads are consist of requests, so there are <code>wl_create_request</code> function that creates request and inserts it into workload list. Part name and operation name could be switched, so it's opposite called <code>wl_request_destroy</code>.<br /> </li>
+        <li>
+ Suffixes<br />  </li>
+        <ul>
+            <li>
+<code>byX</code> for specifying criteria of search. I.e. <code>sched_policy_find_byname</code>.<br />  </li>
+            <li>
+<code>nolock</code> for special functions that are not locking necessary mutexes. I.e. <code>hash_map_find</code> which calls <code>hash_map_find_nolock</code>.<br />  </li>
+            <li>
+<code>impl</code> for functions that have front-end and implementation. I.e. <code>wl_destroy</code> only simulates destruction, reducing reference count by 1, and when all references to function will be gone, last <code>wl_rele</code> calls <code>wl_destroy_impl</code> that will actually release resources.<br />  </li>
+            <li>
+ For generic functions that have multiple implementations depending on nature of the object: "class derivatives" or functions overloaded with standard types it may have - name of type or derivative. I.e. <code>rg_generate_int_lcg</code> and <code>rg_generate_int_libc</code>, <code>json_as_*</code> functions<br /></li>
+</ul>
+</ul>
+</p>
+<p>
+There are some conventions for operation names:<br /></p>
+<p>
+    <ul>
+        <li>
+ If function creates a new object by allocating its memory and setting its field making it fully usable after calling that function, it should be named <code>create</code></li>
+        <li>
+ If function initializes pre-allocated memory for object it is called <code>init</code></li>
+        <li>
+ If function de-allocates memory where possible, and act as destructor, it is called <code>destroy</code></li>
+        <li>
+ Functions that are initialize and deinitialize global state of a whole subsystems are called <code>init</code>/<code>fini</code></li>
+        <li>
+ Functions that iterate over sequence and call function for each element are called <code>walk</code></li>
+        <li>
+ Functions that increase reference counter called <code>hold</code> while opposite function called <code>rele</code> (for release).<br /> </li>
+        <li>
+ Functions that process external representation of object coming from system or TSObject/JSON and create internal TSLoad object are called <code>proc</code></li>
+        <li>
+ Functions that create TSObject/JSON representation for TSLoad object are called <code>format</code></li>
+        <li>
+ Getters are called <code>get</code> and setters are called <code>set</code></li>
+</ul>
+</p>
+<p>
+<h4>Variable names </h4></p>
+<p>
+Global variable names lower-cased with underscores with a subsystem prefix. <br /></p>
+<p>
+There are no clear rules for local variable or arguments naming, but there are several recommendations:<br /></p>
+<p>
+    <ul>
+        <li>
+ Use meaningful names for indexes. <code>i</code> acceptable only for short functions where loop is almost everything , <code>j</code> and <code>k</code> are not acceptable (except for matrix handling). <code>strandid</code> is almost good name, but strand is a unique for Fujitsu SPARC terminology and actually references <em>hardware thread</em>.<br /> </li>
+        <li>
+ There are usually a "main variable" which is close to C++ <code>this</code>. Use same abbreviation for its name as for function naming. I.e. <code>workload_t* wl</code></li>
+        <li>
+ Good names for return value are <code>ret</code>, <code>err</code>.<br /> </li>
+        <li>
+ Despite va_list variables usually called <code>ap</code>, they are called <code>va</code> in TSLoad code.  <br /> </li>
+</ul>
+</p>
+<p>
+<h3>Comments</h3></p>
+<p>
+Since TSLoad agent is written in C and even simple actions require multiple syntax constructions, it is recommended to comment such actions.<br /> </p>
+<p>
+    <ul>
+        <li>
+ Write <a style="color: red" href="devel/tsdoc">TSDoc</a></li>
+        <li>
+ Comment all the magic and sorcery you bring into code. Magic constants doesn't need to have separate macro, but should have good comment, i.e. pre-calculated buffer sizes:<br />  </li>
+</ul>
+</p>
+<p>
+<pre>
+  /* 7 chars are enough to store thousands + suffix + space + null-term */
+  ...
+        if(length &gt; (size - 8))
+            return 0;
+  </pre>
+</p>
+<p>
+    <ul>
+        <li>
+ If function is complex and consists of several steps, start each step with its description in short comment.<br />  </li>
+        <li>
+ Comment source code parts that are handling situation that arises outside of current thread control flow. I.e.<br />    </li>
+        <ul>
+            <li>
+ Multi-threaded code<br />  </li>
+</ul>
+</ul>
+</p>
+<p>
+<pre>
+        /* Somebody allocating or freeing page now, wait on mutex than return
+         * last allocated heap page. If last_heap_page will be freed, page
+         * would be set to NULL, and we loop again */
+  </pre>
+</p>
+<p>
+    <ul>
+        <li>
+ Platform-dependent code<br />  </li>
+</ul>
+</p>
+<p>
+<pre>
+        if(errno == ENOTSUP) {
+                /* In Solaris 10, psets may be disabled if pools are not configured.  */
+                return SCHED_NOT_SUPPORTED;
+        }
+  </pre>
+</p>
+<p>
+    <ul>
+        <li>
+ If you have taken code or algorithm from Internet, add URL to a comment </li>
+</ul>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

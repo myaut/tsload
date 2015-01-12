@@ -1,0 +1,171 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Introduction </title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="results.html"><strong>Prev</strong>(Processing results)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h3>Writing your own module</h3></p>
+<p>
+As we mentioned in <a href="intro.html">introduction</a>, TSLoad is a <em>modular</em> framework, so all workloads it could generate and monitors it provide are implemented in several modules. <em>Module</em> is an external <em>dynamic loadable library</em> (or <em>shared object</em> in Unix terminology.<br /></p>
+<p>
+<h4>Generating module sources</h4></p>
+<p>
+TSLoad has a special tool - <a href="../ref/tsgenmodsrc.html">tsgenmodsrc</a> that generates source code and build files for workload type from templates. It is described in documentation. However, it is recommended to read this page of documentation too to know what it generates.  <br /></p>
+<p>
+<h4>Writing module from scratch</h4></p>
+<p>
+When TSLoad agent starts, it loads every library in its module directory, calls <code>mod_config()</code> function from it and keeps it in memory while process is working. When process stops, it calls corresponding <code>mod_unconfig()</code>.<br /></p>
+<p>
+Let's take a closer look to a skeleton of TSLoad Module:<br /></p>
+<p>
+<pre>
+#define LOG_SOURCE "test_module"
+#include &lt;tsload/log.h&gt;
+
+#include &lt;tsload/defs.h&gt;
+#include &lt;tsload/modapi.h&gt;
+
+DECLARE_MODAPI_VERSION(MOD_API_VERSION);
+DECLARE_MOD_NAME("test_module");
+DECLARE_MOD_TYPE(MOD_TSLOAD);
+
+struct module* self = NULL;
+
+MODEXPORT int mod_config(struct module* mod) {
+    self = mod;
+    return MOD_OK;
+}
+
+MODEXPORT int mod_unconfig(struct module* mod) {
+    return MOD_OK;
+}
+</pre>
+</p>
+<p>
+First two lines contain macro named <code>LOG_SOURCE</code> is a helper for logging routines so they all have same logging source, and a corresponding include. The next header <code>tsload/defs.h</code> contains common macro definitions used inside TSLoad, for example <code>boolean_t</code> type. It is recommended to put this include directive first, but not necessary. Following header <code>tsload/modapi.h</code> defines API between module and TSLoad core. <br /></p>
+<p>
+After include directives, three <code>DECLARE_*</code> macro statements are going. They add global variables recognizable by TSLoad <a href="../tscommon/modules.html">Modules</a> subsystem. If they would be set to incorrect values, TSLoad will drop module thinking it is incompatible. <br /></p>
+<p>
+    NOTE: TSLoad doesn't support module signing, and all modules are loading automatically. It may be a security vulnerability. <br />    <br />Now, when module is written, it is time to build it! You may use your favorite build system for that, i.e. Make and its front-ends, or even manually run compiler and linker. Another option is to take <a href="http://www.scons.org/">SCons</a> which is used internally in TSLoad. It allows to use some parts of TSLoad build scripts while building modules. For example, your module will have same CFLAGS TSLoad build with. <br /></p>
+<p>
+Now let's write simple SCons build script (which is called <code>SConstruct</code>) that uses TSLoad development files:<br /></p>
+<p>
+<pre>
+import os
+
+env = DefaultEnvironment()
+env['TSLOAD_DEVEL_PATH'] = '/path/to/TSLoad/development/files'
+env['TSEXTPATH'] = Dir('#').abspath
+
+SConscript(os.path.join(env['TSLOAD_DEVEL_PATH'], 
+                            'SConscript.ext.py'), 'env')
+
+env.Module('load', 'test_module')
+</pre>
+</p>
+<p>
+First line contains simple Python module import and not interesting. In the following lines, <em>Environment</em> is created - a global SCons associative arrays that contains build variables. Most of them are set internally by SConscripts, in our case we define only two of them - <code>TSLOAD_DEVEL_PATH</code> - that contains path to TSLoad development files and <code>TSEXTPATH</code> - path to our module sources (generated automatically based on SConstruct location). Development files are usually written to <code>share/tsload/devel</code> path inside TSLoad directory.<br />  </p>
+<p>
+Then a file called <code>SConscript.ext.py</code> loaded. <em>SConscripts</em> is a name for auxiliary build scripts in SCons, so this file configures environment for the module. As a part of this process it adds <code>Module</code> operation to it. The last line in our SConstruct file is call of <code>Module</code> with two parameters: type of module: (should always be <code>'load'</code>) and name of it. Note that we didn't specify source file location. Thats because <code>Module</code> method assumes that you have followed TSLoad <a href="../devel/codestyle.html">coding guidelines</a> and put source files into root directory of module and headers to <code>include</code> subdirectory.<br /> </p>
+<p>
+After writing a module just say in a terminal: <code> $ scons install </code> and SCons will build and install module to an appropriate directory. But this module is completely useless. Let's see, how to add abilities to it.<br /></p>
+<p>
+<h4>Implementing a workload type</h4></p>
+<p>
+So we wrote a module, but its completely useless to us, we need to implement a workload type. As we mentioned before, TSLoad allows to parametrize both workloads and its requests, so we need to create two C structures - one holding workload parameters, and other - for request parameters. Because TSLoad will write to a raw memory (C doesn't have reflection), use only <a href="../tsload/wlparam.html">wlp_* types</a> for it:<br /></p>
+<p>
+<pre>
+struct test_module_workload {
+    wlp_integer_t    some_parameter;
+};
+</pre>
+</p>
+<p>
+While TSLoad had bee configuring workload, it will allocate test_module_workload structure, write value for <code>some_parameter</code> from config to it and pass pointer to that structure in <code>wl_params</code> member of workload. Same works for a request - its parameters are saved in <code>rq_params</code> field of a request. Internal data of a workload can be saved in a <code>wl_private</code> field.<br /></p>
+<p>
+After that, create an array of <a href="../tsload/wlparam.html#wlp_descr_t">wlp_descr_t</a> structures, ending with WLP_NULL placeholder:<br /></p>
+<p>
+<pre>
+MODEXPORT wlp_descr_t test_module_params[] = {
+    { WLP_INTEGER, WLPF_NO_FLAGS,
+        WLP_INT_RANGE(10, 20), WLP_NO_DEFAULT(),
+        "some_parameter",
+        "This parameter is only an example, set its value to whatever you want",
+        offsetof(struct test_module_workload, some_parameter) },
+    { WLP_NULL }
+};
+</pre>
+</p>
+<p>
+See explanation of this in <a href="../tsload/wlparam.html">wlp_* types</a> documentation, or use tsgenmodsrc to generate it.<br /></p>
+<p>
+Functions!<br /></p>
+<p>
+<pre>
+MODEXPORT int test_module_wl_config(workload_t* wl) {
+    return 0;
+}
+MODEXPORT int test_module_wl_unconfig(workload_t* wl) {
+    return 0;
+}
+MODEXPORT int test_module_run_request(request_t* rq) {
+    return 0;
+}
+MODEXPORT int test_module_step(struct workload_step* wls) {
+    return 0;
+}
+</pre>
+</p>
+<p>
+First function, <code>*_wl_config</code> configures workload - i.e. making some preliminary actions that needed to correctly simulate it. I.e. it could be a calibration run or allocating disk storage. Note that each config function is called from separate thread, so if there are several workloads to be configured, they may compete for resources. Experiment wouldn't start until all workloads  If configuration takes a lot of time, add <a href="../tsload/workload.html#wl_notify">wl_notify()</a> calls to it with an appropriate messages. If configuration fails, call <code>wl_notify</code> with <code>WL_CFG_FAILED</code> with the reason of it and return non-zero value. Second function <code>*_wl_unconfig</code> is opposite to it -<br />reverts changes made by workload.<br /></p>
+<p>
+Third function: <code>*_run_request</code> is a heart of all TSLoad. It is responsible for request simulation. This function is called from the context of worker threads in a <a href="threadpool.html">threadpool</a> and could theoretically run in parallel, so be careful with shared data. The last function <code>*_step</code> is called at the beginning of each step from a control thread of a workload. <br /></p>
+<p>
+When you done it is time to acquaint TSLoad with your workload type. Create a <a href="../tsload/wltype.html#wl_type_t">wl_type_t</a> descriptor, and call <code>wl_type_register()</code> in <code>mod_config()</code> as well as <code>wl_type_unregister()</code> in <code>mod_unconfig()</code>:<br /></p>
+<p>
+<pre>
+wl_type_t test_module_wlt = {
+        /* wlt_name */                  AAS_CONST_STR("test_module"),
+        /* wlt_class */                 WLC_CPU_INTEGER | WLC_CPU_MISC,
+        /* wlt_params */                test_module_params,
+
+        /* wlt_params_size*/    sizeof(struct test_module_workload),
+        /* wlt_rqparams_size*/  0,
+        /* wlt_wl_config */             test_module_wl_config,
+        /* wlt_wl_unconfig */   test_module_wl_unconfig,
+        /* wlt_wl_step */               test_module_step,
+        /* wlt_run_request */   test_module_run_request
+};
+</pre>
+</p>
+<p>
+As you can see, we set <code>wlt_rqparams_size</code> to zero, because our workload had no request parameters, so <code>rq_params</code> would be set to NULL. This descriptor also contains <code>wlt_class</code> field that classifies workload by resource it gathers - i.e. with <code>WLP_CPU_INTEGER | WLP_CPU_MISC</code> is a processor-bound and ALU-bound workload.<br /> </p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>
