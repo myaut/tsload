@@ -3,6 +3,7 @@ import os
 # Define pretty synonyms for os/os.path to be conformant with SCons naming style
 
 PathJoin = os.path.join
+PathSplit = os.path.split
 
 PathBaseName = os.path.basename
 PathDirName = os.path.dirname

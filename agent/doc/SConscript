@@ -1,7 +1,10 @@
+from pathutil import *
+
 Import('env')
 
 tgtroot = 'tsload-doc'
 target = 'doc'
+tgtdoc = PathJoin(env['INSTALL_SHARE'], 'doc')
 
 def AppendDoc(self, doc_dir):
     for file in Dir(doc_dir).glob('*.src.md'):
@@ -9,11 +12,18 @@ def AppendDoc(self, doc_dir):
     
 env.AddMethod(AppendDoc)
 
-docfiles = env.DocGenerator('index.src.md')
-
 env.AppendDoc('intro')
 env.AppendDoc('ref')
 env.AppendDoc('devel')
+
+docfiles = env.DocGenerator('index.src.md')
+
+# Install docs -- we cannot do that via single call of InstallTargets
+# because files have to be installed into its docspaces
+# So walk docfiles and install it into appropriate docspace subdir
+for doc in docfiles:
+    docspace, _ = PathSplit(doc.get_path())
+    env.InstallTarget(tgtroot, PathJoin(tgtdoc, docspace), doc)
 
 header = '%s %s documentation' % (env['TSPROJECT'], env['TSVERSION'])
 
@@ -28,7 +38,8 @@ for file in env['TSDOC']:
     env.Depends(docfiles, file)
     
 if GetOption('doc_format') == 'html':
-    for file in Dir('bootstrap/css').glob('*.css'):
+    for file in Dir('bootstrap').Dir('css').glob('*.css'):
         env.Depends(docfiles, file) 
+        env.InstallTarget(tgtroot, PathJoin(tgtdoc, 'bootstrap', 'css'), file)
        
 env.Alias('doc', docfiles)
