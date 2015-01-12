@@ -57,7 +57,7 @@
 
 #### Common subsystems
 
-* [][tscommon/tsinit]
+* [][tscommon/init]
 * [][tscommon/log]
 * [][tscommon/modules]
 * [][tscommon/mempool]
@@ -73,13 +73,13 @@
 #### Directories and files
 
 * [][tscommon/pathutil]
-* [][tscommon/tsdirent]
+* [][tscommon/dirent]
 * [][tscommon/readlink]
 * [][tscommon/filemmap]
 
 #### Miscellaneous APIs
 
-* [][tscommon/tstime]
+* [][tscommon/time]
 * [][tscommon/netsock]
 * [][tscommon/etrace]
 

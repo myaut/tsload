@@ -36,7 +36,7 @@ MODEXPORT int mod_unconfig(struct module* mod) {
 ```
 First two lines contain macro named `LOG_SOURCE` is a helper for logging routines so they all have same logging source, and a corresponding include. The next header `tsload/defs.h` contains common macro definitions used inside TSLoad, for example `boolean_t` type. It is recommended to put this include directive first, but not necessary. Following header `tsload/modapi.h` defines API between module and TSLoad core. 
 
-After include directives, three `DECLARE_*` macro statements are going. They add global variables recognizable by TSLoad [][tsload/modules] subsystem. If they would be set to incorrect values, TSLoad will drop module thinking it is incompatible. 
+After include directives, three `DECLARE_*` macro statements are going. They add global variables recognizable by TSLoad [][tscommon/modules] subsystem. If they would be set to incorrect values, TSLoad will drop module thinking it is incompatible. 
 
 	NOTE: TSLoad doesn't support module signing, and all modules are loading automatically. It may be a security vulnerability. 
 	
