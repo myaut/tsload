@@ -21,18 +21,22 @@ if env.SupportedPlatform('win') and env['ETRACEENABLED']:
                            'EtraceRESBuilder': EtraceRESBuilder})
     env['ETRACESUFFIX'] = '.man'
 elif env.SupportedPlatform('linux') or env.SupportedPlatform('solaris') and env['ETRACEENABLED']:
+    # Normally DTrace uses .d suffixes, but modern versions of support 
+    # D language (from Digital Mars), so it confuses SCons
+    env['ETRACESUFFIX'] = '.dd'
+    
     EtraceBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genetrace.py -m USDT $SOURCE $ETRACEEXEFILE > $TARGET' % (sys.executable),
                                             env.PrintCommandLine('ETRACE')),
-                            suffix = '.d')
+                            suffix = env['ETRACESUFFIX'])
     env.Append(BUILDERS = {'EtraceBuilder': EtraceBuilder})
     
     if env.SupportedPlatform('solaris'):
         DTraceBuilder = Builder(action = Action('dtrace -xnolibs -G $DTRACEOPTS -o $TARGET -s $SOURCES',
                                                 env.PrintCommandLine('DTRACE')),
+                                src_suffix = env['ETRACESUFFIX'],
                                 suffix = '.o')
-        env.Append(BUILDERS = {'DTraceBuilder': DTraceBuilder})
+        env.Append(BUILDERS = {'DTraceBuilder': DTraceBuilder})   
     
-    env['ETRACESUFFIX'] = '.d'
 else:
     env['ETRACEENABLED'] = False    
 

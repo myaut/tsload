@@ -232,8 +232,9 @@ elif 'systests' in BUILD_TARGETS:
     
 #------------
 # DOC (again)
-SConscript(PathJoin('doc', 'SConscript'), 'env',
-           variant_dir = PathJoin('#build', 'doc'))
+if 'doc' in BUILD_TARGETS:
+    SConscript(PathJoin('doc', 'SConscript'), 'env',
+               variant_dir = PathJoin('#build', 'doc'))
 
 #------------
 # ZIP
