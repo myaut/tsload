@@ -204,7 +204,7 @@ static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* nod
 	else if(strcmp(field_type, "float") == 0) {
 		field->type = TSFILE_FIELD_FLOAT;
 	}
-	else if(strcmp(field_type, "string") == 0) {
+	else if(strcmp(field_type, "str") == 0) {
 		field->type = TSFILE_FIELD_STRING;
 	}
 	else {
