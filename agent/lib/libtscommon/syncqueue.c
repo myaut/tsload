@@ -160,7 +160,7 @@ void squeue_destroy(squeue_t* sq, void (*el_free)(void* obj)) {
 
 	el = sq->sq_head;
 
-	while(el != sq->sq_tail) {
+	while(el != NULL) {
 		next = el->s_next;
 
 		el_free(el->s_data);
