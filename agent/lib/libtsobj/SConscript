@@ -12,7 +12,7 @@ lib = env.Clone()
 lib.Append(CCFLAGS = ['-O2'])
 
 # lib.PreparePlatform()
-lib.AddDeps(('lib', 'libtscommon'), ('lib', 'libtsjson'))
+lib.UseSubsystems('mempool', 'json')
 
 TSObjGenBuilder = Builder(action = Action('%s $TSLOADPATH/tools/gentsobjapi.py $SOURCE > $TARGET' % (sys.executable),
                                           lib.PrintCommandLine('GENTSOBJAPI')))

@@ -55,16 +55,7 @@ LIBIMPORT int mod_type;
 
 LIBIMPORT char mod_search_path[];
 
-LIBEXPORT struct subsystem pre_subsys[] = {
-	SUBSYSTEM("error", tse_error_init, tse_error_fini),
-};
-
-LIBEXPORT struct subsystem post_subsys[] = {
-	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini),
-	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini),
-	SUBSYSTEM("run", run_init, run_fini),
-};
-
+int init(void);
 void usage(int ret, const char* reason, ...);
 
 /*
@@ -157,10 +148,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	mod_type = MOD_TSLOAD;
-
-	atexit(ts_finish);
-	tsload_init(pre_subsys, sizeof(pre_subsys) / sizeof(struct subsystem),
-				post_subsys, sizeof(post_subsys) / sizeof(struct subsystem));
+	init();
 
 	logmsg(LOG_INFO, "Started TSExperiment");
 

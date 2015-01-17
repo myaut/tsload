@@ -14,19 +14,12 @@ def InstallExperiment(experiment_name):
         cmd.Depends(tsexperiment,  file)
         cmd.InstallTarget(tgtroot, PathJoin(cmd['INSTALL_VAR'], experiment_name), file)
 
-cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libtsjson'),
-            ('lib', 'libtsobj'),
-            ('lib', 'libtsfile'),  
-            ('lib', 'libhostinfo'), 
-            ('lib', 'libtsload'))
-
 ExpErrGenBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genexperr.py $SOURCE > $TARGET' % (sys.executable),
                                            cmd.PrintCommandLine('GENEXPERR')))
 cmd.Append(BUILDERS = {'ExpErrGenBuilder': ExpErrGenBuilder})
-
 experr_c = cmd.ExpErrGenBuilder('experr.c', 'include/experiment.h')
 
+cmd.UseSubsystems('tse_error', 'log', 'tsload', 'tsfile', 'hi_obj', 'run')
 objects = cmd.CompileProgram()
 tsexperiment = cmd.LinkProgram(target, objects)
 

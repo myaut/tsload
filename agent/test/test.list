@@ -16,6 +16,7 @@
 # 	 file=source.c  - file to be compiled
 #	 dir=dir		- directory where sources are located
 # 	 lib=lib		- TSLoad library to be linked with (library under test)
+#    ss=subsys		- Subsystem to be used in test (init.c also being built)
 #	 extlib=plat:name - platform-specific library to be linked with
 #	 
 # 	 use=use		- external file used by test (searched over dirs)
@@ -95,7 +96,8 @@ random/chisquare	file=chisquare.c 	extlib=posix:m maxtime=3
 
 # Tests for libtsload object creation
 ^tsload		    	lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
-					lib=libtsload		lib=libhostinfo	file=main.c	
+					lib=libtsload		lib=libhostinfo	ss=tsload		\
+					file=main.c	
 tsload/o_randgen	file=o_randgen.c
 tsload/o_rqsched	file=o_rqsched.c
 tsload/o_tpdisp		file=o_tpdisp.c

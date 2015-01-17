@@ -8,10 +8,7 @@ Import('env')
 
 cmd = env.Clone()
 
-cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libtsjson'),
-            ('lib', 'libtsobj'),
-            ('lib', 'libhostinfo'))
+cmd.UseSubsystems('mempool', 'sched', 'tsobj', 'hi_obj')
 
 objects = cmd.CompileProgram()
 tshostinfo = cmd.Program(target, objects)

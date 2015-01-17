@@ -15,10 +15,7 @@ if lib.SupportedPlatform('win'):
 if GetOption('fast_randgen'):
     lib.Macroses('TSLOAD_RANDGEN_FAST')
 
-lib.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libtsjson'), 
-            ('lib', 'libtsobj'),
-            ('lib', 'libhostinfo'))
+lib.UseSubsystems('log', 'mempool', 'sched', 'mod', 'tsobj', 'hi_obj')
 
 lib.PreparePlatform('include/tsload/load')
 objects = lib.CompileSharedLibrary(Glob("rqsched/*.c") + Glob("randgen/*.c") + \

@@ -50,7 +50,21 @@
  *  * FUNC_STEP
  */
 
-LIBIMPORT const char* wlt_type_tsobj_classes[WLP_TYPE_MAX];
+/* Should be sync with lib/libtsload/wlparam.c */
+const char* wlt_type_tsobj_classes[WLP_TYPE_MAX] = {
+	"tsload.wlparam.WLParamNull",
+	"tsload.wlparam.WLParamBoolean",
+	"tsload.wlparam.WLParamInteger",
+	"tsload.wlparam.WLParamFloat",
+	"tsload.wlparam.WLParamString",
+	"tsload.wlparam.WLParamStringSet",
+
+	"tsload.wlparam.WLParamSize",
+	"tsload.wlparam.WLParamTime",
+	"tsload.wlparam.WLParamFilePath",
+	"tsload.wlparam.WLParamCPUObject",
+	"tsload.wlparam.WLParamDisk"
+};
 
 static const char* wlp_type_names[WLP_TYPE_MAX] = {
 	"",						/* WLP_NULL */

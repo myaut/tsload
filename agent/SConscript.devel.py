@@ -46,11 +46,7 @@ def SaveEnvironmentMake(target, source, env):
 def SaveEnvironment(env, bldenv, command):    
     # Generate build environment    
     benv = env.Clone()
-    benv.AddDeps(('lib', 'libtscommon'),
-                 ('lib', 'libhostinfo'), 
-                 ('lib', 'libtsjson'),
-                 ('lib', 'libtsobj'),
-                 ('lib', 'libtsload'))
+    benv.UseSubsystems('tsload')
     saveenv = File(benv.BuildDir(bldenv)) 
     benv.Command(saveenv, [], Action(command, benv.PrintCommandLine('SAVEENV')))
     benv.Alias('install', saveenv)
@@ -62,7 +58,9 @@ SaveEnvironment(env, 'make.bldenv.json', SaveEnvironmentMake)
 # Install includes and build helpers
 build_helpers = ['SConscript.env.py', 'SConscript.plat.py', 
                  'SConscript.install.py', 'SConscript.etrace.py',
-                 'SConscript.ext.py', 'tools/build', 'tools/plat']
+                 'SConscript.ext.py', 'lib/subsystems.list', 
+                 'tools/gensubsys.py', 'tools/genetrace.py', 'tools/genusage.py',
+                 'tools/build', 'tools/plat']
 
 for entry in Dir('#include').glob('*'):
     env.InstallTarget(tgtroot, env['INSTALL_INCLUDE'], entry)

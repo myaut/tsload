@@ -7,12 +7,9 @@ target = 'tsfutil'
 Import('env')
 
 cmd = env.Clone()
-
-cmd.AddDeps(('lib', 'libtscommon'),
-            ('lib', 'libtsjson'),
-            ('lib', 'libtsfile'))
+cmd.UseSubsystems('log', 'mempool', 'tsfile')
 
 objects = cmd.CompileProgram()
-tsgenuuid = cmd.Program(target, objects)
+tsgenuuid = cmd.LinkProgram(target, objects)
 
 cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsgenuuid)

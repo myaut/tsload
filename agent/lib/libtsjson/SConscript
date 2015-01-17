@@ -8,7 +8,7 @@ lib = env.Clone()
 lib.Append(CCFLAGS = ['-O2'])
 
 # lib.PreparePlatform()
-lib.AddDeps(('lib', 'libtscommon'))
+lib.UseSubsystems('mempool')
 
 objects = lib.CompileSharedLibrary()
 library = lib.LinkSharedLibrary(target, objects)

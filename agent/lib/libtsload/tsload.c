@@ -56,19 +56,6 @@ extern ts_time_t tp_min_quantum;
 extern ts_time_t tp_max_quantum;
 extern int tp_max_threads;
 
-struct subsystem subsys[] = {
-	SUBSYSTEM("log", log_init, log_fini),
-	SUBSYSTEM("mempool", mempool_init, mempool_fini),
-	SUBSYSTEM("threads", threads_init, threads_fini),
-	SUBSYSTEM("wl_type", wlt_init, wlt_fini),
-	SUBSYSTEM("modules", mod_init, mod_fini),
-	SUBSYSTEM("workload", wl_init, wl_fini),
-	SUBSYSTEM("threadpool", tp_init, tp_fini),
-	SUBSYSTEM("netsock", nsk_init, nsk_fini),
-	SUBSYSTEM("json", json_init, json_fini),
-	SUBSYSTEM("tsobj", tsobj_init, tsobj_fini),
-};
-
 static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func walker,
 								  hashmap_t* hm, hm_tsobj_formatter formatter,
 								  hm_tsobj_key_formatter key_formatter) {
@@ -413,36 +400,6 @@ int tsload_destroy_threadpool(const char* tp_name) {
 
 	tp_destroy(tp);
 	return TSLOAD_OK;
-}
-
-/**
- * Initialize TSLoad engine
- *
- * @param pre_subsys array of subsystems that should be initialized before libtsload subsystems
- * @param pre_count count of elements in pre_subsys
- * @param post_subsys array of subsystems that initialized after libtsload
- * @param post_count count of elements in post_subsys
- */
-int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,
-				struct subsystem* post_subsys, unsigned post_count) {
-	struct subsystem** subsys_list = NULL;
-	unsigned s_count = sizeof(subsys) / sizeof(struct subsystem);
-	int si = 0, xsi;
-	unsigned count = s_count + pre_count + post_count;
-
-	/* Mempool is not yet initialized, so use libc; freed by ts_finish */
-	subsys_list = malloc(count * sizeof(struct subsystem*));
-
-	/* Initialize [0:s_count] subsystems with tsload's subsystems
-	 * and [s_count:s_count+xs_count] with extended subsystems */
-	for(xsi = 0; xsi < pre_count; ++si, ++xsi)
-		subsys_list[si] = &pre_subsys[xsi];
-	for(xsi = 0; xsi < s_count; ++si, ++xsi)
-		subsys_list[si] = &subsys[xsi];
-	for(xsi = 0; xsi < post_count; ++si, ++xsi)
-		subsys_list[si] = &post_subsys[xsi];
-
-	return ts_init(subsys_list, count);
 }
 
 int tsload_start(const char* basename) {

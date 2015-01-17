@@ -25,9 +25,6 @@
 #include <tsload/getopt.h>
 #include <tsload/version.h>
 #include <tsload/pathutil.h>
-#include <tsload/init.h>
-
-#include <tsload/json/json.h>
 
 #include <tsfile.h>
 
@@ -55,14 +52,7 @@ extern boolean_t tsfutil_json_print_one;
 char file_path[PATHMAXLEN];
 boolean_t use_std_streams = B_FALSE;
 
-LIBEXPORT struct subsystem subsys[] = {
-	SUBSYSTEM("log", log_init, log_fini),
-	SUBSYSTEM("mempool", mempool_init, mempool_fini),
-	SUBSYSTEM("threads", threads_init, threads_fini),
-	SUBSYSTEM("json", json_init, json_fini),
-	SUBSYSTEM("tsfile", tsfile_init, tsfile_fini)
-};
-
+int init(void);
 void usage(int ret, const char* reason, ...);
 
 int parse_get_range(const char* range) {
@@ -207,21 +197,6 @@ void tsfutil_close_file(FILE* file) {
 		fclose(file);
 }
 
-int tsfutil_init(void) {
-	int count = sizeof(subsys) / sizeof(struct subsystem);
-	int i = 0;
-
-	struct subsystem** subsys_list = (struct subsystem**)
-			malloc(count * sizeof(struct subsystem*));
-
-	for(i = 0; i < count; ++i ) {
-		subsys_list[i] = &subsys[i];
-	}
-
-	atexit(ts_finish);
-	return ts_init(subsys_list, count);
-}
-
 void tsfutil_error_msg(ts_errcode_t errcode, const char* format, ...) {
 	va_list args;
 	char error[256];
@@ -303,7 +278,7 @@ int main(int argc, char* argv[]) {
 
 	tsfile_error_msg = tsfutil_error_msg;
 
-	tsfutil_init();
+	init();
 
 	return do_command();
 }

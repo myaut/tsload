@@ -22,6 +22,8 @@
 
 #include <stdio.h>
 
+#include <tsload/list.h>
+
 #define MODPP_OK					0
 #define MODPP_READ_ERROR			-1
 #define MODPP_UNCLOSED_DIRECTIVE	-2

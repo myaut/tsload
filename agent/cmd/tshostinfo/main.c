@@ -7,16 +7,14 @@
 
 #include <tsload/defs.h>
 
-#include <tsload/mempool.h>
 #include <tsload/init.h>
 #include <tsload/getopt.h>
 #include <tsload/version.h>
 #include <tsload/tuneit.h>
-#include <tsload/schedutil.h>
-
-#include <tsload/json/json.h>
 
 #include <hostinfo/hiobject.h>
+
+#include <tsload/json/json.h>
 
 #include <hiprint.h>
 
@@ -27,14 +25,7 @@
 
 int print_flags = INFO_DEFAULT;
 
-struct subsystem subsys[] = {
-	SUBSYSTEM("mempool", mempool_init, mempool_fini),
-	SUBSYSTEM("sched", sched_init, sched_fini),
-	SUBSYSTEM("json", json_init, json_fini),
-	SUBSYSTEM("tsobj", tsobj_init, tsobj_fini),
-	SUBSYSTEM("hiobject", hi_obj_init, hi_obj_fini)
-};
-
+int init(void);
 void usage(int ret, const char* reason, ...);
 
 void parse_options(int argc, char* argv[]) {
@@ -94,21 +85,6 @@ int print_json(void) {
 	json_node_t* hiobj = (json_node_t*) tsobj_hi_format_all(B_FALSE);
 
 	return json_write_file(hiobj, stdout, B_TRUE);
-}
-
-int init(void) {
-	int count = sizeof(subsys) / sizeof(struct subsystem);
-	int i = 0;
-
-	struct subsystem** subsys_list = (struct subsystem**)
-			malloc(count * sizeof(struct subsystem*));
-
-	for(i = 0; i < count; ++i ) {
-		subsys_list[i] = &subsys[i];
-	}
-
-	atexit(ts_finish);
-	return ts_init(subsys_list, count);
 }
 
 int main(int argc, char* argv[]) {

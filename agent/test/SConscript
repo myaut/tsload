@@ -124,7 +124,7 @@ for test in suite:
         if lib=='m' and not tst.SupportedPlatform('posix'):
             continue
         
-        tst.AddDeps(('lib', lib))
+        tst.AddDependency('lib', lib)
     
     tst['TEST'] = test
     tst['CPPPATH'] += ['test']
@@ -151,8 +151,13 @@ for test in suite:
         for plat, extlib in test.extlibs:
             if tst.SupportedPlatform(plat):
                 tst.Append(LIBS = [extlib])
+                
+        ssobjs = []
+        if test.subsystems:
+            tst.UseSubsystems(*test.subsystems)
+            ssobjs = [tst.SubsysBuilder()]
         
-        bin = tst.Program(test_target, srcdirs + srcfiles + common_objs)
+        bin = tst.Program(test_target, srcdirs + srcfiles + common_objs + ssobjs)
         cfg = tst.Command(str(bin[0]) + '.cfg', bin, CreateConfig)
     else:
         if test.bin is None:

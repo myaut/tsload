@@ -17,19 +17,12 @@
 
 #include <tsload/defs.h>
 
-#include <tsload/mempool.h>
 #include <tsload/getopt.h>
 #include <tsload/version.h>
 #include <tsload/pathutil.h>
 #include <tsload/execpath.h>
 #include <tsload/geninstall.h>
-
 #include <tsload/log.h>
-#include <tsload/init.h>
-#include <tsload/threads.h>
-#include <tsload/log.h>
-#include <tsload/mempool.h>
-#include <tsload/json/json.h>
 
 #include <genmodsrc.h>
 #include <preproc.h>
@@ -57,14 +50,6 @@ extern boolean_t modpp_trace;
 int build_system = MOD_BUILD_SCONS;
 int module_type  = MOD_EXTERNAL;
 int command = 0;
-
-struct subsystem subsys[] = {
-	SUBSYSTEM("log", log_init, log_fini),
-	SUBSYSTEM("mempool", mempool_init, mempool_fini),
-	SUBSYSTEM("threads", threads_init, threads_fini),
-	SUBSYSTEM("json", json_init, json_fini),
-	SUBSYSTEM("modsrc", modsrc_init, modsrc_fini)
-};
 
 modtarget_t tgt_scons_int[] = {
 	MOD_TARGET_ROOT(SOURCE_IN_FN, "@SOURCE_FILENAME"),
@@ -98,6 +83,7 @@ modtarget_t tgt_build[] = {
 	MOD_TARGET_END
 };
 
+int init(void);
 void usage(int ret, const char* reason, ...);
 
 static void parse_options(int argc, char* argv[]) {
@@ -566,20 +552,6 @@ int tsgenmodsrc_clean(void) {
 	return 0;
 }
 
-int tsgenmodsrc_init(void) {
-	int count = sizeof(subsys) / sizeof(struct subsystem);
-	int i = 0;
-
-	struct subsystem** subsys_list = (struct subsystem**)
-			malloc(count * sizeof(struct subsystem*));
-
-	for(i = 0; i < count; ++i) {
-		subsys_list[i] = &subsys[i];
-	}
-
-	atexit(ts_finish);
-	return ts_init(subsys_list, count);
-}
 
 int main(int argc, char* argv[]) {
 	int err = 0;
@@ -596,7 +568,7 @@ int main(int argc, char* argv[]) {
 	deduce_paths();
 
 	strncpy(log_filename, "-", LOGFNMAXLEN);
-	tsgenmodsrc_init();
+	init();
 
 	modvar_set(modvar_create("TSLOADPATH"), root_path);
 	modvar_set(modvar_create("TS_INSTALL_INCLUDE"), include_path);

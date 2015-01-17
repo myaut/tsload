@@ -37,6 +37,7 @@ class Test:
         self.libs = []
         self.mods = []
         self.uses = []
+        self.subsystems = []
         
         self.extlibs = []
         
@@ -59,6 +60,8 @@ class Test:
                 raise TestException('Invalid syntax for extlib=%s' % repr(value))
         elif name == 'use':
             self.uses.append(value)
+        elif name == 'ss':
+            self.subsystems.append(value)
         elif name == 'lib':
             self.libs.append(value)
         elif name == 'mod':

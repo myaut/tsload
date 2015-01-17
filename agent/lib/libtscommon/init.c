@@ -82,7 +82,6 @@ void ts_finish(void) {
 		}
 	}
 
-	free(tsi_subsys);
 	tsi_subsys = NULL;
 
 	plat_finish();

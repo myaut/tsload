@@ -2,13 +2,29 @@ import sys
 import os
 import re
 
+import traceback
+
 from itertools import product
 from pathutil import *
+from subsys import SubsystemList 
 
 from SCons.Action import CommandAction, ActionFactory
 from SCons.Node.FS import Base
 
 Import('env')
+
+def GetSConscriptPath(self):    
+    modpaths = []
+    absdir = Dir('#').abspath
+    
+    for modpath, _, method, _ in traceback.extract_stack():
+        if method == '<module>':
+            try:  
+                modpaths.append(PathRemoveAbs(modpath, absdir))
+            except ValueError:
+                continue
+    
+    return modpaths[-1]
 
 def Macroses(self, *macroses):
     prefix = '/D' if self['CC'] == 'cl' else '-D'
@@ -19,23 +35,50 @@ def Macroses(self, *macroses):
 def SupportedPlatform(self, platform):
     return platform in self['PLATCHAIN']
 
-def BuildDir(self, dir):
+def BuildDir(self, dir, subdir='build'):
     root_path = self['TSLOADPATH'] if self['_INTERNAL'] else self['TSEXTPATH']
     
-    return PathJoin(root_path, 'build', 'build', dir)
+    return PathJoin(root_path, 'build', subdir, dir)
  
-def AddDeps(self, *deps):
-    for dir, dep in deps:
-        # there is no build directory for external builds, ignore it
-        if self['_INTERNAL']:
-            inc_dir = PathJoin(dir, dep, 'include')
-            lib_dir = PathJoin(dir, dep)
+def AddDependency(self, dir, dep):    
+    # there is no build directory for external builds, ignore it
+    if self['_INTERNAL']:
+        inc_dir = PathJoin(dir, dep, 'include')
+        lib_dir = PathJoin(dir, dep)
+    
+        self.Append(CPPPATH = [self.BuildDir(inc_dir)])
+        self.Append(LIBPATH = [self.BuildDir(lib_dir)])
+    
+    lib_name = dep[3:] if dep.startswith('lib') else dep
+    self.Append(LIBS = [lib_name])
+
+def AddDeps(self, *deps):    
+    print >> sys.stderr, GetSConscriptPath(self), ': AddDeps is deprecated, use UseSubsystems instead'
+    for dir, dep in deps:    
+        AddDependency(self, dir, dep)
+
+def UseSubsystems(self, *subsystems):    
+    if self['_INTERNAL']:
+        ss_list_path = PathJoin(Dir('#').abspath, 'lib', 'subsystems.list')
+    else:
+        ss_list_path = PathJoin(env['TSLOAD_DEVEL_PATH'], 'subsystems.list')
+    
+    self['SSLISTPATH'] = ss_list_path
+    self['SUBSYSTEMS'] = subsystems
+    
+    ss_list = SubsystemList(subsystems)
+    ss_list.read(ss_list_path)
+    ss_list.build()
         
-            self.Append(CPPPATH = [self.BuildDir(inc_dir)])
-            self.Append(LIBPATH = [self.BuildDir(lib_dir)])
-        
-        lib_name = dep[3:] if dep.startswith('lib') else dep
-        self.Append(LIBS = [lib_name])
+    # Get libraries needed for that target and add their dependencies 
+    libs = [ss.library 
+            for ss in ss_list 
+            if ss.library is not None]    
+    deps = []
+    for lib in libs:
+        if lib not in deps:
+            AddDependency(self, 'lib', lib)
+            deps.append(lib)
 
 def InstallTarget(self, tgtroot, tgtdir, target):
     tgtdir = Dir(PathJoin(self['PREFIX'], tgtdir))
@@ -63,6 +106,10 @@ def CompileSharedLibrary(self, extra_sources = [],
     
 def CompileProgram(self, extra_sources = []):
     usage = self.UsageBuilder('usage.txt')
+    
+    if self['SUBSYSTEMS']:
+        # Programs need to init some subsystems global state
+        subsys = self.SubsysBuilder()
     
     objects = self.Object(Glob("*.c") +                                \
                           Glob(PathJoin(env['PLATDIR'], '*/*.c')) +    \
@@ -106,11 +153,7 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
     etrace_files = []
     man_files = []
     
-    mod.AddDeps(('lib', 'libtscommon'),
-                ('lib', 'libhostinfo'), 
-                ('lib', 'libtsjson'),
-                ('lib', 'libtsobj'),
-                ('lib', 'libtsload'))
+    mod.UseSubsystems('tsload')
     modobjs = mod.CompileSharedLibrary()
     
     for src in etrace_sources:
@@ -177,10 +220,15 @@ def PostPrintCommandLine(s, target, source, env):
         
         for tgtnode in target:
             if isinstance(tgtnode, Base):
-                try:
-                    path = PathRemoveAbs(tgtnode.abspath, env.BuildDir(''))
-                except ValueError:
-                    path = PathRemoveAbs(tgtnode.abspath, env['PREFIX'])
+                for abspath in [env.BuildDir(''), 
+                                env.BuildDir('', subdir='test'), 
+                                env['PREFIX']]:
+                    try:
+                        path = PathRemoveAbs(tgtnode.abspath, abspath)
+                    except ValueError:
+                        continue
+                    else:
+                        break
             else:
                 path = tgtnode
             print ' %-12s %s' % (action, path) 
@@ -192,7 +240,10 @@ def PrintCommandLine(self, action):
     if 'cmdline' in env['VERBOSE_BUILD']:
         return lambda target, source, env: '%s:$TARGET' % action
 
+env.AddMethod(GetSConscriptPath)
+env.AddMethod(AddDependency)
 env.AddMethod(AddDeps)
+env.AddMethod(UseSubsystems)
 env.AddMethod(Macroses)
 env.AddMethod(BuildDir)
 env.AddMethod(Module)
@@ -237,6 +288,7 @@ else:
     env.Append(LIBPATH = [PathJoin(env['TSLOADPATH'], env['INSTALL_LIB'])])
 
 env.Append(LIBS = [])
+env.Append(SUBSYSTEMS = [])
 env.Append(WINRESOURCES = [])
 
 env.Append(GENERATED_FILES = [])
@@ -247,6 +299,12 @@ UsageBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genusage.py $SOURCE
                        src_suffix = '.txt',
                        suffix = '.c')
 env.Append(BUILDERS = {'UsageBuilder': UsageBuilder})
+
+# Subsystem Build
+SubsysBuilder = Builder(action = Action('%s $TSLOADPATH/tools/gensubsys.py -c $SOURCE -f init $SUBSYSTEMS > $TARGET' % (sys.executable),
+                                       env.PrintCommandLine('GENSUBSYS')),
+                       emitter = lambda target, source, env: (['init.c'], env['SSLISTPATH']) )
+env.Append(BUILDERS = {'SubsysBuilder': SubsysBuilder})
 
 # Prettify SCons output
 if 'cmdline' not in env['VERBOSE_BUILD']:

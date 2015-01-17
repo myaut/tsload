@@ -20,6 +20,8 @@ extern int tsload_test_main();
 LIBIMPORT char log_filename[];
 LIBIMPORT char mod_search_path[];
 
+int init(void);
+
 void tse_error_msg(ts_errcode_t code, const char* format, ...) {
 	va_list va;
 	char fmtstr[256];
@@ -40,8 +42,7 @@ int test_main(int argc, char* argv[]) {
 	getcwd(cwd, PATHMAXLEN);
 	path_join(mod_search_path, MODPATHLEN, cwd, "mod", NULL);
 
-	atexit(ts_finish);
-	tsload_init(NULL, 0, NULL, 0);
+	init();
 
 	tsload_error_msg = tse_error_msg;
 

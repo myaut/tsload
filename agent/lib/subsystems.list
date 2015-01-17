@@ -1,0 +1,79 @@
+# List of subsystems provided by various TSLoad libraries
+# 
+# parameters:
+# 		lib - library that implements that subsystem
+# 		cmd - command that contains subsystem
+#		alias - pretty name for a subsystem
+# 		deps - comma separated list of dependences
+#		rdeps - comma separated list of reverse dependences (dependants)
+#		generic - generic subsystem (subsystems that doesn't have init/fini functions)
+
+[log]
+lib=libtscommon
+
+[mempool]
+lib=libtscommon
+
+[sched]
+lib=libtscommon
+
+[mod]
+lib=libtscommon
+alias=modules
+
+[nsk]
+lib=libtscommon
+alias=netsock
+
+[threads]
+lib=libtscommon
+deps=mempool
+
+[json]
+lib=libtsjson
+deps=mempool
+
+[tsobj]
+lib=libtsobj
+deps=json
+
+[tsfile]
+lib=libtsfile
+deps=mempool,json
+
+[hi_obj]
+lib=libhostinfo
+alias=hiobject
+
+[wlt]
+lib=libtsload
+alias=wltype
+deps=log,mempool,nsk
+rdeps=mod
+
+[wl]
+lib=libtsload
+deps=log,mempool,threads,wlt
+alias=workload
+
+[tp]
+lib=libtsload
+deps=log,mempool,threads
+alias=threadpool
+
+[tsload]
+lib=libtsload
+deps=wlt,wl,tp,tsobj,hi_obj
+generic=True
+
+[tse_error]
+cmd=tsexperiment
+rdeps=tsobj,tsfile,tsload
+
+[run]
+cmd=tsexperiment
+deps=wl,tp
+
+[modsrc]
+cmd=tsgenmodsrc
+deps=mempool
