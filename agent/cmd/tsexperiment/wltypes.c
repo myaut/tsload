@@ -71,9 +71,19 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 		}
 	}
 
+	/* If workload types are specified in argv, first check that they are exist  */
+	argi = optind;
+	for( ; argi < argc; ++argi) {
+		ptr = tsload_walk_workload_types(TSLOAD_WALK_FIND, argv[argi], NULL);
+		if(ptr == NULL) {
+			tse_command_error_msg(CMD_NOT_EXISTS, "Invalid workload type '%s' - "
+								  "not registered within TSLoad", argv[argi]);
+			return CMD_NOT_EXISTS;
+		}
+	}
+
 	if(!json) {
 		printf("%-16s %-18s %-12s\n", "WLTYPE", "CLASS", "MODULE");
-		printf("\t%-16s %-4s %-4s %-6s %-10s %-6s\n", "PARAM", "SCOPE", "OPT", "TYPE", "RANGE", "DEFAULT");
 	}
 
 	argi = optind;
@@ -92,11 +102,13 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 		for( ; argi < argc; ++argi) {
 			if(json) {
 				item = tsload_walk_workload_types(TSLOAD_WALK_TSOBJ, argv[argi], NULL);
-				if(item)
+				if(item) {
 					json_add_node(node, json_str_create(argv[argi]), item);
+				}
 			}
 			else {
-				tse_print_wltype(tsload_walk_workload_types(TSLOAD_WALK_FIND, argv[argi], NULL));
+				ptr = tsload_walk_workload_types(TSLOAD_WALK_FIND, argv[argi], NULL);
+				tse_print_wltype((wl_type_t*) ptr);
 			}
 		}
 	}
@@ -138,7 +150,7 @@ void tse_print_wltype(wl_type_t* wlt) {
 	int i;
 	struct tse_wlt_class* clch;
 
-	wlp_descr_t* wlp = &wlt->wlt_params[0];
+	wlp_descr_t* wlp;
 	const char* scope;
 	const char* type;
 	const char* opt;
@@ -146,6 +158,7 @@ void tse_print_wltype(wl_type_t* wlt) {
 	char range[64];
 	char defval[128];
 
+	wlp = &wlt->wlt_params[0];
 	strcpy(wlt_class, "------------------");
 
 	/* Generate text for bitmap of workload class */
@@ -160,6 +173,11 @@ void tse_print_wltype(wl_type_t* wlt) {
 
 	printf("%-16s %-18s %-12s\n", wlt->wlt_name, wlt_class,
 			wlt->wlt_module->mod_name);
+
+	if(wlp->type != WLP_NULL) {
+		printf("\t%-16s %-4s %-4s %-6s %-10s %-6s\n",
+				"PARAM", "SCOPE", "OPT", "TYPE", "RANGE", "DEFAULT");
+	}
 
 	/* Print params */
 	while(wlp->type != WLP_NULL) {

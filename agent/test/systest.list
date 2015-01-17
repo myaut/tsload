@@ -42,8 +42,8 @@ wltypes/spec_2			"args=wl busy_wait http" mod=http
 wltypes/exp_arg			"args=-e experiment wl" use=experiment expect=return:3
 
 # invalid name of wltype = CMD_INVALID_ARG
-wltypes/spec_inval		"args=wl non_existent"	expect=return:4
-wltypes/spec_inval_2	"args=wl busy_wait non_existent" expect=return:4
+wltypes/spec_inval		"args=wl non_existent"	expect=return:11
+wltypes/spec_inval_2	"args=wl busy_wait non_existent" expect=return:11
 
 # ---------------------------
 # LIST
