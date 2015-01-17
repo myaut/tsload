@@ -301,9 +301,15 @@ UsageBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genusage.py $SOURCE
 env.Append(BUILDERS = {'UsageBuilder': UsageBuilder})
 
 # Subsystem Build
+def subsys_emitter(target, source, env):
+    if not target: 
+        target = ['init.c']
+    if not source:
+        source = env['SSLISTPATH']
+    return target, source
 SubsysBuilder = Builder(action = Action('%s $TSLOADPATH/tools/gensubsys.py -c $SOURCE -f init $SUBSYSTEMS > $TARGET' % (sys.executable),
                                        env.PrintCommandLine('GENSUBSYS')),
-                       emitter = lambda target, source, env: (['init.c'], env['SSLISTPATH']) )
+                       emitter = subsys_emitter)
 env.Append(BUILDERS = {'SubsysBuilder': SubsysBuilder})
 
 # Prettify SCons output

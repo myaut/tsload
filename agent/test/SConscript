@@ -65,6 +65,24 @@ def create_use_section(cfg, uses, groups, name):
         else:
             raise ConfigPathError("File or directory '%s' doesn't exist" % use_filename)
 
+def gen_src_files(test, env):
+    srcfiles = []
+    
+    for fname in test.files:
+        fpath = PathJoin(test.group, fname)
+        
+        if fname in test.groupfiles:            
+            cname = test.name + '_' + fname
+            cpath = PathJoin(test.group, cname)
+            
+            env.Command(cpath, fpath, 
+                        Copy("$TARGET", "$SOURCE"))
+            srcfiles.append(cpath)
+        else:
+            srcfiles.append(fpath)
+    
+    return srcfiles
+
 def CreateConfig(target, source, env):
     global is_integrational
     
@@ -117,7 +135,7 @@ for test in suite:
         continue
     
     # XXX: cloning entire environment for each test?
-    tst = env.Clone()
+    tst = env.Clone()      
     
     for lib in test.libs:
         # Hack for chisquare test && windows
@@ -137,25 +155,24 @@ for test in suite:
     elif tst['CC'] == 'cl':
         tst.Append(CCFLAGS = ['/Od']) 
     
-    srcdirs = [Glob(PathJoin(test.group, dir, '*.c')) 
-               for dir in test.dirs]
-    srcfiles = [PathJoin(test.group, file_name) 
-                for file_name in test.files] 
-    
     if not is_system:
         if test.bin is not None:
             raise StopError('Unit tests could not have destination binaries')
+        
+        srcdirs = [Glob(PathJoin(test.group, dir, '*.c')) 
+                   for dir in test.dirs]
+        srcfiles = gen_src_files(test, tst)
         
         test_target = PathJoin(test.group, 'tst_' + test.name)
         
         for plat, extlib in test.extlibs:
             if tst.SupportedPlatform(plat):
-                tst.Append(LIBS = [extlib])
-                
+                tst.Append(LIBS = [extlib])        
+        
         ssobjs = []
         if test.subsystems:
             tst.UseSubsystems(*test.subsystems)
-            ssobjs = [tst.SubsysBuilder()]
+            ssobjs = [tst.SubsysBuilder([test.name + '_init.c'], [])]
         
         bin = tst.Program(test_target, srcdirs + srcfiles + common_objs + ssobjs)
         cfg = tst.Command(str(bin[0]) + '.cfg', bin, CreateConfig)

@@ -31,6 +31,7 @@ class Test:
         
         self.plat = 'generic'
         
+        self.groupfiles = []
         self.files = []
         self.dirs = []
         
@@ -50,6 +51,9 @@ class Test:
     def add_param(self, name, value):
         if name == 'file':
             self.files.append(value)
+        elif name == 'groupfile':
+            if value not in self.groupfiles:
+                self.groupfiles.append(value)
         elif name == 'dir':
             self.dirs.append(value)
         elif name == 'extlib':
@@ -175,6 +179,11 @@ class TestSuite:
                 continue            
             
             test.add_param(name, value)
+            
+            if name == 'file':
+                test.add_param('groupfile', value)
+            if name == 'ss':
+                test.add_param('groupfile', 'init.c')
     
     def parse_test(self, line):
         params = shlex.split(line)
