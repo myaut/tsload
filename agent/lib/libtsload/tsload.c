@@ -73,11 +73,17 @@ static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func
 	return NULL;
 }
 
+tsobj_str_t tsobj_wl_type_format_name(hm_item_t* object) {
+	wl_type_t* wlt = (wl_type_t*) object;
+	return tsobj_str_create(wlt->wlt_name);
+}
+
 /**
  * Walk over workload types registered within TSLoad
  */
 void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
-	return tsload_walkie_talkie(op, arg, walker, &wl_type_hash_map, tsobj_wl_type_format, NULL);
+	return tsload_walkie_talkie(op, arg, walker, &wl_type_hash_map,
+								tsobj_wl_type_format, tsobj_wl_type_format_name);
 }
 
 tsobj_node_t* tsload_get_resources(void) {

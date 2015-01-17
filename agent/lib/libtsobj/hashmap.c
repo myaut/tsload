@@ -36,7 +36,7 @@ int tsobj_hm_walker(hm_item_t* object, void* arg) {
 		name = tsobj_str_create(hm_get_key(context->hm, object));
 	}
 	else {
-		name = context->key_formatter(name);
+		name = context->key_formatter(object);
 	}
 
 	if(item_node != NULL)

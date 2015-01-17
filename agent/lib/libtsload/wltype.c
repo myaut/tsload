@@ -80,8 +80,8 @@ tsobj_node_t* tsobj_wl_type_format(hm_item_t* object) {
 	wl_type_t* wlt = (wl_type_t*) object;
 	int i;
 
-	tsobj_node_t* wlt_node = json_new_node("tsload.WorkloadType");
-	tsobj_node_t* wlt_class = json_new_array();
+	tsobj_node_t* wlt_node = tsobj_new_node("tsload.WorkloadType");
+	tsobj_node_t* wlt_class = tsobj_new_array();
 
 	tsobj_add_string(wlt_node, TSOBJ_STR("module"), tsobj_str_create(wlt->wlt_module->mod_name));
 	tsobj_add_string(wlt_node, TSOBJ_STR("path"), tsobj_str_create(wlt->wlt_module->mod_path));
