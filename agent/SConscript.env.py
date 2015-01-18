@@ -49,7 +49,11 @@ def AddDependency(self, dir, dep):
         self.Append(CPPPATH = [self.BuildDir(inc_dir)])
         self.Append(LIBPATH = [self.BuildDir(lib_dir)])
     
-    lib_name = dep[3:] if dep.startswith('lib') else dep
+    if self.SupportedPlatform('posix'):
+        lib_name = dep[3:] if dep.startswith('lib') else dep
+    else:
+        lib_name = dep
+    
     self.Append(LIBS = [lib_name])
 
 def AddDeps(self, *deps):    

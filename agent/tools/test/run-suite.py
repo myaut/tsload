@@ -262,8 +262,17 @@ class TestRunner(Thread):
     
     def wipe_test_dir(self):
         ''' Cleans test directory'''
+        def onerror(function, path, excinfo):
+            if function is os.remove:
+                exc = excinfo[1]
+                if isinstance(exc, WindowsError) and exc.winerror == 5:
+                    # Revert access rights on files that we chmodded earlier, 
+                    # otherwise rmtree will return access denied on windows
+                    os.chmod(path, 0o0777)
+                    os.remove(path)
+        
         if os.path.isdir(self.test_dir):
-            shutil.rmtree(self.test_dir)
+            shutil.rmtree(self.test_dir, onerror=onerror)
         
     def check_core(self, cfg_name, test_group):
         ''' Checks if process dumped core. If it does,

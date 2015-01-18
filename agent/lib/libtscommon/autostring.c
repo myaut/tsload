@@ -69,8 +69,15 @@ size_t aas_vprintf(char** aas, const char* format, va_list va) {
 		return AAS_INVALID_ARGUMENT;
 	if(*aas != NULL)
 		return AAS_BUF_NOT_EMPTY;
-
+#if defined(HAVE_COUNTING_VSPRINTF)
+	count = vsprintf(NULL, format, va1);
+#elif defined(HAVE_COUNTING_VSNPRINTF)
 	count = vsnprintf(NULL, 0, format, va1);
+#elif defined(HAVE_COUNTING__VSCPRINTF)
+	count = _vscprintf(format, va1);
+#else
+#error "No way to evaluate length of string in aas_vprintf()"
+#endif
 
 	if (count >= 0)
 	{

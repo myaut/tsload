@@ -56,6 +56,7 @@ const int psep_length = 1;
  *  */
 char* path_join_array(char* dest, size_t len, int num_parts, const char** parts) {
     const char* part = parts[0];
+    char* end;
     int i = 0;
     int idx = 0;
     size_t part_len = 0;
@@ -70,19 +71,27 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
         /* If previous part was not finished by separator,
          * add it (works only if psep_length == 1 */
         if(i != 0 && dest[idx - 1] != *path_separator) {
-        	strncat(dest, path_separator, len);
+        	strncat(dest + idx, path_separator, len);
 
             len -= psep_length;
             idx += psep_length;
         }
 
-        strncat(dest, part, len);
+        strncat(dest + idx, part, len);
 
         idx += part_len;
         len -= part_len;
 
         part = parts[++i];
     }
+
+#ifdef PLAT_WIN
+	/* On Windows trailing slashes are not allowed i.e. in FindFirstFileEx()
+	 * so if it is a last part and part is empty, ignore it */
+    end = dest + idx - psep_length;
+    if(*end == *path_separator)
+    	*end = '\0';
+#endif
 
     return dest;
 }

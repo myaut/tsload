@@ -138,12 +138,47 @@ def CheckDladmOpen(context):
     
     return ret
 
+def CheckVsprintfSupportsCounting(context, func, args):
+    test_source = """
+    #include <stdio.h>
+    #include <stdarg.h>
+    
+    int test(const char* fmt, ...) {
+        int ret = 0;
+        
+        va_list va;
+        va_start(va, fmt);
+        ret = """ + func + "(" + args + """ fmt, va);
+        va_end(va);
+        
+        return ret;
+    }
+    
+    int main() {    
+        if(test("test %d is %s", 42, "abyrvalg") == 19)
+            return 0;
+        return 1;
+    }
+    """
+    
+    context.Message('Checking if ' + func + '() accepts NULL as buffer...')
+    ret, _ = context.sconf.TryRun(test_source, '.c')
+    
+    if ret > 0:
+        context.sconf.Define('HAVE_COUNTING_' + func.upper(), 
+                       comment= func + '() accepts NULL as buffer')
+    
+    context.Result(ret)
+    
+    return ret
+
 conf.AddTests({'CheckBinary': CheckBinary,
                'CheckDesignatedInitializers': CheckDesignatedInitializers,
                'CheckGCCSyncBuiltins': CheckGCCSyncBuiltins,
                'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins,
                'CheckUnalignedMemAccess': CheckUnalignedMemAccess,
-               'CheckDladmOpen': CheckDladmOpen})
+               'CheckDladmOpen': CheckDladmOpen,
+               'CheckVsprintfSupportsCounting': CheckVsprintfSupportsCounting})
 
 #-------------------------------------------
 # C compiler and standard library checks
@@ -218,6 +253,13 @@ if env.SupportedPlatform('solaris'):
     conf.CheckDeclaration('pset_bind_lwp', '#include <sys/pset.h>')
     
     conf.CheckDeclaration('smbios_open', '#include <sys/smbios.h>')
+
+#----------------------------
+# aas_vprintf() checks 
+if not conf.CheckVsprintfSupportsCounting('_vscprintf', '') and               \
+        not conf.CheckVsprintfSupportsCounting('vsprintf', 'NULL, ') and      \
+        not conf.CheckVsprintfSupportsCounting('vsnprintf', 'NULL, 0, ')      :
+    raise StopError("No way to evaluate length of string in aas_vprintf()")
 
 #----------------------------
 # hostinfo checks

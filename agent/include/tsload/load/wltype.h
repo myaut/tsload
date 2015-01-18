@@ -111,8 +111,8 @@ LIBEXPORT int wl_type_register(module_t* mod, wl_type_t* wlt);
 LIBEXPORT int wl_type_unregister(module_t* mod, wl_type_t* wlt);
 wl_type_t* wl_type_search(const char* name);
 
-int wlt_init(void);
-void wlt_fini(void);
+LIBEXPORT int wlt_init(void);
+LIBEXPORT void wlt_fini(void);
 
 tsobj_node_t* tsobj_wl_type_format(hm_item_t* object);
 

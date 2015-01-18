@@ -192,6 +192,8 @@ class BuildServer(object):
         
         if level == BuildServer.LOG_ALL:
             sys.stdout.write(text)
+            
+        self.log_file.flush()
     
     def copy(self, repository):
         '''Copies updated files from repository to remote build server.

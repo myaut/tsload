@@ -99,7 +99,7 @@ hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...) {
 	hash_map_init(hm, NULL);
 
 	va_start(va, namefmt);
-	aas_vprintf(&hm->hm_name, namefmt, va);
+	aas_vprintf(aas_init(&hm->hm_name), namefmt, va);
 	va_end(va);
 
 	return hm;

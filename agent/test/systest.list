@@ -36,7 +36,7 @@
 wltypes/all				args=wl
 wltypes/all_json		"args=wl -j"
 wltypes/spec			"args=wl busy_wait"
-wltypes/spec_2			"args=wl busy_wait http" mod=http
+wltypes/spec_2			"args=wl busy_wait http" mod=http enabled=False
 
 # wltype with experiment arg = CMD_INVALID_OPT
 wltypes/exp_arg			"args=-e experiment wl" use=experiment expect=return:3

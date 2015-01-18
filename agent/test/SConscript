@@ -181,7 +181,7 @@ for test in suite:
             raise StopError('System test')
         
         bin = env['TESTBINS'][test.bin]      
-        cfg = tst.Command(test.group + '_' + test.name + '.cfg', bin, CreateConfig)
+        cfg = tst.Command(test.group + '_' + test.name + '.cfg', bin, CreateConfig)        
         
     tst.Depends(cfg, suite_path)
     test_instances.append(cfg)
