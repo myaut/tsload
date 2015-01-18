@@ -366,12 +366,14 @@ static void tse_add_option(list_head_t* options, const char* optarg) {
 	size_t wl_name_len = 0;
 	size_t opt_len;
 
+	aas_init(&opt->wl_name);
+
 	/* Colon may be also passed as argument of option, so
 	 * ensure if it goes before '=' symbol (inside option name) */
 	if(colon != NULL && (eq == NULL || colon < eq)) {
 		wl_name_len = colon - optarg;
 
-		aas_copy_n(aas_init(&opt->wl_name), optarg, wl_name_len);
+		aas_copy_n(&opt->wl_name, optarg, wl_name_len);
 		optarg = colon + 1;
 	}
 
