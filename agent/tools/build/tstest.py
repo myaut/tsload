@@ -148,7 +148,7 @@ class TestSuite:
                 else:
                     self.parse_test(wholeline)
                 wholeline = ''
-            except TestException, e:
+            except (TestException, ValueError) as e:
                 error = True
                 print >> sys.stderr, 'Error on line %d:' % lnum, str(e)
                 print >> sys.stderr, '\t\t ' + wholeline

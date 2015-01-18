@@ -34,36 +34,51 @@ def create_path_section(cfg, aliases, paths, name):
         else:
             raise ConfigPathError("Alias '%s' doesn't exist" % obj)
 
-def create_use_section(cfg, uses, groups, name):
-    use_sect = cfg.add_section(name)
+def walk_uses(uses):
+    # Parse use with args (chown, rename)
     for use in uses:
-        # Parse use with args (chown, rename)
-        use_arg_list = use.split()
+        use_arg_list = use.split()        
+        use_filename = use_arg_list.pop(0)        
+        use_filename = use_filename.replace('/', os.sep)
         
-        use_filename = use_arg_list.pop(0)
+        is_builddir = use_filename.startswith('$BUILDDIR' + os.sep)
+        if is_builddir:
+            _, use_filename = use_filename.split(os.sep, 1)
+        
+        yield use_arg_list, use_filename, is_builddir
+
+def create_use_section(cfg, uses, groups, name, builddir):
+    use_sect = cfg.add_section(name)
+    for use_arg_list, use_filename, is_builddir in walk_uses(uses):
+              
         use_args = {}
         
         use_name = 'use_' + use_filename.replace('/', '_').replace('.', '_')
         
         for use_arg in use_arg_list:
             arg_name, value = use_arg.split(':')
+            if arg_name == 'rename':
+                value = value.replace('/', os.sep)
             use_args[arg_name] = value
-        
-        for group in groups:            
-            use_path = os.path.join('test', group, use_filename)
-            if PathExists(use_path):            
-                cfg.set(name, use_name, use_path)
                 
-                # Create a section that contains use-args
-                if use_args:
-                    args_sect = cfg.add_section(use_name)
-                    
-                    for arg_name, value in use_args.items():
-                        cfg.set(use_name, arg_name, value)
-                
-                break
+        if is_builddir:
+            use_path = PathJoin(builddir, use_filename)
         else:
-            raise ConfigPathError("File or directory '%s' doesn't exist" % use_filename)
+            for group in groups:            
+                use_path = PathJoin('test', group, use_filename)
+                if PathExists(use_path):
+                    break                            
+            else:
+                raise ConfigPathError("File or directory '%s' doesn't exist" % use_filename)
+        
+        cfg.set(name, use_name, use_path)
+                
+        # Create a section that contains use-args
+        if use_args:
+            args_sect = cfg.add_section(use_name)
+            
+            for arg_name, value in use_args.items():
+                cfg.set(use_name, arg_name, value)
 
 def gen_src_files(test, env):
     srcfiles = []
@@ -102,7 +117,8 @@ def CreateConfig(target, source, env):
     create_path_section(cfg, test.libs, env['TESTLIBS'], 'libs')
     create_path_section(cfg, test.mods, env['TESTMODS'], 'mods')    
         
-    create_use_section(cfg, test.uses, test.groups, 'uses')
+    create_use_section(cfg, test.uses, test.groups, 'uses',
+                       env.BuildDir(''))
     
     bin_sect = cfg.add_section('bins')        
     if is_system:        
@@ -182,7 +198,11 @@ for test in suite:
         
         bin = env['TESTBINS'][test.bin]      
         cfg = tst.Command(test.group + '_' + test.name + '.cfg', bin, CreateConfig)        
-        
+    
+    for use_arg_list, use_filename, is_builddir in walk_uses(test.uses):
+        if is_builddir:
+            tst.Depends(cfg, env.BuildDir(use_filename))
+    
     tst.Depends(cfg, suite_path)
     test_instances.append(cfg)
 

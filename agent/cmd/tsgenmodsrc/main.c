@@ -173,9 +173,10 @@ static void parse_options(int argc, char* argv[]) {
 }
 
 /* Builds path relative to root from subpath and extrapath (may be NULL).
+ * Also fills joins subpath and extrapath into dest
  *
- * If it exists and accessible (access is set by mask)
- * copies subpath to dest and returns B_TRUE. Otherwise, returns B_FALSE.
+ * If it exists and accessible (access is set by mask) returns B_TRUE.
+ * Otherwise, returns B_FALSE.
  */
 static boolean_t set_path(char* dest, size_t len, const char* root, const char* subpath,
 						  const char* extrapath, int mask) {
@@ -185,9 +186,9 @@ static boolean_t set_path(char* dest, size_t len, const char* root, const char* 
 		return B_FALSE;
 
 	path_join(path, PATHMAXLEN, root, subpath, extrapath, NULL);
+	path_join(dest, len, subpath, extrapath, NULL);
 
 	if(access(path, mask) == 0) {
-		path_join(dest, len, subpath, extrapath, NULL);
 		return B_TRUE;
 	}
 

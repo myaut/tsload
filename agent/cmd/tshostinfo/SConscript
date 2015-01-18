@@ -11,6 +11,6 @@ cmd = env.Clone()
 cmd.UseSubsystems('mempool', 'sched', 'tsobj', 'hi_obj')
 
 objects = cmd.CompileProgram()
-tshostinfo = cmd.Program(target, objects)
+tshostinfo = cmd.LinkProgram(target, objects)
 
 cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tshostinfo)

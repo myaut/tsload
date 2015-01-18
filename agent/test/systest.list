@@ -6,7 +6,11 @@
 # 		bin=tsexperiment	destination binary to test
 #		mod=mod_name		required module name
 #		"args=a1 -a a2"		arguments
-#
+
+#====================================================
+# TSExperiment system tests
+#====================================================
+
 # Expected values for return values of tsexperiment:
 #  Basic command errors:
 #	 CMD_OK		    		0
@@ -23,7 +27,8 @@
 # All other errors:
 #	 CMD_GENERIC_ERROR		30
 
-^tsexperiment lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
+
+^tsexperiment lib=libtscommon	lib=libtsjson 	lib=libtsobj		\
 			  lib=libtsload		lib=libhostinfo	 	lib=libtsfile	\
 			  bin=tsexperiment
 
@@ -287,4 +292,164 @@ run/trace_broken_tsf_2	"args=-T 1" 				\
 	expect=return:30								\
 	"use=broken2.tsf							 	\			
 			rename:experiment/experiment-1/test1.tsf"
-			
+
+#====================================================
+# TSHostInfo system tests
+#====================================================
+
+^tshostinfo   lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
+			  lib=libhostinfo	 	bin=tshostinfo
+tshostinfo/host 	"args=-x host"
+tshostinfo/sched 	"args=-x sched"
+tshostinfo/cpu 		"args=-x cpu"
+tshostinfo/disk 	"args=-x disk"
+tshostinfo/net 		"args=-x net"
+tshostinfo/vm 		"args=-x vm"
+
+#====================================================
+# TSFileUtil system tests
+#====================================================
+^tsfutil   lib=libtscommon		lib=libtsjson 	lib=libtsobj	\
+		   lib=libtsfile		bin=tsfutil
+
+tsfutil/create				use=schema.json									\
+							"args=-s schema.json create test.tsf"   
+tsfutil/create2				"use=invalid-schema.json rename:schema.json"	\
+							"args=-s schema.json create test.tsf"						
+tsfutil/create_broken		"use=broken-schema.json rename:schema.json"		\
+							"args=-s schema.json create test.tsf"			\
+								expect=return:1
+
+tsfutil/count				use=schema.json	use=tsfile.tsf					\
+							"args=-s schema.json count tsfile.tsf" 
+						
+tsfutil/get					use=schema.json	use=tsfile.tsf					\
+							"args=-s schema.json get tsfile.tsf"   
+tsfutil/get2				"use=invalid-schema.json rename:schema.json"	\
+							use=tsfile.tsf									\
+							"args=-s schema.json get tsfile.tsf"						
+
+tsfutil/get_broken_schema	"use=broken-schema.json rename:schema.json"		\
+							"args=-s schema.json get tsfile.tsf"			\
+								expect=return:1
+tsfutil/get_broken_tsf_1	use=schema.json	use=broken1.tsf					\
+							"args=-s schema.json get broken1.tsf"			\
+								expect=return:1
+tsfutil/get_broken_tsf_2	use=schema.json	use=broken2.tsf					\
+							"args=-s schema.json get broken2.tsf"			\
+								expect=return:1
+
+tsfutil/get_schema_noent	use=tsfile.tsf									\
+							"args=-s schema.json get tsfile.tsf"   			\
+								expect=return:1   
+tsfutil/get_schema_noperms	"use=schema.json chmod:0000 rename:schema.json"	\
+							use=tsfile.tsf									\
+							"args=-s schema.json get tsfile.tsf"   			\
+								expect=return:1   
+tsfutil/get_tsf_noent		use=schema.json									\
+							"args=-s schema.json get tsfile.tsf"   			\
+								expect=return:1   
+tsfutil/get_tsf_noperms		use=schema.json									\
+							"use=tsfile.tsf chmod:0000 rename:tsfile.tsf"	\
+							"args=-s schema.json get tsfile.tsf"   			\
+								expect=return:1
+
+^tsfget		extends=tsfutil	"args=-s schema.json" 	use=schema.json			\
+			use=tsfile.tsf
+
+tsfget/neg_range		"args=-F csv get -g -1:10 tsfile.tsf"   		\
+							expect=return:1
+tsfget/reverse_range	"args=-F csv get -g 20:10 tsfile.tsf"
+tsfget/inval_range		"args=-F csv get -g 101:110 tsfile.tsf"   		\
+							expect=return:1
+tsfget/inval_range_2	"args=-F csv get -g 30:50 tsfile.tsf"   		\
+							expect=return:1
+tsfget/until_last		"args=-F csv get -g 10:$ tsfile.tsf"
+
+tsfget/json				"args=-F json get -g 5:10 tsfile.tsf"
+tsfget/json_raw			"args=-F jsonraw get -g 5:10 tsfile.tsf"
+tsfget/csv				"args=-F csv get -g 5:10 tsfile.tsf"	
+tsfget/csv_header		"args=-F csv get -g 5:10 -o header=rq_user,rq_thread,num_cycles tsfile.tsf"
+tsfget/csv_header_u		"args=-F csv get -g 5:10 -o header=rq_user,rq_thread,num_cycles:unsigned tsfile.tsf"
+tsfget/csv_header_h		"args=-F csv get -g 5:10 -o header=rq_flags:hex tsfile.tsf"
+tsfget/csv_no_header	"args=-F csv get -g 5:10 -o noheader tsfile.tsf"
+tsfget/csv_valsep		"args=-F csv get -g 5:10 -o valsep=! tsfile.tsf"							
+
+tsfget/out_no_perms		"use=data1.json chmod:0000 rename:data1.json"		\
+						"args=-F json get -g 5:10 tsfile.tsf data1.json"	\
+							expect=return:1
+
+^tsfadd		extends=tsfutil	"args=-s schema.json" 	use=schema.json			\
+			use=tsfile.tsf
+
+tsfadd/json					use=data1.json									\
+							"args=-F json add tsfile.tsf data1.json"	
+tsfadd/csv					use=data1.csv									\
+							"args=-F csv add tsfile.tsf data1.csv"
+tsfadd/csv_header_h			use=header-hex.csv								\
+							"args=-F csv add tsfile.tsf header-hex.csv"
+tsfadd/csv_noheader			use=noheader.csv								\
+							"args=-F csv add tsfile.tsf noheader.csv"		\
+								expect=return:1
+tsfadd/csv_incomplete		use=incomplete.csv								\
+							"args=-F csv add tsfile.tsf incomplete.csv"
+
+#====================================================
+# TSGenModSrc system tests
+#====================================================
+^tsgenmodsrc_nodev   lib=libtscommon	lib=libtsjson 	bin=tsgenmodsrc			\
+			   		 use=share
+
+tsgenmodsrc_nodev/header	use=mod-normal "args=hdr mod-normal/modinfo.json"	\
+							expect=return:1
+
+^tsgenmodsrc		lib=libtscommon		lib=libtsjson 		bin=tsgenmodsrc		\
+			   		use=share	use=include										\		   		
+			   		"use=$BUILDDIR/make.bldenv.json								\
+			   				rename:share/devel/make.bldenv.json"				\
+			   		"use=$BUILDDIR/scons.bldenv.json							\ 
+			   				rename:share/devel/scons.bldenv.json"				\
+			   		"use=$BUILDDIR/cmd/tsgenmodsrc/modsrc						\ 
+			   				rename:share/devel/modsrc"							
+
+tsgenmodsrc/header				use=mod-normal "args=hdr mod-normal/modinfo.json"
+tsgenmodsrc/source				use=mod-normal "args=src mod-normal/modinfo.json"
+tsgenmodsrc/makefile			use=mod-normal "args=makefile -b make mod-normal/modinfo.json"
+tsgenmodsrc/scons_ext			use=mod-normal "args=makefile -t ext mod-normal/modinfo.json"
+tsgenmodsrc/scons_int			use=mod-normal "args=makefile -t int mod-normal/modinfo.json"
+
+tsgenmodsrc/gen_makefile		use=mod-normal "args=gen -b make mod-normal/modinfo.json"
+tsgenmodsrc/gen_scons_ext		use=mod-normal "args=gen -t ext mod-normal/modinfo.json"
+tsgenmodsrc/gen_scons_int		use=mod-normal "args=gen -t int mod-normal/modinfo.json"
+
+^tsgms_modinfo					extends=tsgenmodsrc "args=gen modx/modinfo.json"
+
+tsgms_modinfo/gen_not_empty_dir		"use=mod-not-empty-dir rename:modx"			\
+										expect=return:1
+tsgms_modinfo/gen_no_dir_ent			expect=return:1
+tsgms_modinfo/gen_no_dir_perms		"use=mod-normal chmod:0000 rename:modx"		\ 
+										expect=return:1
+tsgms_modinfo/gen_no_modinfo_ent	"use=mod-noent rename:modx"					\
+										expect=return:1
+tsgms_modinfo/gen_no_modinfo_perms	"use=mod-normal rename:modx"				\
+									"use=mod-normal/modinfo.json chmod:0000		\ 
+											rename:modx/modinfo.json"			\
+										expect=return:1
+
+
+tsgms_modinfo/gen_hasdata 			"use=mod-hasdata rename:modx"
+tsgms_modinfo/gen_hasstep 			"use=mod-hasstep rename:modx"
+
+tsgms_modinfo/gen_noname 			"use=mod-noname rename:modx"			expect=return:1
+
+tsgms_modinfo/gen_no_wltclass 		"use=mod-no-wltclass rename:modx"		expect=return:1
+tsgms_modinfo/gen_inval_wltclass 	"use=mod-inval-wltclass rename:modx"	expect=return:1
+
+tsgms_modinfo/gen_no_params 		"use=mod-no-params rename:modx"			expect=return:1
+tsgms_modinfo/gen_empty_params 		"use=mod-empty-params rename:modx"
+tsgms_modinfo/gen_inval_defval_type "use=mod-inval-defval-type rename:modx" expect=return:1
+tsgms_modinfo/gen_inval_minmax_type "use=mod-inval-minmax-type rename:modx"	expect=return:1
+tsgms_modinfo/gen_no_max 			"use=mod-no-max rename:modx"			expect=return:1
+
+tsgms_modinfo/gen_vars 				"use=mod-vars rename:modx"
+tsgms_modinfo/gen_inval_vars 		"use=mod-inval-vars rename:modx"		expect=return:1

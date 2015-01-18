@@ -15,8 +15,16 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+try:
+    import cgi
+    html_escape = cgi.escape
+except Exception:
+    html_escape = lambda text: text.replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
+
 import tempfile
 import shutil
+
+import errno
 
 class TestError(Exception):
     pass
@@ -106,7 +114,7 @@ class HTMLFormatter(Formatter):
     def report_block(self, name, block):
         self.outf.write(name)
         self.outf.write('<BR />\n<PRE>')
-        self.outf.write(block)
+        self.outf.write(html_escape(block))
         self.outf.write('</PRE>\n')
     
     def report_results(self, ok_count, failed_count, error_count):
@@ -130,8 +138,10 @@ class TestRunner(Thread):
         self.mod_dir = os.path.join(self.test_dir, 'mod')
         
         if sys.platform == 'win32':
+            self.lib_subdir = ''
             self.bin_dir = self.lib_dir = self.test_dir
         else:
+            self.lib_subdir = 'lib'
             self.lib_dir = os.path.join(self.test_dir, 'lib')
             self.bin_dir = os.path.join(self.test_dir, 'bin')
         
@@ -263,16 +273,31 @@ class TestRunner(Thread):
     def wipe_test_dir(self):
         ''' Cleans test directory'''
         def onerror(function, path, excinfo):
-            if function is os.remove:
-                exc = excinfo[1]
-                if isinstance(exc, WindowsError) and exc.winerror == 5:
-                    # Revert access rights on files that we chmodded earlier, 
-                    # otherwise rmtree will return access denied on windows
-                    os.chmod(path, 0o0777)
-                    os.remove(path)
+            exc = excinfo[1]
+            
+            if sys.platform == 'win32':
+                is_win_access_denied = isinstance(exc, WindowsError) and exc.winerror == 5
+            else:
+                is_win_access_denied = False
+            is_unix_access_denied = isinstance(exc, OSError) and exc.errno == errno.EACCES
+            is_unix_non_empty = isinstance(exc, OSError) and exc.errno == errno.ENOTEMPTY
+            
+            if is_win_access_denied or is_unix_access_denied:
+                # Revert access rights on files that we chmodded earlier, 
+                # otherwise rmtree will return access denied on windows
+                os.chmod(path, 0o0777)
+                
+                return function(path)
+            
+            if is_unix_non_empty and function is os.rmdir:
+                # Recursive retry :)
+                shutil.rmtree(path, onerror=onerror)                
         
         if os.path.isdir(self.test_dir):
             shutil.rmtree(self.test_dir, onerror=onerror)
+        
+        if os.path.isdir(self.test_dir):
+            self.suite.report_test_dir(os.listdir(self.test_dir))
         
     def check_core(self, cfg_name, test_group):
         ''' Checks if process dumped core. If it does,
@@ -322,18 +347,32 @@ class TestRunner(Thread):
         
         return outf.getvalue()
     
+    def generate_env(self):
+        test_env = os.environ.copy()
+        
+        if sys.platform in ['linux2', 'sunos5']:
+            test_env['LD_LIBRARY_PATH'] = self.lib_dir
+            
+        # For system tests (tsexperiment)
+        test_env['TS_MODPATH'] = self.mod_dir
+        test_env['TS_LOGFILE'] = self.log_name
+        
+        # For system tests (tsgenmodsrc)
+        test_env['TSLOADPATH'] = self.test_dir
+        test_env['TS_INSTALL_SHARE'] = 'share'
+        test_env['TS_INSTALL_INCLUDE'] = 'include'
+        test_env['TS_INSTALL_LIB'] = self.lib_subdir
+        test_env['TS_INSTALL_MOD_LOAD'] = 'mod'
+        
+        return test_env 
+    
     def run_test(self, cfg_name):
         # Prepare test environment and generate command for it
         test = self.read_test_config(cfg_name)
         test_bin = os.path.basename(test.bins[0])
-        test_env = os.environ.copy()
+        test_env = self.generate_env()
         
         self.prepare_test_dir(test)
-        
-        if sys.platform in ['linux2', 'sunos5']:
-            test_env['LD_LIBRARY_PATH'] = self.lib_dir
-        test_env['TS_MODPATH'] = self.mod_dir
-        test_env['TS_LOGFILE'] = self.log_name 
         
         use_shell = False
         command = os.path.join(self.bin_dir, test_bin)
@@ -485,11 +524,15 @@ class TestSuite(object):
             info = traceback.format_exception(*exc_info)
             
             self.formatter.report_test(test_name, 'ERROR')
-            self.formatter.write(''.join(info))
+            self.formatter.report_block('Traceback', ''.join(info))
             
             # Print result to terminal
             print >> sys.stderr, 'Running test %s... ERROR' % (test_name)
     
+    def report_test_dir(self, file_list):
+        with self.report_lock:
+            self.formatter.report_block('Some files are left in test directory:', 
+                                        '\n'.join(file_list))
     def run(self):
         for cfg_name in sys.argv[1:]:
             self.queue.put(cfg_name)

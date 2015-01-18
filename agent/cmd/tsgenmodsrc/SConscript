@@ -11,7 +11,7 @@ cmd = env.Clone()
 cmd.UseSubsystems('log', 'mempool', 'json', 'modsrc')
 
 objects = cmd.CompileProgram()
-tsgenmodsrc = cmd.Program(target, objects)
+tsgenmodsrc = cmd.LinkProgram(target, objects)
 
 cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsgenmodsrc)
 cmd.InstallTarget(tgtroot, PathJoin(env['INSTALL_VAR'], 'modsrc'), File('modinfo.json'))

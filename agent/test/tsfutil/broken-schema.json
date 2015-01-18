@@ -1,0 +1,58 @@
+{
+  "fields": {
+    "rq_step": {
+      "type": "int",
+      "size": 4,
+      "offset": 0
+    },
+    "rq_request": {
+      "size": 4,
+      "offset": 4
+    },
+    "rq_chain_request": {
+      "type": "int",
+      "offset": 8
+    },
+    "rq_thread": {
+      "type": "int",
+      "size": 4,
+      "offset": 12
+    },
+    "rq_user": {
+      "type": "int",
+      "size": 4,
+      "offset": 16
+    },
+    "rq_sched_time": {
+      "type": "int",
+      "size": 8,
+      "offset": 24
+    },
+    "rq_start_time": {
+      "type": "int",
+      "size": 8,
+      "offset": 32
+    },
+    "rq_end_time": {
+      "type": "int",
+      "size": 8,
+      "offset": 40
+    },
+    "rq_queue_length": {
+      "type": "int",
+      "size": 4,
+      "offset": 48
+    },
+    "rq_flags": {
+      "type": "int",
+      "size": 2,
+      "offset": 52
+    },
+    "num_cycles": {
+      "type": "int",
+      "size": 8,
+      "offset": 56
+    }
+  },
+  "entry_size": 64
+}

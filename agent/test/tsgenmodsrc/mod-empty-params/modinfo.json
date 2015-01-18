@@ -1,0 +1,6 @@
+{ 
+	"name": "test_module",
+	"wlt_class": [ "cpu_integer", "cpu_misc" ],
+	"params": {		
+	}
+}
