@@ -65,7 +65,7 @@ def UseSubsystems(self, *subsystems):
     if self['_INTERNAL']:
         ss_list_path = PathJoin(Dir('#').abspath, 'lib', 'subsystems.list')
     else:
-        ss_list_path = PathJoin(env['TSLOAD_DEVEL_PATH'], 'subsystems.list')
+        ss_list_path = PathJoin(env['TSLOAD_DEVEL_PATH'], 'lib', 'subsystems.list')
     
     self['SSLISTPATH'] = ss_list_path
     self['SUBSYSTEMS'] = subsystems

@@ -12,7 +12,7 @@ SConsEnvironment.Chmod = ActionFactory(os.chmod,
         lambda dest, mode: 'Chmod("%s", 0%o)' % (dest, mode)) 
 
 # Append path to build tools
-sys.path.append(PathJoin(env['TSLOAD_DEVEL_PATH'], 'build'))
+sys.path.append(PathJoin(env['TSLOAD_DEVEL_PATH'], 'tools', 'build'))
 
 # Load tsload SConscripts
 SConscript(PathJoin(env['TSLOAD_DEVEL_PATH'], 'SConscript.env.py'), 'env')

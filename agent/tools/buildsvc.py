@@ -139,6 +139,7 @@ class BuildServer(object):
         self._setup_env()
         
         self.builddir = None
+        self.log_file = None
     
     def _setup_env(self):
         if self.plat == 'win32':
@@ -177,12 +178,14 @@ class BuildServer(object):
         
         self.sftp = self.transport.open_sftp_client()
     
-    def log_init(self, logdir):
+    def log_init(self, logprefix, logdir):
         '''Sets up logging to directory `logdir`'''
-        log_path = os.path.join(logdir, self.name + '.log')
-        self.log_file = file(log_path, 'w')
+        self.log_path = os.path.join(logdir, logprefix + '_' + self.name + '.log')
         
     def _log(self, level, msg, *args):
+        if self.log_file is None:
+            self.log_file = file(self.log_path, 'w')
+        
         if args:
             text = msg % args
         else:
@@ -329,6 +332,7 @@ class BuildManager(object):
         
         self.global_opts = self.config.get('__global__', 'opts')
         self.log_dir = self.config.get('__global__', 'logdir')
+        self.log_prefix = self.config.get('__global__', 'logprefix')
         self.out_dir = self.config.get('__global__', 'outdir')
         self.prefix = self.config.get('__global__', 'prefix')
         
@@ -339,7 +343,7 @@ class BuildManager(object):
             
             options = dict(self.config.items(section))
             server = BuildServer(name, **options)
-            server.log_init(self.log_dir)
+            server.log_init(self.log_prefix, self.log_dir)
             
             self.servers[name] = server
     

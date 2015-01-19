@@ -66,6 +66,8 @@ int test_main() {
 
 	/* Initialize thread */
 	t_init(&thread, NULL, test_thread, "thread");
+	t_wait_start(&thread);
+
 	ret = sched_set_affinity(&thread, mask);
 
 	if(ret != SCHED_NOT_SUPPORTED) {

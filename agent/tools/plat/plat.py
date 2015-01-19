@@ -78,6 +78,7 @@ class PlatCache:
         self.file_name = file_name
         
         self.shelve = None
+        self.lock_file = None
     
     def open(self):
         '''Open lock file than shelve'''
@@ -89,7 +90,7 @@ class PlatCache:
     def close(self):
         if self.shelve:
             self.shelve.close()
-            
+        if self.lock_file:
             portalocker.unlock(self.lock_file)
             self.lock_file.close()
     

@@ -1013,6 +1013,10 @@ int modinfo_read_buildenv(const char* root_path, const char* bldenv_path) {
 	if(ret != MODINFO_OK)
 		goto end;
 
+	ret = modinfo_create_cflags(bldenv, "LINKFLAGS", "");
+	if(ret != MODINFO_OK)
+		goto end;
+
 	if(json_get_string(bldenv, "SHOBJSUFFIX", &value) != JSON_OK) {
 		ret = MODINFO_CFG_INVALID_OPT;
 		goto end;

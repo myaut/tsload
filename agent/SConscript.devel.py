@@ -33,13 +33,13 @@ def SaveEnvironmentSCons(target, source, env):
             'PLATCHAIN', 'PLATDEBUG', 'PLATCACHE', 'PLATDIR',
             'INSTALL_BIN', 'INSTALL_ETC', 'INSTALL_INCLUDE', 'INSTALL_LIB',
             'INSTALL_MOD_LOAD', 'INSTALL_SHARE', 'INSTALL_VAR']
-    lists = ['CCFLAGS']    
+    lists = ['CCFLAGS', 'LINKFLAGS']    
     
     SaveEnvironmentImpl(target, source, env, vars, lists)
     
 def SaveEnvironmentMake(target, source, env):
     vars = ['SHLIBSUFFIX', 'SHOBJSUFFIX']
-    lists = ['CCFLAGS', 'SHCCFLAGS', 'LIBS', 'SHLINKFLAGS']   
+    lists = ['CCFLAGS', 'SHCCFLAGS', 'LIBS', 'SHLINKFLAGS', 'LINKFLAGS']   
     
     SaveEnvironmentImpl(target, source, env, vars, lists)
     
@@ -56,11 +56,17 @@ SaveEnvironment(env, 'scons.bldenv.json', SaveEnvironmentSCons)
 SaveEnvironment(env, 'make.bldenv.json', SaveEnvironmentMake)
 
 # Install includes and build helpers
-build_helpers = ['SConscript.env.py', 'SConscript.plat.py', 
+build_helpers = [ # SCons build helpers
+                 'SConscript.env.py', 'SConscript.plat.py', 
                  'SConscript.install.py', 'SConscript.etrace.py',
-                 'SConscript.ext.py', 'lib/subsystems.list', 
+                 'SConscript.ext.py', 'lib/subsystems.list',
+                 'tools/build/pathutil.py', 'tools/build/subsys.py',
+                 'tools/build/installdirs.py', 
+                  # Generator builders
                  'tools/gensubsys.py', 'tools/genetrace.py', 'tools/genusage.py',
-                 'tools/build', 'tools/plat']
+                  # PLATAPI
+                 'tools/plat/plat.py', 'tools/plat/portalocker.py', 
+                 'tools/plat/parse-include.py', 'tools/plat/proc-source.py']
 
 for entry in Dir('#include').glob('*'):
     env.InstallTarget(tgtroot, env['INSTALL_INCLUDE'], entry)
@@ -68,7 +74,7 @@ for entry in Dir('#include').glob('*'):
 dest_dir = PathJoin(env['INSTALL_INCLUDE'], 'tsload')
 env.InstallTarget('tsload-devel', dest_dir, env['GENERATED_FILES'])
 
-for helper in build_helpers:
-    env.InstallTarget(tgtroot, tgtdevel, helper)  
+for helper in build_helpers: 
+    env.InstallTarget(tgtroot, PathJoin(tgtdevel, PathDirName(helper)), helper)  
 
 Export('env')
