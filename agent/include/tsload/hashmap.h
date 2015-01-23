@@ -80,6 +80,7 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
  * Declare hash map
  *
  * @param name name of hash map var (all corresponding objects will be named hm_(object)_(name))
+ * @param is_indirect if set to B_TRUE, key_field is considered a pointer to a key, not a key itself
  * @param type type of elements
  * @param size size of hash map (not of type)
  * @param key_field field of element that contains key
