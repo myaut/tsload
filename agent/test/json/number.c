@@ -90,6 +90,31 @@ void test_number_float_inval(void) {
 	dump_error();
 }
 
+void test_number_get_i64(void) {
+	json_buffer_t* buf = JSON_BUFFER(" { \"i\" : -123456 }  ");
+	json_node_t* node;
+	int64_t i;
+
+	assert(json_parse(buf, &node) == JSON_OK);
+	assert(json_get_integer_i64(node, "i", &i) == JSON_OK);
+	assert(i == -123456);
+
+	json_node_destroy(node);
+}
+
+void test_number_get_i16_of(void) {
+	json_buffer_t* buf = JSON_BUFFER(" { \"i\" : -123456 }  ");
+	json_node_t* node;
+	int16_t i;
+
+	assert(json_parse(buf, &node) == JSON_OK);
+	assert(json_get_integer_i16(node, "i", &i) == JSON_OVERFLOW);
+	
+	dump_error();
+
+	json_node_destroy(node);
+}
+
 void test_number_float_int(void) {
 	json_buffer_t* buf = JSON_BUFFER("  -123  ");
 	json_node_t* num;
@@ -109,6 +134,9 @@ int json_test_main(void) {
 	test_number_float_exp();
 	test_number_float_inval();
 	test_number_float_int();
+	
+	test_number_get_i64();
+	test_number_get_i16_of();
 
 	return 0;
 }

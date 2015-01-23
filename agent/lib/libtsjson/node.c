@@ -24,7 +24,7 @@
 #include <jsonimpl.h>
 
 #include <string.h>
-
+#include <limits.h>
 
 /**
  * By default libtsjson, and top-level libraries treat unused attributes as an errors
@@ -75,15 +75,13 @@ int json_check_type(json_node_t* node, json_type_t type) {
 
 	if(unlikely(node->jn_type != type)) {
 		json_set_error_str(JSON_INVALID_TYPE, "attribute '%s' have wrong type: %s (%s was expected)",
-							 (node->jn_name == NULL) ? "(root)" : node->jn_name,
-							 json_type_names[node->jn_type], json_type_names[type]);
+							 json_safe_name(node), json_type_names[node->jn_type], json_type_names[type]);
 		return JSON_INVALID_TYPE;
 	}
 
 	if(check_number && unlikely(node->jn_is_integer != is_integer)) {
 		json_set_error_str(JSON_INVALID_TYPE, "attribute '%s' have wrong number type: %s was expected",
-							(node->jn_name == NULL) ? "(root)" : node->jn_name,
-							 is_integer? "integer" : "float");
+							 json_safe_name(node), is_integer? "integer" : "float");
 		return JSON_INVALID_TYPE;
 	}
 
@@ -98,8 +96,7 @@ int json_check_unused(json_node_t* node) {
 
 	list_for_each_entry(json_node_t, child, &node->jn_child_head, jn_child_node) {
 		if(!child->jn_touched) {
-			json_set_error_str(JSON_UNUSED_CHILD, "attribute '%s' is not used",
-							   (child->jn_name == NULL) ? "(root)" : child->jn_name);
+			json_set_error_str(JSON_UNUSED_CHILD, "attribute '%s' is not used", json_safe_name(child));
 			return JSON_UNUSED_CHILD;
 		}
 	}
@@ -139,7 +136,7 @@ const char* json_as_string(json_node_t* node) {
 		return NULL;
 	}
 
-	return node->jn_data.s;
+	return (const char*) node->jn_data.s;
 }
 
 boolean_t json_as_boolean(json_node_t* node) {
@@ -258,6 +255,24 @@ json_node_t* json_popitem(json_node_t* parent, int id) {
 /* Getters with type checking
  * ------------------------- */
 
+#define DECLARE_JSON_GET_INTEGER(suffix, type, min, max)							\
+	int json_get_integer_ ## suffix(json_node_t* parent, 							\
+				const char* name, type* val) {										\
+		json_node_t* node = json_find(parent, name);								\
+		int err = json_check_type(node, JSON_NUMBER_INTEGER);						\
+		int64_t i;																	\
+		if(err != JSON_OK)															\
+			return err;																\
+		i = node->jn_data.i;														\
+		if(i < (min) || i > (max)) {												\
+			json_set_error_str(JSON_OVERFLOW, "attribute '%s' integer overflow: "	\
+							   "%" PRId64 " not fits into type %s", name, i, #type);\
+			return JSON_OVERFLOW;													\
+		}																			\
+		*val = (type) i;															\
+		return JSON_OK;																\
+	}
+
 int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val) {
 	json_node_t* node = json_find(parent, name);
 	int err = json_check_type(node, JSON_NUMBER_INTEGER);
@@ -268,6 +283,23 @@ int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val) {
 	*val = node->jn_data.i;
 	return JSON_OK;
 }
+
+DECLARE_JSON_GET_INTEGER(u8, uint8_t, 0, 255)
+DECLARE_JSON_GET_INTEGER(u16, uint16_t, 0, 65535)
+DECLARE_JSON_GET_INTEGER(u32, uint32_t, 0, 4294967295)
+
+DECLARE_JSON_GET_INTEGER(i8, int8_t, -128, 127)
+DECLARE_JSON_GET_INTEGER(i16, int16_t, -32768, 32767)
+DECLARE_JSON_GET_INTEGER(i32, int32_t,	-2147483648, 2147483647)
+
+DECLARE_JSON_GET_INTEGER(i, int, INT_MIN, INT_MAX)
+DECLARE_JSON_GET_INTEGER(l, long, LONG_MIN, LONG_MAX)
+DECLARE_JSON_GET_INTEGER(ll, long long, LLONG_MIN, LLONG_MAX)
+
+DECLARE_JSON_GET_INTEGER(u, unsigned, 0, UINT_MAX)
+DECLARE_JSON_GET_INTEGER(ul, unsigned long, 0, ULONG_MAX)
+
+DECLARE_JSON_GET_INTEGER(tm, ts_time_t, 0, TS_TIME_MAX)
 
 int json_get_double(json_node_t* parent, const char* name, double* val) {
 	json_node_t* node = json_find(parent, name);
@@ -309,13 +341,18 @@ int json_get_string(json_node_t* parent, const char* name, char** val) {
 }
 
 int json_get_string_copy(json_node_t* parent, const char* name, char* val, size_t len) {
-	char* str;
-	int ret = json_get_string(parent, name, &str);
+	json_node_t* node = json_find(parent, name);
+	int err = json_check_type(node, JSON_STRING);
 
-	if(ret != JSON_OK)
-		return ret;
+	if(err != JSON_OK)
+		return err;
+	if(len < strlen((char*) node->jn_data.s)) {
+		json_set_error_str(JSON_OVERFLOW, "attribute '%s' string too long: doesn't "
+						   "fit into buffer of %d chars", name, len);
+		return JSON_OVERFLOW;
+	}
 
-	strncpy(val, str, len);
+	strncpy(val, (char*) node->jn_data.s, len);
 	return JSON_OK;
 }
 

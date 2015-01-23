@@ -124,6 +124,18 @@ void test_invalid_unicode_escape_2(void) {
 	dump_error();
 }
 
+void test_string_overflow(void) {
+	json_buffer_t* buf = JSON_BUFFER("{ \"str\" : \"tooooooooooooooo looooooooooooooooong striiiiiiiing\" }");
+	json_node_t* node;
+	char sbuf[32];
+
+	assert(json_parse(buf, &node) == JSON_OK);
+	assert(json_get_string_copy(node, "str", sbuf, 32) == JSON_OVERFLOW);
+	
+	dump_error();
+
+	json_node_destroy(node);
+}
 
 int json_test_main(void) {
 	test_empty_string();
@@ -139,6 +151,8 @@ int json_test_main(void) {
 #ifndef _MSC_VER
 	test_unicode_escapes();
 #endif
+	
+	test_string_overflow();
 
 	return 0;
 }

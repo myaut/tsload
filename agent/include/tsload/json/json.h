@@ -128,9 +128,10 @@ typedef struct json_node {
 #define JSON_NOT_FOUND			-3
 #define JSON_NOT_CHILD			-4
 #define JSON_UNUSED_CHILD		-5
+#define JSON_OVERFLOW			-6
 
 /* Generic constant */
-#define JSON_MIN_GENERIC_ERROR	-6
+#define JSON_MIN_GENERIC_ERROR	-7
 
 /* Parser errors */
 #define JSON_END_OF_BUFFER			-11
@@ -229,6 +230,10 @@ STATIC_INLINE const char* json_name(json_node_t* node) {
 	return (const char*) node->jn_name;
 }
 
+STATIC_INLINE const char* json_safe_name(json_node_t* node) {
+	return (node->jn_name == NULL) ? "(root)" : ((const char*) node->jn_name);
+}
+
 STATIC_INLINE json_type_t json_type(json_node_t* node) {
 	return node->jn_type;
 }
@@ -250,6 +255,18 @@ LIBEXPORT json_node_t* json_getitem(json_node_t* parent, int id);
 LIBEXPORT json_node_t* json_popitem(json_node_t* parent, int id);
 
 LIBEXPORT int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val);
+LIBEXPORT int json_get_integer_u8(json_node_t* parent, const char* name, uint8_t* val);
+LIBEXPORT int json_get_integer_u16(json_node_t* parent, const char* name, uint16_t* val);
+LIBEXPORT int json_get_integer_u32(json_node_t* parent, const char* name, uint32_t* val);
+LIBEXPORT int json_get_integer_i8(json_node_t* parent, const char* name, int8_t* val);
+LIBEXPORT int json_get_integer_i16(json_node_t* parent, const char* name, int16_t* val);
+LIBEXPORT int json_get_integer_i32(json_node_t* parent, const char* name, int32_t* val);
+LIBEXPORT int json_get_integer_i(json_node_t* parent, const char* name, int* val);
+LIBEXPORT int json_get_integer_l(json_node_t* parent, const char* name, long* val);
+LIBEXPORT int json_get_integer_ll(json_node_t* parent, const char* name, long long* val);
+LIBEXPORT int json_get_integer_u(json_node_t* parent, const char* name, unsigned* val);
+LIBEXPORT int json_get_integer_ul(json_node_t* parent, const char* name, unsigned long* val);
+LIBEXPORT int json_get_integer_tm(json_node_t* parent, const char* name, ts_time_t* val);
 LIBEXPORT int json_get_double(json_node_t* parent, const char* name, double* val);
 LIBEXPORT int json_get_double_n(json_node_t* parent, const char* name, double* val);
 LIBEXPORT int json_get_string(json_node_t* parent, const char* name, char** val);
@@ -259,34 +276,6 @@ LIBEXPORT int json_get_node(json_node_t* parent, const char* name, json_node_t**
 
 LIBEXPORT int json_get_string_copy(json_node_t* parent, const char* name, char* val, size_t len);
 LIBEXPORT int json_get_string_aas(json_node_t* parent, const char* name, char** aas);
-
-#define DEFINE_TYPED_GET_INTEGER(suffix, type)							\
-	STATIC_INLINE int json_get_integer_ ## suffix(json_node_t* parent, 	\
-				const char* name, type* val) {							\
-		int64_t i64;													\
-		int error = json_get_integer_i64(parent, name, &i64);			\
-		if(error == JSON_OK) *val = (type) i64;							\
-		return error;													\
-	}
-
-DEFINE_TYPED_GET_INTEGER(u8, uint8_t);
-DEFINE_TYPED_GET_INTEGER(u16, uint16_t);
-DEFINE_TYPED_GET_INTEGER(u32, uint32_t);
-
-DEFINE_TYPED_GET_INTEGER(i8, int8_t);
-DEFINE_TYPED_GET_INTEGER(i16, int16_t);
-DEFINE_TYPED_GET_INTEGER(i32, int32_t);
-
-DEFINE_TYPED_GET_INTEGER(i, int);
-DEFINE_TYPED_GET_INTEGER(l, long);
-DEFINE_TYPED_GET_INTEGER(ll, long long);
-
-DEFINE_TYPED_GET_INTEGER(u, unsigned);
-DEFINE_TYPED_GET_INTEGER(ul, unsigned long);
-
-DEFINE_TYPED_GET_INTEGER(tm, ts_time_t);
-
-#undef DEFINE_TYPED_GET_INTEGER
 
 LIBEXPORT json_node_t* json_new_null(void);
 LIBEXPORT json_node_t* json_new_integer(int64_t val);

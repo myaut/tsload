@@ -46,7 +46,8 @@ const char* json_error_msg_text[] = {
 	"Internal error",
 	"attribute ?? have invalid type",
 	"attribute ?? not found",
-	"attribute ?? is unused"
+	"attribute ?? is unused",
+	"integer overflow"
 };
 const int json_error_msg_count = 5;
 
