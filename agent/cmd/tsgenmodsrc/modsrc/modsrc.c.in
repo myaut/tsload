@@ -18,12 +18,16 @@ DECLARE_MODAPI_VERSION(MOD_API_VERSION);
 DECLARE_MOD_NAME("@MODNAME@");
 DECLARE_MOD_TYPE(MOD_TSLOAD);
 
+@foreach WLT_LIST
 @WL_PARAMS_STRSET@
+@endfor
 
+@foreach WLT_LIST
 MODEXPORT wlp_descr_t @WL_PARAMS_VARNAME@[] = {
 @WL_PARAMS_ARRAY@
 	{ WLP_NULL }
 };
+@endfor
 
 @define WL_GET_PARAMS
 @ifdef WL_PARAM_FIELDS
@@ -48,6 +52,7 @@ struct @RQ_PARAM_STRUCT@* @RQ_PARAM_VARNAME@ =
 
 module_t* self = NULL;
 
+@foreach WLT_LIST
 MODEXPORT int @FUNC_CONFIG@(workload_t* wl) {
 	@WL_GET_PARAMS@
 @ifdef WL_DATA_STRUCT
@@ -129,17 +134,22 @@ wl_type_t @WLT_VARNAME@ = {
 @endif
 	/* wlt_run_request */	@FUNC_RUN_REQUEST@
 };
+@endfor
 
 MODEXPORT int mod_config(module_t* mod) {
 	self = mod;
 
+@foreach WLT_LIST
 	wl_type_register(mod, &@WLT_VARNAME@);
-
+@endfor
+	
 	return MOD_OK;
 }
 
 MODEXPORT int mod_unconfig(module_t* mod) {
+@foreach WLT_LIST
 	wl_type_unregister(mod, &@WLT_VARNAME@);
-
+@endfor
+	
 	return MOD_OK;
 }

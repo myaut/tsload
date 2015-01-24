@@ -311,7 +311,7 @@ char* tsgenmodsrc_path_join(char* path, size_t len, modtarget_t* target) {
 		part = target->dst[num_parts];
 		if(*part == '@') {
 			++part;
-			parts[num_parts] = modvar_get(part)->value;
+			parts[num_parts] = modvar_get_string(part);
 		}
 		else {
 			parts[num_parts] = part;
@@ -364,7 +364,7 @@ void ctime_cache_set(modtarget_t* tgt, const char* path) {
 		return;
 	}
 
-	path_join(ctc_path, PATHMAXLEN, modvar_get("MODINFODIR")->value,
+	path_join(ctc_path, PATHMAXLEN, modvar_get_string("MODINFODIR"),
 			  CTIME_CACHE_FN, NULL);
 
 	ctc_file = fopen(ctc_path, "a");
@@ -384,7 +384,7 @@ time_t ctime_cache_get(modtarget_t* tgt, const char* path) {
 
 	FILE* ctc_file;
 
-	path_join(ctc_path, PATHMAXLEN, modvar_get("MODINFODIR")->value,
+	path_join(ctc_path, PATHMAXLEN, modvar_get_string("MODINFODIR"),
 			  CTIME_CACHE_FN, NULL);
 
 	ctc_file = fopen(ctc_path, "r");
@@ -408,7 +408,7 @@ time_t ctime_cache_get(modtarget_t* tgt, const char* path) {
 void ctime_cache_delete(void) {
 	char ctc_path[PATHMAXLEN];
 
-	path_join(ctc_path, PATHMAXLEN, modvar_get("MODINFODIR")->value,
+	path_join(ctc_path, PATHMAXLEN, modvar_get_string("MODINFODIR"),
 			  CTIME_CACHE_FN, NULL);
 
 	remove(ctc_path);
@@ -492,7 +492,7 @@ static int tsgenmodsrc_clean_check_walk(modtarget_t* tgt, const char* path, cons
 static int tsgenmodsrc_clean_walk(modtarget_t* tgt, const char* path, const char* dirname, void* arg) {
 	struct stat st;
 	path_split_iter_t path_iter;
-	const char* modinfo_dir = modvar_get("MODINFODIR")->value;
+	const char* modinfo_dir = modvar_get_string("MODINFODIR");
 
 	if(stat(path, &st) != -1) {
 		if(remove(path) == -1) {

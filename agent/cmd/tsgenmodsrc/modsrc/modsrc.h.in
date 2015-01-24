@@ -5,6 +5,7 @@
 
 #include <tsload/load/wlparam.h>
 
+@foreach WLT_LIST
 @ifdef WL_PARAM_FIELDS
 struct @WL_PARAM_STRUCT@ {
 @WL_PARAM_FIELDS@
@@ -22,6 +23,7 @@ struct @RQ_PARAM_STRUCT@ {
 @RQ_PARAM_FIELDS@
 };
 @endif
+@endfor
 
 #endif /* BUSY_WAIT_H_ */
 

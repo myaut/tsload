@@ -1,11 +1,15 @@
-{ 
-	"name": "test_module",
-	"params": {
-		"size_test": {                                                                                                                                                                       
-	        "_type": "tsload.wlparam.WLParamSize",
-	        "description": "Memory pool size",
-	        "min": 8192,
-	        "max": 4398046511104
-	    }
-	}
+{
+    "name": "test_module", 
+    "wltypes": {
+        "test": {
+            "params": {
+                "size_test": {
+                    "max": 4398046511104, 
+                    "_type": "tsload.wlparam.WLParamSize", 
+                    "description": "Memory pool size", 
+                    "min": 8192
+                }
+            }
+        }
+    }
 }

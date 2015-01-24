@@ -34,12 +34,18 @@ These options may be redefined by `vars` object inside modinfo.json config. Howe
 
   * `MODNAME` - name of module, taken from configuration file 
   * `MODTYPE` - type of module, taken from configuration file
-  * `WLT_NAME` - name of workload type, usually matches with name of the module
-  * `WLT_ABBR` - abbreviation of workload type which is needed to generate variable names. Contains first letter of WLT\_NAME followed by letters after underscores. I.e. test\_module -> tm.
   * `SOURCE_FILENAME`, `HEADER_FILENAME` - name of source files
   * `MAKEFILE_FILENAME`, `SCONSTRUCT_FILENAME`, `SCONSCRIPT_FILENAME` - names of build files. It is advised not to change these variables.
   * `MODULE_FILENAME`, `OBJECT_FILENAME` - build file names
   * `HEADER_DEF` - macro defined inside header in #ifdef / #define construct
+  * `CCFLAGS`, `LIBS`, `SHCCFLAGS`, `SHLINKFLAGS` - compiler and linker flags (taken from build environment of TSLoad)
+  * `SHOBJSUFFIX`, `SSHLIBSUFFIX` - filename suffixes (extensions) for modules (taken from build environment of TSLoad)
+  * `MODINFODIR` - directory where _modinfo.json_ is located
+  * `TS*` - same as environment variables (see above)
+
+Workload type variables are contained in namespaces, so different wltype would get different values:
+  * `WLT_NAME` - name of workload type, usually matches with name of the module
+  * `WLT_ABBR` - abbreviation of workload type which is needed to generate variable names. Contains first letter of WLT\_NAME followed by letters after underscores. I.e. test\_module -> tm.
   * `WL_PARAM_STRUCT`, `WL_PARAM_FIELDS`, `WL_PARAM_VARNAME` - Workload parameters. STRUCT contains name of data structure keeping them, FIELDS is a generator for C structure members, and VARNAME is a name of variable that would be created in functions implementing workload type. 
   * `WL_DATA_STRUCT`, `WL_DATA_VARNAME` - Same as WL\_PARAM\_\* but for internal workload data.
   * `RQ_PARAM_STRUCT`, `RQ_PARAM_FIELDS`, `RQ_PARAM_VARNAME` - Same as WL\_PARAM\_\* but for per-request params.
@@ -51,11 +57,7 @@ These options may be redefined by `vars` object inside modinfo.json config. Howe
   * `FUNC_UNCONFIG` - function name of workload de-configuration
   * `FUNC_RUN_REQUEST` - name of the function that runs request
   * `FUNC_STEP` - name of the function that is called at the beginning of each step
-  * `CCFLAGS`, `LIBS`, `SHCCFLAGS`, `SHLINKFLAGS` - compiler and linker flags (taken from build environment of TSLoad)
-  * `SHOBJSUFFIX`, `SSHLIBSUFFIX` - filename suffixes (extensions) for modules (taken from build environment of TSLoad)
-  * `MODINFODIR` - directory where _modinfo.json_ is located
-  * `TS*` - same as environment variables (see above)
-
+  
 ### Generating sources
 
 Sources are generated in two modes. In first one, _tsgenmodsrc_ will write appropriate file to stdout, where template used for file is determined by provided subcommand:
@@ -102,4 +104,7 @@ Complete BNF for preprocessor is:
 <define-block>       ::= "@define" <dir-param-var>
                          <blocks>
                         "@enddef"
+<foreach-block>		::= "@foreach" <dir-param-var>
+						<blocks>
+						"@endfor"                        
 ```

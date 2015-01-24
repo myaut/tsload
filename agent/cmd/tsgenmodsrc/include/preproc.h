@@ -41,6 +41,8 @@ typedef enum modpp_state_type {
 	MODPP_STATE_IFDEF,
 	MODPP_STATE_ELSE,
 	MODPP_STATE_ENDIF,
+	MODPP_STATE_FOREACH,
+	MODPP_STATE_ENDFOR
 } modpp_state_type_t;
 
 typedef struct modpp_state {
@@ -51,6 +53,8 @@ typedef struct modpp_state {
 
 	char* start;
 	int lineno;
+	
+	int iter;
 
 	list_node_t	node;
 } modpp_state_t;

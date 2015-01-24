@@ -1,11 +1,18 @@
-{ 
-	"name": "test_module",
-	"wlt_class": [ "cpu_integer", "cpu_misc" ],
-	"params": {
-		"size_test": {                                                                                                                                                                       
-	        "_type": "tsload.wlparam.WLParamSize",
-	        "description": "Memory pool size",
-	        "default": "1000Tb"
-	    }
-	}
+{
+    "name": "test_module", 
+    "wltypes": {
+        "test": {
+            "params": {
+                "size_test": {
+                    "default": "1000Tb", 
+                    "_type": "tsload.wlparam.WLParamSize", 
+                    "description": "Memory pool size"
+                }
+            }, 
+            "class": [
+                "cpu_integer", 
+                "cpu_misc"
+            ]
+        }
+    }
 }

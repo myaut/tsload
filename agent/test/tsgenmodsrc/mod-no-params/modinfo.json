@@ -1,4 +1,11 @@
-{ 
-	"name": "test_module",
-	"wlt_class": [ "cpu_integer", "cpu_misc" ]
+{
+    "name": "test_module", 
+    "wltypes": {
+        "test": {
+            "class": [
+                "cpu_integer", 
+                "cpu_misc"
+            ]
+        }
+    }
 }

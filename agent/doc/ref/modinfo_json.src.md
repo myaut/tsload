@@ -10,13 +10,29 @@ This document uses same JSON schema that is used in [experiment.json][ref/experi
 {
 	(in) "name": [string] Name of module,
 	(in, opt) "type": ["load"] Type of the module, currently only "load" supported,
-	(in) "wlt_class": [
+	(in) "wltypes": [node] {
+		(in) "Workload type name #1": [node] Workload type,
+		...
+	},
+	(in) "vars": [node] {
+		(in) "Variable name #1": [string] Value,
+		...
+	}
+}
+```
+
+### Workload type
+
+```
+{
+	(in) "class": [
 		(in) ["cpu_integer" | "cpu_float" | "cpu_memory" | "cpu_misc" | 
 		 		"mem_allocation" | "fs_op" | "fs_rw" | "disk_rw" | "network" | "os"]
 		 		Classes that this workload implements		 
 		...
 	],
 	(in, opt) "has_step": [boolean] Set to true if you want step function to be generated,	
+	(in, opt) "has_data": [boolean] Set to true if you want data structure to be generated,	
 	(in) "params": [node] {
 		(in) "Name of parameter #1": [node] Parameter,
 		...
@@ -40,10 +56,14 @@ This document uses same JSON schema that is used in [experiment.json][ref/experi
 	
 	(in, opt) "default": [ANY] Default value of a parameter
 					(not supported by CPU objects and disks),
-	(in, opt, max is set) "min": [ANY] Minimum acceptable value
+	(in, opt, min is set) "min": [ANY] Minimum acceptable value
 	(in, opt, max is set) "max": [ANY] Maximum acceptable value
 					(only for floats, integers and integer-based types),
-	(in, opt) "len": [number] Maximum length of string
+	(in, opt) "len": [number] Maximum length of string,
+	
+	(in) "strset" : [array] [
+			Value # 1...
+		]	
 }
 ```
 

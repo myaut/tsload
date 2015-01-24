@@ -1,12 +1,19 @@
-{ 
-	"name": "test_module",
-	"wlt_class": [ "cpu_integer", "cpu_misc" ],
-	"params": {
-		"size_test": {                                                                                                                                                                       
-	        "_type": "tsload.wlparam.WLParamSize",
-	        "description": "Memory pool size",
-	        "min": "8kb",
-	        "max": "4Gb"
-	    }
-	}
+{
+    "name": "test_module", 
+    "wltypes": {
+        "test": {
+            "params": {
+                "size_test": {
+                    "max": "4Gb", 
+                    "_type": "tsload.wlparam.WLParamSize", 
+                    "description": "Memory pool size", 
+                    "min": "8kb"
+                }
+            }, 
+            "class": [
+                "cpu_integer", 
+                "cpu_misc"
+            ]
+        }
+    }
 }

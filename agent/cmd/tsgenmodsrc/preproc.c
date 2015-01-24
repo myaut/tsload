@@ -27,6 +27,8 @@
 #include <errno.h>
 #include <ctype.h>
 
+extern const char* var_namespace;
+
 boolean_t modpp_trace = B_FALSE;
 
 int modpp_subst_impl(modpp_t* pp);
@@ -84,6 +86,9 @@ int modpp_subst_impl(modpp_t* pp);
  * <define-block>		::= "@define" <dir-param-var>
  * 							<blocks>
  * 							"@enddef"
+ * <foreach-block>		::= "@foreach" <dir-param-var>
+ * 							<blocks>
+ * 							"@endfor"
  * ```
  */
 
@@ -103,17 +108,23 @@ static const char* modpp_state_str(modpp_state_type_t type) {
 		return "else";
 	case MODPP_STATE_ENDIF:
 		return "endif";
+	case MODPP_STATE_FOREACH:
+		return "foreach";
+	case MODPP_STATE_ENDFOR:
+		return "endfor";
+
 	}
 
 	return "???";
 }
 
 void modpp_do_trace(const char* action, modpp_t* pp, modpp_state_t* state, char* end) {
-	fprintf(stderr, "%3d : %lx %6s %8s(%-16s) %d..%d\n",
+	fprintf(stderr, "%3d : %lx %6s %8s(%-16s) %d..%d [%s]\n",
 			pp->pp_lineno, (unsigned long) pp,
 			action, modpp_state_str(state->type),
 			(state->varname) ? state->varname : "",
-			state->start - pp->pp_start, end - pp->pp_start);
+			state->start - pp->pp_start, end - pp->pp_start,
+			(var_namespace == NULL) ? "global" : var_namespace );
 }
 
 /**
@@ -135,8 +146,8 @@ modpp_state_t* modpp_create_state(modpp_t* pp, char* p, modpp_state_type_t type)
 	}
 	else {
 		state = pp->pp_last;
-		pp->pp_last = NULL;
 	}
+		pp->pp_last = NULL;
 
 	aas_init(&state->varname);
 
@@ -145,11 +156,33 @@ modpp_state_t* modpp_create_state(modpp_t* pp, char* p, modpp_state_type_t type)
 	state->lineno = pp->pp_lineno;
 	state->start = p;
 	state->type = type;
+	state->iter = 0;
 
 	list_node_init(&state->node);
 	list_add_tail(&state->node, &pp->pp_state);
 
 	return state;
+}
+
+/**
+ * pick top state from preprocessor stack and duplicate it
+ *
+ * @param pp current preprocessor
+ */
+modpp_state_t* modpp_dup_state(modpp_t* pp) {
+	modpp_state_t* state = list_last_entry(modpp_state_t, &pp->pp_state, node);
+	modpp_state_t* dup_state = modpp_create_state(pp, state->start, state->type);
+
+	if(modpp_trace) {
+		modpp_do_trace("DUP", pp, state, state->start);
+	}
+	
+	if(state->varname)
+		aas_copy(&dup_state->varname, state->varname);
+	
+	dup_state->lineno = state->lineno;
+	
+	return dup_state;
 }
 
 /**
@@ -177,6 +210,16 @@ void modpp_put_state(modpp_t* pp, modpp_state_t* state) {
 		modpp_state_t* state = list_last_entry(modpp_state_t, &pp->pp_state, node);
 		modpp_do_trace("<-", pp, state, state->start);
 	}
+}
+
+/**
+ * remove last state object and utilize allocated memory to preprocessor
+ *
+ * @param pp current preprocessor
+ */
+void modpp_put_last_state(modpp_t* pp) {
+	modpp_state_t* state = list_last_entry(modpp_state_t, &pp->pp_state, node);
+	modpp_put_state(pp, state);
 }
 
 /**
@@ -283,25 +326,36 @@ int modpp_destroy_pp(modpp_t* pp) {
  * @param varstate state related to variable, should be MODPP_STATE_VARNAME
  * @param p current walk pointer, not used
  */
-static int modpp_commit_var(modpp_t* pp, modpp_state_t* varstate, char* p) {
+static int modpp_commit_var(modpp_t* pp, modpp_state_t* varstate, char** ptr) {
 	modvar_t* var = modvar_get(varstate->varname);
+	char* p = *ptr + 1;
 
 	if(var == NULL) {
-		fprintf(stderr, "Parse error: unknown variable '%s' at line %d\n",
-				varstate->varname, varstate->lineno);
+		fprintf(stderr, "Parse error: unknown variable '%s' in namespace [%s] at line %d\n",
+				varstate->varname, (var_namespace == NULL) ? "global" : var_namespace, varstate->lineno);
 
 		return MODPP_VAR_NOT_EXISTS;
 	}
 
-	if(var->value) {
-		fputs(var->value, pp->pp_outf);
+	if(var->v_type == VAR_STRING) {
+		fputs(var->v_value.str, pp->pp_outf);
 	}
-	else if(var->valgen) {
-		var->valgen(pp->pp_outf, var->valgen_arg);
+	else if(var->v_type == VAR_GENERATOR) {
+		mod_valgen_t* vg = &var->v_value.gen;
+		vg->valgen(pp->pp_outf, vg->arg);
+		
+		/* Generators should put last newline on their own, so ignore all 
+		 * whitespace characters that go after variable definition */
+		while(isspace(*p)) {
+			if(*p == '\n')
+				break;
+			++p;
+		}
+		*ptr = p;
 	}
 	else {
 		fprintf(stderr, "Parse error: unknown variable '%s': "
-				"no value or generator at line %d\n",
+				"not a value or generator at line %d\n",
 				varstate->varname, varstate->lineno);
 
 		return MODPP_VAR_NOT_EXISTS;
@@ -451,7 +505,10 @@ int modpp_parse_directive(modpp_t* pp, char** ptr) {
 	else MODPP_PARSE_DIR("enddef", MODPP_STATE_ENDDEF,  modpp_parse_dir_novar, '\0')
 	else MODPP_PARSE_DIR("else",   MODPP_STATE_ELSE,    modpp_parse_dir_novar, '\0')
 	else MODPP_PARSE_DIR("endif",  MODPP_STATE_ENDIF,   modpp_parse_dir_novar, '\0')
-	else MODPP_PARSE_VAR(		   MODPP_STATE_VARNAME, modpp_parse_var, '@');
+	else MODPP_PARSE_DIR("foreach", MODPP_STATE_FOREACH,  modpp_parse_dir_var, '\0')
+	else MODPP_PARSE_DIR("endfor",  MODPP_STATE_ENDFOR,   modpp_parse_dir_novar, '\0')
+	else MODPP_PARSE_VAR(		   MODPP_STATE_VARNAME, modpp_parse_var, '@')
+		
 
 	if(ret != MODPP_OK)
 		return ret;
@@ -467,7 +524,7 @@ int modpp_parse_directive(modpp_t* pp, char** ptr) {
 
 	*ptr = p;
 	new_state->start = p + 1;
-
+	
 	if(modpp_trace) {
 		modpp_do_trace("STATE", pp, state, end);
 		modpp_do_trace("->", pp, new_state, p);
@@ -491,7 +548,7 @@ int modpp_parse_directive(modpp_t* pp, char** ptr) {
 			return ret;
 		}
 		else if(new_state->type == MODPP_STATE_DEFINE) {
-			fprintf(stderr, "Parse error: nested 'define' at line %d\n", state->lineno);
+			fprintf(stderr, "Parse error: nested 'define' at line %d\n", new_state->lineno);
 			return MODPP_INVALID_DIRECTIVE;
 		}
 		else {
@@ -516,12 +573,6 @@ int modpp_parse_directive(modpp_t* pp, char** ptr) {
 		}
 		/* FALLTHROUGH */
 	case MODPP_STATE_ELSE:
-		if(new_state->type == MODPP_STATE_ENDIF) {
-			/* Remove unnecessary newlines before endif */
-			if(*(end - 1) == '\n')
-				--end;
-		}
-
 		/* Regardless of new_state, try to commit last chunk */
 		modpp_commit_ifdef(pp, state, end);
 
@@ -536,27 +587,102 @@ int modpp_parse_directive(modpp_t* pp, char** ptr) {
 		else if(new_state->type == MODPP_STATE_VARNAME) {
 			/* If ifdef variable is defined, commit variable inside ifdef text */
 			if(modpp_is_defined(pp))
-				ret = modpp_commit_var(pp, new_state, p + 1);
+				ret = modpp_commit_var(pp, new_state, &p);
 		}
 		else if(new_state->type != MODPP_STATE_IFDEF) {
 			/* define and enddef are not supported inside ifdef */
 			fprintf(stderr, "Parse error: unexpected '%s' at line %d\n",
-					modpp_state_str(state->type), state->lineno);
+					modpp_state_str(new_state->type), new_state->lineno);
 			return MODPP_INVALID_DIRECTIVE;
 		}
 		break;
+	case MODPP_STATE_FOREACH:
+		if(new_state->type == MODPP_STATE_DEFINE) {
+			fprintf(stderr, "Parse error: 'define' is not allowed in foreach-block at line %d\n", new_state->lineno);
+			return MODPP_INVALID_DIRECTIVE;
+		}
+		else if(new_state->type == MODPP_STATE_FOREACH) {
+			fprintf(stderr, "Parse error: nested 'foreach' at line %d\n", new_state->lineno);
+			return MODPP_INVALID_DIRECTIVE;
+		}
+		else if(new_state->type == MODPP_STATE_ENDFOR) {
+			mod_strlist_t* sl = modvar_get_strlist(state->varname);
+			modpp_state_t* foreach_state = NULL;
+			
+			int iter = state->iter;
+			
+			modpp_put_state(pp, new_state);
+			
+			if(sl == NULL) {
+				return MODPP_OK;
+			}
+			
+			modpp_commit_text(pp, state, end);
+			modpp_put_state(pp, state);
+			
+			if(iter < sl->sl_count) {
+				var_namespace = sl->sl_list[iter];
+				
+				/* Reset state->start so we can re-parse entire block with new namespace */
+				foreach_state = modpp_dup_state(pp);
+				foreach_state->iter = iter + 1;
+				
+				*ptr = foreach_state->start - 1;
+				pp->pp_lineno = foreach_state->lineno;
+			}
+			else {
+				/* No more elements - foreach successfully ended! */
+				var_namespace = NULL;										
+				
+				modpp_put_last_state(pp);
+				modpp_reset_state(pp, p + 1);
+			}
+			
+			return MODPP_OK;
+		}
+		else {
+			/* Other directive -- check if we should ignore foreach block */
+			mod_strlist_t* sl = modvar_get_strlist(state->varname);
+			
+			if(sl == NULL) {
+				modpp_put_state(pp, new_state);
+				return MODPP_OK;
+			}			
+		}		
+		/* FALLTHROUGH */
 	case MODPP_STATE_NORMAL:
 		/* normal text block, do what you should do */
 		modpp_commit_text(pp, state, end);
 		if(new_state->type == MODPP_STATE_VARNAME) {
-			ret = modpp_commit_var(pp, new_state, p + 1);
+			ret = modpp_commit_var(pp, new_state, &p);
+		}
+		else if(new_state->type == MODPP_STATE_FOREACH) {
+			mod_strlist_t* sl = modvar_get_strlist(new_state->varname);
+			modpp_state_t* foreach_state = NULL;
+			
+			if(sl == NULL) {
+				fprintf(stderr, "Parse error: error 'foreach' at line %d: "
+						"invalid variable '%s' or not string list\n", 
+						new_state->lineno, new_state->varname);
+				return MODPP_INVALID_DIRECTIVE;
+			}
+			
+			if(sl->sl_count > 0) {
+				var_namespace = sl->sl_list[0];
+			}
+			
+			/* Create foreach state that would be root for subsequent ifdefs
+			   Save new_state->start so it could be reused during reparse step in 
+			   MODPP_STATE_FOREACH -> MODPP_STATE_ENDFOR transition*/
+			foreach_state = modpp_dup_state(pp);
+			foreach_state->iter = 1;
 		}
 		break;
 	}
 
 	if(new_state->type == MODPP_STATE_VARNAME) {
 		/* remove varname from stack */
-		modpp_put_state(pp, new_state);
+		modpp_put_state(pp, new_state);		
 		modpp_reset_state(pp, p + 1);
 	}
 

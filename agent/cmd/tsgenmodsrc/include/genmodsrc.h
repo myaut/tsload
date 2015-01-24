@@ -21,6 +21,8 @@
 #include <tsload/defs.h>
 #include <tsload/autostring.h>
 
+#include <tsload/json/json.h>
+
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -72,16 +74,40 @@
 typedef void (*modsrc_value_gen_func)(FILE* outf, void* arg);
 typedef void (*modsrc_dtor_func)(void* arg);
 
-typedef struct modvar {
-	AUTOSTRING char* name;
+typedef enum modvar_type {
+	VAR_UNKNOWN,
+	VAR_STRING,
+	VAR_STRING_LIST,
+	VAR_GENERATOR
+} modvar_type_t;
 
-	AUTOSTRING char* value;
+typedef struct mod_strlist {
+	AUTOSTRING char** sl_list;
+	int sl_count;
+} mod_strlist_t;
 
+typedef struct mod_valgen {
 	modsrc_value_gen_func valgen;
-	modsrc_dtor_func valgen_dtor;
-	void* valgen_arg;
+	modsrc_dtor_func dtor;
+	void* arg;
+} mod_valgen_t;
 
-	struct modvar* 	next;
+typedef struct modvar_name {
+	AUTOSTRING char* ns;
+	AUTOSTRING char* name;
+} modvar_name_t;
+
+typedef struct modvar {
+	modvar_name_t v_name;
+	modvar_type_t v_type;
+	
+	union {
+		AUTOSTRING char* str;
+		mod_strlist_t sl;
+		mod_valgen_t gen;
+	} v_value;
+
+	struct modvar* v_next;
 } modvar_t;
 
 typedef struct modtarget {
@@ -106,16 +132,18 @@ modvar_t* modvar_create_impl(int nametype, const char* name);
 STATIC_INLINE modvar_t* modvar_set(modvar_t* var, const char* value) {
 	if(var == NULL)
 		return NULL;
-
-	aas_copy(&var->value, value);
+	
+	aas_copy(&var->v_value.str, value);
+	var->v_type = VAR_STRING;
 	return var;
 }
 STATIC_INLINE modvar_t* modvar_vprintf(modvar_t* var, const char* fmtstr, va_list va) {
 	if(var == NULL)
 		return NULL;
 
-	aas_vprintf(&var->value, fmtstr, va);
-
+	aas_vprintf(&var->v_value.str, fmtstr, va);
+	var->v_type = VAR_STRING;
+	
 	return var;
 }
 
@@ -123,8 +151,15 @@ modvar_t* modvar_printf(modvar_t* var, const char* fmtstr, ...);
 
 modvar_t* modvar_set_gen(modvar_t* var, modsrc_value_gen_func valgen,
 					 	 modsrc_dtor_func dtor, void* arg);
+modvar_t* modvar_set_strlist(modvar_t* var, int count);
+modvar_t* modvar_add_string(modvar_t* var, int i, const char* str);
 
 modvar_t* modvar_get(const char* name);
+const char* modvar_get_string(const char* name);
+void* modvar_get_arg(const char* name);
+mod_valgen_t* modvar_get_valgen(const char* name);
+mod_strlist_t* modvar_get_strlist(const char* name);
+
 int modvar_unset(const char* name);
 boolean_t modvar_is_set(const char* name);
 
@@ -134,6 +169,9 @@ void modsrc_dump_vars(void);
 
 int modinfo_check_dir(const char* modinfo_path, boolean_t silent);
 int modinfo_read_config(const char* modinfo_path);
+
+int modinfo_parse_wlparams(json_node_t* root);
+int modinfo_parse_wlt_class(json_node_t* wltype);
 
 int modinfo_read_buildenv(const char* root_path, const char* bldenv_path);
 
