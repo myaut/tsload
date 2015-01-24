@@ -67,7 +67,7 @@ uint64_t rg_generate_int_lcg(randgen_t* rg) {
 }
 
 randgen_class_t rg_lcg_class = {
-	RG_CLASS_HEAD(B_FALSE, ULLONG_MAX),
+	RG_CLASS_HEAD("lcg", B_FALSE, ULLONG_MAX),
 
 	SM_INIT(.rg_init, 		  rg_init_lcg),
 	SM_INIT(.rg_destroy, 	  rg_destroy_lcg),

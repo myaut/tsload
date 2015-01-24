@@ -277,10 +277,11 @@ void tpd_control_sleep_rr(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_rr_class = {
-	"round-robin",
+	AAS_CONST_STR("round-robin"),
 
 	tpd_init_queue,
 	tpd_destroy_queue,
+	NULL,
 	tpd_control_report_queue,
 	tpd_control_sleep_rr,
 	tpd_worker_pick_queue,
@@ -296,10 +297,11 @@ void tpd_control_sleep_rand(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_rand_class = {
-	"random",
+	AAS_CONST_STR("random"),
 
 	tpd_init_queue,
 	tpd_destroy_queue,
+	NULL,
 	tpd_control_report_queue,
 	tpd_control_sleep_rand,
 	tpd_worker_pick_queue,
@@ -317,10 +319,11 @@ void tpd_control_sleep_user(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_user_class = {
-	"user",
+	AAS_CONST_STR("user"),
 
 	tpd_init_queue,
 	tpd_destroy_queue,
+	NULL,
 	tpd_control_report_queue,
 	tpd_control_sleep_user,
 	tpd_worker_pick_queue,
@@ -394,11 +397,26 @@ void tpd_destroy_fill_up(thread_pool_t* tp) {
 	tpd_destroy_queue(tp);
 }
 
+int tsobj_proc_tpd_fill_up(struct tp_disp* tpd, tsobj_node_t* node) {
+	unsigned num_rqs;
+	int wid;
+
+	if(tsobj_get_integer_u(node, "n", &num_rqs) != TSOBJ_OK)
+		return TPD_BAD;
+	if(tsobj_get_integer_i(node, "wid", &wid) != TSOBJ_OK)
+		return TPD_BAD;
+	if(tsobj_check_unused(node) != TSOBJ_OK)
+		return TPD_BAD;
+
+	return tpd_preinit_fill_up(tpd, num_rqs, wid);
+}
+
 tp_disp_class_t tpd_fill_up_class = {
-	"fill-up",
+	AAS_CONST_STR("fill-up"),
 
 	tpd_init_fill_up,
 	tpd_destroy_fill_up,
+	tsobj_proc_tpd_fill_up,
 	tpd_control_report_queue,
 	tpd_control_sleep_fill_up,
 	tpd_worker_pick_queue,
@@ -420,10 +438,11 @@ void tpd_control_sleep_trace(thread_pool_t* tp) {
 }
 
 tp_disp_class_t tpd_trace_class = {
-	"trace",
+	AAS_CONST_STR("trace"),
 
 	tpd_init_queue,
 	tpd_destroy_queue,
+	NULL,
 	tpd_control_report_queue,
 	tpd_control_sleep_trace,
 	tpd_worker_pick_queue,

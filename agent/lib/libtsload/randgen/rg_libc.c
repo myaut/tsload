@@ -42,7 +42,7 @@ uint64_t rg_generate_int_libc(randgen_t* rg) {
 }
 
 randgen_class_t rg_libc_class = {
-	RG_CLASS_HEAD(B_TRUE, RAND_MAX),
+	RG_CLASS_HEAD("libc", B_TRUE, RAND_MAX),
 
 	SM_INIT(.rg_init, 		  rg_init_libc),
 	SM_INIT(.rg_destroy, 	  rg_destroy_dummy),

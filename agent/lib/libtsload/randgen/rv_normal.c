@@ -102,7 +102,15 @@ double rv_variate_double_normal(randvar_t* rv, double u) {
 	return x;
 }
 
+randvar_param_t rv_normal_params[] = {
+	{ RV_PARAM_DOUBLE, "mean", "" },
+	{ RV_PARAM_DOUBLE, "stddev", "should be positive" },
+	{ RV_PARAM_NULL, NULL }
+};
+
 randvar_class_t rv_normal_class = {
+	RV_CLASS_HEAD("normal", rv_normal_params),
+	
 	SM_INIT(.rv_init, rv_init_normal),
 	SM_INIT(.rv_destroy, rv_destroy_normal),
 

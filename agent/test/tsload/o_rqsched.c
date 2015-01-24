@@ -21,15 +21,9 @@
 
 workload_t* wl;
 
-LIBIMPORT rqsched_class_t simple_rqsched_class;
-LIBIMPORT rqsched_class_t iat_rqsched_class;
-LIBIMPORT rqsched_class_t think_rqsched_class;
-
-void rqsched_destroy(workload_t* wl) {
-	wl->wl_rqsched_class->rqsched_fini(wl);
-	wl->wl_rqsched_class = NULL;
-	wl->wl_rqsched_private = NULL;
-}
+LIBIMPORT rqsched_class_t rqsched_simple_class;
+LIBIMPORT rqsched_class_t rqsched_iat_class;
+LIBIMPORT rqsched_class_t rqsched_think_class;
 
 void test_rqsched_bad(void) {
 	TEST_PREAMBLE("[ ]");
@@ -75,8 +69,7 @@ void test_rqsched_simple_unused() {
 void test_rqsched_simple() {
 	TEST_PREAMBLE(" { " JSON_PROP("type", "simple") " } ");
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_OK);
-	assert(wl->wl_rqsched_class == &simple_rqsched_class);
-	assert(wl->wl_rqsched_private == NULL);
+	assert(wl->wl_rqsched_class == &rqsched_simple_class);
 
 	rqsched_destroy(wl);
 	json_node_destroy(node);
@@ -146,7 +139,7 @@ void test_rqsched_iat() {
 						JSON_PROP("scope", 0.3) " } ");
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_OK);
 
-	assert(wl->wl_rqsched_class == &iat_rqsched_class);
+	assert(wl->wl_rqsched_class == &rqsched_iat_class);
 	assert(wl->wl_rqsched_private != NULL);
 	json_node_destroy(node);
 
@@ -198,7 +191,7 @@ void test_rqsched_think() {
 						JSON_PROP("distribution", "exponential") ", "
 						JSON_PROP("nusers", 4) " } ");
 	assert(tsobj_rqsched_proc(node, wl) == RQSCHED_TSOBJ_OK);
-	assert(wl->wl_rqsched_class == &think_rqsched_class);
+	assert(wl->wl_rqsched_class == &rqsched_think_class);
 	assert(wl->wl_rqsched_private != NULL);
 
 	rqsched_destroy(wl);

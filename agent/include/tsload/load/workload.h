@@ -64,6 +64,7 @@
 
 struct workload;
 struct rqsched_class;
+struct rqsched;
 
 /**
  * Request descriptor
@@ -177,7 +178,7 @@ typedef enum {
  * @member wl_last_step Last step id on queue
  * @member wl_step_queue Queue that contains requests number of requests (or trace-based). Protected by wl_step_mutex
  * @member wl_rqsched_class Workload request scheduler
- * @member wl_rqsched_private Private data for request scheduler
+ * @member wl_rqsched_private Request scheduler
  */
 typedef struct workload {
 	AUTOSTRING char* wl_name;
@@ -219,7 +220,7 @@ typedef struct workload {
 	double			 wl_chain_probability;
 
 	struct rqsched_class* wl_rqsched_class;
-	void* wl_rqsched_private;
+	struct rqsched* wl_rqsched_private;
 
 	struct workload* wl_hm_next;		/**< next in workload hashmap*/
 

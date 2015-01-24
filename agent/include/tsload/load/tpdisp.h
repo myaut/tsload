@@ -2,6 +2,8 @@
 #define TPDISP_H
 
 #include <tsload/defs.h>
+#include <tsload/modules.h>
+#include <tsload/autostring.h>
 
 #include <tsload/obj/obj.h>
 
@@ -22,6 +24,7 @@ struct tp_disp;
  * Hooks (see `tp_disp_class`):
  *  * preinit - actually called by json_tp_disp_proc factory to set params
  * 	* init/destroy - initialize/destroy private tpd data
+ *  * proc_tsobj - process TSObject to set tpd parameter. May be set to NULL.
  * 	* control_report - called when control thread wants to report data
  * 	  When discard policy is set, should clear worker queues and report
  * 	  all requests to reporter thread. If not, should split request list into
@@ -36,6 +39,9 @@ struct tp_disp;
  *    be again linked to maintain queue sorted.
  */
 
+#define TPDHASHSIZE			8
+#define TPDHASHMASK			(TPDHASHSIZE - 1)
+
 /**
  * ThreadPool dispatcher error code
  */
@@ -44,10 +50,11 @@ struct tp_disp;
 #define TPD_BAD				-2
 
 typedef struct tp_disp_class {
-	const char* name;
+	AUTOSTRING char* name;
 
 	int (*init)(thread_pool_t* tp);
 	void (*destroy)(thread_pool_t* tp);
+	int (*proc_tsobj)(struct tp_disp* tpd, tsobj_node_t* node);
 
 	void (*control_report)(thread_pool_t* tp);
 	void (*control_sleep)(thread_pool_t* tp);
@@ -57,6 +64,9 @@ typedef struct tp_disp_class {
 	void (*worker_signal)(thread_pool_t* tp, int wid);
 
 	void (*relink_request)(thread_pool_t* tp, request_t* rq);
+	
+	struct tp_disp_class* next;
+	module_t* mod;
 } tp_disp_class_t;
 
 typedef struct tp_disp {
@@ -93,5 +103,11 @@ static int tpd_next_wid_rand(thread_pool_t* tp, int wid, request_t* rq) {
 TESTEXPORT tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node);
 
 LIBEXPORT void tpd_destroy(tp_disp_t* tpd);
+
+LIBEXPORT int tpdisp_register(module_t* mod, tp_disp_class_t* class);
+LIBEXPORT int tpdisp_unregister(module_t* mod, tp_disp_class_t* class);
+
+LIBEXPORT int tpdisp_init(void);
+LIBEXPORT void tpdisp_fini(void);
 
 #endif

@@ -23,6 +23,7 @@
 #include <tsload/errcode.h>
 #include <tsload/mempool.h>
 #include <tsload/time.h>
+#include <tsload/hashmap.h>
 
 #include <tsload.h>
 #include <tsload/load/randgen.h>
@@ -31,6 +32,8 @@
 
 #include <string.h>
 
+DECLARE_HASH_MAP_STRKEY(randgen_hash_map, randgen_class_t, RGHASHSIZE, rg_class_name, rg_next, RGHASHMASK);
+DECLARE_HASH_MAP_STRKEY(randvar_hash_map, randvar_class_t, RGHASHSIZE, rv_class_name, rv_next, RVHASHMASK);
 
 randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 	randgen_t* rg;
@@ -156,12 +159,12 @@ int rv_set_double_dummy(randvar_t* rv, const char* name, double value) {
 
 randgen_t* tsobj_randgen_proc(tsobj_node_t* node) {
 	randgen_class_t* rg_class = NULL;
-	char* rg_class_str;
+	char* rg_class_name;
 
 	int error;
 	int64_t seed;
 
-	if(tsobj_get_string(node, "class", &rg_class_str) != TSOBJ_OK)
+	if(tsobj_get_string(node, "class", &rg_class_name) != TSOBJ_OK)
 		goto bad_tsobj;
 
 	error = tsobj_get_integer_i64(node, "seed", &seed);
@@ -174,23 +177,10 @@ randgen_t* tsobj_randgen_proc(tsobj_node_t* node) {
 	if(error == TSOBJ_NOT_FOUND)
 		seed = tm_get_clock();
 
-	if(strcmp(rg_class_str, "libc") == 0) {
-		rg_class = &rg_libc_class;
-	}
-	else if(strcmp(rg_class_str, "seq") == 0) {
-		rg_class = &rg_seq_class;
-	}
-	else if(strcmp(rg_class_str, "lcg") == 0) {
-		rg_class = &rg_lcg_class;
-	}
-#ifdef PLAT_POSIX
-	else if(strcmp(rg_class_str, "devrandom") == 0) {
-		rg_class = &rg_devrandom_class;
-	}
-#endif
-	else {
+	rg_class = (randgen_class_t*) hash_map_find(&randgen_hash_map, rg_class_name);
+	if(rg_class == NULL) {
 		tsload_error_msg(TSE_INVALID_VALUE,
-						 RG_ERROR_PREFIX "invalid class '%s'", rg_class_str);
+						 RG_ERROR_PREFIX "invalid class '%s'", rg_class_name);
 		return NULL;
 	}
 
@@ -204,105 +194,135 @@ bad_tsobj:
 
 static randvar_t* tsobj_randvar_proc_error(int ret, randvar_t* rv, const char* name,
 			const char* range_helper) {
-	if(ret == RV_INVALID_PARAM_NAME) {
-		tsload_error_msg(TSE_INTERNAL_ERROR,
-						 RV_ERROR_PREFIX "VALUE '%s' is not supported", name);
-		rv_destroy(rv);
-		return NULL;
-	}
-	if(ret == RV_INVALID_PARAM_VALUE) {
-		tsload_error_msg(TSE_INVALID_VALUE,
-						 RV_ERROR_PREFIX "VALUE '%s' is invalid: %s",
-						 name, range_helper);
-		rv_destroy(rv);
-		return NULL;
-	}
+	
 
 	return rv;
 }
 
-#define RANDVAR_SET_PARAM_VALUE(rv, name, value, type, range_helper)	\
-	if(rv != NULL) {													\
-		ret = rv_set_ ## type (rv, name, value);						\
-		rv = tsobj_randvar_proc_error(ret, rv, name, range_helper);		\
-	}
-
 randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 	randvar_t* rv = NULL;
-	char* rv_class_str;
-	int ret;
-
-	if(tsobj_get_string(node, "class", &rv_class_str) != TSOBJ_OK)
+	randvar_class_t* rv_class;
+	randvar_param_t* rv_param;
+	char* rv_class_name;
+	int ret = RV_PARAM_OK;
+	
+	if(tsobj_get_string(node, "class", &rv_class_name) != TSOBJ_OK)
 		goto bad_tsobj;
 
-	if(strcmp(rv_class_str, "exponential") == 0) {
-		double rate;
-
-		if(tsobj_get_double_n(node, "rate", &rate) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_check_unused(node) != TSOBJ_OK)
-			goto bad_tsobj;
-
-		rv = rv_create(&rv_exponential_class, rg);
-		RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double,
-								"cannot be negative");
-	}
-	else if(strcmp(rv_class_str, "uniform") == 0) {
-		double min, max;
-
-		if(tsobj_get_double_n(node, "min", &min) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_get_double_n(node, "max", &max) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_check_unused(node) != TSOBJ_OK)
-			goto bad_tsobj;
-
-		rv = rv_create(&rv_uniform_class, rg);
-		RANDVAR_SET_PARAM_VALUE(rv, "min", min, double, "");
-		RANDVAR_SET_PARAM_VALUE(rv, "max", max, double, "");
-	}
-	else if(strcmp(rv_class_str, "erlang") == 0) {
-		double rate;
-		int shape;
-
-		if(tsobj_get_double_n(node, "rate", &rate) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_get_integer_i(node, "shape", &shape) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_check_unused(node) != TSOBJ_OK)
-			goto bad_tsobj;
-
-		rv = rv_create(&rv_erlang_class, rg);
-		RANDVAR_SET_PARAM_VALUE(rv, "rate", rate, double,
-								"cannot be negative");
-		RANDVAR_SET_PARAM_VALUE(rv, "shape", shape, int,
-								"must be greater than 1");
-	}
-	else if(strcmp(rv_class_str, "normal") == 0) {
-		double mean, stddev;
-
-		if(tsobj_get_double_n(node, "mean", &mean) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_get_double_n(node, "stddev", &stddev) != TSOBJ_OK)
-			goto bad_tsobj;
-		if(tsobj_check_unused(node) != TSOBJ_OK)
-			goto bad_tsobj;
-
-		rv = rv_create(&rv_normal_class, rg);
-		RANDVAR_SET_PARAM_VALUE(rv, "mean", mean, double, "");
-		RANDVAR_SET_PARAM_VALUE(rv, "stddev", stddev, double,
-								"should be positive");
-	}
-	else {
+	rv_class = hash_map_find(&randvar_hash_map, rv_class_name);	
+	if(rv_class == NULL) {
 		tsload_error_msg(TSE_INVALID_VALUE,
-						 RV_ERROR_PREFIX "invalid class '%s'", rv_class_str);
+						 RV_ERROR_PREFIX "invalid class '%s'", rv_class_name);
 		return NULL;
 	}
+	
+	rv = rv_create(rv_class, rg);
+	if(rv == NULL) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 RV_ERROR_PREFIX "failed to initialize random variator");
+		return NULL;
+	}
+	
+	rv_param = rv_class->rv_params;
+	while(rv_param->type != RV_PARAM_NULL) {
+		if(rv_param->type == RV_PARAM_INT) {
+			long lval;
+			if(tsobj_get_integer_l(node, rv_param->name, &lval) != TSOBJ_OK)
+				goto bad_tsobj;
+			if((ret = rv_set_int(rv, rv_param->name, lval)) != RV_PARAM_OK)
+				goto bad_param;
+		}
+		else if(rv_param->type == RV_PARAM_DOUBLE) {
+			double dval;
+			if(tsobj_get_double_n(node, rv_param->name, &dval) != TSOBJ_OK)
+				goto bad_tsobj;
+			if((ret = rv_set_double(rv, rv_param->name, dval)) != RV_PARAM_OK)
+				goto bad_param;
+		}
+		
+		++rv_param;
+	}
+	
+	if(tsobj_check_unused(node) != TSOBJ_OK)
+		goto bad_tsobj;
 
 	return rv;
 
+bad_param:
+	if(ret == RV_INVALID_PARAM_NAME) {
+		tsload_error_msg(TSE_INTERNAL_ERROR,
+						 RV_ERROR_PREFIX "PARAMETER '%s' is not supported", rv_param->name);
+	}
+	else if(ret == RV_INVALID_PARAM_VALUE) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 RV_ERROR_PREFIX "PARAMETER '%s' has invalid value: %s", 
+						 rv_param->name, rv_param->helper);
+	}
+	
+	rv_destroy(rv);
+	return NULL;
+	
 bad_tsobj:
 	tsload_error_msg(tsobj_error_code(), RV_ERROR_PREFIX "%s", tsobj_error_message());
-
+	
+	if(rv != NULL)
+		rv_destroy(rv);
 	return NULL;
+}
+
+int randgen_register(module_t* mod, randgen_class_t* class) {
+	class->rg_module = mod;
+	
+	return hash_map_insert(&randgen_hash_map, class);
+}
+
+int randgen_unregister(module_t* mod, randgen_class_t* class) {
+	return hash_map_remove(&randgen_hash_map, class);
+}
+
+int randvar_register(module_t* mod, randvar_class_t* class) {
+	class->rv_module = mod;
+	
+	return hash_map_insert(&randvar_hash_map, class);
+}
+
+int randvar_unregister(module_t* mod, randvar_class_t* class) {
+	return hash_map_remove(&randvar_hash_map, class);
+}
+
+
+int randgen_init(void) {
+	hash_map_init(&randgen_hash_map, "randgen_hash_map");
+	hash_map_init(&randvar_hash_map, "randvar_hash_map");
+	
+	randgen_register(NULL, &rg_libc_class);
+	randgen_register(NULL, &rg_lcg_class);
+	randgen_register(NULL, &rg_seq_class);
+#ifdef PLAT_POSIX
+	randgen_register(NULL, &rg_devrandom_class);
+#endif
+	
+	randvar_register(NULL, &rv_erlang_class);
+	randvar_register(NULL, &rv_exponential_class);
+	randvar_register(NULL, &rv_normal_class);
+	randvar_register(NULL, &rv_uniform_class);
+	
+	return 0;
+}
+
+void randgen_fini(void) {
+	randvar_unregister(NULL, &rv_uniform_class);
+	randvar_unregister(NULL, &rv_normal_class);
+	randvar_unregister(NULL, &rv_exponential_class);
+	randvar_unregister(NULL, &rv_erlang_class);	
+	
+#ifdef PLAT_POSIX
+	randgen_unregister(NULL, &rg_devrandom_class);
+#endif	
+	randgen_unregister(NULL, &rg_seq_class);
+	randgen_unregister(NULL, &rg_lcg_class);
+	randgen_unregister(NULL, &rg_libc_class);
+	
+	hash_map_destroy(&randvar_hash_map);
+	hash_map_destroy(&randgen_hash_map);
 }

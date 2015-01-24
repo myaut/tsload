@@ -334,10 +334,11 @@ void tpd_relink_request_ff(thread_pool_t* tp, request_t* rq) {
 }
 
 tp_disp_class_t tpd_ff_class = {
-	"first-free",
+	AAS_CONST_STR("first-free"),
 
 	tpd_init_ff,
 	tpd_destroy_ff,
+	NULL,
 	tpd_control_report_ff,
 	tpd_control_sleep_ff,
 	tpd_worker_pick_ff,

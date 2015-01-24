@@ -155,7 +155,7 @@ Where "probability" is:
 				 ["exponential" | "uniform" | "erlang" | "normal" ] Type of random numbers distribution,
 	(in, "distribution" = "uniform") "scope" : [number] Value from 0.0 (min = max = mean) to 1.0 (min = 0.0, max = 2 * mean),
 	(in, "distribution" = "erlang") "shape" : [number] Shape parameter for Erlang distribution,
-	(in, "distribution" = "normal") "dispersion" : [number] Desired dispersion of distribution,
+	(in, "distribution" = "normal") "covar" : [number] Coeffecient of variation needed to generate stddev value
 	
 	(in, "type" = "think") "user_randgen" : [node] Random generator that used to generate user ids for request,
 	(in, "type" = "think") "nusers" : [number] Number of users to be simulated by think request scheduler

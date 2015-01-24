@@ -61,7 +61,15 @@ double rv_variate_double_uniform(randvar_t* rv, double u) {
 	return u * (rvu->max - rvu->min) + rvu->min;
 }
 
+randvar_param_t rv_uniform_params[] = {
+	{ RV_PARAM_DOUBLE, "min", "" },
+	{ RV_PARAM_DOUBLE, "max", "" },
+	{ RV_PARAM_NULL, NULL, "" }
+};
+
 randvar_class_t rv_uniform_class = {
+	RV_CLASS_HEAD("uniform", rv_uniform_params),
+	
 	SM_INIT(.rv_init, rv_init_uniform),
 	SM_INIT(.rv_destroy, rv_destroy_uniform),
 

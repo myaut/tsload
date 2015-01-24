@@ -59,7 +59,7 @@ uint64_t rg_generate_int_seq(randgen_t* rg) {
 }
 
 randgen_class_t rg_seq_class = {
-	RG_CLASS_HEAD(B_FALSE, ULLONG_MAX),
+	RG_CLASS_HEAD("seq", B_FALSE, ULLONG_MAX),
 
 	SM_INIT(.rg_init, 		  rg_init_seq),
 	SM_INIT(.rg_destroy, 	  rg_destroy_seq),

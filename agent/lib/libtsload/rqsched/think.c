@@ -20,12 +20,18 @@
 
 #include <tsload/defs.h>
 
+#include <tsload/obj/obj.h>
+
+#include <tsload/mempool.h>
 #include <tsload/time.h>
 
 #include <tsload/load/randgen.h>
 #include <tsload/load/rqsched.h>
 #include <tsload/load/tpdisp.h>
 #include <tsload/load/threadpool.h>
+#include <tsload.h>
+
+#include <errormsg.h>
 
 #include <math.h>
 
@@ -37,22 +43,55 @@
 extern void rqsched_pre_request_iat(request_t* rq);
 extern void rqsched_step_iat(workload_step_t* step);
 
+typedef struct rqsched_think {
+	int nusers;
+	randgen_t* user_randgen;
+} rqsched_think_t;
+
+int tsobj_rqsched_proc_think(tsobj_node_t* node, workload_t* wl, rqsched_t* rqs) {
+	rqsched_think_t* rqs_think = mp_malloc(sizeof(rqsched_think_t));
+	int ret;
+	
+	if(tsobj_get_integer_i(node, "nusers", &rqs_think->nusers) != TSOBJ_OK) {
+		ret = RQSCHED_TSOBJ_BAD;
+		goto error;
+	}
+
+	if(rqs_think->nusers < 1) {
+		tsload_error_msg(TSE_INVALID_VALUE, RQSCHED_ERROR_PREFIX "number of users %d must be 1 or greater",
+						 wl->wl_name, rqs_think->nusers);		
+		ret = RQSCHED_TSOBJ_ERROR;
+		goto error;
+	}
+
+	ret = tsobj_rqsched_proc_randgen(node, "user_randgen", &rqs_think->user_randgen);
+	if(ret != RQSCHED_TSOBJ_OK)
+		goto error;
+	
+	rqs->rqs_private = rqs_think;
+	return RQSCHED_TSOBJ_OK;
+	
+error:
+	mp_free(rqs_think);
+	return ret;
+}
+
 void rqsched_fini_think(workload_t* wl) {
-	rqsched_think_t* rqs_think = (rqsched_think_t*) wl->wl_rqsched_private;
+	rqsched_t* rqs = (rqsched_t*) wl->wl_rqsched_private;
+	rqsched_think_t* rqs_think = (rqsched_think_t*) rqs->rqs_private;
 
-	rg_destroy(rqs_think->rqs_user_randgen);
-
-	/* rqsched_common_destroy will call mp_free, so rqs_think
-	 * would be deallocated through this call. */
-	rqsched_common_destroy(&rqs_think->common);
+	rg_destroy(rqs_think->user_randgen);
+	
+	mp_free(rqs_think);
 }
 
 void rqsched_pre_request_think(request_t* rq) {
-	rqsched_think_t* rqs_think = (rqsched_think_t*) rq->rq_workload->wl_rqsched_private;
-
+	rqsched_t* rqs = (rqsched_t*) rq->rq_workload->wl_rqsched_private;
+	rqsched_think_t* rqs_think = (rqsched_think_t*) rqs->rqs_private;
+	
 	rqsched_pre_request_iat(rq);
 
-	rq->rq_user_id = rg_generate_int(rqs_think->rqs_user_randgen) % rqs_think->rqs_nusers;
+	rq->rq_user_id = rg_generate_int(rqs_think->user_randgen) % rqs_think->nusers;
 }
 
 void rqsched_post_request_think(request_t* rq) {
@@ -77,9 +116,11 @@ void rqsched_post_request_think(request_t* rq) {
 	mutex_unlock(&wl->wl_rq_mutex);
 }
 
-rqsched_class_t think_rqsched_class = {
+rqsched_class_t rqsched_think_class = {
 	RQSCHED_NAME("think"),
-
+	RQSCHED_NEED_VARIATOR,
+		
+	SM_INIT(.rqsched_proc_tsobj, tsobj_rqsched_proc_think),
 	SM_INIT(.rqsched_fini, rqsched_fini_think),
 	SM_INIT(.rqsched_step, rqsched_step_iat),
 	SM_INIT(.rqsched_pre_request, rqsched_pre_request_think),

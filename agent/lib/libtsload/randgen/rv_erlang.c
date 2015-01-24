@@ -96,7 +96,15 @@ double rv_variate_double_erlang(randvar_t* rv, double u) {
 	return x;
 }
 
+randvar_param_t rv_erlang_params[] = {
+	{ RV_PARAM_INT, "shape", "must be greater than 1"},
+	{ RV_PARAM_DOUBLE, "rate", "cannot be negative"},
+	{ RV_PARAM_NULL, NULL, NULL }
+};
+
 randvar_class_t rv_erlang_class = {
+	RV_CLASS_HEAD("erlang", rv_erlang_params),
+	
 	SM_INIT(.rv_init, rv_init_erlang),
 	SM_INIT(.rv_destroy, rv_destroy_erlang),
 

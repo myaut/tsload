@@ -181,10 +181,11 @@ void tpd_relink_request_bench(thread_pool_t* tp, request_t* rq) {
 }
 
 tp_disp_class_t tpd_bench_class = {
-	"benchmark",
+	AAS_CONST_STR("benchmark"),
 
 	tpd_init_bench,
 	tpd_destroy_bench,
+	NULL,
 	tpd_control_report_bench,
 	tpd_control_sleep_bench,
 	tpd_worker_pick_bench,

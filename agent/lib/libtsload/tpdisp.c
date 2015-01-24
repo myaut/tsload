@@ -26,6 +26,7 @@
 #include <tsload/time.h>
 #include <tsload/mempool.h>
 #include <tsload/errcode.h>
+#include <tsload/hashmap.h>
 
 #include <tsload/load/tpdisp.h>
 #include <tsload/load/workload.h>
@@ -36,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+DECLARE_HASH_MAP_STRKEY(tpd_hash_map, tp_disp_class_t, TPDHASHSIZE, name, next, TPDHASHMASK);
 
 extern tp_disp_class_t tpd_rr_class;
 extern tp_disp_class_t tpd_rand_class;
@@ -136,57 +138,35 @@ void tpd_wqueue_signal(thread_pool_t* tp, int wid) {
 	mutex_unlock(&worker->w_rq_mutex);
 }
 
-static int tsobj_tp_disp_proc_fill_up(tp_disp_t* tpd, tsobj_node_t* node);
-
 tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node) {
 	tp_disp_t* tpd = NULL;
+	tp_disp_class_t* tpd_class;
 	char* type;
-
+	int err;
+	
 	if(tsobj_get_string(node, "type", &type) != TSOBJ_OK)
 		goto bad_tsobj;
+	
+	tpd_class = hash_map_find(&tpd_hash_map, type);
+	if(tpd_class == NULL) {
+		tsload_error_msg(TSE_INVALID_DATA,
+						 TPD_ERROR_PREFIX "invalid type '%s'", type);
+		return NULL;
+	}
 
 	tpd = mp_malloc(sizeof(tp_disp_t));
 	tpd->tpd_tp = NULL;
 	tpd->tpd_data = NULL;
-
-	if(strcmp(type, "round-robin") == 0) {
-		tpd->tpd_class = &tpd_rr_class;
-	}
-	else if(strcmp(type, "random") == 0) {
-		tpd->tpd_class = &tpd_rand_class;
-	}
-	else if(strcmp(type, "user") == 0) {
-		tpd->tpd_class = &tpd_user_class;
-	}
-	else if(strcmp(type, "trace") == 0) {
-		tpd->tpd_class = &tpd_trace_class;
-	}
-	else if(strcmp(type, "first-free") == 0) {
-		tpd->tpd_class = &tpd_ff_class;
-	}
-	else if(strcmp(type, "fill-up") == 0) {
-		int err;
-
-		tpd->tpd_class = &tpd_fill_up_class;
-
-		err = tsobj_tp_disp_proc_fill_up(tpd, node);
+	tpd->tpd_class = tpd_class;
+	
+	if(tpd_class->proc_tsobj) {
+		err = tpd_class->proc_tsobj(tpd, node);	
 		if(err != TPD_OK) {
 			mp_free(tpd);
-
 			if(err == TPD_BAD)
 				goto bad_tsobj;
-
 			return NULL;
 		}
-	}
-	else if(strcmp(type, "benchmark") == 0) {
-		tpd->tpd_class = &tpd_bench_class;
-	}
-	else {
-		tsload_error_msg(TSE_INVALID_DATA,
-						 TPD_ERROR_PREFIX "invalid type '%s'", type);
-		mp_free(tpd);
-		return NULL;
 	}
 
 	if(tsobj_check_unused(node) != TSOBJ_OK) {
@@ -201,22 +181,44 @@ bad_tsobj:
 	return NULL;
 }
 
-static int tsobj_tp_disp_proc_fill_up(tp_disp_t* tpd, tsobj_node_t* node) {
-	unsigned num_rqs;
-	int wid;
-
-	if(tsobj_get_integer_u(node, "n", &num_rqs) != TSOBJ_OK)
-		return TPD_BAD;
-	if(tsobj_get_integer_i(node, "wid", &wid) != TSOBJ_OK)
-		return TPD_BAD;
-	if(tsobj_check_unused(node) != TSOBJ_OK)
-		return TPD_BAD;
-
-	return tpd_preinit_fill_up(tpd, num_rqs, wid);
-}
-
 void tpd_destroy(tp_disp_t* tpd) {
 	tpd->tpd_class->destroy(tpd->tpd_tp);
 	mp_free(tpd);
 }
 
+int tpdisp_register(module_t* mod, tp_disp_class_t* class) {
+	class->next = NULL;
+	class->mod = mod;
+	
+	return hash_map_insert(&tpd_hash_map, class);
+}
+
+int tpdisp_unregister(module_t* mod, tp_disp_class_t* class) {
+	return hash_map_remove(&tpd_hash_map, class);
+}
+
+int tpdisp_init(void) {
+	hash_map_init(&tpd_hash_map, "tpd_hash_map");
+	
+	tpdisp_register(NULL, &tpd_rr_class);
+	tpdisp_register(NULL, &tpd_rand_class);
+	tpdisp_register(NULL, &tpd_user_class);
+	tpdisp_register(NULL, &tpd_trace_class);
+	tpdisp_register(NULL, &tpd_fill_up_class);
+	tpdisp_register(NULL, &tpd_ff_class);
+	tpdisp_register(NULL, &tpd_bench_class);
+	
+	return 0;
+}
+
+void tpdisp_fini(void) {
+	tpdisp_unregister(NULL, &tpd_bench_class);
+	tpdisp_unregister(NULL, &tpd_ff_class);
+	tpdisp_unregister(NULL, &tpd_fill_up_class);
+	tpdisp_unregister(NULL, &tpd_trace_class);
+	tpdisp_unregister(NULL, &tpd_user_class);
+	tpdisp_unregister(NULL, &tpd_rand_class);
+	tpdisp_unregister(NULL, &tpd_rr_class);
+	
+	hash_map_destroy(&tpd_hash_map);
+}

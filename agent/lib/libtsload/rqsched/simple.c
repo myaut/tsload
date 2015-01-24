@@ -39,9 +39,11 @@ void rqsched_post_request_simple(request_t* rq) {
 	/* NOTHING */
 }
 
-rqsched_class_t simple_rqsched_class = {
+rqsched_class_t rqsched_simple_class = {
 	RQSCHED_NAME("simple"),
+	RQSCHED_NO_FLAGS,
 
+	SM_INIT(.rqsched_proc_tsobj, NULL),
 	SM_INIT(.rqsched_fini, rqsched_fini_simple),
 	SM_INIT(.rqsched_step, rqsched_step_simple),
 	SM_INIT(.rqsched_pre_request, rqsched_pre_request_simple),

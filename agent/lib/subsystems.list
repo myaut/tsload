@@ -45,6 +45,21 @@ deps=mempool,json
 lib=libhostinfo
 alias=hiobject
 
+[randgen]
+lib=libtsload
+deps=mempool
+rdeps=mod
+
+[tpdisp]
+lib=libtsload
+deps=mempool
+rdeps=mod
+
+[rqsched]
+lib=libtsload
+deps=mempool
+rdeps=mod
+
 [wlt]
 lib=libtsload
 alias=wltype
@@ -53,17 +68,17 @@ rdeps=mod
 
 [wl]
 lib=libtsload
-deps=log,mempool,threads,wlt
+deps=log,mempool,rqsched,threads,wlt
 alias=workload
 
 [tp]
 lib=libtsload
-deps=log,mempool,threads
+deps=log,mempool,tpdisp,threads
 alias=threadpool
 
 [tsload]
 lib=libtsload
-deps=wlt,wl,tp,tsobj,hi_obj
+deps=randgen,wlt,wl,tp,tsobj,hi_obj
 generic=True
 
 [tse_error]

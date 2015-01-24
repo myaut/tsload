@@ -34,7 +34,7 @@
  * See [w:Exponential distribution](http://en.wikipedia.org/wiki/Exponential_distribution)
  *
  * Params:
- * 		* shape (int)*/
+ * 		* rate (double) */
 
 typedef struct rv_exp {
 	double rate;
@@ -79,7 +79,14 @@ double rv_variate_double_exp(randvar_t* rv, double u) {
 	return x;
 }
 
+randvar_param_t rv_exponential_params[] = {
+	{ RV_PARAM_DOUBLE, "rate", "cannot be negative" },
+	{ RV_PARAM_NULL, NULL, NULL }
+};
+
 randvar_class_t rv_exponential_class = {
+	RV_CLASS_HEAD("exponential", rv_exponential_params),
+	
 	SM_INIT(.rv_init, rv_init_exp),
 	SM_INIT(.rv_destroy, rv_destroy_exp),
 

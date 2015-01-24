@@ -23,70 +23,113 @@
 
 #include <tsload/defs.h>
 
+#include <tsload/autostring.h>
+
 #include <tsload/obj/obj.h>
 
 #include <tsload/load/workload.h>
 #include <tsload/load/randgen.h>
 
 
-#define RQSCHEDNAMELEN		16
-
-#define RQSCHED_NAME(name)		SM_INIT(.rqsched_name, name)
-
 /**
  * @module Request schedulers
  */
 
-typedef struct rqsched_class {
-	char rqsched_name[RQSCHEDNAMELEN];
+#define RQSVARHASHSIZE			8
+#define RQSVARHASHMASK			((RQSVARHASHSIZE) - 1)
 
-	void (*rqsched_fini)(workload_t* wl);
+struct rqsched;
+struct rqsched_var;
+
+#define RQSCHED_NO_FLAGS		0x00
+#define RQSCHED_NEED_VARIATOR	0x01
+
+typedef struct rqsvar_class {
+	AUTOSTRING char* rqsvar_name;
+	
+	randvar_class_t* rqsvar_rvclass;
+	randvar_param_t* rqsvar_params;
+	
+	int (*rqsvar_init)(struct rqsched_var* var);
+	void (*rqsvar_destroy)(struct rqsched_var* var);
+	
+	int (*rqsvar_set_int)(struct rqsched_var* var, const char* name, long value);
+	int (*rqsvar_set_double)(struct rqsched_var* var, const char* name, double value);
+	
+	void (*rqsvar_step)(struct rqsched_var* var, double iat);
+	
+	module_t* rqsvar_module;
+	struct rqsvar_class* rqsvar_next;
+} rqsvar_class_t;
+
+#define RQSCHED_NAME(name)		SM_INIT(.rqsched_name, AAS_CONST_STR(name))
+
+typedef struct rqsched_class {
+	AUTOSTRING char* rqsched_name;
+	
+	int rqsched_flags;
+
+	int  (*rqsched_proc_tsobj)(tsobj_node_t* node, workload_t* wl, struct rqsched* rqs);
+	void (*rqsched_fini)(workload_t* wl, struct rqsched* rqs);
 
 	void (*rqsched_step)(workload_step_t* step);		/* Called when new step starts */
 
 	void (*rqsched_pre_request)(request_t* rq);		/* Called while request is scheduling */
 	void (*rqsched_post_request)(request_t* rq);		/* Called when request is complete */
+	
+	module_t* rqsched_module;
+	struct rqsched_class* rqsched_next;
 } rqsched_class_t;
 
-typedef enum {
-	RQSD_UNIFORM,
-	RQSD_EXPONENTIAL,
-	RQSD_ERLANG,
-	RQSD_NORMAL
-} rqsched_distribution_t;
-
-typedef struct rqsched_common {
-	rqsched_distribution_t rqs_distribution;
-
-	randgen_t* rqs_randgen;
-	randvar_t* rqs_randvar;
-
+typedef struct rqsched_var {
+	rqsvar_class_t* class;
+	randgen_t* randgen;
+	randvar_t* randvar;
+	
 	union {
-		double u_scope;
-		int    e_shape;
-		double n_dispersion;
-	} rqs_params;
-} rqsched_common_t;
+		double dval;
+		long   lval;
+		void*  private;
+	} params;
+} rqsched_var_t;
 
-typedef struct rqsched_think {
-	rqsched_common_t common;
+typedef struct rqsched {
+	rqsched_class_t* rqs_class;
+	rqsched_var_t* rqs_var;
+	void* rqs_private;
+} rqsched_t;
 
-	randgen_t* rqs_user_randgen;
-	int rqs_nusers;
-} rqsched_think_t;
-
-void rqsched_common_destroy(rqsched_common_t* disp);
+STATIC_INLINE void rqsvar_step(rqsched_t* rqs, double iat) {	
+	rqs->rqs_var->class->rqsvar_step(rqs->rqs_var, iat);
+}
 
 #define RQSCHED_TSOBJ_OK			0
 #define RQSCHED_TSOBJ_ERROR			-1
 #define RQSCHED_TSOBJ_BAD			-2
 #define RQSCHED_TSOBJ_RG_ERROR		-3
 
-LIBIMPORT rqsched_class_t simple_rqsched_class;
-LIBIMPORT rqsched_class_t iat_rqsched_class;
-LIBIMPORT rqsched_class_t think_rqsched_class;
+TESTEXPORT void rqsched_destroy(workload_t* wl);
 
+int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t** p_randgen);
 TESTEXPORT int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);
+
+LIBIMPORT rqsched_class_t rqsched_simple_class;
+LIBIMPORT rqsched_class_t rqsched_iat_class;
+LIBIMPORT rqsched_class_t rqsched_think_class;
+
+LIBIMPORT rqsvar_class_t rqsvar_exponential_class;
+LIBIMPORT rqsvar_class_t rqsvar_uniform_class;
+LIBIMPORT rqsvar_class_t rqsvar_erlang_class;
+LIBIMPORT rqsvar_class_t rqsvar_normal_class;
+
+LIBEXPORT int rqsvar_register(module_t* mod, rqsvar_class_t* rqsvar_class);
+LIBEXPORT int rqsvar_unregister(module_t* mod, rqsvar_class_t* rqsvar_class);
+
+LIBEXPORT int rqsched_register(module_t* mod, rqsched_class_t* rqs_class);
+LIBEXPORT int rqsched_unregister(module_t* mod, rqsched_class_t* rqs_class);
+
+LIBEXPORT int rqsched_init(void);
+LIBEXPORT void rqsched_fini(void);
 
 #endif /* DISP_H_ */
 
