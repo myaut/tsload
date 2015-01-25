@@ -26,6 +26,7 @@
 #include <tsload/mempool.h>
 #include <tsload/list.h>
 #include <tsload/field.h>
+#include <tsload/autostring.h>
 
 #include <tsfile.h>
 #include <csv.h>
@@ -129,20 +130,19 @@ static void csv_header_iter_init(csv_hdr_iter_t* iter, const char* header) {
 
 static void csv_header_iter_next_opt(csv_chars_t* chars, csv_hdr_iter_t* iter) {
 	char* opt2;
+	char* next = (iter->tmp == NULL)
+		? (iter->ptr + iter->length) : iter->tmp;
 
 	if(!iter->opt)
 		return;
 
 	iter->opt = strchr(iter->opt, chars->csv_opt_separator);
-	if(iter->opt != NULL &&
-			(iter->tmp == NULL || iter->opt < iter->tmp)) {
+	if(iter->opt != NULL && iter->opt < next) {
 		++iter->opt;
 
 		opt2 = strchr(iter->opt, chars->csv_opt_separator);
-		iter->opt_length =
-			(opt2 != NULL && opt2 < iter->tmp)
-				? opt2 - iter->opt
-				: iter->length - (iter->opt - iter->ptr);
+		iter->opt_length = (opt2 != NULL && opt2 < next)
+			? opt2 - iter->opt : next - iter->opt;
 	}
 	else {
 		iter->opt = NULL;
@@ -155,26 +155,26 @@ static void csv_header_iter_next(csv_chars_t* chars, csv_hdr_iter_t* iter) {
 
 	iter->tmp = strchr(iter->ptr, chars->csv_separator);
 	iter->length =
-		(iter->tmp != NULL)
-			? iter->tmp - iter->ptr
-			: strlen(iter->ptr);
+		(iter->tmp != NULL) ? iter->tmp - iter->ptr : strlen(iter->ptr);
 
 	csv_header_iter_next_opt(chars, iter);
 
 	iter->name_length =
-		(iter->opt == NULL)
-			? iter->length
-			: iter->opt - iter->ptr - 1;
+		(iter->opt == NULL) ? iter->length : iter->opt - iter->ptr - 1;
 
 	if(iter->tmp != NULL)
 		++iter->tmp;
 }
 
 static int csv_header_field_error(int error, csv_hdr_iter_t* iter, const char* format) {
-	char field_name[MAXFIELDLEN];
-	strncpy(field_name, iter->ptr, min(MAXFIELDLEN, iter->name_length));
-
+	AUTOSTRING char* field_name;
+	
+	aas_copy_n(aas_init(&field_name), iter->ptr, iter->length);	
+	
 	logmsg(LOG_CRIT, format, field_name, iter->ptr - iter->header);
+	
+	aas_free(&field_name);
+	
 	return error;
 }
 
@@ -185,11 +185,14 @@ static boolean_t csv_header_field_eq(csv_hdr_iter_t* iter, tsfile_field_t* field
 
 #define CSV_PARSE_BOOL_OPT(iter, binding, literal, defval)			\
 	do {															\
-		if(iter->opt)  												\
-			strncpy(binding->opt.bool.literal, iter->opt,			\
-						min(iter->opt_length, CSVBOOLLEN));			\
+		char* literal = binding->opt.bool.literal;					\
+		if(iter->opt) {												\
+			size_t len = min(iter->opt_length, CSVBOOLLEN - 1);		\
+			strncpy(literal, iter->opt, len);						\
+			literal[len] = '\0';									\
+			}														\
 		else														\
-			strcpy(binding->opt.bool.literal, defval);				\
+			strcpy(literal, defval);								\
 	} while(0)
 
 #define CSV_PARSE_INT_OPT(iter, binding, name, flag)				\
@@ -369,6 +372,12 @@ int csv_generate_bindings(csv_chars_t* chars, const char* header, csv_binding_t*
 
 		for(bid = 0; bid < count; ++bid) {
 			bindings[bid].field = &schema->fields[bid];
+			
+			if(schema->fields[bid].type == TSFILE_FIELD_BOOLEAN) {
+				/* If no options were specified fill in default values for bool literals */
+				strncpy(bindings[bid].opt.bool.true_literal, "true", CSVBOOLLEN);
+				strncpy(bindings[bid].opt.bool.false_literal, "false", CSVBOOLLEN);
+			}
 		}
 
 		if(header != NULL) {
@@ -658,7 +667,7 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 			continue;
 		}
 		else if(field->type == TSFILE_FIELD_BOOLEAN) {
-			pos += csv_read_string(chars, line + pos, bool_value, field->size);
+			pos += csv_read_string(chars, line + pos, bool_value, CSVBOOLLEN);
 
 			if(strncmp(bool_value, bindings[bid].opt.bool.true_literal, CSVBOOLLEN) == 0) {
 				FIELD_PUT_VALUE(boolean_t, value, B_TRUE);
