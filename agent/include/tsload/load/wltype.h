@@ -77,6 +77,7 @@ typedef enum wl_class {
  *
  * @member wlt_name Name of workload type (use AAS_CONST_STR for it)
  * @member wlt_class Bitmask of workload class flags
+ * @member wlt_description Description of a workload type
  * @member wlt_params pointer to a vector of workload/request parameter descriptors
  * @member wlt_params_size sizeof() of workload parameters structure
  * @member wlt_rqparams_size sizeof() of request parameters structure
@@ -91,6 +92,8 @@ typedef struct wl_type {
 	AUTOSTRING char* wlt_name;
 
 	wl_class_t	wlt_class;
+	
+	const char* wlt_description;
 
 	wlp_descr_t* wlt_params;
 	size_t 		 wlt_params_size;

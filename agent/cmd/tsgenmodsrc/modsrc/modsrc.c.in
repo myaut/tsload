@@ -112,6 +112,10 @@ MODEXPORT int @FUNC_STEP@(workload_step_t* wls) {
 wl_type_t @WLT_VARNAME@ = {
 	/* wlt_name */			AAS_CONST_STR("@WLT_NAME@"),
 	/* wlt_class */			@WLT_CLASS@,
+	
+	/* wlt_description */
+	"",
+	
 	/* wlt_params */		@WL_PARAMS_VARNAME@,
 						
 @ifdef WL_PARAM_FIELDS

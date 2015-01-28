@@ -21,9 +21,9 @@
 #include <tsload/defs.h>
 
 #include <tsload/load/rqsched.h>
+#include <tsload.h>
 
-
-void rqsched_fini_simple(workload_t* wl) {
+void rqsched_fini_simple(workload_t* wl, rqsched_t* rqs) {
 	wl->wl_rqsched_private = NULL;
 }
 
@@ -39,9 +39,17 @@ void rqsched_post_request_simple(request_t* rq) {
 	/* NOTHING */
 }
 
+tsload_param_t rqsched_simple_params[] = {
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
+};
+
 rqsched_class_t rqsched_simple_class = {
 	RQSCHED_NAME("simple"),
+	"Sets arrival time for all requests to zero, so it "
+	"forces threadpool to execute request ASAP.",
+	
 	RQSCHED_NO_FLAGS,
+	rqsched_simple_params,
 
 	SM_INIT(.rqsched_proc_tsobj, NULL),
 	SM_INIT(.rqsched_fini, rqsched_fini_simple),

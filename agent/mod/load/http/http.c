@@ -181,6 +181,9 @@ wl_type_t http_wlt = {
 	AAS_CONST_STR("http"),			/* wlt_name */
 
 	WLC_NET_CLIENT,					/* wlt_class */
+	
+	"Uses cURL to generate HTTP requests. URI is a request parameter, so "
+	"you may use probability maps, to variate your workload. ",
 
 	http_params,					/* wlt_params */
 	sizeof(struct http_workload),	/* wlt_params_size */

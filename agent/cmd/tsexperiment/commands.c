@@ -44,6 +44,7 @@ typedef struct tse_command {
 tse_command_t commands[] = {
 	{"workload", tse_list_wltypes, B_FALSE},
 	{"wl", tse_list_wltypes, B_FALSE},
+	{"info", tse_info, B_FALSE},
 	{"list", tse_list, B_TRUE},
 	{"show", tse_show, B_TRUE},
 	{"report", tse_report, B_TRUE},

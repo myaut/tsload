@@ -8,6 +8,7 @@
 #include <tsload.h>
 
 #include <errormsg.h>
+#include <tsloadimpl.h>
 
 #include <string.h>
 
@@ -52,6 +53,15 @@ void rqsched_destroy(workload_t* wl) {
 	wl->wl_rqsched_private = NULL;
 }
 
+tsobj_node_t* tsobj_rqsvar_class_format(rqsvar_class_t* var_class) {
+	tsobj_node_t* node = tsobj_new_node("tsload.RQSchedVariatorClass");
+	
+	tsobj_add_node(node, TSOBJ_STR("params"), 
+		tsobj_params_format_helper(var_class->rqsvar_params));
+	tsobj_module_format_helper(node, var_class->rqsvar_module);
+	
+	return node;
+}
 
 int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t** p_randgen) {
 	int err;
@@ -78,7 +88,7 @@ int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t*
 int tsobj_rqsched_proc_variator(tsobj_node_t* node, workload_t* wl, rqsched_var_t** p_var) {
 	rqsvar_class_t* var_class;
 	rqsched_var_t* var = NULL;
-	randvar_param_t* rv_param;
+	tsload_param_t* rv_param;
 	
 	json_node_t* randgen;
 	char* distribution;
@@ -115,14 +125,14 @@ int tsobj_rqsched_proc_variator(tsobj_node_t* node, workload_t* wl, rqsched_var_
 	
 	rv_param = var_class->rqsvar_params;
 	while(rv_param->type != RV_PARAM_NULL) {
-		if(rv_param->type == RV_PARAM_INT) {
+		if(rv_param->type == TSLOAD_PARAM_INTEGER) {
 			long lval;
 			if(tsobj_get_integer_l(node, rv_param->name, &lval) != TSOBJ_OK)
 				goto bad_tsobj;
 			if((err = var_class->rqsvar_set_int(var, rv_param->name, lval)) != RV_PARAM_OK)
 				goto bad_param;
 		}
-		else if(rv_param->type == RV_PARAM_DOUBLE) {
+		else if(rv_param->type == TSLOAD_PARAM_FLOAT) {
 			double dval;
 			if(tsobj_get_double_n(node, rv_param->name, &dval) != TSOBJ_OK)
 				goto bad_tsobj;
@@ -144,7 +154,7 @@ bad_param:
 	}
 	else if(err == RV_INVALID_PARAM_VALUE) {
 		tsload_error_msg(TSE_INVALID_VALUE, RQSCHED_ERROR_PREFIX "PARAMETER '%s' has invalid value: %s", 
-						 wl->wl_name, rv_param->name, rv_param->helper);
+						 wl->wl_name, rv_param->name, rv_param->hint);
 	}
 	
 	rqsvar_destroy(var);
@@ -155,6 +165,20 @@ bad_tsobj:
 	rqsvar_destroy(var);
 	
 	return RQSCHED_TSOBJ_BAD;
+}
+
+tsobj_node_t* tsobj_rqsched_class_format(rqsched_class_t* rqs_class) {
+	tsobj_node_t* node = tsobj_new_node("tsload.RQSchedClass");
+	
+	tsobj_add_boolean(node, TSOBJ_STR("need_variator"), 
+					  TO_BOOLEAN(rqs_class->rqsched_flags & RQSCHED_NEED_VARIATOR));
+	tsobj_add_string(node, TSOBJ_STR("description"), 
+					 tsobj_str_create(rqs_class->rqsched_description));
+	tsobj_add_node(node, TSOBJ_STR("params"), 
+				   tsobj_params_format_helper(rqs_class->rqsched_params));
+	tsobj_module_format_helper(node, rqs_class->rqsched_module);
+	
+	return node;
 }
 
 int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {

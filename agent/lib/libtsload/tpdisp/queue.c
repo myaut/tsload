@@ -47,6 +47,10 @@
  * 		- Per-user
  * */
 
+tsload_param_t tpdisp_queue_params[] = {
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
+};
+
 int tpd_init_queue(thread_pool_t* tp) {
 	return TPD_OK;
 }
@@ -278,7 +282,13 @@ void tpd_control_sleep_rr(thread_pool_t* tp) {
 
 tp_disp_class_t tpd_rr_class = {
 	AAS_CONST_STR("round-robin"),
-
+	
+	"Queues requests at the beginning of step. "
+	"Sorts requests according to their arrival times than "
+	"distributes them across threadpools in circular order.",
+	
+	tpdisp_queue_params,
+	
 	tpd_init_queue,
 	tpd_destroy_queue,
 	NULL,
@@ -298,7 +308,12 @@ void tpd_control_sleep_rand(thread_pool_t* tp) {
 
 tp_disp_class_t tpd_rand_class = {
 	AAS_CONST_STR("random"),
-
+	
+	"Queues requests at the beginning of step. "
+	"Worker for each thread is selected randomly.",
+	
+	tpdisp_queue_params,
+	
 	tpd_init_queue,
 	tpd_destroy_queue,
 	NULL,
@@ -321,6 +336,13 @@ void tpd_control_sleep_user(thread_pool_t* tp) {
 tp_disp_class_t tpd_user_class = {
 	AAS_CONST_STR("user"),
 
+	"Queues requests at the beginning of step. "
+	"Assuming each worker in a threadpool is a separate "
+	"user session, uses rq_user_id field (set only by "
+	"think request scheduler!) as a worker id.",
+	
+	tpdisp_queue_params,
+	
 	tpd_init_queue,
 	tpd_destroy_queue,
 	NULL,
@@ -411,9 +433,22 @@ int tsobj_proc_tpd_fill_up(struct tp_disp* tpd, tsobj_node_t* node) {
 	return tpd_preinit_fill_up(tpd, num_rqs, wid);
 }
 
+tsload_param_t tpdisp_fill_up_params[] = {
+	{ TSLOAD_PARAM_INTEGER, "n", "should be positive"},
+	{ TSLOAD_PARAM_INTEGER, "wid", "id of threadpool's worker"},
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
+};
+
 tp_disp_class_t tpd_fill_up_class = {
 	AAS_CONST_STR("fill-up"),
-
+	
+	"Queues requests at the beginning of step. "
+	"Puts `n` consequent requests into worker queue "
+	"then switches to next worker. Good for creating "
+	"spikes. Parameters: `n` and `wid` - first worker id.",
+	
+	tpdisp_fill_up_params,
+	
 	tpd_init_fill_up,
 	tpd_destroy_fill_up,
 	tsobj_proc_tpd_fill_up,
@@ -439,7 +474,13 @@ void tpd_control_sleep_trace(thread_pool_t* tp) {
 
 tp_disp_class_t tpd_trace_class = {
 	AAS_CONST_STR("trace"),
-
+	
+	"Queues request to the same worker that handled it "
+	"during first run. For trace reproduction. If rq_thread_id "
+	"is not set, works as random thread pool dispatcher. ",
+	
+	tpdisp_queue_params,
+	
 	tpd_init_queue,
 	tpd_destroy_queue,
 	NULL,

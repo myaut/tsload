@@ -10,6 +10,7 @@
 
 #include <tsload/load/wltype.h>
 #include <tsload/load/wlparam.h>
+#include <tsloadimpl.h>
 
 #include <stdlib.h>
 
@@ -83,9 +84,11 @@ tsobj_node_t* tsobj_wl_type_format(hm_item_t* object) {
 	tsobj_node_t* wlt_node = tsobj_new_node("tsload.WorkloadType");
 	tsobj_node_t* wlt_class = tsobj_new_array();
 
-	tsobj_add_string(wlt_node, TSOBJ_STR("module"), tsobj_str_create(wlt->wlt_module->mod_name));
-	tsobj_add_string(wlt_node, TSOBJ_STR("path"), tsobj_str_create(wlt->wlt_module->mod_path));
+	tsobj_module_format_helper(wlt_node, wlt->wlt_module);
 
+	tsobj_add_string(wlt_node, TSOBJ_STR("description"), 
+					 tsobj_str_create(wlt->wlt_description));
+	
 	for(i = 0; i < WL_CLASS_NUM; ++i) {
 		if(wlt->wlt_class & wlt_class_names[i].wlc) {
 			tsobj_add_string(wlt_class, NULL, wlt_class_names[i].name);

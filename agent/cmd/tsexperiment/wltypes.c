@@ -28,9 +28,8 @@
 #include <tsload/load/wlparam.h>
 
 #include <commands.h>
+#include <info.h>
 
-
-void tse_print_wltype(wl_type_t* wlt);
 int tse_print_wltype_walker(hm_item_t* item, void* context);
 void tse_print_range(wlp_descr_t* wlp, char* buf, size_t buflen);
 void tse_print_default(wlp_descr_t* wlp, char* buf, size_t buflen);
@@ -59,6 +58,11 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 	int argi;
 
 	void* ptr;
+	
+	int flags = INFO_XDATA | INFO_HEADER;
+
+	fputs("WARNING: `wl` and `workload` subcommands are deprecated. "
+		  "Use `info wl` or `info workload` instead\n", stderr);
 
 	while((c = plat_getopt(argc, argv, "j")) != -1) {
 		switch(c) {
@@ -108,7 +112,7 @@ int tse_list_wltypes(experiment_t* root, int argc, char* argv[]) {
 			}
 			else {
 				ptr = tsload_walk_workload_types(TSLOAD_WALK_FIND, argv[argi], NULL);
-				tse_print_wltype((wl_type_t*) ptr);
+				tse_print_wltype((wl_type_t*) ptr, &flags);
 			}
 		}
 	}
@@ -145,7 +149,10 @@ struct tse_wlt_class tse_wlt_class_chars[] = {
 	{WLC_OS_BENCHMARK, 			16, 'O', 	-1, '\0'},
 };
 
-void tse_print_wltype(wl_type_t* wlt) {
+void tse_print_wltype(void* obj, void* p_flags) {
+	wl_type_t* wlt = (wl_type_t*) obj;
+	int flags = * (int*) p_flags;
+	
 	char wlt_class[18];
 	int i;
 	struct tse_wlt_class* clch;
@@ -174,29 +181,33 @@ void tse_print_wltype(wl_type_t* wlt) {
 	printf("%-16s %-18s %-12s\n", wlt->wlt_name, wlt_class,
 			wlt->wlt_module->mod_name);
 
-	if(wlp->type != WLP_NULL) {
-		printf("\t%-16s %-4s %-4s %-6s %-10s %-6s\n",
-				"PARAM", "SCOPE", "OPT", "TYPE", "RANGE", "DEFAULT");
-	}
+	if(flags & INFO_XDATA) {
+		tse_print_description(wlt->wlt_description);
+		
+		if(wlp->type != WLP_NULL && (flags & INFO_HEADER)) {
+			printf("\t%-16s %-4s %-4s %-6s %-10s %-6s\n",
+					"PARAM", "SCOPE", "OPT", "TYPE", "RANGE", "DEFAULT");
+		}
 
-	/* Print params */
-	while(wlp->type != WLP_NULL) {
-		scope = ((wlp->flags & WLPF_OUTPUT) == WLPF_OUTPUT)
-					? "OUT"
-					: (wlp->flags & WLPF_REQUEST)
-					  	  ? "RQ"
-					  	  : "WL";
-		opt = (wlp->flags & WLPF_OPTIONAL) ? "OPT" : "";
-		type = ts_wlt_type_names[wlp->type];
+		/* Print params */
+		while(wlp->type != WLP_NULL) {
+			scope = ((wlp->flags & WLPF_OUTPUT) == WLPF_OUTPUT)
+						? "OUT"
+						: (wlp->flags & WLPF_REQUEST)
+							? "RQ"
+							: "WL";
+			opt = (wlp->flags & WLPF_OPTIONAL) ? "OPT" : "";
+			type = ts_wlt_type_names[wlp->type];
 
-		tse_print_range(wlp, range, 64);
-		tse_print_default(wlp, defval, 128);
+			tse_print_range(wlp, range, 64);
+			tse_print_default(wlp, defval, 128);
 
-		printf("\t%-16s %-4s %-4s %-6s %-10s %-6s\n", wlp->name,
-					scope, opt, type, range, defval);
-		printf("\t\t%s\n", wlp->description);
+			printf("\t%-16s %-4s %-4s %-6s %-10s %-6s\n", wlp->name,
+						scope, opt, type, range, defval);
+			printf("\t\t%s\n", wlp->description);
 
-		++wlp;
+			++wlp;
+		}
 	}
 }
 
@@ -264,7 +275,8 @@ void tse_print_default(wlp_descr_t* wlp, char* buf, size_t buflen) {
 
 int tse_print_wltype_walker(hm_item_t* item, void* context) {
 	wl_type_t* wlt = (wl_type_t*) item;
-	tse_print_wltype(wlt);
+	int flags = INFO_XDATA | INFO_HEADER;
+	tse_print_wltype(wlt, &flags);
 
 	return HM_WALKER_CONTINUE;
 }

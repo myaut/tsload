@@ -27,6 +27,7 @@
 #include <tsload/time.h>
 #include <tsload/init.h>
 #include <tsload/netsock.h>
+#include <tsload/execpath.h>
 
 #include <tsload/obj/obj.h>
 
@@ -38,15 +39,21 @@
 #include <tsload/load/wltype.h>
 #include <tsload/load/threadpool.h>
 #include <tsload/load/tpdisp.h>
+#include <tsload/load/randgen.h>
+#include <tsload/load/rqsched.h>
 #include <tsload.h>
 
 #include <errormsg.h>
 
 #include <stdlib.h>
 
-
+extern hashmap_t randgen_hash_map;
+extern hashmap_t randvar_hash_map;
+extern hashmap_t tpd_hash_map;
 extern hashmap_t wl_type_hash_map;
 extern hashmap_t tp_hash_map;
+extern hashmap_t rqsvar_hash_map;
+extern hashmap_t rqsched_hash_map;
 
 tsload_error_msg_func tsload_error_msg = NULL;
 tsload_workload_status_func tsload_workload_status = NULL;
@@ -55,6 +62,66 @@ tsload_requests_report_func tsload_requests_report = NULL;
 extern ts_time_t tp_min_quantum;
 extern ts_time_t tp_max_quantum;
 extern int tp_max_threads;
+
+void tsobj_module_format_helper(tsobj_node_t* parent, module_t* mod) {
+	if(mod != NULL) {
+		tsobj_add_string(parent, TSOBJ_STR("module"), 
+						tsobj_str_create(mod->mod_name));
+		tsobj_add_string(parent, TSOBJ_STR("path"), 
+						tsobj_str_create(mod->mod_path));
+	}
+	else {
+		tsobj_add_string(parent, TSOBJ_STR("module"), 
+						 TSOBJ_STR("TSLoad Core"));
+		tsobj_add_string(parent, TSOBJ_STR("path"), 
+						tsobj_str_create(plat_execpath()));
+	}
+}
+
+tsobj_node_t* tsobj_params_format_helper(tsload_param_t* params) {
+	tsobj_node_t* params_node = tsobj_new_node(NULL);
+	tsobj_node_t* param_node;
+	
+	tsload_param_t* param = params;	
+	while(param->type != RV_PARAM_NULL) {		
+		switch(param->type & TSLOAD_PARAM_MASK) {
+		case TSLOAD_PARAM_INTEGER:
+			param_node = tsobj_new_node("tsload.param.IntegerParam");
+			break;
+		case TSLOAD_PARAM_FLOAT:
+			param_node = tsobj_new_node("tsload.param.FloatParam");
+			break;
+		case TSLOAD_PARAM_BOOLEAN:
+			param_node = tsobj_new_node("tsload.param.BooleanParam");
+			break;
+		case TSLOAD_PARAM_STRING:
+			param_node = tsobj_new_node("tsload.param.StringParam");
+			break;
+		case TSLOAD_PARAM_RANDGEN:
+			param_node = tsobj_new_node("tsload.param.RandGenParam");
+			break;
+		case TSLOAD_PARAM_RANDVAR:
+			param_node = tsobj_new_node("tsload.param.RandVarParam");
+			break;
+		default:
+			++param;
+			continue;
+		}
+		
+		if(param->type & TSLOAD_PARAM_ARRAY_FLAG) 
+			tsobj_add_boolean(param_node, TSOBJ_STR("array"), B_TRUE);
+		else if(param->type & TSLOAD_PARAM_MAP_FLAG) 
+			tsobj_add_boolean(param_node, TSOBJ_STR("map"), B_TRUE);
+		
+		tsobj_add_string(param_node, TSOBJ_STR("hint"), tsobj_str_create(param->hint));		
+		
+		tsobj_add_node(params_node, tsobj_str_create(param->name), param_node);			
+		
+		++param;
+	}
+	
+	return params_node;
+}
 
 static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func walker,
 								  hashmap_t* hm, hm_tsobj_formatter formatter,
@@ -73,9 +140,29 @@ static void* tsload_walkie_talkie(tsload_walk_op_t op, void* arg, hm_walker_func
 	return NULL;
 }
 
-tsobj_str_t tsobj_wl_type_format_name(hm_item_t* object) {
-	wl_type_t* wlt = (wl_type_t*) object;
-	return tsobj_str_create(wlt->wlt_name);
+void* tsload_walk_random_generators(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &randgen_hash_map,
+								(hm_tsobj_formatter) tsobj_randgen_class_format, NULL);
+}
+
+void* tsload_walk_random_variators(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &randvar_hash_map,
+								(hm_tsobj_formatter) tsobj_randvar_class_format, NULL);
+}
+
+void* tsload_walk_tp_dispatchers(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &tpd_hash_map,
+								(hm_tsobj_formatter) tsobj_tpd_class_format, NULL);
+}
+
+void* tsload_walk_rqsched_variators(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &rqsvar_hash_map,
+								(hm_tsobj_formatter) tsobj_rqsvar_class_format, NULL);
+}
+
+void* tsload_walk_request_schedulers(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
+	return tsload_walkie_talkie(op, arg, walker, &rqsched_hash_map,
+								(hm_tsobj_formatter) tsobj_rqsched_class_format, NULL);
 }
 
 /**
@@ -83,7 +170,7 @@ tsobj_str_t tsobj_wl_type_format_name(hm_item_t* object) {
  */
 void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker) {
 	return tsload_walkie_talkie(op, arg, walker, &wl_type_hash_map,
-								tsobj_wl_type_format, tsobj_wl_type_format_name);
+								tsobj_wl_type_format, NULL);
 }
 
 tsobj_node_t* tsload_get_resources(void) {

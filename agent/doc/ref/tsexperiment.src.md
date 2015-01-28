@@ -12,17 +12,20 @@ Where global options are:
 
 Experiment constsists of current config and several "runs", that contain versions of config (maybe with altered parameters) and experiment results. Experiment config is a file named [experiment.json][ref/experiment_json] Each run identified by it's unique number called __runid__. 
 
-### List available workload types
+### List capabilities
 
 [workload]
 
-`$ tsexperiment workload|wl [-j] [WLT]...`
-Lists supported workload types with it's parameters. If WLT arguments are specified, shows only information on desired workload types.
+`$ tsexperiment info [CAPABILITY] [-x] [-H] [-l] [-j] [NAME]...`
+Lists supported TSLoad Core capabilities with it's parameters. If NAME arguments are specified, shows only information on desired capabilities.
 
-Option:
+Options:
 	* -j - Print in JSON format   
+	* -x - Print extended data such as parameters and descriptions
+	* -H - Do not print headers
+	* -l - Print legend
 
-#### Output description
+#### Output description for workload types
 
 Output columns for workload types:
    * __WLTYPE__ - name of workload type

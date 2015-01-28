@@ -68,14 +68,34 @@ LIBIMPORT tsload_workload_status_func tsload_workload_status;
 typedef void (*tsload_requests_report_func)(list_head_t* rq_list);
 LIBIMPORT tsload_requests_report_func tsload_requests_report;
 
+/**
+ * TSLoad parameter types. Used for describing complex parameters
+ */
+#define		TSLOAD_PARAM_NULL			0
+#define 	TSLOAD_PARAM_BOOLEAN		1
+#define 	TSLOAD_PARAM_INTEGER		2
+#define		TSLOAD_PARAM_FLOAT			3
+#define 	TSLOAD_PARAM_STRING			4
+#define		TSLOAD_PARAM_RANDGEN		5
+#define		TSLOAD_PARAM_RANDVAR		6
+#define		TSLOAD_PARAM_MASK			0x0ff
+#define		TSLOAD_PARAM_ARRAY_FLAG		0x100
+#define		TSLOAD_PARAM_MAP_FLAG		0x200
+
+typedef struct tsload_param {
+	int			type;
+	const char* name;
+	const char* hint;
+} tsload_param_t;
+
 /* TSLoad calls */
 
 /**
  * Walkie-talkie. Operations for tsload_walk_* functions
  *
  * @value TSLOAD_WALK_FIND Find element identified by key stored in arg
- * @value TSLOAD_WALK_JSON Do TSLOAD_WALK_FIND but return formatted JSONNODE*
- * @value TSLOAD_WALK_JSON_ALL Walks over hashmap and return json representation of all items. args are ignored
+ * @value TSLOAD_WALK_TSOBJ Do TSLOAD_WALK_FIND but return formatted tsobj_node_t*
+ * @value TSLOAD_WALK_TSOBJ_ALL Walks over hashmap and return TSObject of all items. args are ignored
  * @value TSLOAD_WALK_WALK Walk over hashmap traditionally. arg - context of the walker
  */
 typedef enum tsload_walk_op {
@@ -85,6 +105,11 @@ typedef enum tsload_walk_op {
 	TSLOAD_WALK_WALK
 } tsload_walk_op_t;
 
+LIBEXPORT void* tsload_walk_random_generators(tsload_walk_op_t op, void* arg, hm_walker_func walker);
+LIBEXPORT void* tsload_walk_random_variators(tsload_walk_op_t op, void* arg, hm_walker_func walker);
+LIBEXPORT void* tsload_walk_tp_dispatchers(tsload_walk_op_t op, void* arg, hm_walker_func walker);
+LIBEXPORT void* tsload_walk_rqsched_variators(tsload_walk_op_t op, void* arg, hm_walker_func walker);
+LIBEXPORT void* tsload_walk_request_schedulers(tsload_walk_op_t op, void* arg, hm_walker_func walker);
 LIBEXPORT void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker);
 
 LIBEXPORT tsobj_node_t* tsload_get_resources(void);

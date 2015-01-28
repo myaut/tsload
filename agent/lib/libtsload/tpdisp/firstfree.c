@@ -28,6 +28,8 @@
 #include <tsload/load/threadpool.h>
 #include <tsload/load/workload.h>
 
+#include <tsload.h>
+
 #include <assert.h>
 
 
@@ -333,8 +335,20 @@ void tpd_relink_request_ff(thread_pool_t* tp, request_t* rq) {
 	mutex_unlock(&ff->ff_mutex);
 }
 
+tsload_param_t tpdisp_ff_params[] = {
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
+};
+
 tp_disp_class_t tpd_ff_class = {
 	AAS_CONST_STR("first-free"),
+	
+	"Tries to dispatch (put onto queue) request at its arrival time."
+	"Selects next free worker, and walks list of workers circularly. "
+	"If all workers are busy, waits until one of them take that request. "
+	"Comparing to queueing dispatchers, first-free could correctly "
+	"simulate stream of independent requests, but it has large overhead. ",
+	
+	tpdisp_ff_params,
 
 	tpd_init_ff,
 	tpd_destroy_ff,

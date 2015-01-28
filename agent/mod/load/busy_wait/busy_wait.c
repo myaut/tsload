@@ -74,6 +74,9 @@ wl_type_t busy_wait_wlt = {
 	AAS_CONST_STR("busy_wait"),			/* wlt_name */
 
 	WLC_CPU_MISC,						/* wlt_class */
+	
+	"Simple for() cycle that does nothing useful, except keeping "
+	"processor busy for num_cycle iterations. For demo purposes.",
 
 	busy_wait_params,					/* wlt_params */
 	sizeof(struct busy_wait_workload),	/* wlt_params_size*/

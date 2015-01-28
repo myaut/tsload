@@ -39,6 +39,7 @@
 #define RVHASHMASK		(RVHASHSIZE - 1)
 
 struct randgen_class;
+struct tsload_param;
 
 #define RG_ERROR_PREFIX 	"Failed to create random generator: "
 
@@ -166,12 +167,6 @@ typedef struct randvar {
 	void* rv_private;
 } randvar_t;
 
-typedef struct {
-	int         type;
-	const char* name;
-	const char* helper;
-} randvar_param_t;
-
 /**
  * Random variator class
  * 
@@ -202,7 +197,7 @@ typedef struct randvar_class {
 	struct randvar_class* rv_next;
 	module_t* rv_module;
 	
-	randvar_param_t* rv_params;
+	struct tsload_param* rv_params;
 	
 	int (*rv_init)(randvar_t* rv);
 	void (*rv_destroy)(randvar_t* rv);
@@ -251,6 +246,9 @@ LIBEXPORT int randvar_unregister(module_t* mod, randvar_class_t* class);
 
 LIBEXPORT int randgen_init(void);
 LIBEXPORT void randgen_fini(void);
+
+LIBEXPORT tsobj_node_t* tsobj_randgen_class_format(randgen_class_t* rg_class);
+LIBEXPORT tsobj_node_t* tsobj_randvar_class_format(randvar_class_t* rv_class);
 
 LIBEXPORT randgen_t* tsobj_randgen_proc(tsobj_node_t* node);
 LIBEXPORT randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg);

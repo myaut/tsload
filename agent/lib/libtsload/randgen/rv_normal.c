@@ -23,6 +23,7 @@
 #include <tsload/mempool.h>
 
 #include <tsload/load/randgen.h>
+#include <tsload.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -102,10 +103,10 @@ double rv_variate_double_normal(randvar_t* rv, double u) {
 	return x;
 }
 
-randvar_param_t rv_normal_params[] = {
-	{ RV_PARAM_DOUBLE, "mean", "" },
-	{ RV_PARAM_DOUBLE, "stddev", "should be positive" },
-	{ RV_PARAM_NULL, NULL }
+tsload_param_t rv_normal_params[] = {
+	{ TSLOAD_PARAM_FLOAT, "mean", "" },
+	{ TSLOAD_PARAM_FLOAT, "stddev", "should be positive" },
+	{ TSLOAD_PARAM_NULL, NULL }
 };
 
 randvar_class_t rv_normal_class = {

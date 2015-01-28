@@ -3,6 +3,7 @@
 #include <tsload/mempool.h>
 
 #include <tsload/load/randgen.h>
+#include <tsload.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -96,10 +97,10 @@ double rv_variate_double_erlang(randvar_t* rv, double u) {
 	return x;
 }
 
-randvar_param_t rv_erlang_params[] = {
-	{ RV_PARAM_INT, "shape", "must be greater than 1"},
-	{ RV_PARAM_DOUBLE, "rate", "cannot be negative"},
-	{ RV_PARAM_NULL, NULL, NULL }
+tsload_param_t rv_erlang_params[] = {
+	{ TSLOAD_PARAM_INTEGER, "shape", "must be greater than 1"},
+	{ TSLOAD_PARAM_FLOAT, "rate", "cannot be negative"},
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
 };
 
 randvar_class_t rv_erlang_class = {

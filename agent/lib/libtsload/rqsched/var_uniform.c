@@ -5,6 +5,7 @@
 
 #include <tsload/load/randgen.h>
 #include <tsload/load/rqsched.h>
+#include <tsload.h>
 
 #include <string.h>
 
@@ -34,9 +35,10 @@ int rqsvar_step_uniform(struct rqsched_var* var, double iat) {
 	return rv_set_double(var->randvar, "max", (1.0 + var->params.dval) * iat);
 }
 
-randvar_param_t rqsvar_uniform_params[] = {
-	{ RV_PARAM_DOUBLE, "scope", "should be in interval [0.0, 1.0]" },
-	{ RV_PARAM_NULL, NULL, NULL }
+tsload_param_t rqsvar_uniform_params[] = {
+	RQSVAR_RANDGEN_PARAM,
+	{ TSLOAD_PARAM_FLOAT, "scope", "should be in interval [0.0, 1.0]" },
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
 };
 
 rqsvar_class_t rqsvar_uniform_class = {

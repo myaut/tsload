@@ -3,6 +3,7 @@
 #include <tsload/mempool.h>
 
 #include <tsload/load/randgen.h>
+#include <tsload.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -61,10 +62,10 @@ double rv_variate_double_uniform(randvar_t* rv, double u) {
 	return u * (rvu->max - rvu->min) + rvu->min;
 }
 
-randvar_param_t rv_uniform_params[] = {
-	{ RV_PARAM_DOUBLE, "min", "" },
-	{ RV_PARAM_DOUBLE, "max", "" },
-	{ RV_PARAM_NULL, NULL, "" }
+tsload_param_t rv_uniform_params[] = {
+	{ TSLOAD_PARAM_FLOAT, "min", "" },
+	{ TSLOAD_PARAM_FLOAT, "max", "" },
+	{ TSLOAD_PARAM_NULL, NULL, "" }
 };
 
 randvar_class_t rv_uniform_class = {

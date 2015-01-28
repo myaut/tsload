@@ -29,6 +29,7 @@
 #include <tsload/load/randgen.h>
 
 #include <errormsg.h>
+#include <tsloadimpl.h>
 
 #include <string.h>
 
@@ -157,6 +158,23 @@ int rv_set_double_dummy(randvar_t* rv, const char* name, double value) {
 	return RV_INVALID_PARAM_NAME;
 }
 
+tsobj_node_t* tsobj_randgen_class_format(randgen_class_t* rg_class) {
+	AUTOSTRING char* max_value_str;
+	tsobj_node_t* node = tsobj_new_node("tsload.randgen.GeneratorClass");
+	
+	tsobj_add_boolean(node, TSOBJ_STR("is_singleton"), rg_class->rg_is_singleton);
+	
+	/* uint64_t cannot be represented by libtsjson, so use string here */
+	aas_printf(aas_init(&max_value_str), "%" PRIu64, rg_class->rg_max);
+	tsobj_add_string(node, TSOBJ_STR("max_value"), 
+					 tsobj_str_create(max_value_str));
+	aas_free(&max_value_str);
+	
+	tsobj_module_format_helper(node, rg_class->rg_module);
+	
+	return node;
+}
+
 randgen_t* tsobj_randgen_proc(tsobj_node_t* node) {
 	randgen_class_t* rg_class = NULL;
 	char* rg_class_name;
@@ -192,17 +210,20 @@ bad_tsobj:
 	return NULL;
 }
 
-static randvar_t* tsobj_randvar_proc_error(int ret, randvar_t* rv, const char* name,
-			const char* range_helper) {
+tsobj_node_t* tsobj_randvar_class_format(randvar_class_t* rv_class) {
+	tsobj_node_t* node = tsobj_new_node("tsload.randgen.VariatorClass");
 	
-
-	return rv;
+	tsobj_add_node(node, TSOBJ_STR("params"), 
+		tsobj_params_format_helper(rv_class->rv_params));
+	tsobj_module_format_helper(node, rv_class->rv_module);
+	
+	return node;
 }
 
 randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 	randvar_t* rv = NULL;
 	randvar_class_t* rv_class;
-	randvar_param_t* rv_param;
+	tsload_param_t* rv_param;
 	char* rv_class_name;
 	int ret = RV_PARAM_OK;
 	
@@ -224,15 +245,15 @@ randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 	}
 	
 	rv_param = rv_class->rv_params;
-	while(rv_param->type != RV_PARAM_NULL) {
-		if(rv_param->type == RV_PARAM_INT) {
+	while(rv_param->type != TSLOAD_PARAM_NULL) {
+		if(rv_param->type == TSLOAD_PARAM_INTEGER) {
 			long lval;
 			if(tsobj_get_integer_l(node, rv_param->name, &lval) != TSOBJ_OK)
 				goto bad_tsobj;
 			if((ret = rv_set_int(rv, rv_param->name, lval)) != RV_PARAM_OK)
 				goto bad_param;
 		}
-		else if(rv_param->type == RV_PARAM_DOUBLE) {
+		else if(rv_param->type == TSLOAD_PARAM_FLOAT) {
 			double dval;
 			if(tsobj_get_double_n(node, rv_param->name, &dval) != TSOBJ_OK)
 				goto bad_tsobj;
@@ -256,7 +277,7 @@ bad_param:
 	else if(ret == RV_INVALID_PARAM_VALUE) {
 		tsload_error_msg(TSE_INVALID_VALUE,
 						 RV_ERROR_PREFIX "PARAMETER '%s' has invalid value: %s", 
-						 rv_param->name, rv_param->helper);
+						 rv_param->name, rv_param->hint);
 	}
 	
 	rv_destroy(rv);

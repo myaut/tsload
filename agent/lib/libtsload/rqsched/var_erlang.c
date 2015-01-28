@@ -5,6 +5,7 @@
 
 #include <tsload/load/randgen.h>
 #include <tsload/load/rqsched.h>
+#include <tsload.h>
 
 #include <string.h>
 
@@ -34,9 +35,10 @@ int rqsvar_step_erlang(struct rqsched_var* var, double iat) {
 	return rv_set_double(var->randvar, "rate", ((double) var->params.lval) / iat);
 }
 
-randvar_param_t rqsvar_erlang_params[] = {
-	{ RV_PARAM_INT, "shape", "should be 1 or more" },
-	{ RV_PARAM_NULL, NULL, NULL }
+tsload_param_t rqsvar_erlang_params[] = {
+	RQSVAR_RANDGEN_PARAM,
+	{ TSLOAD_PARAM_INTEGER, "shape", "should be 1 or more" },
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
 };
 
 rqsvar_class_t rqsvar_erlang_class = {

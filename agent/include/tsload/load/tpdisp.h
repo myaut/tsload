@@ -14,6 +14,7 @@
 
 
 struct tp_disp;
+struct tsload_param;
 
 /**
  * @module ThreadPool Dispatchers
@@ -51,6 +52,8 @@ struct tp_disp;
 
 typedef struct tp_disp_class {
 	AUTOSTRING char* name;
+	const char* description;
+	struct tsload_param* params;
 
 	int (*init)(thread_pool_t* tp);
 	void (*destroy)(thread_pool_t* tp);
@@ -100,6 +103,7 @@ static int tpd_next_wid_rand(thread_pool_t* tp, int wid, request_t* rq) {
 	return tpd_first_wid_rand(tp);
 }
 
+tsobj_node_t* tsobj_tpd_class_format(tp_disp_class_t* tpd_class);
 TESTEXPORT tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node);
 
 LIBEXPORT void tpd_destroy(tp_disp_t* tpd);

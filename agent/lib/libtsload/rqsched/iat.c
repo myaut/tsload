@@ -22,6 +22,7 @@
 #include <tsload/defs.h>
 
 #include <tsload/load/rqsched.h>
+#include <tsload.h>
 
 #include <math.h>
 
@@ -43,7 +44,7 @@ static ts_time_t rqsched_iat_get_last_time(workload_t* wl, ts_time_t last_time) 
 	return last_time;
 }
 
-void rqsched_fini_iat(workload_t* wl) {
+void rqsched_fini_iat(workload_t* wl, rqsched_t* rqs) {
 	/* NOTHING */
 }
 
@@ -80,9 +81,16 @@ void rqsched_post_request_iat(request_t* rq) {
 	/* NOTHING */
 }
 
+tsload_param_t rqsched_iat_params[] = {
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
+};
+
 rqsched_class_t rqsched_iat_class = {
 	RQSCHED_NAME("iat"),
+	"Generates inter-arrival time according to selected variator",
+	
 	RQSCHED_NEED_VARIATOR,
+	rqsched_iat_params,
 	
 	SM_INIT(.rqsched_proc_tsobj, NULL),
 	SM_INIT(.rqsched_fini, rqsched_fini_iat),

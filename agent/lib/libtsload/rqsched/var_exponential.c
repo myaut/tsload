@@ -5,6 +5,7 @@
 
 #include <tsload/load/randgen.h>
 #include <tsload/load/rqsched.h>
+#include <tsload.h>
 
 #include <string.h>
 
@@ -20,8 +21,9 @@ int rqsvar_step_exponential(struct rqsched_var* var, double iat) {
 	return rv_set_double(var->randvar, "rate", 1.0 / iat);
 }
 
-randvar_param_t rqsvar_exponential_params[] = {
-	{ RV_PARAM_NULL, NULL, NULL }
+tsload_param_t rqsvar_exponential_params[] = {
+	RQSVAR_RANDGEN_PARAM,
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
 };
 
 rqsvar_class_t rqsvar_exponential_class = {

@@ -23,6 +23,7 @@
 #include <tsload/mempool.h>
 
 #include <tsload/load/randgen.h>
+#include <tsload.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -79,9 +80,9 @@ double rv_variate_double_exp(randvar_t* rv, double u) {
 	return x;
 }
 
-randvar_param_t rv_exponential_params[] = {
-	{ RV_PARAM_DOUBLE, "rate", "cannot be negative" },
-	{ RV_PARAM_NULL, NULL, NULL }
+tsload_param_t rv_exponential_params[] = {
+	{ TSLOAD_PARAM_FLOAT, "rate", "cannot be negative" },
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
 };
 
 randvar_class_t rv_exponential_class = {

@@ -33,6 +33,7 @@
 #include <tsload.h>
 
 #include <errormsg.h>
+#include <tsloadimpl.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +137,19 @@ void tpd_wqueue_signal(thread_pool_t* tp, int wid) {
 	mutex_lock(&worker->w_rq_mutex);
 	cv_notify_one(&worker->w_rq_cv);
 	mutex_unlock(&worker->w_rq_mutex);
+}
+
+tsobj_node_t* tsobj_tpd_class_format(tp_disp_class_t* tpd_class) {
+	tsobj_node_t* node = tsobj_new_node("tsload.tp.ThreadpoolDispatcher");
+	
+	tsobj_add_string(node, TSOBJ_STR("description"), 
+					 tsobj_str_create(tpd_class->description));
+	tsobj_add_node(node, TSOBJ_STR("params"), 
+				   tsobj_params_format_helper(tpd_class->params));
+	
+	tsobj_module_format_helper(node, tpd_class->mod);
+	
+	return node;
 }
 
 tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node) {

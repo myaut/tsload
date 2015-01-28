@@ -2,4 +2,17 @@ TS Experiment - standalone agent to run TSLoad experiments
 
 $ tsexperiment [-e <experiment_path>] command [options and arguments]
 
-Subcommand is one of workload, wl, list, show, run, report or export.
+To get information in TSLoad core, use command info with following subcommands:
+	wl|workload - show workload types
+	rg|randgen	- show random generators
+	rv|randvar	- show random variators
+	tpd|tpdisp 	- show threadpool dispatchers
+	rqs|rqsched	- show request schedulers
+	rqsvar		- show request scheduler variators
+
+To work with experiment use the following commands:
+	list - list experiment runs
+	show - show experiment configuration
+	run - run an experiment
+	report - gather simple statistics of an experiment
+	export - export experiment data to files

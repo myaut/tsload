@@ -5,6 +5,7 @@
 
 #include <tsload/load/randgen.h>
 #include <tsload/load/rqsched.h>
+#include <tsload.h>
 
 #include <string.h>
 #include <math.h>
@@ -35,9 +36,10 @@ int rqsvar_step_normal(struct rqsched_var* var, double iat) {
 	return rv_set_double(var->randvar, "stddev", var->params.dval * iat);
 }
 
-randvar_param_t rqsvar_normal_params[] = {
-	{ RV_PARAM_DOUBLE, "covar", "should be positive" },
-	{ RV_PARAM_NULL, NULL, NULL }
+tsload_param_t rqsvar_normal_params[] = {
+	RQSVAR_RANDGEN_PARAM,
+	{ TSLOAD_PARAM_FLOAT, "covar", "should be positive" },
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
 };
 
 rqsvar_class_t rqsvar_normal_class = {

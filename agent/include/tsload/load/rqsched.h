@@ -40,15 +40,18 @@
 
 struct rqsched;
 struct rqsched_var;
+struct tsload_param;
 
 #define RQSCHED_NO_FLAGS		0x00
 #define RQSCHED_NEED_VARIATOR	0x01
+
+#define RQSVAR_RANDGEN_PARAM	{ TSLOAD_PARAM_RANDGEN, "randgen", "optional" }
 
 typedef struct rqsvar_class {
 	AUTOSTRING char* rqsvar_name;
 	
 	randvar_class_t* rqsvar_rvclass;
-	randvar_param_t* rqsvar_params;
+	struct tsload_param* rqsvar_params;
 	
 	int (*rqsvar_init)(struct rqsched_var* var);
 	void (*rqsvar_destroy)(struct rqsched_var* var);
@@ -56,7 +59,7 @@ typedef struct rqsvar_class {
 	int (*rqsvar_set_int)(struct rqsched_var* var, const char* name, long value);
 	int (*rqsvar_set_double)(struct rqsched_var* var, const char* name, double value);
 	
-	void (*rqsvar_step)(struct rqsched_var* var, double iat);
+	int (*rqsvar_step)(struct rqsched_var* var, double iat);
 	
 	module_t* rqsvar_module;
 	struct rqsvar_class* rqsvar_next;
@@ -66,8 +69,10 @@ typedef struct rqsvar_class {
 
 typedef struct rqsched_class {
 	AUTOSTRING char* rqsched_name;
+	const char* rqsched_description;
 	
 	int rqsched_flags;
+	struct tsload_param* rqsched_params;
 
 	int  (*rqsched_proc_tsobj)(tsobj_node_t* node, workload_t* wl, struct rqsched* rqs);
 	void (*rqsched_fini)(workload_t* wl, struct rqsched* rqs);
@@ -109,6 +114,9 @@ STATIC_INLINE void rqsvar_step(rqsched_t* rqs, double iat) {
 #define RQSCHED_TSOBJ_RG_ERROR		-3
 
 TESTEXPORT void rqsched_destroy(workload_t* wl);
+
+tsobj_node_t* tsobj_rqsvar_class_format(rqsvar_class_t* var_class);
+tsobj_node_t* tsobj_rqsched_class_format(rqsched_class_t* rqs_class);
 
 int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t** p_randgen);
 TESTEXPORT int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);

@@ -27,6 +27,7 @@
 #include <tsload/load/tpdisp.h>
 #include <tsload/load/threadpool.h>
 #include <tsload/load/workload.h>
+#include <tsload.h>
 
 
 /**
@@ -180,9 +181,20 @@ void tpd_relink_request_bench(thread_pool_t* tp, request_t* rq) {
 	 * (thus, its useless cause no scheduling is made) */
 }
 
+tsload_param_t tpdisp_bench_params[] = {
+	{ TSLOAD_PARAM_NULL, NULL, NULL }
+};
+
+
 tp_disp_class_t tpd_bench_class = {
 	AAS_CONST_STR("benchmark"),
-
+	
+	"When worker finishes execution of request immidiately generates "
+	"new one so worker kept always busy. That allows to implement benchmarking: "
+	"run as many requests as system can process. ",
+	
+	tpdisp_bench_params,
+	
 	tpd_init_bench,
 	tpd_destroy_bench,
 	NULL,
