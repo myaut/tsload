@@ -177,7 +177,7 @@ size_t aas_copy_n(char** aas, const char* str, size_t count) {
 		return AAS_ALLOCATION_ERROR;
 
 	strncpy(buffer, str, count + 1);
-	buffer[count + 1] = '\0';
+	buffer[count] = '\0';
 
 	*aas = buffer;
 
