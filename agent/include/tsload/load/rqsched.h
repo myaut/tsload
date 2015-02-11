@@ -113,6 +113,7 @@ STATIC_INLINE void rqsvar_step(rqsched_t* rqs, double iat) {
 #define RQSCHED_TSOBJ_BAD			-2
 #define RQSCHED_TSOBJ_RG_ERROR		-3
 
+rqsched_t* rqsched_create(rqsched_class_t* rqs_class);
 TESTEXPORT void rqsched_destroy(workload_t* wl);
 
 tsobj_node_t* tsobj_rqsvar_class_format(rqsvar_class_t* var_class);

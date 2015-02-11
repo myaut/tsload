@@ -906,6 +906,7 @@ workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const 
 	}
 	else {
 		wl->wl_rqsched_class = &rqsched_simple_class;
+		wl->wl_rqsched_private = rqsched_create(&rqsched_simple_class);
 	}
 
 	if(ret != RQSCHED_TSOBJ_OK) {

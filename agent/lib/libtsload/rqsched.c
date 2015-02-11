@@ -29,6 +29,16 @@ DECLARE_HASH_MAP_STRKEY(rqsched_hash_map, rqsched_class_t, RQSVARHASHSIZE, rqsch
  * PDF plot should match expected
  */
 
+rqsched_t* rqsched_create(rqsched_class_t* rqs_class) {
+	rqsched_t* rqs = mp_malloc(sizeof(rqsched_t));
+	
+	rqs->rqs_class = rqs_class;
+	rqs->rqs_private = NULL;
+	rqs->rqs_var = NULL;
+	
+	return rqs;
+}
+
 void rqsvar_destroy(rqsched_var_t* var) {
 	if(var) {
 		if(var->class->rqsvar_destroy)
@@ -204,10 +214,7 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 		return RQSCHED_TSOBJ_ERROR;
 	}
 	
-	rqs = mp_malloc(sizeof(rqsched_t));
-	rqs->rqs_class = rqs_class;
-	rqs->rqs_private = NULL;
-	rqs->rqs_var = NULL;	
+	rqs = rqsched_create(rqs_class);
 	
 	if(rqs_class->rqsched_flags & RQSCHED_NEED_VARIATOR) {
 		ret = tsobj_rqsched_proc_variator(node, wl, &rqs->rqs_var);
