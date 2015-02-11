@@ -73,7 +73,7 @@ alias=workload
 
 [tp]
 lib=libtsload
-deps=log,mempool,tpdisp,threads
+deps=log,mempool,tpdisp,sched,threads
 alias=threadpool
 
 [tsload]

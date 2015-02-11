@@ -193,7 +193,7 @@ PLATAPI int sched_commit(thread_t* thread) {
 		return SCHED_INVALID_POLICY;
 	}
 
-	if(scheduler == SCHED_RR && scheduler == SCHED_FIFO) {
+	if(scheduler == SCHED_RR || scheduler == SCHED_FIFO) {
 		if(priority == -1) {
 			return SCHED_INVALID_PARAM;
 		}
