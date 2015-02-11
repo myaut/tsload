@@ -30,6 +30,7 @@
 #include <tsload/defs.h>
 #include <tsload/autostring.h>
 #include <tsload/modules.h>
+#include <tsload/atomic.h>
 
 #include <tsload/obj/obj.h>
 
@@ -93,7 +94,7 @@ typedef struct randgen_class {
 	AUTOSTRING char* rg_class_name;
 	
 	boolean_t rg_is_singleton;
-	int		  rg_ref_count;
+	atomic_t  rg_ref_count;
 	randgen_t* rg_object;
 
 	uint64_t rg_max;

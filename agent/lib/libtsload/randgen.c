@@ -39,8 +39,11 @@ DECLARE_HASH_MAP_STRKEY(randvar_hash_map, randvar_class_t, RGHASHSIZE, rv_class_
 randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 	randgen_t* rg;
 
-	if(class->rg_is_singleton && (class->rg_object != NULL)) {
-		++class->rg_ref_count;
+	if(class->rg_is_singleton && atomic_inc(&class->rg_ref_count) > 0l) {
+		/* Wait till other side will set class->rg_object */
+		while(!class->rg_object) 
+			atomic_read(&class->rg_ref_count);
+		
 		return class->rg_object;
 	}
 
@@ -58,15 +61,16 @@ randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 		return NULL;
 	}
 
-	++class->rg_ref_count;
 	class->rg_object = rg;
 
 	return rg;
 }
 
 void rg_destroy(randgen_t* rg) {
-	if(--rg->rg_class->rg_ref_count == 0) {
-		rg->rg_class->rg_destroy(rg);
+	randgen_class_t* class = rg->rg_class;
+	
+	if(!class->rg_is_singleton || atomic_dec(&class->rg_ref_count) == 1l) {
+		class->rg_destroy(rg);
 		mp_free(rg);
 	}
 }
