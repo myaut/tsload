@@ -82,7 +82,7 @@ Where flag is one of:
 
 ```
 {
-	(in) "wid" : [number] Worker id - from 0 to num_threads-1
+	(in) "wid" : [number | array | "all"] Worker id - from 0 to num_threads-1
 	(in, opt) "objects" : [
 		[string] CPU Object #1, ...
 	],

@@ -811,48 +811,103 @@ bad_tsobj:
 	return SCHED_ERROR;
 }
 
+static int tsobj_tp_schedule_one(thread_pool_t* tp, int wid, tsobj_node_t* worker_sched) {
+	int err;
+	
+	if(wid >= tp->tp_num_threads || wid < 0) {
+		tsload_error_msg(TSE_INVALID_VALUE,
+						 TP_ERROR_SCHED_PREFIX "element #%d: invalid worker id #%d", tp->tp_name, wid);
+		return 1;
+	}
+
+	if((err = tsobj_tp_bind_worker(tp, wid, worker_sched)) != 0) {
+		/* XXX: revert previous schedule options?  */
+		tsload_error_msg(TSE_INTERNAL_ERROR,
+						 TP_ERROR_SCHED_PREFIX "couldn't bind worker #%d: error %d",
+						 tp->tp_name, wid, err);
+		return err;
+	}
+
+	if((err = tsobj_tp_schedule_worker(tp, wid, worker_sched)) != 0) {
+		tsload_error_msg(TSE_INTERNAL_ERROR,
+						 TP_ERROR_SCHED_PREFIX "couldn't schedule worker #%d: error %d",
+						 tp->tp_name, wid, err);
+		return err;
+	}
+	
+	return 0;
+}
+
 int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched) {
 	int wid;
 	int err;
 
-	json_node_t* worker_sched;
+	tsobj_node_t* worker_sched;
+	char* wid_str;
+	int wid_id;
+	tsobj_node_t* wid_node;
+	tsobj_node_t* wid_item;
+	
 	int id = -1;
 
-	if(json_check_type(sched, JSON_ARRAY) != JSON_OK)
+	if(tsobj_check_type(sched, JSON_ARRAY) != TSOBJ_OK)
 		goto bad_tsobj;
 
 	tsobj_for_each(sched, worker_sched, id) {
-		if(json_check_type(worker_sched, JSON_NODE) != JSON_OK)
+		if(tsobj_check_type(worker_sched, JSON_NODE) != TSOBJ_OK)
 			goto bad_tsobj_sched;
-
-		if(json_get_integer_i(worker_sched, "wid", &wid) != JSON_OK) {
+		
+		wid_node = tsobj_find(worker_sched, "wid");
+		if(wid_node == NULL)
 			goto bad_tsobj_sched;
+		
+		if(tsobj_type(wid_node) == JSON_NUMBER) {
+			/* Single wid specified */
+			if(tsobj_check_type(wid_node, JSON_NUMBER_INTEGER) != TSOBJ_OK)
+				goto bad_wid;
+			wid = (int) tsobj_as_integer(wid_node);
+			
+			err = tsobj_tp_schedule_one(tp, wid, worker_sched);
+			if(err != 0)
+				return SCHED_ERROR;
 		}
-
-		if(wid >= tp->tp_num_threads || wid < 0) {
-			tsload_error_msg(TSE_INVALID_VALUE,
-							 TP_ERROR_SCHED_PREFIX "element #%d: invalid worker id #%d", tp->tp_name, wid);
-			return 1;
+		else if(tsobj_type(wid_node) == JSON_ARRAY) {
+			/* Array of wids */
+			tsobj_for_each(wid_node, wid_item, wid_id) {
+				if(tsobj_check_type(wid_item, JSON_NUMBER_INTEGER) != TSOBJ_OK)
+					goto bad_wid;
+				wid = (int) tsobj_as_integer(wid_item);
+				
+				err = tsobj_tp_schedule_one(tp, wid, worker_sched);
+				if(err != 0)
+					return SCHED_ERROR;
+			}
 		}
-
-		if((err = tsobj_tp_bind_worker(tp, wid, worker_sched)) != 0) {
-			/* XXX: revert previous schedule options?  */
-			tsload_error_msg(TSE_INTERNAL_ERROR,
-							 TP_ERROR_SCHED_PREFIX "couldn't bind worker #%d: error %d",
-							 tp->tp_name, wid, err);
-			return err;
+		else if(tsobj_type(wid_node) == JSON_STRING) {
+			/* All workers */
+			wid_str = tsobj_as_string(wid_node);
+			if(strcmp(wid_str, "all") != 0) 
+				goto bad_wid;
+			
+			for(wid = 0; wid < tp->tp_num_threads; ++wid) {
+				err = tsobj_tp_schedule_one(tp, wid, worker_sched);
+				if(err != 0)
+					return SCHED_ERROR;
+			}
 		}
-
-		if((err = tsobj_tp_schedule_worker(tp, wid, worker_sched)) != 0) {
-			tsload_error_msg(TSE_INTERNAL_ERROR,
-							 TP_ERROR_SCHED_PREFIX "couldn't schedule worker #%d: error %d",
-							 tp->tp_name, wid, err);
-			return err;
-		}
+		else {
+			goto bad_wid;
+		}		
 	}
 
 	return SCHED_OK;
 
+bad_wid:
+	tsload_error_msg(tsobj_error_code(), TP_ERROR_SCHED_PREFIX "element #%d:"
+					 "bad 'wid' value: should be NUMBER, ARRAY of NUMBERs or \"all\"",
+					 tp->tp_name, id);
+	return SCHED_ERROR;
+	
 bad_tsobj:
 	tsload_error_msg(tsobj_error_code(), TP_ERROR_SCHED_PREFIX "%s",
 					 tp->tp_name, tsobj_error_message());
