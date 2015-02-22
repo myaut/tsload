@@ -816,7 +816,7 @@ static int tsobj_tp_schedule_one(thread_pool_t* tp, int wid, tsobj_node_t* worke
 	
 	if(wid >= tp->tp_num_threads || wid < 0) {
 		tsload_error_msg(TSE_INVALID_VALUE,
-						 TP_ERROR_SCHED_PREFIX "element #%d: invalid worker id #%d", tp->tp_name, wid);
+						 TP_ERROR_SCHED_PREFIX "invalid worker id #%d", tp->tp_name, wid);
 		return 1;
 	}
 
