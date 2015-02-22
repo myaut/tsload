@@ -662,7 +662,11 @@ static int tp_bind_worker(thread_pool_t* tp, int wid, cpumask_t* binding) {
 	tp_worker_t* worker = tp->tp_workers + wid;
 	char* binding_str;
 
-	int ret = sched_set_affinity(&worker->w_thread, binding);
+	int ret;
+	
+	t_wait_start(&worker->w_thread);
+	
+	ret = sched_set_affinity(&worker->w_thread, binding);
 
 	binding_str = worker_affinity_print(tp, wid);
 	if(binding_str) {
