@@ -257,8 +257,8 @@ if env.SupportedPlatform('solaris'):
 #----------------------------
 # aas_vprintf() checks 
 if not conf.CheckVsprintfSupportsCounting('_vscprintf', '') and               \
-        not conf.CheckVsprintfSupportsCounting('vsprintf', 'NULL, ') and      \
-        not conf.CheckVsprintfSupportsCounting('vsnprintf', 'NULL, 0, ')      :
+        not conf.CheckVsprintfSupportsCounting('vsnprintf', 'NULL, 0, ') and  \
+		not conf.CheckVsprintfSupportsCounting('vsprintf', 'NULL, ') 	      :
     raise StopError("No way to evaluate length of string in aas_vprintf()")
 
 #----------------------------
