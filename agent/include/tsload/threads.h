@@ -110,7 +110,7 @@
  * */
 #define THREAD_END 		_l_thread_exit
 #define THREAD_FINISH(arg)    						\
-	atomic_set(&thread->t_state_atomic, TS_DEAD);	\
+	t_notify_state(thread, TS_DEAD);				\
 	t_exit(thread);									\
 	PLAT_THREAD_FINISH(arg, thread->t_ret_code)
 
@@ -208,6 +208,8 @@ typedef thread_result_t (*thread_start_func)(thread_arg_t arg);
  * @member t_local_id   local thread id assigned by user code
  * @member t_system_id	platform-dependent thread id (optional).
  * @member t_name		name of thread
+ * @member t_mutex		protects t_state and t_condvar
+ * @member t_condvar	notifies owner that thread is started/finished
  * @member t_arg		argument to a thread (processed in THREAD_ENTRY)
  * @member t_ret_code	return code of thread
  */
@@ -215,7 +217,7 @@ typedef struct thread {
 	plat_thread_t	t_impl;
 	plat_sched_t	t_sched_impl;
 
-	atomic_t		t_state_atomic;
+	thread_state_t	t_state;
 
 	thread_id_t  	t_id;
 	int				t_local_id;
@@ -223,11 +225,13 @@ typedef struct thread {
 	unsigned long   t_system_id;
 
 	char 			t_name[TNAMELEN];
-
-	/* When thread finishes, it notifies parent thread thru t_event
-	 * FIXME: Rewrite with cv/mutex, non-atomic t_state */
-	thread_event_t*	t_event;
-
+	
+	/* We cannot use tutil primitives directly because
+	   it may break TS_LOCK_DEBUG and introduce a deadlock
+	   Fallback directly to platform versions */
+	plat_thread_mutex_t		t_mutex;
+	plat_thread_cv_t		t_condvar;
+	
 	void*			t_arg;
 	unsigned		t_ret_code;
 
@@ -300,9 +304,10 @@ LIBEXPORT void t_init(thread_t* thread, void* arg,
 					  thread_start_func start,
 		              const char* namefmt, ...);
 LIBEXPORT thread_t* t_post_init(thread_t* t);
+LIBEXPORT void t_notify_state(thread_t* t, thread_state_t state);
 LIBEXPORT void t_exit(thread_t* t);
 LIBEXPORT void t_destroy(thread_t* thread);
-LIBEXPORT void t_wait_start(thread_t* thread);
+LIBEXPORT void t_wait_start(thread_t* t);
 LIBEXPORT void t_join(thread_t* thread);
 
 LIBEXPORT int threads_init(void);

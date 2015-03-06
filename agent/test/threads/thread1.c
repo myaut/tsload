@@ -36,7 +36,7 @@ int test_main() {
 	t_join(&t);
 
 	/* After t_join thread should be dead */
-	assert(atomic_read(&t.t_state_atomic) == TS_DEAD);
+	assert(t.t_state == TS_DEAD);
 
 	t_destroy(&t);
 

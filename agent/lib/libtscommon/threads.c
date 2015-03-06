@@ -66,6 +66,13 @@ static thread_id_t t_assign_id() {
 	return ++tid;
 }
 
+void t_notify_state(thread_t* t, thread_state_t state) {
+	plat_mutex_lock(&t->t_mutex);
+	t->t_state = state;
+	plat_cv_notify_all(&t->t_condvar);
+	plat_mutex_unlock(&t->t_mutex);
+}
+
 /**
  * Initialize and run thread
  *
@@ -86,10 +93,9 @@ void t_init(thread_t* thread, void* arg,
 	vsnprintf(thread->t_name, TNAMELEN, namefmt, va);
 	va_end(va);
 
-	thread->t_event = NULL;
 	thread->t_arg = arg;
 
-	thread->t_state_atomic = (atomic_t) TS_INITIALIZED;
+	thread->t_state = TS_INITIALIZED;
 
 	thread->t_next = NULL;
 	thread->t_pool_next = NULL;
@@ -102,6 +108,9 @@ void t_init(thread_t* thread, void* arg,
 
 	plat_thread_init(&thread->t_impl, (void*) thread, start);
 	plat_tsched_init(thread);
+	
+	plat_mutex_init(&thread->t_mutex, B_FALSE);
+	plat_cv_init(&thread->t_condvar);
 }
 
 /**
@@ -115,16 +124,12 @@ void t_init(thread_t* thread, void* arg,
  * */
 thread_t* t_post_init(thread_t* t) {
 	t->t_system_id = plat_gettid();
-	atomic_set(&t->t_state_atomic, TS_RUNNABLE);
 
 	hash_map_insert(&thread_hash_map, t);
 
 	tkey_set(&thread_key, (void*) t);
 
-	if(t->t_event) {
-		event_notify_all(t->t_event);
-		t->t_event = NULL;
-	}
+	t_notify_state(t, TS_RUNNABLE);
 
 	return t;
 }
@@ -136,36 +141,34 @@ thread_t* t_post_init(thread_t* t) {
  * @note Do not call this function directly, use THREAD_EXIT macro
  * */
 void t_exit(thread_t* t) {
-	atomic_set(&t->t_state_atomic, TS_DEAD);
-
 	logmsg(LOG_DEBUG, "Thread %d '%s' exited", t->t_id, t->t_name);
 
-	if(t->t_event)
-		event_notify_all(t->t_event);
+	t_notify_state(t, TS_DEAD);
 }
 
 /**
  * Wait until thread starts
  * */
-void t_wait_start(thread_t* thread) {
-	thread_event_t event;
-	event_init(&event, "(t_wait_start)");
-
-	thread->t_event = &event;
-
-	if(atomic_read(&thread->t_state_atomic) != TS_RUNNABLE) {
-		event_wait(&event);
-	}
-
-	event_destroy(&event);
-	thread->t_event = NULL;
+void t_wait_start(thread_t* t) {
+	plat_mutex_lock(&t->t_mutex);
+	
+	while(t->t_state == TS_INITIALIZED)
+		plat_cv_wait_timed(&t->t_condvar, &t->t_mutex, TS_TIME_MAX);
+	
+	plat_mutex_unlock(&t->t_mutex);
 }
 
 /**
  * Wait until thread finishes
  * */
 void t_join(thread_t* thread) {
-	if(atomic_read(&thread->t_state_atomic) != TS_DEAD) {
+	thread_state_t state;
+		
+	plat_mutex_lock(&thread->t_mutex);
+	state = thread->t_state;
+	plat_mutex_unlock(&thread->t_mutex);
+	
+	if(state != TS_DEAD) {
 		plat_thread_join(&thread->t_impl);
 	}
 }
@@ -177,6 +180,10 @@ void t_join(thread_t* thread) {
  * */
 void t_destroy(thread_t* thread) {
 	t_join(thread);
+	
+	plat_mutex_destroy(&thread->t_mutex);
+	plat_cv_destroy(&thread->t_condvar);
+	
 	hash_map_remove(&thread_hash_map, thread);
 	plat_thread_destroy(&thread->t_impl);
 	plat_tsched_destroy(thread);

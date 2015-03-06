@@ -33,13 +33,13 @@
 	thread_t* t = t_self();						\
 	if(t != NULL) {								\
 		t->t_block_time = tm_get_time();		\
-		atomic_set(&t->t_state_atomic, state);	\
+		t_notify_state(t, state);				\
 		t->t_block_##objname = obj;				\
 	}
 
 #define THREAD_LEAVE_LOCK(objname)						\
 	if(t != NULL) {										\
-		atomic_set(&t->t_state_atomic, TS_RUNNABLE);	\
+		t_notify_state(t, TS_RUNNABLE);					\
 		t->t_block_##objname = NULL;					\
 	}
 #else
@@ -61,7 +61,7 @@ void cv_init(thread_cv_t* cv, const char* namefmt, ...) {
 }
 
 void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex) {
-	cv_wait_timed(&cv->tcv_impl, mutex, TS_TIME_MAX);
+	cv_wait_timed(cv, mutex, TS_TIME_MAX);
 }
 
 void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout) {
