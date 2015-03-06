@@ -732,7 +732,7 @@ int modpp_parse_var(modpp_t* pp, modpp_state_t* state, char** ptr, char endchar)
 		return MODPP_MISSING_VAR;
 	}
 
-	aas_copy_n(&state->varname, varstart, end - varstart);
+	aas_copy_n(&state->varname, varstart, p - varstart);
 	state->is_varset = modvar_is_set(state->varname);
 
 	*ptr = p;
