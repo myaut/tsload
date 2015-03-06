@@ -75,6 +75,33 @@ void test_aas_static(void) {
 	aas_free(&aas);
 }
 
+void test_aas_copyn_less(void) {
+	char* aas;
+
+	aas_copy_n(aas_init(&aas), "teststring", 20);
+	assert(strcmp(aas, "teststring") == 0);
+
+	aas_free(&aas);
+}
+
+void test_aas_copyn_exact(void) {
+	char* aas;
+
+	aas_copy_n(aas_init(&aas), "teststring", 10);
+	assert(strcmp(aas, "teststring") == 0);
+
+	aas_free(&aas);
+}
+
+void test_aas_copyn_extra(void) {
+	char* aas;
+
+	aas_copy_n(aas_init(&aas), "teststring", 4);
+	assert(strcmp(aas, "test") == 0);
+
+	aas_free(&aas);
+}
+
 int test_main(void) {
 	mempool_init();
 
@@ -89,6 +116,10 @@ int test_main(void) {
 	test_aas_printf();
 
 	test_aas_static();
+	
+	test_aas_copyn_less();
+	test_aas_copyn_exact();
+	test_aas_copyn_extra();
 
 	mempool_fini();
 
