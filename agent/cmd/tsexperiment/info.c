@@ -34,7 +34,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <inttypes.h>
 #include <ctype.h>
 
 /* For description printing */
@@ -213,12 +212,14 @@ void tse_print_randgen(void* obj, void* p_flags) {
 	switch(rg_class->rg_max) {
 		TSE_PRINT_RANDGEN_MAX(ULLONG_MAX)
 		TSE_PRINT_RANDGEN_MAX(LLONG_MAX)
-#if ULLONG_MAX != ULONG_MAX
+#if (ULLONG_MAX > ULONG_MAX)
 		TSE_PRINT_RANDGEN_MAX(ULONG_MAX)
 		TSE_PRINT_RANDGEN_MAX(LONG_MAX)
 #endif
+#if (ULONG_MAX > UINT_MAX)
 		TSE_PRINT_RANDGEN_MAX(UINT_MAX)
 		TSE_PRINT_RANDGEN_MAX(INT_MAX)
+#endif		
 		default:
 			printf("%-21" PRId64, rg_class->rg_max);
 			break;
