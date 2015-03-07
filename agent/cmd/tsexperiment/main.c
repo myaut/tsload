@@ -39,7 +39,7 @@
 
 #include <commands.h>
 #include <tseerror.h>
-
+#include <experiment.h>
 
 #define TSEXPERIMENT_LOGFILE		"tsexperiment.log"
 
@@ -104,7 +104,8 @@ void parse_options(int argc, const char* argv[]) {
 			break;
 		case 'e':
 			eflag = B_TRUE;
-			strncpy(experiment_root_path, optarg, PATHMAXLEN);
+			path_argfile(experiment_root_path, PATHMAXLEN, 
+						 EXPERIMENT_FILENAME, optarg);
 			break;
 		case 'X':
 			tuneit_add_option(optarg);

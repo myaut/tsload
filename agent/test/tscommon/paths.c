@@ -108,6 +108,46 @@ void test_path_remove() {
 	assert(path_remove(dst, 64, path_cur, path_part_inval) ==  NULL);
 }
 
+void test_path_arg_curdir() {
+	char dst[64];
+	
+	assert(strcmp(path_argfile(dst, 64, "cfg.json", CUR), CUR) == 0);
+}
+
+void test_path_arg_dir() {
+	char dst[64];
+	
+	assert(strcmp(path_argfile(dst, 64, "cfg.json", "test"), "test") == 0);	
+}
+
+void test_path_arg_dir_ps() {
+	char dst[64];
+	
+	assert(strcmp(path_argfile(dst, 64, "cfg.json", 
+							   "test" PS), "test") == 0);
+}
+
+void test_path_arg_cfgname() {
+	char dst[64];
+	
+	assert(strcmp(path_argfile(dst, 64, "cfg.json", 
+							   "cfg.json"), CUR) == 0);
+}
+
+void test_path_arg_cfgname_dir() {
+	char dst[64];
+	
+	assert(strcmp(path_argfile(dst, 64, "cfg.json", 
+							   "cfg.json" PS), "cfg.json") == 0);
+}
+
+void test_path_arg_path() {
+	char dst[64];
+	
+	assert(strcmp(path_argfile(dst, 64, "cfg.json", 
+							   "test" PS "cfg.json"), "test") == 0);
+}
+
 int test_main() {
 	test_path_split_1();
 	test_path_split_2();
@@ -120,6 +160,13 @@ int test_main() {
 	test_path_join_array();
 
 	test_path_remove();
-
+	
+	test_path_arg_curdir();
+	test_path_arg_dir();
+	test_path_arg_dir_ps();
+	test_path_arg_cfgname();
+	test_path_arg_cfgname_dir();
+	test_path_arg_path();
+	
 	return 0;
 }

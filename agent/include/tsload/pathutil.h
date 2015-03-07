@@ -24,6 +24,7 @@
 #include <tsload/defs.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 
 /**
@@ -40,6 +41,30 @@
 
 LIBIMPORT const char* path_curdir;
 LIBIMPORT const char* path_separator;
+
+#if defined(PLAT_WIN)
+
+STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
+	return _stricmp(a1, a2);
+}
+STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
+	return _strnicmp(a1, a2, n);
+}
+
+#elif defined(PLAT_POSIX)
+
+STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
+	return strcmp(a1, a2);
+}
+STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
+	return strncmp(a1, a2, n);
+}
+
+#else
+
+#error "Unknown path comparator for this platform"
+
+#endif
 
 /**
  * Temporary storage for path splitting operations
@@ -89,6 +114,8 @@ STATIC_INLINE char* path_basename(path_split_iter_t* iter, const char* path) {
 }
 
 LIBEXPORT char* path_remove(char* result, size_t len, const char* abspath, const char* path);
+
+LIBEXPORT char* path_argfile(char* cfgdir, size_t len, const char* cfgfname, const char* arg);
 
 #endif /* FNUTIL_H_ */
 

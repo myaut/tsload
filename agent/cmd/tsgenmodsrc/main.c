@@ -37,7 +37,9 @@
 
 LIBIMPORT char log_filename[];
 
+char modinfo_dir[PATHMAXLEN];
 char modinfo_path[PATHMAXLEN];
+
 char root_path[PATHMAXLEN];
 char bldenv_path[PATHPARTMAXLEN];
 char devel_path[PATHPARTMAXLEN];
@@ -169,7 +171,10 @@ static void parse_options(int argc, char* argv[]) {
 		usage(1, "Missing modinfo.json path\n");
 	}
 
-	strncpy(modinfo_path, argv[argi], PATHMAXLEN);
+	path_argfile(modinfo_dir, PATHMAXLEN, 
+				 MODINFO_FILENAME, argv[argi]);
+	path_join(modinfo_path, PATHMAXLEN, 
+			  modinfo_dir, MODINFO_FILENAME, NULL);
 }
 
 /* Builds path relative to root from subpath and extrapath (may be NULL).
@@ -576,8 +581,8 @@ int main(int argc, char* argv[]) {
 	modvar_set(modvar_create("TS_INSTALL_DEVEL"), devel_path);
 	modvar_set(modvar_create("TS_INSTALL_LIB"), lib_path);
 	modvar_set(modvar_create("TS_INSTALL_MOD_LOAD"), mod_load_path);
-
-	err =  modinfo_check_dir(modinfo_path, !(command == MODSRC_GENERATE));
+		
+	err =  modinfo_check_dir(modinfo_dir, !(command == MODSRC_GENERATE));
 	if(command == MODSRC_GENERATE && err != 0) {
 		return 1;
 	}

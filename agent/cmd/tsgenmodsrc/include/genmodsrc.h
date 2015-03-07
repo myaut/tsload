@@ -26,6 +26,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define MODINFO_FILENAME		"modinfo.json"
+#define CTIME_CACHE_FN			".ctime_cache"
+
 #define VARHASHSIZE				32
 #define VARHASHMASK				(VARHASHSIZE - 1)
 
@@ -40,7 +43,6 @@
 #define MAKEFILE_IN_FN			"Makefile.in"
 #define SCONSCRIPT_IN_FN		"SConscript.in"
 #define SCONSTRUCT_IN_FN		"SConstruct.in"
-#define CTIME_CACHE_FN			".ctime_cache"
 
 #define MOD_BUILD_SCONS			0
 #define MOD_BUILD_MAKE			1

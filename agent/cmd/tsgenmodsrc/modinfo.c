@@ -33,21 +33,11 @@ extern const char* var_namespace;
 
 /* Checks that directory containing modinfo is clear except for
  * the modinfo.json itself */
-int modinfo_check_dir(const char* modinfo_path, boolean_t silent) {
-	path_split_iter_t iter;
-	const char* modinfo_dir;
-	const char* modinfo_filename;
-
+int modinfo_check_dir(const char* modinfo_dir, boolean_t silent) {
 	plat_dir_t* dir;
 	plat_dir_entry_t* d = NULL;
 
 	int ret = MODINFO_OK;
-
-	modinfo_filename = path_split(&iter, -2, modinfo_path);
-	modinfo_dir = path_split_next(&iter);
-	if(modinfo_dir == NULL) {
-		modinfo_dir = path_curdir;
-	}
 
 	dir = plat_opendir(modinfo_dir);
 
@@ -60,10 +50,10 @@ int modinfo_check_dir(const char* modinfo_path, boolean_t silent) {
 	while((d = plat_readdir(dir)) != NULL) {
 		switch(plat_dirent_type(d)) {
 		case DET_REG:
-			if(strcmp(d->d_name, modinfo_filename) == 0) {
+			if(path_cmp(d->d_name, MODINFO_FILENAME) == 0) {
 				continue;
 			}
-			if(strcmp(d->d_name, CTIME_CACHE_FN) == 0) {
+			if(path_cmp(d->d_name, CTIME_CACHE_FN) == 0) {
 				continue;
 			}
 			break;

@@ -35,14 +35,18 @@ const char* path_separator = "\\";
 const int psep_length = 1;
 
 #elif defined(PLAT_POSIX)
+
 const char* path_curdir = ".";
 const char* path_separator = "/";
 const int psep_length = 1;
 
 #else
+
 #error "Unknown path separator for this platform"
 
 #endif
+
+
 
 /**
  * Create path from array into string. Similiar to python's os.path.join
@@ -167,7 +171,7 @@ char* path_join_aas(char** aas, ...) {
 static int path_split_add(path_split_iter_t* iter, const char* part, const char* end) {
     size_t len = end - part;
 
-    if(len == 0 || (strncmp(part, path_curdir, len) == 0)) {
+    if(len == 0 || (path_cmp_n(part, path_curdir, len) == 0)) {
     	/* Ignore consecutive separators or references to current path */
 		*iter->ps_dest++ = 0;
 		return 0;
@@ -342,7 +346,7 @@ char* path_remove(char* result, size_t len, const char* abspath, const char* pat
 
 	/* If path is empty - simply return abspath */
 	if(strlen(path) == 0 ||
-	   strcmp(path, path_curdir) == 0) {
+	   path_cmp(path, path_curdir) == 0) {
 			strncpy(result, abspath, len);
 			return result;
 	}
@@ -359,7 +363,7 @@ char* path_remove(char* result, size_t len, const char* abspath, const char* pat
 	part_path = path_split_reset(&si_path);
 
 	while(--count > 0) {
-		if(strcmp(part_path, part_abspath) != 0) {
+		if(path_cmp(part_path, part_abspath) != 0) {
 			return NULL;
 		}
 
@@ -371,4 +375,50 @@ char* path_remove(char* result, size_t len, const char* abspath, const char* pat
 	return result;
 }
 
-
+/**
+ * Based on argument `arg` provided by user deduces if he provided 
+ * path to configuration file (which name is defined by `cfgfname`)
+ * or to a directory containing it. 
+ * 
+ * @note This function doesn't check if file exists, directory is accessible, etc.
+ * 
+ * @param cfgdir resulting buffer containing directory with config
+ * @param cfglen length of cfgdir buffer
+ * @param cfgfname default file name for configuration file
+ * @param arg argument entered by user
+ * 
+ * @return `argdir`
+ */
+char* path_argfile(char* cfgdir, size_t cfglen, const char* cfgfname, const char* arg) {
+	size_t arglen = strlen(arg);
+	size_t fnlen;
+	
+	const char* tail;
+	path_split_iter_t iter;
+	
+	/* If arg matches to file name, or is current directory, copy current dir to cfgdir. */
+	if(path_cmp(arg, cfgfname) == 0 || path_cmp(path_curdir, arg) == 0) {
+		strncpy(cfgdir, path_curdir, cfglen);
+		return cfgdir;
+	}
+	
+	/* If arg ends with path separator, than it is obviously a directory. Separator is removed. */
+	tail = arg + arglen - psep_length;
+	if(path_cmp(tail, path_separator) == 0) {
+		strncpy(cfgdir, arg, cfglen);		
+		*(cfgdir + strlen(cfgdir) - psep_length) = '\0';
+		
+		return cfgdir;
+	}	
+	
+	/* Now check if last element is cfgfname */
+	tail = path_basename(&iter, arg);
+	if(tail == NULL || path_cmp(tail, cfgfname) != 0) {
+		strncpy(cfgdir, arg, cfglen);
+		return cfgdir;
+	}
+	
+	/* Re-use what left from path_basename here */
+	strncpy(cfgdir, path_split_next(&iter), cfglen);
+	return cfgdir;
+}

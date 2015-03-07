@@ -70,6 +70,12 @@ list/noent												\
 # ---------------------------
 # SHOW
 
+^show_eflag				extends=tsexperiment use=experiment 
+
+show_eflag/dir 			"args=-e experiment show"
+show_eflag/dir_ps		"args=-e experiment/ show"
+show_eflag/cfg_path		"args=-e experiment/experiment.json show"
+
 ^show					extends=tsexperiment use=experiment "args=-e experiment show"
 
 show/ok_root		
