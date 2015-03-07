@@ -903,6 +903,7 @@ class SourceParser:
                 lastline = group_parser.parse_line(self.path, lineno, raw_line)
                 
             lineno += 1
+        self._add_group(group_parser)
         
     def _add_group(self, group_parser):
         group = group_parser.get_group()
