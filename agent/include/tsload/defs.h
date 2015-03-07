@@ -110,6 +110,13 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #define LIBVARIABLE 		extern
 #endif
 
+/* Correct linking of in-library variables on Windows/POSIX */ 
+#ifdef 	LIBTSLOAD
+#define TSLOADAPI			LIBEXPORT
+#else
+#define TSLOADAPI			LIBIMPORT
+#endif
+
 /* Some functions are needed by unit tests
  * FIXME: Make this configurable
  */

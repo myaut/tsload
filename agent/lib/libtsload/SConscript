@@ -9,6 +9,8 @@ Import('env')
 
 lib = env.Clone()
 
+lib.Macroses('LIBTSLOAD')
+
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['advapi32']) 
 

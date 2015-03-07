@@ -136,11 +136,11 @@ void rg_destroy_dummy(randgen_t* rg);
 /**
  * Random generators
  * */
-LIBIMPORT randgen_class_t rg_libc_class;
-LIBIMPORT randgen_class_t rg_seq_class;
-LIBIMPORT randgen_class_t rg_lcg_class;
+TSLOADAPI randgen_class_t rg_libc_class;
+TSLOADAPI randgen_class_t rg_seq_class;
+TSLOADAPI randgen_class_t rg_lcg_class;
 #ifdef PLAT_POSIX
-LIBIMPORT randgen_class_t rg_devrandom_class;
+TSLOADAPI randgen_class_t rg_devrandom_class;
 #endif
 
 LIBEXPORT int randgen_register(module_t* mod, randgen_class_t* class);
@@ -237,10 +237,10 @@ void rv_destroy_dummy(randvar_t* rv);
 int rv_set_int_dummy(randvar_t* rv, const char* name, long value);
 int rv_set_double_dummy(randvar_t* rv, const char* name, double value);
 
-LIBIMPORT randvar_class_t rv_uniform_class;
-LIBIMPORT randvar_class_t rv_exponential_class;
-LIBIMPORT randvar_class_t rv_erlang_class;
-LIBIMPORT randvar_class_t rv_normal_class;
+TSLOADAPI randvar_class_t rv_uniform_class;
+TSLOADAPI randvar_class_t rv_exponential_class;
+TSLOADAPI randvar_class_t rv_erlang_class;
+TSLOADAPI randvar_class_t rv_normal_class;
 
 LIBEXPORT int randvar_register(module_t* mod, randvar_class_t* class);
 LIBEXPORT int randvar_unregister(module_t* mod, randvar_class_t* class);
