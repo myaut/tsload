@@ -42,14 +42,20 @@
  * Uses WinAPI and Driver's Setup API to enumerate disks/partitions
  *
  * @see http://support.microsoft.com/kb/264203
+ * @see http://velisthoughts.blogspot.ru/2012/02/enumerating-and-using-partitions-and.html
  *
  * TODO: PNPDeviceId -> PhysicalDisk and correct partition naming
- * TODO: Volumes
  * */
+
+#define HIWINVOLFSNAMELEN	32
 
 #define HI_WIN_DSK_OK		0
 #define HI_WIN_DSK_ERROR	1
 #define HI_WIN_DSK_NODEV	2
+
+#define HI_WIN_MAX_VOL_EXTENTS		256
+
+list_head_t hi_win_vol_list;
 
 const char* hi_win_dsk_bus_type[BusTypeMax] = {
 		"UNKNOWN", "SCSI", "ATAPI", "ATA", "1394",
@@ -84,6 +90,29 @@ typedef struct hi_win_dsk {
 	PSTORAGE_ADAPTER_DESCRIPTOR adp_desc;
 	PSTORAGE_DEVICE_DESCRIPTOR dev_desc;
 } hi_win_dsk_t;
+
+typedef struct hi_win_vol {
+	AUTOSTRING char* vol_name;
+	HANDLE vol_hdl;
+	
+	PVOLUME_DISK_EXTENTS extents;
+	
+	char name_ex[MAX_PATH];
+	DWORD serial_no;
+	
+	DWORD fs_flags;
+	char fs_name[HIWINVOLFSNAMELEN];
+
+#if HI_WIN_USE_STORAGE_READ_CAPACITY
+	STORAGE_READ_CAPACITY capacity;
+#else
+	GET_LENGTH_INFORMATION len_info;
+#endif
+
+	hi_dsk_info_t* di;
+	
+	list_node_t node;
+} hi_win_vol_t;
 
 void hi_win_dsk_init(hi_win_dsk_t* dsk, LONG index) {
 	dsk->index = index;
@@ -174,6 +203,201 @@ int hi_win_disk_ioctl(hi_win_dsk_t* dsk, DWORD request, void* in_buf, size_t in_
 	return HI_WIN_DSK_OK;
 }
 
+void hi_win_vol_destroy(hi_win_vol_t* vol) {
+	if(vol->extents)
+		mp_free(vol->extents);
+	
+	aas_free(&vol->vol_name);
+	mp_free(vol);
+}
+
+/* NOTE: on error frees all resources */
+boolean_t hi_win_vol_ioctl_impl(hi_win_vol_t* vol, DWORD request, void* out_buf, 
+								size_t out_buf_sz, const char* rq_name) {
+	if(!DeviceIoControl(vol->vol_hdl, request, NULL, 0, out_buf, 
+						out_buf_sz, &out_buf_sz, NULL)) {
+		CloseHandle(vol->vol_hdl);
+		hi_dsk_dprintf("hi_win_proc_volume: failed DeviceIoControl(%s, %s): code %d\n", 
+						vol->vol_name, rq_name, GetLastError());
+		hi_win_vol_destroy(vol);
+		
+		return HI_WIN_DSK_ERROR;
+	}
+	
+	return HI_WIN_DSK_OK;
+}
+#define hi_win_vol_ioctl(vol, request, out_buf, out_buf_sz)			\
+		hi_win_vol_ioctl_impl(vol, request, out_buf, out_buf_sz, #request)
+
+int hi_win_proc_volume(char* vol_name) {
+	hi_win_vol_t* vol;
+	HANDLE vol_hdl;
+	
+	size_t backslash_pos = strlen(vol_name) - 1;
+	
+	DWORD ioctl_sz;
+	int error;
+	
+	LONGLONG vollength;
+
+#ifdef HOSTINFO_TRACE	
+	int extentid;
+	PDISK_EXTENT extent;
+#endif
+	
+	/* Remove vol_name trailing backslash */
+	vol_name[backslash_pos] = '\0';
+	vol_hdl = CreateFile(vol_name, GENERIC_READ, 
+			 			 FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
+					     OPEN_EXISTING, 0, 0);
+	
+	if(vol_hdl == INVALID_HANDLE_VALUE) {
+		hi_dsk_dprintf("hi_win_proc_volume: failed CreateFile(%s): code %d\n", 
+					   vol_name, GetLastError());
+		return HI_WIN_DSK_ERROR;
+	}
+	
+	/* Initialize vol object (but add it to list later) */
+	vol = mp_malloc(sizeof(hi_win_vol_t));
+	aas_copy(aas_init(&vol->vol_name), vol_name);
+	
+	vol->vol_hdl = vol_hdl;
+	
+	/* Get extents and size via ioctls() */
+	ioctl_sz = sizeof(VOLUME_DISK_EXTENTS) + HI_WIN_MAX_VOL_EXTENTS * sizeof(DISK_EXTENT);
+	vol->extents = mp_malloc(ioctl_sz);
+	
+	error = hi_win_vol_ioctl(vol, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, 
+							 vol->extents, ioctl_sz);
+	if(error != HI_WIN_DSK_OK)
+		return error;
+
+#ifdef HI_WIN_USE_STORAGE_READ_CAPACITY
+	ioctl_sz = vol->capacity.Version = sizeof(STORAGE_READ_CAPACITY);
+	
+	error = hi_win_vol_ioctl(vol, IOCTL_STORAGE_READ_CAPACITY, 
+							 &vol->capacity, ioctl_sz);
+	if(error != HI_WIN_DSK_OK)
+		return error;
+
+	vollength = vol->capacity.DiskLength.QuadPart;
+#else
+	ioctl_sz = sizeof(STORAGE_READ_CAPACITY);
+	
+	error = hi_win_vol_ioctl(vol, IOCTL_DISK_GET_LENGTH_INFO, 
+							 &vol->len_info, ioctl_sz);
+	if(error != HI_WIN_DSK_OK)
+		return error;
+	
+	vollength = vol->len_info.Length.QuadPart;
+#endif
+	
+	CloseHandle(vol_hdl);
+	
+	/* Get information on volume */
+	vol_name[backslash_pos] = '\\';
+	if(!GetVolumeInformation(vol_name, vol->name_ex, MAX_PATH,
+							 &vol->serial_no, NULL, &vol->fs_flags, 
+						     vol->fs_name, HIWINVOLFSNAMELEN)) {
+		hi_dsk_dprintf("hi_win_proc_volume: failed GetVolumeInformation(%s): code %d\n", 
+		 			   vol_name, GetLastError());
+		return HI_WIN_DSK_ERROR;
+	}
+	
+	hi_dsk_dprintf("hi_win_proc_volume: find volume: %s, fs type: %s, size %lld\n", 
+				   vol->name_ex, vol->fs_name, vollength);
+	
+	/* Create hi_disk_info object and add it to global list */
+	vol->di = hi_dsk_create();
+	
+	aas_copy(&vol->di->d_hdr.name, vol_name);
+	aas_copy(&vol->di->d_id, vol->name_ex);
+	
+	/* Again, make it compatible with CreateFile() */
+	vol_name[backslash_pos] = '\0';	
+	aas_copy(&vol->di->d_path, vol_name);
+	
+	vol->di->d_size = vollength;
+	vol->di->d_type = HI_DSKT_VOLUME;
+	
+	hi_dsk_add(vol->di);
+	
+#ifdef HOSTINFO_TRACE
+	for(extentid = 0; extentid < vol->extents->NumberOfDiskExtents; ++extentid) {
+		extent = &(vol->extents->Extents[extentid]);
+		
+		hi_dsk_dprintf("hi_win_proc_volume: extent disk=%d offset=%lld size=%lld\n", 
+				       (int) extent->DiskNumber, extent->StartingOffset.QuadPart, 
+					   extent->ExtentLength.QuadPart);
+	}
+#endif
+
+	list_add_tail(&vol->node, &hi_win_vol_list);
+	
+	return HI_WIN_DSK_OK;
+}
+
+int hi_win_proc_volumes(void) {
+	HANDLE vol_find_hdl;
+	char vol_name[MAX_PATH + 1];
+	boolean_t success;
+	
+	vol_find_hdl = FindFirstVolume(vol_name, MAX_PATH);
+	success = vol_find_hdl != INVALID_HANDLE_VALUE;
+	
+	if(!success) {
+		hi_dsk_dprintf("hi_win_proc_volumes: FindFirstVolume() returned error: code %d\n", GetLastError());
+		return HI_PROBE_ERROR;
+	}
+	
+	while(success) {
+		hi_dsk_dprintf("hi_win_proc_volumes: found volume %s\n", vol_name);
+		hi_win_proc_volume(vol_name);
+		
+		success = FindNextVolume(vol_find_hdl, vol_name, MAX_PATH);
+	}
+	
+	FindVolumeClose(vol_find_hdl);
+	
+	return HI_PROBE_OK;
+}
+
+void hi_win_destroy_volumes(void) {
+	hi_win_vol_t* vol;
+	hi_win_vol_t* next;
+	
+	list_for_each_entry_safe(hi_win_vol_t, vol, next, &hi_win_vol_list, node) {
+		hi_win_vol_destroy(vol);
+	}
+}
+
+void hi_win_bind_part_vol(hi_win_dsk_t* dsk, hi_dsk_info_t* partdi, LONGLONG part_start, LONGLONG part_size) {
+	hi_win_vol_t* vol;
+	
+	int extentid;
+	PDISK_EXTENT extent;
+	
+	LONGLONG ext_start, ext_end;
+	LONGLONG part_end = part_start + part_size;
+	
+	hi_dsk_dprintf("hi_win_bind_part_vol: partition disk=%ld offset=%lld size=%lld\n", 
+				   dsk->index, part_start, part_size);
+	
+	list_for_each_entry(hi_win_vol_t, vol, &hi_win_vol_list, node) {
+		for(extentid = 0; extentid < vol->extents->NumberOfDiskExtents; ++extentid) {
+			extent = &(vol->extents->Extents[extentid]);
+			
+			ext_start = extent->StartingOffset.QuadPart;
+			ext_end = extent->ExtentLength.QuadPart;
+			
+			if(extent->DiskNumber == dsk->index && (ext_start >= part_start) && (ext_end <= part_end)) {
+				hi_dsk_attach(partdi, vol->di);
+				return;
+			}
+		}
+	}
+}
+
 /**
  * Process partitions
  * */
@@ -217,6 +441,9 @@ int hi_win_proc_partitions(hi_win_dsk_t* dsk, hi_dsk_info_t* parent) {
 
 		hi_dsk_add(di);
 		hi_dsk_attach(di, parent);
+		
+		hi_win_bind_part_vol(dsk, di, partition->StartingOffset.QuadPart, 
+							 partition->PartitionLength.QuadPart);
 	}
 
 	return HI_WIN_DSK_OK;
@@ -460,13 +687,18 @@ int hi_dsk_probe_disks(void) {
 }
 
 PLATAPI int hi_dsk_probe(void) {
-	int error = hi_dsk_probe_disks();
-
+	int error = HI_PROBE_OK;
+	
+	list_head_init(&hi_win_vol_list, "win-vol-list");
+	
+	error = hi_win_proc_volumes();	
 	if(error != HI_PROBE_OK)
-		return error;
+		goto end;
+	
+	error = hi_dsk_probe_disks();		
 
-	/* Probe volumes */
-
-	return HI_PROBE_OK;
+end:	
+	hi_win_destroy_volumes();	
+	return error;
 }
 
