@@ -139,7 +139,8 @@ env.Append(ENV = {'TSTEST_TEST_DIRECTORY':
 if env.SupportedPlatform('win'):
     env.Append(ENV = {'TMPDIR': os.getenv('TMPDIR'),
                       'TEMP': os.getenv('TEMP'),
-                      'TMP': os.getenv('TMP')})
+                      'TMP': os.getenv('TMP'),
+                      'TSTEST_REDIRECTED_STDOUT': '1'})
 
 common_objs = env.Object(Glob('common/*.c'))
 

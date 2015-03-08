@@ -71,6 +71,9 @@ class PlainFormatter(Formatter):
         self.outf.write(line + '\n')
     
     def report_block(self, name, block):
+        if sys.platform == 'win32':
+            block = block.replace('\r', '')
+        
         self.outf.write('\n<= %s\n' % name)
         self.outf.write(block)
         self.outf.write('<= %s\n\n' % name)
@@ -112,6 +115,9 @@ class HTMLFormatter(Formatter):
         self.outf.write(line + '<BR />\n')
         
     def report_block(self, name, block):
+        if sys.platform == 'win32':
+            block = block.replace('\r', '')
+        
         self.outf.write(name)
         self.outf.write('<BR />\n<PRE>')
         self.outf.write(html_escape(block))
@@ -270,8 +276,7 @@ class TestRunner(Thread):
         if test.mods:            
             self.copy_test_files(self.mod_dir, test.mods)
     
-    def wipe_test_dir(self):
-        ''' Cleans test directory'''
+    def _wipe_test_dir(self):
         def onerror(function, path, excinfo):
             exc = excinfo[1]
             
@@ -292,13 +297,18 @@ class TestRunner(Thread):
             if is_unix_non_empty and function is os.rmdir:
                 # Recursive retry :)
                 shutil.rmtree(path, onerror=onerror)                
-        
+                
         if os.path.isdir(self.test_dir):
-            shutil.rmtree(self.test_dir, onerror=onerror)
+            shutil.rmtree(self.test_dir, onerror=onerror)            
+    
+    def wipe_test_dir(self):
+        try:
+            self._wipe_test_dir()
+        finally:
+            if os.path.isdir(self.test_dir):
+                self.suite.report_test_dir(os.listdir(self.test_dir))
         
-        if os.path.isdir(self.test_dir):
-            self.suite.report_test_dir(os.listdir(self.test_dir))
-        
+    
     def check_core(self, cfg_name, test_group):
         ''' Checks if process dumped core. If it does,
             saves it and returns True'''
@@ -335,9 +345,9 @@ class TestRunner(Thread):
         if core:
             formatter.report_line('Dumped core')
         
-        if stdout:
+        if stdout:            
             formatter.report_block('stdout', stdout)
-        if stderr:
+        if stderr:            
             formatter.report_block('stderr', stderr)
         
         log_path = os.path.join(self.test_dir, self.log_name)        
@@ -417,7 +427,7 @@ class TestRunner(Thread):
     
     def stop_test(self, proc):
         proc.timed_out = True
-        proc.kill()
+        proc.kill()       
     
     def run(self):
         while True:
@@ -428,7 +438,11 @@ class TestRunner(Thread):
             except Exception:
                 self.suite.report_exc(cfg_name, sys.exc_info())
             finally:
-                self.wipe_test_dir()
+                try:
+                    self.wipe_test_dir()
+                except:
+                    self.suite.ignore_tests()
+                    raise
             
             self.suite.done()
 
@@ -444,6 +458,11 @@ class TestSuite(object):
         
         self.runner_count = int(os.getenv('TSTEST_RUNNER_THREADS', 1))
         self.create_test_dir()
+        
+        if sys.platform == "win32" and os.getenv('TSTEST_REDIRECTED_STDOUT'):
+            # Use Unix newlines '\n' on Windows for output log
+            import msvcrt
+            msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         
         self.formatter = DefaultFormatter(sys.stdout)
         self.formatter.write(self.formatter.header)
@@ -466,6 +485,7 @@ class TestSuite(object):
         if not self.test_dir:
             # Reset tempdir
             self.test_dir = tempfile.mkdtemp(prefix='tstest')
+            self.test_dir_delete = True
         else:
             if not os.path.isdir(self.test_dir):
                 raise TestError('Test directory %s is not a directory' % self.test_dir)
@@ -487,7 +507,15 @@ class TestSuite(object):
     
     def done(self):
         self.queue.task_done()
-        
+    
+    def ignore_tests(self):
+        # Ignore all other tests because test dir is now polluted
+        # this is not-normal condition, but saves us from eternal wait
+        # in queue.join() in main thread
+        while not self.queue.empty():
+            self.queue.get()
+            self.queue.task_done()
+    
     def get_test_name(self, cfg_name):
         group_name = os.path.basename(os.path.dirname(cfg_name))
         test_name = os.path.basename(cfg_name)
@@ -528,6 +556,7 @@ class TestSuite(object):
             
             # Print result to terminal
             print >> sys.stderr, 'Running test %s... ERROR' % (test_name)
+            sys.stderr.flush()
     
     def report_test_dir(self, file_list):
         with self.report_lock:

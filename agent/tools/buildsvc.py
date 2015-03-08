@@ -46,7 +46,8 @@ class Repository(object):
         
         self.filelist = []
         
-        self._walk('')
+        self.basedir = os.getenv('TSBUILD_BASE_DIR', '')
+        self._walk(self.basedir)
         
     def __iter__(self):
         return iter(self.filelist)
@@ -201,8 +202,8 @@ class BuildServer(object):
     def copy(self, repository):
         '''Copies updated files from repository to remote build server.
         Determines updated files by mtime modifiers. '''
-        self._log(BuildServer.LOG_ALL, 'Copying files to %s:%s\n', 
-                  self.hostname, self.repodir)
+        self._log(BuildServer.LOG_ALL, 'Copying files to %s:%s with base %s\n', 
+                  self.hostname, self.repodir, repository.basedir)
         
         if self._remote_stat('') is None:
             self.sftp.mkdir(self.repodir)
@@ -278,6 +279,14 @@ class BuildServer(object):
             self._log(BuildServer.LOG_ALL, 'Fetching %s -> %s\n', remotename, localname)
             
             self.sftp.get(remotepath, localpath)            
+    
+    def fetch_log(self, outdir, logpath):
+        logname = os.path.basename(logpath)
+        
+        remotepath = os.path.join(self.repodir, logpath)
+        localpath = os.path.join(outdir, self.name + '_' + logname)
+        
+        self.sftp.get(remotepath, localpath)
     
     def _remote_stat(self, remote_path):
         try:
@@ -378,13 +387,19 @@ class BuildManager(object):
             
             try: 
                 if 'tests' in targets:
-                    server.build(self.global_opts, 'tests')
+                    try:
+                        server.build(self.global_opts, 'tests')
+                    finally:
+                        server.fetch_log(self.out_dir, 'build/test/tests.log')
                     
                 if 'install' in targets:
                     server.build(self.global_opts, 'install')
                 
-                if 'run' in targets:
-                    server.build(self.global_opts, 'systests')                    
+                if 'systests' in targets:
+                    try:
+                        server.build(self.global_opts, 'systests')
+                    finally:
+                        server.fetch_log(self.out_dir, 'build/test/tsexperiment/systests.html')
                 
                 if 'fetch' in targets:
                     server.build(self.global_opts, 'zip')
@@ -408,7 +423,9 @@ Where options are
  * [-n node [ -n node ...]]
 
 To list remote build servers, specify -l option:
-$ python buildsvc.py -c /path/to/tsload-build.cfg -l"""
+$ python buildsvc.py -c /path/to/tsload-build.cfg -l
+
+Set TSBUILD_BASE_DIR to base path of copied files to make copying faster."""
 
 def usage(error):
     print >> sys.stderr, error
