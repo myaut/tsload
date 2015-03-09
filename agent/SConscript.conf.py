@@ -266,6 +266,10 @@ if not conf.CheckVsprintfSupportsCounting('_vscprintf', '') and               \
 
 if env.SupportedPlatform('linux'):
     lsb_release = conf.CheckBinary('lsb_release')
+    
+    if GetOption('lvm2'):
+        if not conf.CheckDeclaration('lvm_init', '#include <lvm2app.h>'):
+            raise StopError('lvm_init() is missing. Install `lvm2-devel` package or disable LVM with --disable-lvm option (not recommended).')
 
 # ----------------------------
 # tstime checks

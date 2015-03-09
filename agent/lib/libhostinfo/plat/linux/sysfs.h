@@ -44,6 +44,8 @@ int hi_linux_sysfs_walk(const char* root,
 					   void (*proc)(const char* name, void* arg), void* arg);
 int hi_linux_sysfs_walkbitmap(const char* root, const char* name, const char* object, int count,
 					   	      void (*proc)(int id, void* arg), void* arg);
+int hi_linux_sysfs_readlink_aas(const char* root, const char* name, const char* object,
+						   	    char** aas, boolean_t basename);
 
 #include <hitrace.h>
 

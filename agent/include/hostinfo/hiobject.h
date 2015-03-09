@@ -106,7 +106,7 @@ LIBEXPORT void hi_obj_attach(hi_object_t* hdr, hi_object_t* parent);
 LIBEXPORT void hi_obj_detach(hi_object_t* hdr, hi_object_t* parent);
 LIBEXPORT void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object);
 LIBEXPORT int hi_obj_destroy(hi_object_t* object);
-LIBEXPORT void hi_dsk_destroy_all(hi_obj_subsys_id_t sid);
+LIBEXPORT void hi_obj_destroy_all(hi_obj_subsys_id_t sid);
 
 LIBEXPORT hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name);
 

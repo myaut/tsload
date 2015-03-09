@@ -47,6 +47,7 @@ hi_dsk_info_t* hi_dsk_create(void) {
 	aas_init(&di->d_port);
 	aas_init(&di->d_model);
 	aas_init(&di->d_bus_type);
+	aas_init(&di->d_id);
 
 	hi_obj_header_init(HI_SUBSYS_DISK, &di->d_hdr, NULL);
 
@@ -63,6 +64,7 @@ void hi_dsk_dtor(hi_object_header_t* object) {
 	aas_free(&di->d_port);
 	aas_free(&di->d_model);
 	aas_free(&di->d_bus_type);
+	aas_free(&di->d_id);
 
 	mp_cache_free(&hi_dsk_cache, di);
 }

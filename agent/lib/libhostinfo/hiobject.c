@@ -90,6 +90,10 @@
  *                  hi_obj_destroy_all || reprobe
  */
 
+#ifdef PLAT_LINUX
+extern boolean_t hi_linux_lvm2;
+#endif
+
 hi_obj_subsys_ops_t cpu_ops = {
 	hi_cpu_probe,
 	hi_cpu_dtor,
@@ -365,6 +369,9 @@ int hi_obj_init(void) {
 
 #ifdef HOSTINFO_TRACE
 	tuneit_set_int(unsigned, hi_trace_flags);
+#endif
+#ifdef PLAT_LINUX
+	tuneit_set_bool(hi_linux_lvm2);
 #endif
 
 	for(sid = 0; sid < HI_SUBSYS_MAX; ++sid) {

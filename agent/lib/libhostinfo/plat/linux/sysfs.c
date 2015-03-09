@@ -22,14 +22,19 @@
 
 int hi_linux_sysfs_readstr(const char* root, const char* name, const char* object,
 						   char* str, int len) {
-	char path[256];
+	AUTOSTRING char* path;
+
 	int fd;
 	uint64_t i;
 	ssize_t num;
 
-	path_join(path, 256, root, name, object, NULL);
+	if(path_join_aas(&path, root, name, object, NULL) == NULL) {
+		hi_sysfs_dprintf("hi_linux_sysfs_readstr: failed to do path_join\n");
+		return HI_LINUX_SYSFS_ERROR;
+	}
 
 	fd = open(path, O_RDONLY);
+	aas_free(&path);
 
 	if(fd == -1) {
 		return HI_LINUX_SYSFS_ERROR;
@@ -47,7 +52,7 @@ int hi_linux_sysfs_readstr(const char* root, const char* name, const char* objec
 
 int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* object,
 						   	   char** aas) {
-	char* path;
+	AUTOSTRING char* path;
 	int fd;
 
 	char* src;
@@ -55,11 +60,12 @@ int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* o
 	ssize_t chunk_size = HI_LINUX_SYSFS_BLOCK;
 
 	char tmp[HI_LINUX_SYSFS_BLOCK];
+	char* buffer;
 
 	hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: %s/%s/%s\n", root, name, object);
 
-	if(path_join_aas(&path, root, name, object, NULL) == NULL) {
-		hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to do path_join");
+	if(path_join_aas(aas_init(&path), root, name, object, NULL) == NULL) {
+		hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to do path_join\n");
 		return HI_LINUX_SYSFS_ERROR;
 	}
 
@@ -67,7 +73,7 @@ int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* o
 	aas_free(&path);
 
 	if(fd == -1) {
-		hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to open file");
+		hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to open file\n");
 		return HI_LINUX_SYSFS_ERROR;
 	}
 
@@ -76,7 +82,7 @@ int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* o
 		chunk_size = read(fd, tmp, HI_LINUX_SYSFS_BLOCK);
 
 		if(chunk_size == -1) {
-			hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to read from file");
+			hi_sysfs_dprintf("hi_linux_sysfs_readstr_aas: failed to read from file\n");
 
 			close(fd);
 			return HI_LINUX_SYSFS_ERROR;
@@ -92,9 +98,12 @@ int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* o
 	else {
 		/* Read into newly allocated string and add null terminator to it */
 		lseek(fd, 0, SEEK_SET);
-		*aas = aas_allocate(count);
-		read(fd, aas, count);
-		aas[count] = '\0';
+		
+		buffer = aas_allocate(count);
+		count = read(fd, buffer, count);
+		buffer[count] = '\0';
+		
+		*aas = buffer;
 	}
 
 	close(fd);
@@ -281,5 +290,38 @@ int hi_linux_sysfs_walkbitmap(const char* root, const char* name, const char* ob
 	}
 
 	mp_free(bitmap);
+	return HI_LINUX_SYSFS_OK;
+}
+
+int hi_linux_sysfs_readlink_aas(const char* root, const char* name, const char* object,
+						   	    char** aas, boolean_t basename) {
+	AUTOSTRING char* path;
+	
+	char link[PATHMAXLEN];
+	ssize_t link_sz;
+	
+	if(path_join_aas(&path, root, name, object, NULL) == NULL) {
+		hi_sysfs_dprintf("hi_linux_sysfs_readlink_aas: failed to do path_join\n");
+		return HI_LINUX_SYSFS_ERROR;
+	}
+	
+	link_sz = readlink(path, link, PATHMAXLEN);
+	if(link_sz == -1) {
+		hi_sysfs_dprintf("hi_linux_sysfs_readlink_aas: failed to readlink(): errno = %d\n", errno);
+		return HI_LINUX_SYSFS_ERROR;
+	}
+	
+	link[link_sz] = '\0';
+	
+	hi_sysfs_dprintf("hi_linux_sysfs_readlink_aas: %s/%s/%s => %s\n", root, name, object, link);
+	
+	if(basename) {
+		path_split_iter_t iter;
+		aas_copy(aas, path_basename(&iter, link));
+	}
+	else {
+		aas_copy(aas, link);
+	}
+	
 	return HI_LINUX_SYSFS_OK;
 }

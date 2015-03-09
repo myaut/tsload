@@ -91,6 +91,11 @@ AddEnableOption('fast-randgen',  dest='fast_randgen', default=False,
 AddEnableOption('zip-packages', dest='zip_packages', default=False, 
                 help='create individial zip packages like tsload-doc-*.zip')
 
+# hostinfo options
+if sys.platform == 'linux2':
+    AddEnableOption('lvm2', dest='lvm2', default=True,
+                    help='support for LVM2 objects to HostInfo')
+
 # Installation directories options are specified below
 
 # -------------------------

@@ -40,14 +40,18 @@
  *
  * Walks /sys/block and searches for dm- or sda/hda devices
  *
- * TODO: MD-RAID
  * TODO: fallback to /proc/partitions
- * TODO: Disks that are in use?
  * TODO: d_port identification
  * */
 
 #define DEV_ROOT_PATH		"/dev"
 #define SYS_BLOCK_PATH		"/sys/block"
+#define SYS_SCSI_HOST_PATH	"/sys/class/scsi_host"
+
+/* DISK_MAX_PARTS + 1  */
+#define INVALID_PARTITION_ID	257
+
+int hi_lin_probe_lvm(void);
 
 /**
  * @return: -1 if device not exists or access mask
@@ -85,31 +89,29 @@ int hi_linux_make_dev_path(const char* name, char** aas_dev_path) {
 	return mode;
 }
 
-hi_dsk_info_t* hi_linux_disk_create(const char* name, const char* dev_path, const char* sys_path) {
+hi_dsk_info_t* hi_linux_disk_create(const char* name, const char* dev_path, const char* sys_path, unsigned sector_size) {
 	hi_dsk_info_t* di = hi_dsk_create();
 
 	aas_copy(&di->d_hdr.name, name);
 	aas_copy(&di->d_path, dev_path);
-	di->d_size = hi_linux_sysfs_readuint(SYS_BLOCK_PATH, sys_path, "size", 0);
+	
+	di->d_size = hi_linux_sysfs_readuint(SYS_BLOCK_PATH, sys_path, "size", 0) * sector_size;
 
 	return di;
 }
 
-void hi_linux_disk_proc_partition(const char* disk_name, int part_id, hi_dsk_info_t* parent) {
+void hi_linux_disk_proc_partition(const char* disk_name, const char* part_name, hi_dsk_info_t* parent, unsigned sector_size) {
 	hi_dsk_info_t* di;
 	char* dev_path = NULL;
 	char* sys_path = NULL;
 
 	int mode;
 
-	char* part_name = NULL;
 	char* sys_part_name = NULL;
 
 	/* Partitions are located in /sys/block/sda/sdaX
 	 * while their dev_path is /dev/sdaX, so
 	 * they have logic that differs from disks */
-
-	aas_printf(&part_name, "%s%d", disk_name, part_id);
 	aas_printf(&sys_part_name, "%s/%s", disk_name, part_name);
 
 	mode = hi_linux_make_dev_path(part_name, &dev_path);
@@ -120,7 +122,7 @@ void hi_linux_disk_proc_partition(const char* disk_name, int part_id, hi_dsk_inf
 		goto end;
 	}
 
-	di = hi_linux_disk_create(part_name, dev_path, sys_part_name);
+	di = hi_linux_disk_create(part_name, dev_path, sys_part_name, sector_size);
 	di->d_type = HI_DSKT_PARTITION;
 	di->d_mode = mode;
 
@@ -130,8 +132,63 @@ void hi_linux_disk_proc_partition(const char* disk_name, int part_id, hi_dsk_inf
 end:
 	aas_free(&dev_path);
 	aas_free(&sys_path);
-	aas_free(&part_name);
 	aas_free(&sys_part_name);
+}
+
+void hi_linux_disk_proc_partitions(const char* disk_name, hi_dsk_info_t* parent, unsigned sector_size) {
+	AUTOSTRING char* disk_path;
+	uint64_t part_id;
+	
+	plat_dir_t* dir;
+	plat_dir_entry_t* de;
+	
+	/* Seek for partitions that are located in /sys/block/sda/sdaX
+	 * as a directories containing "partiton" file. */
+	path_join_aas(aas_init(&disk_path), SYS_BLOCK_PATH, disk_name, NULL);
+	
+	dir = plat_opendir(disk_path);	
+	
+	while((de = plat_readdir(dir)) != NULL) {
+		if(plat_dirent_type(de) != DET_DIR)
+			continue;
+		
+		part_id = hi_linux_sysfs_readuint(disk_path, de->d_name, 
+										  "partition", INVALID_PARTITION_ID);
+		if(part_id == INVALID_PARTITION_ID)
+			continue;
+		
+		hi_linux_disk_proc_partition(disk_name, de->d_name, parent, sector_size);
+	}	
+	
+	plat_closedir(dir);
+}
+
+
+/* Use scsi_host --> proc_name to determine name of real 
+ * SCSI bus behind this disk instance.
+ * 
+ * NOTE: Linux doesn't distinguish FC/SATA/SAS, so it would be driver name*/
+void hi_linux_disk_get_bus(hi_dsk_info_t* di) {
+	int hostid;
+	char* endptr;
+	char hostname[16];
+	
+	if(!di->d_port)
+		return;
+	
+	hostid = (int) strtol(di->d_port, &endptr, 10);	
+	if(*endptr != ':')
+		return;
+	
+	hi_dsk_dprintf("hi_linux_disk_get_bus: Got host %d for device %s\n",
+				   hostid, di->d_hdr.name);
+	
+	snprintf(hostname, 16, "host%d", hostid);
+	
+	if(hi_linux_sysfs_readstr_aas(SYS_SCSI_HOST_PATH, hostname, "proc_name",
+								  &di->d_bus_type) == HI_LINUX_SYSFS_OK) {
+		hi_linux_sysfs_fixstr(di->d_bus_type);
+	}
 }
 
 void hi_linux_disk_proc_disk(const char* name, void* arg) {
@@ -139,17 +196,21 @@ void hi_linux_disk_proc_disk(const char* name, void* arg) {
 	char* dev_path;
 
 	int mode;
+	
+	unsigned sector_size = (unsigned) 
+			hi_linux_sysfs_readuint(SYS_BLOCK_PATH, name, 
+									"queue/hw_sector_size", 512);
 
 	mode = hi_linux_make_dev_path(name, &dev_path);
 
-	hi_dsk_dprintf("hi_linux_disk_proc_partition: Probing %s (%s), mode: %x\n", dev_path, name, mode);
+	hi_dsk_dprintf("hi_linux_disk_proc_disk: Probing %s (%s), mode: %x\n", dev_path, name, mode);
 
 	if(mode == -1) {
 		aas_free(&dev_path);
 		return;
 	}
 
-	di = hi_linux_disk_create(name, dev_path, name);
+	di = hi_linux_disk_create(name, dev_path, name, sector_size);
 
 	if(strncmp(name, "dm", 2) == 0) {
 		/* Device-mapper node. All dm-nodes
@@ -157,8 +218,10 @@ void hi_linux_disk_proc_disk(const char* name, void* arg) {
 		di->d_type = HI_DSKT_VOLUME;
 		aas_set(&di->d_bus_type, "DM");
 
-		hi_linux_sysfs_readstr_aas(SYS_BLOCK_PATH, name, "dm/uuid", &di->d_id);
-		hi_linux_sysfs_fixstr(di->d_id);
+		if(hi_linux_sysfs_readstr_aas(SYS_BLOCK_PATH, name, 
+									  "dm/uuid", &di->d_id) == HI_LINUX_SYSFS_OK) {			
+			hi_linux_sysfs_fixstr(di->d_id);
+		}
 	}
 	else if(strncmp(name, "ram", 3) == 0) {
 		di->d_type = HI_DSKT_VOLUME;
@@ -168,20 +231,26 @@ void hi_linux_disk_proc_disk(const char* name, void* arg) {
 		di->d_type = HI_DSKT_VOLUME;
 		aas_set(&di->d_bus_type, "LOOP");
 	}
+	else if(strncmp(name, "md", 2) == 0) {
+		di->d_type = HI_DSKT_VOLUME;
+		aas_set(&di->d_bus_type, "MD");
+		
+		hi_linux_disk_proc_partitions(name, di, sector_size);
+	}
 	else {
-		int part_range, part_id;
-
-		/* TODO: bus type */
-		hi_linux_sysfs_readstr_aas(SYS_BLOCK_PATH, name, "device/model", &di->d_model);
-		hi_linux_sysfs_fixstr(di->d_model);
+		/* sdX device - handle model, bus type, port */
+		if((strncmp(name, "sd", 2) == 0)) {
+			hi_linux_sysfs_readstr_aas(SYS_BLOCK_PATH, name, "device/model", &di->d_model);
+			hi_linux_sysfs_fixstr(di->d_model);
+			
+			hi_linux_sysfs_readlink_aas(SYS_BLOCK_PATH, name, "device", &di->d_port, B_TRUE);
+			
+			hi_linux_disk_get_bus(di);
+		}
 
 		di->d_type = HI_DSKT_DISK;
-
-		/* Search for partitions */
-		part_range = (int) hi_linux_sysfs_readuint(SYS_BLOCK_PATH, name, "ext_range", 1);
-		for(part_id = 1; part_id < part_range; ++part_id) {
-			hi_linux_disk_proc_partition(name, part_id, di);
-		}
+		
+		hi_linux_disk_proc_partitions(name, di, sector_size);
 	}
 
 	hi_dsk_add(di);
@@ -225,6 +294,10 @@ PLATAPI int hi_dsk_probe(void) {
 	ret = hi_linux_sysfs_walk(SYS_BLOCK_PATH, hi_linux_disk_proc_slaves, NULL);
 	if(ret != HI_LINUX_SYSFS_OK)
 		return HI_PROBE_ERROR;
+	
+	ret = hi_lin_probe_lvm();
+	if(ret != HI_PROBE_OK)
+		return ret;
 
 	return HI_PROBE_OK;
 }

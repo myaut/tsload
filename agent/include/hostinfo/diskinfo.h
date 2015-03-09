@@ -43,22 +43,22 @@ typedef struct hi_dsk_info {
 	hi_object_header_t	d_hdr;
 
 	/* Mandatory fields */
-	char* d_path;
+	AUTOSTRING char* d_path;
 	int  d_mode;
 	uint64_t d_size;
 	hi_dsk_type_t d_type;
 
 	/* Optional fields */
-	char* d_bus_type;
+	AUTOSTRING char* d_bus_type;
 
 	/* For iSCSI LUNs - IQN,
 	   For FC LUNs - WWN
 	   For SCSI disks - bus/target/LUN
 	   For Vol managers - internal ID */
-	char* d_port;
+	AUTOSTRING char* d_port;
 
-	char* d_id;
-	char* d_model;
+	AUTOSTRING char* d_id;
+	AUTOSTRING char* d_model;
 } hi_dsk_info_t;
 
 #define HI_DSK_FROM_OBJ(object)		((hi_dsk_info_t*) (object))
