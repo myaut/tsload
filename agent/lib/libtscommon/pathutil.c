@@ -22,6 +22,7 @@
 
 #include <tsload/pathutil.h>
 #include <tsload/autostring.h>
+#include <tsload/readlink.h>
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -31,12 +32,14 @@
 
 #if defined(PLAT_WIN)
 const char* path_curdir = ".";
+const char* path_parentdir = "..";
 const char* path_separator = "\\";
 const int psep_length = 1;
 
 #elif defined(PLAT_POSIX)
 
 const char* path_curdir = ".";
+const char* path_parentdir = "..";
 const char* path_separator = "/";
 const int psep_length = 1;
 
@@ -421,4 +424,63 @@ char* path_argfile(char* cfgdir, size_t cfglen, const char* cfgfname, const char
 	/* Re-use what left from path_basename here */
 	strncpy(cfgdir, path_split_next(&iter), cfglen);
 	return cfgdir;
+}
+
+/**
+ * Read symbolic link and if its destination is not absolute, 
+ * make it relative to path. If path was absolute, will make destination
+ * path absolute too.
+ * 
+ * @param linkpath resulting buffer containing link destination
+ * @param linklen length of `linkpath`
+ * @param path path to symbolic link
+ * 
+ * @see path_join_array
+ * 
+ * @return NULL if readlink()/path_split() was unsuccessful or `path_join_array` result
+ */
+char* path_abslink(char* linkpath, size_t linklen, const char* path) {
+	const char* parts[PATHMAXPARTS];
+	char tmppath[PATHMAXLEN];
+	const char* part0;
+	
+	int tmpidx, pathidx;
+	path_split_iter_t tmpiter, pathiter;
+	
+	if(plat_readlink(path, tmppath, PATHMAXLEN) == -1)
+		return NULL;
+	
+	if(path_split(&tmpiter, PATHMAXPARTS, tmppath) == NULL)
+		return NULL;
+	if(path_split(&pathiter, PATHMAXPARTS, path) == NULL)
+		return NULL;
+	
+	/* If path is absolute, ignore building path and return it as is */
+	/* FIXME: check for absolute path in Windows */
+	part0 = tmpiter.ps_parts[0];
+	if(part0 && *part0 == '\0') {
+		strncpy(linkpath, tmppath, linklen);
+		return linkpath;
+	}
+	
+	/* Copy all except last parts from path to linkpath */
+	for(pathidx = 0; pathidx < pathiter.ps_num_parts - 1; ++pathidx) {
+		parts[pathidx] = pathiter.ps_parts[pathidx];
+	}
+	
+	for(tmpidx = 0; tmpidx < tmpiter.ps_num_parts; ++tmpidx) {
+		part0 = tmpiter.ps_parts[tmpidx];
+		
+		if(strcmp(part0, path_curdir) == 0) {
+			continue;
+		}
+		if(strcmp(part0, path_parentdir) == 0) {
+			pathidx = max(pathidx - 1, 0);
+			continue;
+		}
+		
+		parts[pathidx++] = part0;
+	}
+	
+	return path_join_array(linkpath, linklen, pathidx, parts);
 }

@@ -117,5 +117,7 @@ LIBEXPORT char* path_remove(char* result, size_t len, const char* abspath, const
 
 LIBEXPORT char* path_argfile(char* cfgdir, size_t len, const char* cfgfname, const char* arg);
 
+LIBEXPORT char* path_abslink(char* linkpath, size_t linklen, const char* path);
+
 #endif /* FNUTIL_H_ */
 

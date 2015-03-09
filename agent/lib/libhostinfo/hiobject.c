@@ -28,6 +28,7 @@
 #include <hostinfo/cpuinfo.h>
 #include <hostinfo/diskinfo.h>
 #include <hostinfo/netinfo.h>
+#include <hostinfo/fsinfo.h>
 
 #include <hitrace.h>
 
@@ -118,11 +119,20 @@ hi_obj_subsys_ops_t network_ops = {
 	tsobj_hi_net_format
 };
 
+hi_obj_subsys_ops_t fs_ops = {
+	hi_fsinfo_probe,
+	hi_fsinfo_dtor,
+	hi_fsinfo_init,
+	hi_fsinfo_fini,
+	tsobj_hi_fsinfo_format
+};
+
 hi_obj_subsys_t hi_obj_subsys[HI_SUBSYS_MAX] =
 {
 	HI_OBJ_SUBSYS(HI_SUBSYS_CPU, "cpu", &cpu_ops),
 	HI_OBJ_SUBSYS(HI_SUBSYS_DISK, "disk", &disk_ops),
 	HI_OBJ_SUBSYS(HI_SUBSYS_NET, "net", &network_ops),
+	HI_OBJ_SUBSYS(HI_SUBSYS_FS, "fs", &fs_ops),
 };
 
 /* Last initialized subsystem. Needed for correct finish if hi_obj_init fails. */

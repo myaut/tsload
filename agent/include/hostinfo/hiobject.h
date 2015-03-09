@@ -37,6 +37,7 @@ typedef enum {
 	HI_SUBSYS_CPU,
 	HI_SUBSYS_DISK,
 	HI_SUBSYS_NET,
+	HI_SUBSYS_FS,
 
 	HI_SUBSYS_MAX
 } hi_obj_subsys_id_t;

@@ -41,6 +41,7 @@ typedef enum hi_dsk_type {
 
 typedef struct hi_dsk_info {
 	hi_object_header_t	d_hdr;
+#define d_disk_name		d_hdr.name
 
 	/* Mandatory fields */
 	AUTOSTRING char* d_path;

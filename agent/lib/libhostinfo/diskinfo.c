@@ -104,9 +104,12 @@ tsobj_node_t* tsobj_hi_dsk_format(struct hi_object_header* obj) {
 	tsobj_add_integer(dsk, TSOBJ_STR("size"), di->d_size);
 	tsobj_add_integer(dsk, TSOBJ_STR("mode"), di->d_mode);
 
-	tsobj_add_string(dsk, TSOBJ_STR("bus_type"), tsobj_str_create(di->d_bus_type));
-	tsobj_add_string(dsk, TSOBJ_STR("model"), tsobj_str_create(di->d_model));
-	tsobj_add_string(dsk, TSOBJ_STR("port"), tsobj_str_create(di->d_port));
+	if(di->d_bus_type)
+		tsobj_add_string(dsk, TSOBJ_STR("bus_type"), tsobj_str_create(di->d_bus_type));
+	if(di->d_model)
+		tsobj_add_string(dsk, TSOBJ_STR("model"), tsobj_str_create(di->d_model));
+	if(di->d_port)
+		tsobj_add_string(dsk, TSOBJ_STR("port"), tsobj_str_create(di->d_port));
 
 	return dsk;
 }
