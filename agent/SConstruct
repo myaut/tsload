@@ -95,6 +95,12 @@ AddEnableOption('zip-packages', dest='zip_packages', default=False,
 if sys.platform == 'linux2':
     AddEnableOption('lvm2', dest='lvm2', default=True,
                     help='support for LVM2 objects to HostInfo')
+    
+zfs = sys.platform == 'sunos5'
+zfs_optional = sys.platform == 'linux2'
+if zfs or zfs_optional:
+    AddEnableOption('zfs', dest='zfs', default=zfs,
+                    help='support for ZFS objects to HostInfo')
 
 # Installation directories options are specified below
 

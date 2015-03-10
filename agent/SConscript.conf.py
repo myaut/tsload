@@ -172,13 +172,34 @@ def CheckVsprintfSupportsCounting(context, func, args):
     
     return ret
 
+def CheckZpoolVdevName(context):
+    test_source = """
+    #include <libzfs.h>
+    
+    int main() {
+        zpool_vdev_name(NULL, NULL, NULL, B_FALSE, B_FALSE);
+    }
+    """
+    
+    context.Message('Checking if zpool_vdev_name() has fifth argument...')
+    ret = context.sconf.TryCompile(test_source, '.c')
+    
+    if ret:
+        context.sconf.Define('HAVE_ZPOOL_VDEV_NAME_V2', 
+                       comment='dladm_open() has fifth argument')
+    
+    context.Result(ret)
+    
+    return ret
+
 conf.AddTests({'CheckBinary': CheckBinary,
                'CheckDesignatedInitializers': CheckDesignatedInitializers,
                'CheckGCCSyncBuiltins': CheckGCCSyncBuiltins,
                'CheckGCCAtomicBuiltins': CheckGCCAtomicBuiltins,
                'CheckUnalignedMemAccess': CheckUnalignedMemAccess,
                'CheckDladmOpen': CheckDladmOpen,
-               'CheckVsprintfSupportsCounting': CheckVsprintfSupportsCounting})
+               'CheckVsprintfSupportsCounting': CheckVsprintfSupportsCounting,
+               'CheckZpoolVdevName': CheckZpoolVdevName})
 
 #-------------------------------------------
 # C compiler and standard library checks
@@ -269,7 +290,14 @@ if env.SupportedPlatform('linux'):
     
     if GetOption('lvm2'):
         if not conf.CheckDeclaration('lvm_init', '#include <lvm2app.h>'):
-            raise StopError('lvm_init() is missing. Install `lvm2-devel` package or disable LVM with --disable-lvm option (not recommended).')
+            raise StopError('lvm_init() is missing. Install `lvm2-devel` package or disable LVM with --disable-lvm2 option (not recommended).')
+    
+if env.SupportedPlatform('posix'):
+    if GetOption('zfs'):
+        if not conf.CheckDeclaration('libzfs_init', '#include <libzfs.h>'):
+            raise StopError('libzfs_init() is missing. Install ZFS development files or disable ZFS with --disable-zfs option.')
+        
+        conf.CheckZpoolVdevName()
 
 # ----------------------------
 # tstime checks

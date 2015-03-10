@@ -9,12 +9,18 @@ lib.PreparePlatform('include/hostinfo')
 
 if lib.SupportedPlatform('solaris'):
     lib.Append(LIBS = ['diskmgt', 'lgrp', 'nvpair', 'kstat', 'dladm'])
+
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['setupapi', 'user32', 'advapi32', 'wbemuuid', 'comsuppw', 
                        'iphlpapi', 'Ws2_32'])
+
 if lib.SupportedPlatform('linux'):
     if GetOption('lvm2'):
         lib.Append(LIBS = ['lvm2app'])
+        
+if lib.SupportedPlatform('posix'):
+    if GetOption('zfs'):
+        lib.Append(LIBS = ['zfs'])
 
 lib.UseSubsystems('mempool', 'tsobj')
 

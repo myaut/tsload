@@ -20,6 +20,7 @@
 
 #include <tsload/defs.h>
 
+#include <tsload/mempool.h>
 #include <tsload/pathutil.h>
 #include <tsload/autostring.h>
 
@@ -30,6 +31,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <ctype.h>
 
 /* In Solaris list_node_t already exists */
 #define list_node_t		__sol_list_node_t
@@ -48,11 +50,11 @@
  * Uses libdiskmgt to enumerate disks/partitions
  *
  * TODO: access rights check
- * TODO: ZFS/ZVOL
  * TODO: SVM
  * TODO: d_port identification
  * */
 
+int hi_zfs_probe(void);
 
 #define HI_SOL_DSK_MEDIA		0x2
 #define HI_SOL_DSK_ALIASES		0x4
@@ -295,8 +297,6 @@ void hi_sol_dm_walk(hi_dsk_info_t* parent, hi_sol_dsk_t* dsk, dm_descriptor_t* d
 
 		dm_free_name(name);
 	}
-
-	dm_free_descriptors(ddp);
 }
 
 void hi_sol_proc_slice(hi_dsk_info_t* parent, hi_sol_dsk_t* dsk, char* slice_name, dm_descriptor_t slice) {
@@ -400,11 +400,46 @@ void hi_sol_proc_partitions(hi_dsk_info_t* parent, hi_sol_dsk_t* dsk) {
 	hi_sol_dm_walk(parent, dsk, partitions, hi_sol_proc_partition);
 }
 
+void hi_sol_set_disk_name(hi_dsk_info_t* di, const char* opath) {
+	path_split_iter_t iter;
+	const char* basename = path_basename(&iter, opath);
+	
+	char* dskname = mp_malloc(strlen(basename) + 1);
+	
+	const char* p = basename;
+	const char* x;
+	char* q = dskname;
+	boolean_t flag = B_TRUE;
+	
+	/* Cut out sX or pX part from COTODOSO name for disk instance names
+	 * because it confuses ZFS and not consistent (dup name!) */
+	while(*p && flag) {
+		*q++ = *p++;
+		
+		if(*p == 's' || *p == 'p') {
+			/* Check if the rest are digits */
+			x = p + 1;
+			
+			flag = B_FALSE;
+			while(*x) {
+				if(!isdigit(*x++)) {
+					/* Continue searching */
+					flag = B_TRUE;
+					break;
+				}
+			}
+		}
+	}
+	
+	*q++ = '\0';
+	
+	aas_copy(&di->d_disk_name, dskname);
+	mp_free(dskname);
+}
+
 void hi_sol_proc_disk(hi_dsk_info_t* parent, hi_sol_dsk_t* pdsk, char* name, dm_descriptor_t disk) {
 	hi_sol_dsk_t dsk;
 	hi_dsk_info_t* di;
-
-	path_split_iter_t psi;
 
 	hi_sol_dsk_init(&dsk, disk);
 
@@ -424,7 +459,8 @@ void hi_sol_proc_disk(hi_dsk_info_t* parent, hi_sol_dsk_t* pdsk, char* name, dm_
 
 	/* Create disk instance */
 	di = hi_dsk_create();
-	aas_copy(&di->d_hdr.name, path_basename(&psi, dsk.sd_opath));
+	hi_sol_set_disk_name(di, dsk.sd_opath);
+	
 	aas_copy(&di->d_path, dsk.sd_opath);
 
 	di->d_size = dsk.sd_size * SECTOR_SIZE;
@@ -462,6 +498,9 @@ PLATAPI int hi_dsk_probe(void) {
 	hi_sol_dm_walk(NULL, NULL, ddp, hi_sol_proc_disk);
 
 	dm_free_descriptors(ddp);
-	return HI_PROBE_OK;
+	
+	error = hi_zfs_probe();
+	
+	return error;
 }
 
