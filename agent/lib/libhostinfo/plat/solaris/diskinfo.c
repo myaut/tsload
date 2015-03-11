@@ -54,7 +54,10 @@
  * TODO: d_port identification
  * */
 
-int hi_zfs_probe(void);
+hi_obj_helper_t hi_zfs_helper;
+
+#define LIBHI_ZFS_LIB		"libhostinfo-zfs.so"
+#define LIBHI_ZFS_OP		"hi_zfs_probe"
 
 #define HI_SOL_DSK_MEDIA		0x2
 #define HI_SOL_DSK_ALIASES		0x4
@@ -481,7 +484,7 @@ error:
 }
 
 PLATAPI int hi_dsk_probe(void) {
-	int error;
+	int error = HI_PROBE_OK;
 
 	dm_descriptor_t	*ddp;
 
@@ -499,8 +502,20 @@ PLATAPI int hi_dsk_probe(void) {
 
 	dm_free_descriptors(ddp);
 	
-	error = hi_zfs_probe();
+	if(hi_zfs_helper.loaded)
+		error = hi_zfs_helper.op_probe();
 	
 	return error;
 }
 
+PLATAPI int plat_hi_dsk_init(void) {
+	int ret = hi_obj_load_helper(&hi_zfs_helper, LIBHI_ZFS_LIB, LIBHI_ZFS_OP);
+	
+	return ret;
+}
+
+PLATAPI void plat_hi_dsk_fini(void) {
+	hi_obj_unload_helper(&hi_zfs_helper);
+	
+	return;
+}

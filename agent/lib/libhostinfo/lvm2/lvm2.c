@@ -28,19 +28,6 @@
 
 #include <unistd.h>
 
-/**
- * Disables LVM2 devices probing. 
- * Useful if HostInfo consumer is running from non-root user.
- * 
- * Even if disabled, LVs may be tracked as dm-X devices.
- * 
- * NOTE: disabling it makes LVM2 structure untrackable, thus causing unwanted
- * consequences, i.e. allowing `simpleio` module writing on disk owned by LVM.
- */
-boolean_t hi_linux_lvm2 = B_TRUE;
-
-#ifdef HAVE_DECL_LVM_INIT
-
 #include <lvm2app.h>
 
 #define DEV_MAPPER_CONTROL		"/dev/mapper/control"
@@ -186,13 +173,7 @@ int hi_lin_proc_lvm_vgs(void) {
 	return HI_PROBE_OK;
 }
 
-int hi_lin_probe_lvm(void) {
-	if(!hi_linux_lvm2) {
-		/* LVM2 is intentionally disabled */
-		hi_dsk_dprintf("hi_lin_probe_lvm: LVM2 is disabled via tunable\n");
-		return HI_PROBE_OK;
-	}
-	
+int hi_lin_probe_lvm(void) {	
 	hi_dsk_dprintf("hi_lin_probe_lvm: Running with LVM2 version %s\n", lvm_library_get_version());
 	
 	if(access(DEV_MAPPER_CONTROL, R_OK | W_OK) == -1) {
@@ -211,11 +192,3 @@ int hi_lin_probe_lvm(void) {
 	lvm_quit(libh);
 	return HI_PROBE_OK;
 }
-
-#else 
-
-int hi_lin_probe_lvm(void) {
-	return HI_PROBE_OK;
-}
-
-#endif

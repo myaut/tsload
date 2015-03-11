@@ -1,0 +1,16 @@
+tgtroot = 'tsload-core'
+target = 'libhostinfo-lvm2'
+
+Import('lib')
+
+lib = lib.Clone()
+
+lib.UseSubsystems('hi_obj')
+lib.Append(CPPPATH = ['#lib/libhostinfo/include'])
+
+lib.Append(LIBS = ['lvm2app'])
+
+objects = lib.CompileSharedLibrary()
+library = lib.LinkSharedLibrary(target, objects)
+
+lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

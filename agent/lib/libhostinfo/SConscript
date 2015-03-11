@@ -14,14 +14,6 @@ if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['setupapi', 'user32', 'advapi32', 'wbemuuid', 'comsuppw', 
                        'iphlpapi', 'Ws2_32'])
 
-if lib.SupportedPlatform('linux'):
-    if GetOption('lvm2'):
-        lib.Append(LIBS = ['lvm2app'])
-        
-if lib.SupportedPlatform('posix'):
-    if GetOption('zfs'):
-        lib.Append(LIBS = ['zfs'])
-
 lib.UseSubsystems('mempool', 'tsobj')
 
 extra_sources = []
@@ -30,5 +22,10 @@ if lib.SupportedPlatform('win'):
 
 objects = lib.CompileSharedLibrary(extra_sources)
 library = lib.LinkSharedLibrary(target, objects)
+
+if lib.SupportedPlatform('linux') and GetOption('lvm2'):
+	SConscript('lvm2/SConscript', 'lib')
+if lib.SupportedPlatform('posix') and GetOption('zfs'):
+	SConscript('zfs/SConscript', 'lib')
 
 lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

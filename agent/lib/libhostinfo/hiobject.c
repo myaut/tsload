@@ -23,6 +23,8 @@
 #include <tsload/mempool.h>
 #include <tsload/tuneit.h>
 #include <tsload/autostring.h>
+#include <tsload/pathutil.h>
+#include <tsload/posixdecl.h>
 
 #include <hostinfo/hiobject.h>
 #include <hostinfo/cpuinfo.h>
@@ -34,7 +36,6 @@
 
 #include <string.h>
 #include <assert.h>
-
 
 /**
  * HostInfo Object - abstract host object container implementation
@@ -94,6 +95,8 @@
 #ifdef PLAT_LINUX
 extern boolean_t hi_linux_lvm2;
 #endif
+
+char hi_obj_modpath[PATHMAXLEN];
 
 hi_obj_subsys_ops_t cpu_ops = {
 	hi_cpu_probe,
@@ -371,11 +374,55 @@ probe:
 	return NULL;
 }
 
+int hi_obj_load_helper(hi_obj_helper_t* helper, const char* libname, const char* probefunc) {
+	int ret;
+	
+	path_join_aas(aas_init(&helper->path), hi_obj_modpath, libname, NULL);
+	
+	ret = plat_mod_open(&helper->lib, helper->path);
+	
+	if(ret) {
+		/* Libraries needed for helper not installed? Anyway, ignore this error. */
+		hi_hlp_dprintf("hi_obj_load_helper: Cannot load HostInfo helper %s: %s\n", 
+					    helper->path, plat_mod_error_msg());
+		return 0;
+	}
+
+	helper->op_probe = plat_mod_load_symbol(&helper->lib, probefunc);
+	if(helper->op_probe == NULL) {
+		/* Helper should provide appropriate function - this is internal error */
+		hi_hlp_dprintf("hi_obj_load_helper: Cannot load HostInfo helper %s(): %s\n", 
+					   probefunc, plat_mod_error_msg());
+		
+		plat_mod_close(&helper->lib);
+		return 1;
+	}
+	
+	hi_hlp_dprintf("hi_obj_load_helper: loaded HostInfo helper %s() from '%s'\n", probefunc, helper->path);
+	
+	helper->loaded = B_TRUE;
+	return 0;
+}
+
+int hi_obj_unload_helper(hi_obj_helper_t* helper) {
+	aas_free(&helper->path);
+	
+	if(helper->loaded)
+		plat_mod_close(&helper->lib);
+}
+
 int hi_obj_init(void) {
 	int sid = 0;
 	int ret = 0;
+	
+	struct stat st;
 
 	hi_obj_subsys_t* subsys = NULL;
+	
+	/* Check if directory with helpers exist (should be INSTALL_LIB) */
+	if(stat(hi_obj_modpath, &st) == -1 || !S_ISDIR(st.st_mode)) {
+		return 1;
+	}
 
 #ifdef HOSTINFO_TRACE
 	tuneit_set_int(unsigned, hi_trace_flags);

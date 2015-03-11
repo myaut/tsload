@@ -24,9 +24,12 @@
 #include <tsload/defs.h>
 
 #include <tsload/list.h>
+#include <tsload/modules.h>
+#include <tsload/pathutil.h>
 
 #include <tsload/obj/obj.h>
 
+HOSTINFOAPI char hi_obj_modpath[];
 
 struct hi_object_header;
 
@@ -71,6 +74,15 @@ typedef struct {
 	int					 state;
 } hi_obj_subsys_t;
 
+typedef struct {
+	boolean_t loaded;
+	
+	AUTOSTRING char* path;
+	plat_mod_library_t lib;
+	
+	hi_obj_probe_op	op_probe;
+} hi_obj_helper_t;
+
 #define HI_OBJ_SUBSYS(aid, aname, aops)					\
 	{	SM_INIT(.id, aid),								\
 		SM_INIT(.name, aname),							\
@@ -112,6 +124,9 @@ LIBEXPORT void hi_obj_destroy_all(hi_obj_subsys_id_t sid);
 LIBEXPORT hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name);
 
 LIBEXPORT list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe);
+
+LIBEXPORT int hi_obj_load_helper(hi_obj_helper_t* helper, const char* libname, const char* probefunc);
+LIBEXPORT int hi_obj_unload_helper(hi_obj_helper_t* helper);
 
 LIBEXPORT int hi_obj_init(void);
 LIBEXPORT void hi_obj_fini(void);

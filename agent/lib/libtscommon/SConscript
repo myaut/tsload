@@ -7,6 +7,8 @@ Import('env')
 
 lib = env.Clone()
 
+lib.Macroses('LIBHOSTINFO')
+
 # dl for modules
 # pthread for thread-handling
 if lib.SupportedPlatform('posix'):

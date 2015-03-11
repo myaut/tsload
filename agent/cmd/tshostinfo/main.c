@@ -11,6 +11,9 @@
 #include <tsload/getopt.h>
 #include <tsload/version.h>
 #include <tsload/tuneit.h>
+#include <tsload/execpath.h>
+#include <tsload/pathutil.h>
+#include <tsload/geninstall.h>
 
 #include <hostinfo/hiobject.h>
 
@@ -22,11 +25,31 @@
 #include <string.h>
 #include <stdlib.h>
 
+boolean_t hi_mod_configured = B_FALSE;
 
 int print_flags = INFO_DEFAULT;
 
 int init(void);
 void usage(int ret, const char* reason, ...);
+
+/*
+ * Make TSLoad a bit portable - get absolute path of run-tsload,
+ * delete INSTALL_BIN from it and append INSTALL_VAR or INSTALL_MOD_PATH
+ * to find path to log and modules.
+ * */
+void deduce_paths(void) {
+	const char* cur_execpath = plat_execpath();
+	path_split_iter_t iter;
+	char root[PATHMAXLEN];
+
+	const char* cur_dirpath = path_dirname(&iter, cur_execpath);
+
+	if(path_remove(root, PATHMAXLEN, cur_dirpath, INSTALL_BIN) != NULL) {
+		path_join(hi_obj_modpath, PATHMAXLEN, root, INSTALL_LIB, NULL);
+		
+		hi_mod_configured = B_TRUE;
+	}
+}
 
 void parse_options(int argc, char* argv[]) {
 	int c;
@@ -82,6 +105,15 @@ int print_info(const char* topic) {
 	return 1;
 }
 
+void read_environ() {
+	char* env_hi_mod_path = getenv("TS_HIMODPATH");
+	
+	if(env_hi_mod_path) {
+		strncpy(hi_obj_modpath, env_hi_mod_path, PATHMAXLEN);
+		hi_mod_configured = B_TRUE;
+	}
+}
+
 int print_json(void) {
 	json_node_t* hiobj = (json_node_t*) tsobj_hi_format_all(B_FALSE);
 
@@ -91,8 +123,15 @@ int print_json(void) {
 int main(int argc, char* argv[]) {
 	int err = 0;
 	int i;
-
+	
+	deduce_paths();
+	read_environ();
 	parse_options(argc, argv);
+	
+	if(!hi_mod_configured) {
+		usage(1, "Missing TS_HIMODPATH environment variable and failed to deduce HostInfo modpath\n");
+	}
+	
 	init();
 
 	if(print_flags & INFO_JSON) {

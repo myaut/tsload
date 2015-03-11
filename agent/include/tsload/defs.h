@@ -111,6 +111,12 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #endif
 
 /* Correct linking of in-library variables on Windows/POSIX */ 
+#ifdef 	LIBHOSTINFO
+#define HOSTINFOAPI			LIBEXPORT
+#else
+#define HOSTINFOAPI			LIBIMPORT
+#endif
+
 #ifdef 	LIBTSLOAD
 #define TSLOADAPI			LIBEXPORT
 #else

@@ -24,6 +24,7 @@
 #include <tsload/pathutil.h>
 #include <tsload/autostring.h>
 #include <tsload/posixdecl.h>
+#include <tsload/modules.h>
 
 #include <hostinfo/diskinfo.h>
 #include <hostinfo/plat/sysfs.h>
@@ -44,14 +45,28 @@
  * TODO: d_port identification
  * */
 
+/**
+ * Disables LVM2 devices probing. 
+ * Useful if HostInfo consumer is running from non-root user.
+ * 
+ * Even if disabled, LVs may be tracked as dm-X devices.
+ * 
+ * NOTE: disabling it makes LVM2 structure untrackable, thus causing unwanted
+ * consequences, i.e. allowing `simpleio` module writing on disk owned by LVM.
+ */
+boolean_t hi_linux_lvm2 = B_TRUE;
+
+hi_obj_helper_t hi_lvm2_helper;
+
+#define LIBHI_LVM_LIB		"libhostinfo-lvm2.so"
+#define LIBHI_LVM_OP		"hi_lin_probe_lvm"
+
 #define DEV_ROOT_PATH		"/dev"
 #define SYS_BLOCK_PATH		"/sys/block"
 #define SYS_SCSI_HOST_PATH	"/sys/class/scsi_host"
 
 /* DISK_MAX_PARTS + 1  */
 #define INVALID_PARTITION_ID	257
-
-int hi_lin_probe_lvm(void);
 
 /**
  * @return: -1 if device not exists or access mask
@@ -284,6 +299,22 @@ void hi_linux_disk_proc_slaves(const char* name, void* arg) {
 	hi_linux_sysfs_walk(slaves_path, hi_linux_disk_proc_slave, name);
 }
 
+int hi_lin_probe_lvm(void) {
+	int ret = HI_PROBE_OK;
+	
+	if(!hi_linux_lvm2) {
+		/* LVM2 is intentionally disabled */
+		hi_dsk_dprintf("hi_lin_probe_lvm: LVM2 is disabled via tunable\n");
+		return HI_PROBE_OK;
+	}
+	
+	if(hi_lvm2_helper.loaded) {
+		ret = hi_lvm2_helper.op_probe();
+	}
+	
+	return ret;
+}
+
 PLATAPI int hi_dsk_probe(void) {
 	int ret;
 
@@ -302,3 +333,14 @@ PLATAPI int hi_dsk_probe(void) {
 	return HI_PROBE_OK;
 }
 
+PLATAPI int plat_hi_dsk_init(void) {
+	int ret = hi_obj_load_helper(&hi_lvm2_helper, LIBHI_LVM_LIB, LIBHI_LVM_OP);
+	
+	return ret;
+}
+
+PLATAPI void plat_hi_dsk_fini(void) {
+	hi_obj_unload_helper(&hi_lvm2_helper);
+	
+	return;
+}

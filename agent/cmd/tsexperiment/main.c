@@ -47,6 +47,7 @@ boolean_t eflag = B_FALSE;
 
 boolean_t mod_configured = B_FALSE;
 boolean_t log_configured = B_FALSE;
+boolean_t hi_mod_configured = B_FALSE;
 
 static char experiment_root_path[PATHMAXLEN];
 
@@ -73,7 +74,9 @@ void deduce_paths(void) {
 	if(path_remove(root, PATHMAXLEN, cur_dirpath, INSTALL_BIN) != NULL) {
 		path_join(log_filename, LOGFNMAXLEN, root, INSTALL_VAR, TSEXPERIMENT_LOGFILE, NULL);
 		path_join(mod_search_path, MODPATHLEN, root, INSTALL_MOD_LOAD, NULL);
-
+		path_join(hi_obj_modpath, PATHMAXLEN, root, INSTALL_LIB, NULL);
+		
+		hi_mod_configured = B_TRUE;
 		mod_configured = B_TRUE;
 		log_configured = B_TRUE;
 	}
@@ -82,7 +85,8 @@ void deduce_paths(void) {
 void read_environ() {
 	char* env_mod_path = getenv("TS_MODPATH");
 	char* env_log_filename = getenv("TS_LOGFILE");
-
+	char* env_hi_mod_path = getenv("TS_HIMODPATH");
+	
 	if(env_mod_path) {
 		strncpy(mod_search_path, env_mod_path, MODPATHLEN);
 		mod_configured = B_TRUE;
@@ -91,6 +95,11 @@ void read_environ() {
 	if(env_log_filename) {
 		strncpy(log_filename, env_log_filename, LOGFNMAXLEN);
 		log_configured = B_TRUE;
+	}
+	
+	if(env_hi_mod_path) {
+		strncpy(hi_obj_modpath, env_hi_mod_path, PATHMAXLEN);
+		hi_mod_configured = B_TRUE;
 	}
 }
 
@@ -137,6 +146,10 @@ int main(int argc, char* argv[]) {
 
 	if(!mod_configured) {
 		usage(1, "Missing TS_MODPATH environment variable and failed to deduce modpath\n");
+	}
+	
+	if(!hi_mod_configured) {
+		usage(1, "Missing TS_HIMODPATH environment variable and failed to deduce HostInfo modpath\n");
 	}
 
 	if(!log_configured) {

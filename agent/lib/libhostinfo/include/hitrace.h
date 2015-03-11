@@ -34,6 +34,8 @@
 #define HI_TRACE_NET		0x10
 #define HI_TRACE_FS			0x20
 
+#define HI_TRACE_HELPERS	0x80
+
 #ifdef PLAT_LINUX
 #define HI_TRACE_SYSFS		0x100
 #endif
@@ -62,6 +64,7 @@ LIBVARIABLE unsigned hi_trace_flags;
 #define hi_obj_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_OBJ, __VA_ARGS__ )
 #define hi_net_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_NET, __VA_ARGS__ )
 #define hi_fs_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_FS, __VA_ARGS__ )
+#define hi_hlp_dprintf( ... ) 		hi_trace_dprintf(HI_TRACE_HELPERS, __VA_ARGS__ )
 
 #ifdef PLAT_LINUX
 #define hi_sysfs_dprintf( ... ) hi_trace_dprintf(HI_TRACE_SYSFS, __VA_ARGS__ )

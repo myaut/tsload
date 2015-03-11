@@ -33,14 +33,6 @@
 #include <sys/statvfs.h>
 #include <errno.h>
 
-#ifndef HAVE_DECL_LIBZFS_INIT
-
-int hi_zfs_probe(void) {
-	return HI_PROBE_OK;
-}
-
-#else
-
 void hi_zfs_proc_fs(zfs_handle_t* zfs, const char* zname, hi_dsk_info_t* zpdi) {
 	hi_fsinfo_t* fsi;
 	char mountpoint[PATHMAXLEN];
@@ -267,5 +259,3 @@ int hi_zfs_probe(void) {
 	
 	return HI_PROBE_OK;
 }
-
-#endif

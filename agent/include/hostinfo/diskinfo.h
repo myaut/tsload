@@ -113,5 +113,8 @@ STATIC_INLINE list_head_t* hi_dsk_list(boolean_t reprobe) {
 
 tsobj_node_t* tsobj_hi_dsk_format(struct hi_object_header* obj);
 
+PLATAPI int plat_hi_dsk_init(void);
+PLATAPI void plat_hi_dsk_fini(void);
+
 #endif /* DISKINFO_H_ */
 

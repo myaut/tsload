@@ -73,10 +73,12 @@ void hi_dsk_dtor(hi_object_header_t* object) {
 int hi_dsk_init(void) {
 	mp_cache_init(&hi_dsk_cache, hi_dsk_info_t);
 
-	return 0;
+	return plat_hi_dsk_init();
 }
 
 void hi_dsk_fini(void) {
+	plat_hi_dsk_fini();
+	
 	mp_cache_destroy(&hi_dsk_cache);
 }
 
