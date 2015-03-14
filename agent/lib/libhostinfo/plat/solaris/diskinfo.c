@@ -50,14 +50,16 @@
  * Uses libdiskmgt to enumerate disks/partitions
  *
  * TODO: access rights check
- * TODO: SVM
  * TODO: d_port identification
  * */
 
 hi_obj_helper_t hi_zfs_helper;
+hi_obj_helper_t hi_svm_helper;
 
 #define LIBHI_ZFS_LIB		"libhostinfo-zfs.so"
+#define LIBHI_SVM_LIB		"libhostinfo-svm.so"
 #define LIBHI_ZFS_OP		"hi_zfs_probe"
+#define LIBHI_SVM_OP		"hi_svm_probe"
 
 #define HI_SOL_DSK_MEDIA		0x2
 #define HI_SOL_DSK_ALIASES		0x4
@@ -502,19 +504,34 @@ PLATAPI int hi_dsk_probe(void) {
 
 	dm_free_descriptors(ddp);
 	
-	if(hi_zfs_helper.loaded)
+	/* Probe ZFS & SVM */
+	
+	if(hi_zfs_helper.loaded) {
 		error = hi_zfs_helper.op_probe();
+		
+		if(error != HI_PROBE_OK)
+			return error;
+	}
+	
+	if(hi_svm_helper.loaded) {
+		error = hi_svm_helper.op_probe();
+	}
 	
 	return error;
 }
 
 PLATAPI int plat_hi_dsk_init(void) {
 	int ret = hi_obj_load_helper(&hi_zfs_helper, LIBHI_ZFS_LIB, LIBHI_ZFS_OP);
+	if(ret != 0)
+		return ret;
+	
+	ret = hi_obj_load_helper(&hi_svm_helper, LIBHI_SVM_LIB, LIBHI_SVM_OP);
 	
 	return ret;
 }
 
 PLATAPI void plat_hi_dsk_fini(void) {
+	hi_obj_unload_helper(&hi_svm_helper);
 	hi_obj_unload_helper(&hi_zfs_helper);
 	
 	return;

@@ -299,6 +299,10 @@ if env.SupportedPlatform('posix'):
         
         conf.CheckZpoolVdevName()
 
+if env.SupportedPlatform('solaris'):
+    if GetOption('svm'):
+        metastat = conf.CheckBinary('metastat')
+
 # ----------------------------
 # tstime checks
 

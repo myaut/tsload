@@ -1,0 +1,14 @@
+tgtroot = 'tsload-core'
+target = 'libhostinfo-svm'
+
+Import('lib')
+
+lib = lib.Clone()
+
+lib.UseSubsystems('hi_obj')
+lib.Append(CPPPATH = ['#lib/libhostinfo/include'])
+
+objects = lib.CompileSharedLibrary()
+library = lib.LinkSharedLibrary(target, objects)
+
+lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

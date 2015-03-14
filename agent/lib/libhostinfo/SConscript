@@ -27,5 +27,7 @@ if lib.SupportedPlatform('linux') and GetOption('lvm2'):
 	SConscript('lvm2/SConscript', 'lib')
 if lib.SupportedPlatform('posix') and GetOption('zfs'):
 	SConscript('zfs/SConscript', 'lib')
+if lib.SupportedPlatform('solaris') and GetOption('svm'):
+    SConscript('svm/SConscript', 'lib')
 
 lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

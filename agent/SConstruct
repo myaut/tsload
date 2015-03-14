@@ -102,6 +102,10 @@ if zfs or zfs_optional:
     AddEnableOption('zfs', dest='zfs', default=zfs,
                     help='support for ZFS objects to HostInfo')
 
+if sys.platform == 'sunos5':
+    AddEnableOption('svm', dest='svm', default=True,
+                    help='support for Solaris Volume Manager objects to HostInfo')
+
 # Installation directories options are specified below
 
 # -------------------------
