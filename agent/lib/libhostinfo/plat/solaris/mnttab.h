@@ -15,14 +15,37 @@
     along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
 */ 
 
-#include <tsload/autostring.h>
-#include <tsload/mempool.h>
+#ifndef HI_PLAT_SOLARIS_MNTTAB_H_
+#define HI_PLAT_SOLARIS_MNTTAB_H_
 
-#include <hostinfo/fsinfo.h>
-#include <hostinfo/diskinfo.h>
+#include <tsload/defs.h>
 
-#include <hitrace.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mnttab.h>
 
-PLATAPI int hi_fsinfo_probe_impl(list_head_t* disks) {
-	return HI_PROBE_OK;
+#define ETC_MNTTAB			MNTTAB
+
+typedef struct mnttab 		plat_mntent_t;
+
+STATIC_INLINE plat_mntent_t* plat_getmntent(FILE* fp) {
+	static plat_mntent_t mnt;
+	
+	int ret = getmntent(fp, &mnt);
+	
+	if(ret == 0)
+		return &mnt;
+	return NULL;
 }
+
+STATIC_INLINE boolean_t	plat_filter_fs(plat_mntent_t* mnt) {
+	struct stat st;
+	
+	/* Ignore mounting of single file (dfstab, libc, lofs) */
+	if(stat(mnt->mnt_mountp, &st) == 0 && S_ISREG(st.st_mode))
+		return B_TRUE;
+	
+	return B_FALSE;
+}
+
+#endif

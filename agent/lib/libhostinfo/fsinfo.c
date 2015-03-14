@@ -69,6 +69,8 @@ void hi_fsinfo_dtor(hi_object_header_t* object) {
 
 int hi_fsinfo_probe(void) {
 	list_head_t* disks = hi_dsk_list(B_FALSE);
+	if(!disks)
+		return HI_PROBE_ERROR;
 	
 	return hi_fsinfo_probe_impl(disks);
 }
