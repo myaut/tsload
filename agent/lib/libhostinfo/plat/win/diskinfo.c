@@ -24,6 +24,7 @@
 #include <tsload/autostring.h>
 
 #include <hostinfo/diskinfo.h>
+#include <hostinfo/fsinfo.h>
 
 #include <hitrace.h>
 
@@ -56,6 +57,9 @@
 #define HI_WIN_MAX_VOL_EXTENTS		256
 
 list_head_t hi_win_vol_list;
+
+/* from plat/win/fsinfo.c */
+void hi_win_get_fssizes(const char* name, hi_fsinfo_t* fsi);
 
 const char* hi_win_dsk_bus_type[BusTypeMax] = {
 		"UNKNOWN", "SCSI", "ATAPI", "ATA", "1394",
@@ -100,6 +104,7 @@ typedef struct hi_win_vol {
 	char name_ex[MAX_PATH];
 	DWORD serial_no;
 	
+	DWORD fs_namemax;
 	DWORD fs_flags;
 	char fs_name[HIWINVOLFSNAMELEN];
 
@@ -229,6 +234,57 @@ boolean_t hi_win_vol_ioctl_impl(hi_win_vol_t* vol, DWORD request, void* out_buf,
 #define hi_win_vol_ioctl(vol, request, out_buf, out_buf_sz)			\
 		hi_win_vol_ioctl_impl(vol, request, out_buf, out_buf_sz, #request)
 
+int hi_win_proc_vol_mntpts(hi_win_vol_t* vol) {
+	char* names = NULL;
+	char* name = NULL;
+	DWORD len = MAX_PATH + 1;
+	
+	hi_fsinfo_t* fsi;
+	
+	BOOL ok = FALSE;
+	
+	while(B_TRUE) {
+		names = mp_malloc(len);
+		
+		if(!names)
+			return HI_PROBE_ERROR;
+		
+		ok = GetVolumePathNamesForVolumeName(vol->di->d_disk_name, names, len, &len);
+		if(ok)
+			break;
+		
+		hi_fs_dprintf("hi_win_proc_vol_mntpts: GetVolumePathNamesForVolumeName('%s') error: %d\n", 
+					  vol->di->d_disk_name, GetLastError());
+		if(GetLastError() != ERROR_MORE_DATA)
+			break;
+		
+		mp_free(names);
+		names = NULL;
+	}
+	
+	if(ok) {
+		for(name = names; *name != '\0'; name += strlen(name) + 1) {
+			fsi = hi_fsinfo_create(name, vol->fs_name, vol->di->d_disk_name);
+		
+			fsi->fs_device = vol->di;
+			
+			fsi->fs_readonly = TO_BOOLEAN(vol->fs_flags & FILE_READ_ONLY_VOLUME);
+			fsi->fs_namemax = vol->fs_namemax;
+			
+			hi_win_get_fssizes(name, fsi);
+			
+			hi_fsinfo_add(fsi);
+			
+			hi_fs_dprintf("hi_win_proc_vol_mntpts: found mntpt '%s' for volume '%s'\n", 
+						  name, vol->di->d_disk_name);
+		}
+	}
+	
+	mp_free(names);
+	
+	return HI_WIN_DSK_OK;
+}
+
 int hi_win_proc_volume(char* vol_name) {
 	hi_win_vol_t* vol;
 	HANDLE vol_hdl;
@@ -297,7 +353,7 @@ int hi_win_proc_volume(char* vol_name) {
 	/* Get information on volume */
 	vol_name[backslash_pos] = '\\';
 	if(!GetVolumeInformation(vol_name, vol->name_ex, MAX_PATH,
-							 &vol->serial_no, NULL, &vol->fs_flags, 
+							 &vol->serial_no, &vol->fs_namemax, &vol->fs_flags, 
 						     vol->fs_name, HIWINVOLFSNAMELEN)) {
 		hi_dsk_dprintf("hi_win_proc_volume: failed GetVolumeInformation(%s): code %d\n", 
 		 			   vol_name, GetLastError());
@@ -310,7 +366,7 @@ int hi_win_proc_volume(char* vol_name) {
 	/* Create hi_disk_info object and add it to global list */
 	vol->di = hi_dsk_create();
 	
-	aas_copy(&vol->di->d_hdr.name, vol_name);
+	aas_copy(&vol->di->d_disk_name, vol_name);
 	aas_copy(&vol->di->d_id, vol->name_ex);
 	
 	/* Again, make it compatible with CreateFile() */
@@ -321,6 +377,8 @@ int hi_win_proc_volume(char* vol_name) {
 	vol->di->d_type = HI_DSKT_VOLUME;
 	
 	hi_dsk_add(vol->di);
+	
+	hi_win_proc_vol_mntpts(vol);
 	
 #ifdef HOSTINFO_TRACE
 	for(extentid = 0; extentid < vol->extents->NumberOfDiskExtents; ++extentid) {

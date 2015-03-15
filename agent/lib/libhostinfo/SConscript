@@ -12,7 +12,7 @@ if lib.SupportedPlatform('solaris'):
 
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['setupapi', 'user32', 'advapi32', 'wbemuuid', 'comsuppw', 
-                       'iphlpapi', 'Ws2_32'])
+                       'iphlpapi', 'Ws2_32', 'mpr'])
 
 lib.UseSubsystems('mempool', 'tsobj')
 
