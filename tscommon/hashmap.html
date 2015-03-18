@@ -185,7 +185,9 @@ For HM_WALKER_STOP, hash_map_walk will stop walking over hash map and return<br 
 LIBEXPORT void* hash_map_walk(hashmap_t* hm, hm_walker_func func, void* arg)
 </pre>
 </p>
-<a name="hm_string_hash"></a><h3>hm_string_hash</h3><span class="label label-success">public</span><p>
+<a name="hm_string_hash"></a><h3>hm_string_hash</h3><span class="label label-success">public</span>    <p>
+<br />Calculate hash for strings </p>
+<p>
 <pre>
 LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask)
 </pre>
@@ -195,7 +197,9 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask)
     <p>
 <em>ARGUMENTS</em><br />        <ul>
             <li>
-<strong>name</strong> - name of hash map var (all corresponding objects will be named hm_(object)_(name))<br /></li>
+<strong>name</strong> - name of hash map var (all corresponding objects will be named hm_(object)(name))<br /></li>
+            <li>
+<strong>is_indirect</strong> - if set to B_TRUE, key_field is considered a pointer to a key, not a key itself<br /></li>
             <li>
 <strong>type</strong> - type of elements<br /></li>
             <li>

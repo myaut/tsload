@@ -63,6 +63,12 @@ LIBEXPORT int wl_type_register(module_t* mod, wl_type_t* wlt)
 LIBEXPORT int wl_type_unregister(module_t* mod, wl_type_t* wlt)
 </pre>
 </p>
+<a name="wlt_init"></a><a name="wlt_fini"></a><h3>wlt_init, wlt_fini</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int wlt_init(void)
+LIBEXPORT void wlt_fini(void)
+</pre>
+</p>
 <h2>Types</h2><a name="typedef_enum_wl_class"></a><h3>typedef enum wl_class</h3>    <p>
 <br />Workload classes<br /></p>
 <p>
@@ -99,6 +105,8 @@ Set up it statically in your module<br /></p>
             <li>
 <strong>wlt_class</strong> - Bitmask of workload class flags<br /></li>
             <li>
+<strong>wlt_description</strong> - Description of a workload type<br /></li>
+            <li>
 <strong>wlt_params</strong> - pointer to a vector of workload/request parameter descriptors<br /></li>
             <li>
 <strong>wlt_params_size</strong> - sizeof() of workload parameters structure<br /></li>
@@ -124,6 +132,8 @@ typedef struct wl_type {
     AUTOSTRING char* wlt_name;
 
     wl_class_t    wlt_class;
+    
+    const char* wlt_description;
 
     wlp_descr_t* wlt_params;
     size_t          wlt_params_size;

@@ -68,7 +68,7 @@ See <a href="http://en.wikipedia.org/wiki/Exponential_distribution">w:Exponentia
     <p>
 Params:<br />                <ul>
             <li>
- shape (int)</li>
+ rate (double) </li>
 </ul>
 </p>
 <h3></h3>    <p>
@@ -97,10 +97,28 @@ Params:<br />                <ul>
 <br />Random generators<br /></p>
 <p>
 <pre>
-LIBIMPORT randgen_class_t rg_libc_class
-LIBIMPORT randgen_class_t rg_seq_class
-LIBIMPORT randgen_class_t rg_lcg_class
-LIBIMPORT randgen_class_t rg_devrandom_class
+TSLOADAPI randgen_class_t rg_libc_class
+TSLOADAPI randgen_class_t rg_seq_class
+TSLOADAPI randgen_class_t rg_lcg_class
+TSLOADAPI randgen_class_t rg_devrandom_class
+</pre>
+</p>
+<h2>Constants</h2><a name="RV_PARAM_OK"></a><a name="RV_INVALID_PARAM_NAME"></a><a name="RV_INVALID_PARAM_VALUE"></a><h3>RV_PARAM_OK, RV_INVALID_PARAM_NAME, RV_INVALID_PARAM_VALUE</h3>    <p>
+<br />Error codes returned by rv_set_int/rv_set_double<br /></p>
+<p>
+<pre>
+#define RV_PARAM_OK 0
+#define RV_INVALID_PARAM_NAME   -1
+#define RV_INVALID_PARAM_VALUE  -2
+</pre>
+</p>
+<a name="RV_PARAM_NULL"></a><a name="RV_PARAM_INT"></a><a name="RV_PARAM_DOUBLE"></a><h3>RV_PARAM_DOUBLE, RV_PARAM_NULL, RV_PARAM_INT</h3>    <p>
+<br />Random variator parameter types<br /></p>
+<p>
+<pre>
+#define RV_PARAM_NULL   0
+#define RV_PARAM_INT    1
+#define RV_PARAM_DOUBLE 2
 </pre>
 </p>
 <h2>Functions</h2><a name="rg_create"></a><a name="rg_destroy"></a><h3>rg_destroy, rg_create</h3><span class="label label-success">public</span><p>
@@ -113,7 +131,7 @@ LIBEXPORT void rg_destroy(randgen_t* rg)
 <br />Generates integer with uniform distribution in range<br /><a name="0; rg_class->rg_max"></a></p>
 <p>
 <pre>
-static uint64_t rg_generate_int(randgen_t* rg) 
+STATIC_INLINE uint64_t rg_generate_int(randgen_t* rg) 
 </pre>
 </p>
 <a name="rg_generate_double"></a><h3>rg_generate_double</h3><span class="label label-success">public</span>    <p>
@@ -121,6 +139,12 @@ static uint64_t rg_generate_int(randgen_t* rg)
 <p>
 <pre>
 LIBEXPORT double rg_generate_double(randgen_t* rg)
+</pre>
+</p>
+<a name="randgen_register"></a><a name="randgen_unregister"></a><h3>randgen_unregister, randgen_register</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int randgen_register(module_t* mod, randgen_class_t* class)
+LIBEXPORT int randgen_unregister(module_t* mod, randgen_class_t* class)
 </pre>
 </p>
 <a name="rv_create"></a><a name="rv_destroy"></a><h3>rv_destroy, rv_create</h3><span class="label label-success">public</span><p>
@@ -144,6 +168,24 @@ STATIC_INLINE int rv_set_double(randvar_t* rv, const char* name, double value)
 STATIC_INLINE double rv_variate_double(randvar_t* rv) 
 </pre>
 </p>
+<a name="randvar_register"></a><a name="randvar_unregister"></a><h3>randvar_register, randvar_unregister</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int randvar_register(module_t* mod, randvar_class_t* class)
+LIBEXPORT int randvar_unregister(module_t* mod, randvar_class_t* class)
+</pre>
+</p>
+<a name="randgen_init"></a><a name="randgen_fini"></a><h3>randgen_fini, randgen_init</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int randgen_init(void)
+LIBEXPORT void randgen_fini(void)
+</pre>
+</p>
+<a name="tsobj_randgen_class_format"></a><a name="tsobj_randvar_class_format"></a><h3>tsobj_randgen_class_format, tsobj_randvar_class_format</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT tsobj_node_t* tsobj_randgen_class_format(randgen_class_t* rg_class)
+LIBEXPORT tsobj_node_t* tsobj_randvar_class_format(randvar_class_t* rv_class)
+</pre>
+</p>
 <a name="tsobj_randgen_proc"></a><a name="tsobj_randvar_proc"></a><h3>tsobj_randvar_proc, tsobj_randgen_proc</h3><span class="label label-success">public</span><p>
 <pre>
 LIBEXPORT randgen_t* tsobj_randgen_proc(tsobj_node_t* node)
@@ -161,14 +203,65 @@ typedef struct randgen {
 
 </pre>
 </p>
-<a name="typedef_struct_randgen_class"></a><h3>typedef struct randgen_class</h3><p>
+<a name="typedef_struct_randgen_class"></a><h3>typedef struct randgen_class</h3>    <p>
+<br />Random generator class.<br /></p>
+    <p>
+To create new generator class, initialize head members with RG_CLASS_HEAD<br />and set pointers to functions:<br /></p>
+    <p>
+    <pre>
+randgen_class_t rg_my_class = {
+        RG_CLASS_HEAD("my", B_FALSE, max),
+        rg_init_my,
+        rg_destroy_my,
+        rg_generate_int
+};
+</pre>
+</p>
+    <p>
+Note that TSLoad is not a cryptographic software, so predictability of PRNGs is not<br />a concern. It even have <strong>sequental</strong> generator that generates numbers as N+1 where<br />N is last value.<br /></p>
+    <p>
+Each random generated value is uint64_t. Real representation is irrelevant, i.e. for<br />/dev/urandom generator it is just a sequence of 8 bytes consequently read from device.<br />All conversion/limiting is done on a consumer side.<br /></p>
+    <p>
+Random genrators should have uniform distribution in interval 0, rg_class-&gt;rg_max)<br />To apply different distribution, use random variators.<br /></p>
+    <p>
+                            from TSLoad Core (libtsload) this field is set NULL<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>rg_class_name</strong> - name of class (used in configs)<br /></li>
+            <li>
+<strong>rg_is_singleton</strong> - is random generator is signleton (relies on global state)<br /></li>
+            <li>
+<strong>rg_ref_count</strong> - reference count (for singleton)<br /></li>
+            <li>
+<strong>rg_object</strong> - instance (for singleton)<br /></li>
+            <li>
+<strong>rg_max</strong> - maximum integer that could be generated by this PRNG, i.e. LLONG_MAX<br /></li>
+            <li>
+<strong>rg_next</strong> - next class in hashtable<br /></li>
+            <li>
+<strong>rg_module</strong> - external module that implements this PRNG, for embedded generators<br /></li>
+            <li>
+<strong>rg_init</strong> - function that initializes PRNG internal state<br /></li>
+            <li>
+<strong>rg_destroy</strong> - function that frees PRNG internal state resources<br /></li>
+            <li>
+<strong>rg_generate_int</strong> - generate next random number<br /></li>
+</ul>
+</p>
+<p>
 <pre>
 typedef struct randgen_class {
+    AUTOSTRING char* rg_class_name;
+    
     boolean_t rg_is_singleton;
-    int          rg_ref_count;
+    atomic_t  rg_ref_count;
     randgen_t* rg_object;
 
     uint64_t rg_max;
+    
+    struct randgen_class* rg_next;
+    module_t* rg_module;
 
     int  (*rg_init)(randgen_t* rg);
     void (*rg_destroy)(randgen_t* rg);
@@ -188,9 +281,47 @@ typedef struct randvar {
 
 </pre>
 </p>
-<a name="typedef_struct_randvar_class"></a><h3>typedef struct randvar_class</h3><p>
+<a name="typedef_struct_randvar_class"></a><h3>typedef struct randvar_class</h3>    <p>
+<br />Random variator class<br /></p>
+    <p>
+Random variators are not generating numbers. They take it from upper-level<br />generator and modify it so probability funciton will conform desired distribution.<br /></p>
+    <p>
+Random variators may have parameters of distribution settable via rv_set_int() and<br />rv_set_double() and described in rv_params (and of course in documentation).<br /></p>
+    <p>
+Unlike random generators, variators work with double-precision floating point numbers<br />(<code>double</code> type) distributed in <a name="0.0, 1.0"></a></p>
+    <p>
+Head members are initialized with RV_CLASS_HEAD()<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>rv_class_name</strong> - name of random variator class (for configs)<br /></li>
+            <li>
+<strong>rv_next</strong> - next rv class in hashmap<br /></li>
+            <li>
+<strong>rv_module</strong> - same as rg_module in randgen_class_t<br /></li>
+            <li>
+<strong>rv_params</strong> - array of parameter descriptions<br /></li>
+            <li>
+<strong>rv_init</strong> - function that initializes internal state of variator<br /></li>
+            <li>
+<strong>rv_destroy</strong> - function that frees its internal state<br /></li>
+            <li>
+<strong>rv_set_int</strong> - function that sets integer parameter<br /></li>
+            <li>
+<strong>rv_set_double</strong> - function that sets double parameter<br /></li>
+            <li>
+<strong>rv_variate_double</strong> - function that gets random-generated value u,                             and returns variated value<br /></li>
+</ul>
+</p>
+<p>
 <pre>
 typedef struct randvar_class {
+    AUTOSTRING char* rv_class_name;
+    struct randvar_class* rv_next;
+    module_t* rv_module;
+    
+    struct tsload_param* rv_params;
+    
     int (*rv_init)(randvar_t* rv);
     void (*rv_destroy)(randvar_t* rv);
 

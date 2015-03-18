@@ -90,10 +90,6 @@ These options may be redefined by <code>vars</code> object inside modinfo.json c
         <li>
 <code>MODTYPE</code> - type of module, taken from configuration file<br />  </li>
         <li>
-<code>WLT_NAME</code> - name of workload type, usually matches with name of the module<br />  </li>
-        <li>
-<code>WLT_ABBR</code> - abbreviation of workload type which is needed to generate variable names. Contains first letter of WLT_NAME followed by letters after underscores. I.e. test_module -&gt; tm.<br />  </li>
-        <li>
 <code>SOURCE_FILENAME</code>, <code>HEADER_FILENAME</code> - name of source files<br />  </li>
         <li>
 <code>MAKEFILE_FILENAME</code>, <code>SCONSTRUCT_FILENAME</code>, <code>SCONSCRIPT_FILENAME</code> - names of build files. It is advised not to change these variables.<br />  </li>
@@ -101,6 +97,22 @@ These options may be redefined by <code>vars</code> object inside modinfo.json c
 <code>MODULE_FILENAME</code>, <code>OBJECT_FILENAME</code> - build file names<br />  </li>
         <li>
 <code>HEADER_DEF</code> - macro defined inside header in #ifdef / #define construct<br />  </li>
+        <li>
+<code>CCFLAGS</code>, <code>LIBS</code>, <code>SHCCFLAGS</code>, <code>SHLINKFLAGS</code> - compiler and linker flags (taken from build environment of TSLoad)<br />  </li>
+        <li>
+<code>SHOBJSUFFIX</code>, <code>SSHLIBSUFFIX</code> - filename suffixes (extensions) for modules (taken from build environment of TSLoad)<br />  </li>
+        <li>
+<code>MODINFODIR</code> - directory where <em>modinfo.json</em> is located<br />  </li>
+        <li>
+<code>TS*</code> - same as environment variables (see above)<br /></li>
+</ul>
+</p>
+<p>
+Workload type variables are contained in namespaces, so different wltype would get different values:<br />      <ul>
+        <li>
+<code>WLT_NAME</code> - name of workload type, usually matches with name of the module<br />  </li>
+        <li>
+<code>WLT_ABBR</code> - abbreviation of workload type which is needed to generate variable names. Contains first letter of WLT_NAME followed by letters after underscores. I.e. test_module -&gt; tm.<br />  </li>
         <li>
 <code>WL_PARAM_STRUCT</code>, <code>WL_PARAM_FIELDS</code>, <code>WL_PARAM_VARNAME</code> - Workload parameters. STRUCT contains name of data structure keeping them, FIELDS is a generator for C structure members, and VARNAME is a name of variable that would be created in functions implementing workload type. <br />  </li>
         <li>
@@ -123,14 +135,6 @@ These options may be redefined by <code>vars</code> object inside modinfo.json c
 <code>FUNC_RUN_REQUEST</code> - name of the function that runs request<br />  </li>
         <li>
 <code>FUNC_STEP</code> - name of the function that is called at the beginning of each step<br />  </li>
-        <li>
-<code>CCFLAGS</code>, <code>LIBS</code>, <code>SHCCFLAGS</code>, <code>SHLINKFLAGS</code> - compiler and linker flags (taken from build environment of TSLoad)<br />  </li>
-        <li>
-<code>SHOBJSUFFIX</code>, <code>SSHLIBSUFFIX</code> - filename suffixes (extensions) for modules (taken from build environment of TSLoad)<br />  </li>
-        <li>
-<code>MODINFODIR</code> - directory where <em>modinfo.json</em> is located<br />  </li>
-        <li>
-<code>TS*</code> - same as environment variables (see above)<br /></li>
 </ul>
 </p>
 <p>
@@ -191,6 +195,9 @@ Complete BNF for preprocessor is:<br /></p>
 &lt;define-block&gt;       ::= "@define" &lt;dir-param-var&gt;
                          &lt;blocks&gt;
                         "@enddef"
+&lt;foreach-block&gt;     ::= "@foreach" &lt;dir-param-var&gt;
+                        &lt;blocks&gt;
+                        "@endfor"                        
 </pre>
 </p>
 

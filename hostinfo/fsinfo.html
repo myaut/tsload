@@ -1,0 +1,185 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="diskinfo.html"><strong>Prev</strong>(DiskInfo)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="netinfo.html"><strong>Next</strong>(NetInfo)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>FSInfo</h1><h3></h3>    <p>
+Gets information on mounted filesystems.<br /></p>
+    <p>
+Note that unlike other HIObject subsystems, filesystems are not forming a hierarchy:<br />if mountpoint resides on other filesystem, it wont be set as child to it.<br /></p>
+    <p>
+Since usually filesystems reside on disk devices, FSInfo object contains reference<br />to corresponding DiskInfo object, and FSInfo probing causes DiskInfo probing as well.<br /></p>
+<h3></h3>    <p>
+<h3>POSIX</h3></p>
+    <p>
+Uses <code>statvfs()</code> syscall to gather statistics on file systems and<br /><code>getmntent()</code> function to iterate over mounted filesystems in file<br /><code>/etc/mtab</code> (Linux) or <code>/etc/mnttab</code> (Solaris).<br /></p>
+<h3></h3>    <p>
+<h3>Windows</h3></p>
+    <p>
+Local filesystems are added by DiskInfo code while iterating over volumes.<br />FSInfo adds network drives to them by using <code>WNetOpenEnum()</code> API call<br /></p>
+    <p>
+Windows implementation doesn't support number of files<br /></p>
+<h2>Functions</h2><a name="HI_FSINFO_FROM_OBJ"></a><h3>HI_FSINFO_FROM_OBJ</h3>    <p>
+<br />Conversion macros<br /></p>
+<p>
+<pre>
+#define HI_FSINFO_FROM_OBJ(object)
+</pre>
+</p>
+<a name="hi_fsinfo_bind_dev"></a><h3>hi_fsinfo_bind_dev</h3>    <p>
+<br />Find appropriate device in disks hiobject hierarchy and<br />bind it to filesystem information object.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>fsi</strong> - filesystem information object<br /></li>
+            <li>
+<strong>disks</strong> - list of disks received from <code>hi_dsk_list()</code><br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />call it from <code>hi_fsinfo_probe_impl()</code> context<br /></p>
+<p>
+<pre>
+void hi_fsinfo_bind_dev(hi_fsinfo_t* fsi, list_head_t* disks)
+</pre>
+</p>
+<a name="hi_fsinfo_add"></a><h3>hi_fsinfo_add</h3><span class="label label-success">public</span>    <p>
+<br />Add filesystem information to global list </p>
+<p>
+<pre>
+STATIC_INLINE void hi_fsinfo_add(hi_fsinfo_t* fsi) 
+</pre>
+</p>
+<a name="hi_fsinfo_find"></a><h3>hi_fsinfo_find</h3><span class="label label-success">public</span>    <p>
+<br />Find filesystem by it's mountpoint<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>name</strong> - - name of disk<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />filesystem information or NULL if it wasn't found<br /></p>
+<p>
+<pre>
+STATIC_INLINE hi_fsinfo_t* hi_fsinfo_find(const char* mntpt) 
+</pre>
+</p>
+<a name="hi_fsinfo_list"></a><h3>hi_fsinfo_list</h3><span class="label label-success">public</span>    <p>
+<br />Probe system's filesystems (if needed) and return pointer<br />to global filesystem info list.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>reprobe</strong> - Probe system's filesystems again<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />pointer to head or NULL if probe failed<br /></p>
+    <p>
+<em>NOTES</em><br />May call <code>hi_dsk_list()</code> with reprobe = B_FALSE<br /></p>
+<p>
+<pre>
+STATIC_INLINE list_head_t* hi_fsinfo_list(boolean_t reprobe) 
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_hi_fsinfo"></a><h3>typedef struct hi_fsinfo</h3>    <p>
+<br />File system information descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>fs_hdr</strong> - HIObject header<br /></li>
+            <li>
+<strong>fs_mountpoint</strong> - alias to <code>fs_hdr.name</code> - absolute path where filesystem is mounted<br /></li>
+            <li>
+<strong>fs_type</strong> - type of filesystem<br /></li>
+            <li>
+<strong>fs_devpath</strong> - path to device that holds filesystem. Not necessary a name or <code>d_path</code>                             in DiskInfo hierarchy<br /></li>
+            <li>
+<strong>fs_device</strong> - corresponding DiskInfo device<br /></li>
+            <li>
+<strong>fs_host</strong> - (not supported) hostname for network filesystem<br /></li>
+            <li>
+<strong>fs_block_size</strong> - maximum size of filesystem block<br /></li>
+            <li>
+<strong>fs_frag_size</strong> - fragments size or minimum size of block<br /></li>
+            <li>
+<strong>fs_ino_count</strong> - (optional) total number of file entries that created or can be created<br /></li>
+            <li>
+<strong>fs_ino_free</strong> - (optional) number of file entries that can be created<br /></li>
+            <li>
+<strong>fs_space</strong> - filesystem total space in bytes<br /></li>
+            <li>
+<strong>fs_space_free</strong> - filesystem free space in bytes<br /></li>
+            <li>
+<strong>fs_readonly</strong> - is file system mounted in readonly mode?<br /></li>
+            <li>
+<strong>fs_namemax</strong> - maximum length of filesystem name<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_fsinfo {
+    hi_object_header_t fs_hdr;
+#define fs_mountpoint  fs_hdr.name
+    
+    char fs_type[FSTYPELEN];
+    AUTOSTRING char* fs_devpath;
+    
+    hi_dsk_info_t* fs_device;
+    
+    AUTOSTRING char* fs_host;
+    
+    /* Stats */
+    unsigned long fs_block_size;
+    unsigned long fs_frag_size;
+    
+    uint64_t fs_ino_count;
+    uint64_t fs_ino_free;
+    uint64_t fs_space;
+    uint64_t fs_space_free;
+    
+    boolean_t fs_readonly;
+    
+    unsigned long fs_namemax;
+} hi_fsinfo_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

@@ -1,0 +1,279 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="pageinfo.html"><strong>Prev</strong>(PageInfo)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="fsinfo.html"><strong>Next</strong>(FSInfo)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>DiskInfo</h1><h3></h3>    <p>
+DiskInfo retrives information on block devices available on system<br />including Hard Disks and partitions on them, and Volume Manager objects<br /></p>
+    <p>
+Due to complex logic of Disk Hierarchy and huge number of Volume Managers<br />(which of them of course has own logic on hierarchy), DiskInfo may look<br />inconsistent, but it is best what we can do.<br /></p>
+    <p>
+<strong>NOTE</strong>: Currently if pool or volume reside on partition, than partition<br />would be considered a child to that pool or volume. It also would be child<br />to disk drive. This rule may change in future releases of HostInfo.<br /></p>
+    <p>
+Disk object children are sometimes called "slaves" due to Linux SYSFS naming<br />scheme.<br /></p>
+<h3></h3>    <p>
+<h3>Linux</h3></p>
+    <p>
+Walks /sys/block and searches for dm- or sda/hda devices, identifies their subpartitions<br />and slaves from SYSFS. Paths are generated as <code>/dev/DEVNAME</code></p>
+    <p>
+For device-mapper devices <code>dm/uuid</code> is provided as <code>d_id</code></p>
+    <p>
+Provides SCSI host identifier <code>proc_name</code> as a <code>d_bus_type</code> (usually set to driver name).<br /></p>
+<h3></h3>    <p>
+<h3>Solaris</h3></p>
+    <p>
+Uses libdiskmgt to enumerate disks/partitions. Probes VTOC slices as<br />disk partitions that could be children of partitions. For disks that provide<br />WWN, it is saved as <code>d_id</code>.<br /></p>
+    <p>
+For disk drives trailing sX or pX slice/partition identifier is shrinked.<br /></p>
+    <p>
+<strong>NOTE</strong>: It also probes ZFS and SVM, but only adds links if ZFS or SVM device<br />reside on real disk or partition. If you build SVM pool on top of ZVOL and vice<br />versa, DiskInfo won't track that relationship.<br /></p>
+<h3></h3>    <p>
+<h3>Windows</h3></p>
+    <p>
+Unlike traditional approach which goes from the top by enumerating drive letters from A: to Z:<br />or using generic <code>\\PhysicalDriveX\</code> device names, DiskInfo on Windows uses SetupDi APIs to<br />get PnP device ids. Than using ioctls it iterates its partitions.<br /></p>
+    <p>
+However, meaningful disk unit in Windows is Volume, so DiskInfo iterates over available volumes<br />using <code>FindFirstVolume()</code>/<code>FindNextVolume()</code>, collects volume extents and them binds volumes<br />to disk partitions according block numbers on which they reside. Also, it construct FSInfo<br />objects from volume information.<br /></p>
+    <p>
+<strong>NOTE</strong>: Currently <code>\\PhysicalDriveX\</code> device name isn't generated and DiskInfo use PNP<br />device name. This behavior may change in future versions of DiskInfo.<br /></p>
+    <p>
+<strong>NOTE</strong>: Currently DiskInfo uses generic suffix <code>PartitionX</code> for partitions which is not useable<br />in API calls. It is only used for reference.<br /></p>
+    <p>
+<strong>References</strong>:<br />        <ul>
+            <li>
+<a href="http://support.microsoft.com/kb/264203/en">Enumdisk1.exe: Enumdisk Sample for Enumerating Disk Devices</a></li>
+            <li>
+<a href="http://velisthoughts.blogspot.ru/2012/02/enumerating-and-using-partitions-and.html">Enumerating and using partitions and volumes in Windows operating system</a></li>
+</ul>
+</p>
+<h3></h3>    <p>
+<h3>LVM2</h3></p>
+    <p>
+Uses liblvm2app to get information about Logical Volume Manager 2 on Linux<br />Volume Groups (VGs) are considered as pools, while Logical Volumes (LVs) are<br />added as volumes.<br /></p>
+    <p>
+Hides its objects in namespace <code>lvm2</code> so naming schema is <code>lvm2:VGNAME[:LVNAME]</code>.<br /></p>
+    <p>
+<strong>NOTE</strong>: LVM2 resides on top of device mapper which nodes are collected by<br />generic DiskInfo code. So, <code>dm-X</code> volumes are bound to real LVM2 volumes<br />adding extra layer of indirection:<br /></p>
+    <p>
+<strong>NOTE</strong>: Access to <code>/dev/mapper/control</code> require admin privileges, so it may<br />fail entire DiskInfo probing. Set <code>hi_linux_lvm2</code> tunable to <code>false</code> to disable<br />LVM2 probing.<br /></p>
+<h3></h3>    <p>
+<h3>ZFS</h3></p>
+    <p>
+Uses libzfs to gather information about ZFS on POSIX platforms, which is combined<br />file system/volume manager.<br /></p>
+    <p>
+ZFS names reside in namespace <code>zfs</code>, so naming schema is <code>zfs:ZPOOLNAME[:ZVOLNAME|VDEVNAME]</code></p>
+    <p>
+Recursively walks over ZPOOL_CONFIG_VDEV_TREE over CHILDREN, SPARES and L2CACHE devices.<br /></p>
+    <p>
+Considers VDEVs (except for leaf disk VDEVs) as a subpools, so <code>HI_DSKT_POOL</code> created<br />per each VDEV and it is added as a slave to master ZPOOL. For VDEVs <code>d_bus_type</code> is<br />set to <code>ZPOOL:VDEV</code> without specifying real nature of VDEV (log, l2cache, hostspare or data),<br />while name of VDEV is set to <code>zfs:ZPOOLNAME:VDEVNAME</code>.<br /></p>
+    <p>
+<code>d_path</code> for pools is set to <code>/dev/zfs</code> (administration device).<br /></p>
+    <p>
+Size of pool/subpool is measured by ZFS internal asize variable. However, it is reference<br />to allocable size, so for RAID-Zx, copies, compression or dedup, this value doesn't represent<br />actual amount of user data which could be written on pool. For pool <code>asize</code> is calculated as<br />sum of asizes of top-level VDEVs.<br /></p>
+    <p>
+Since ZFS is a filesystem, this helper creates FSInfo objects too.<br /></p>
+<h3></h3>    <p>
+<h3>Solaris Volume Manager</h3></p>
+    <p>
+Enumerates SVM devices as volumes (some of them like mirrors may reside on top of volumes).<br />Real type of SVM device is saved in <code>d_bus_type</code>.<br /></p>
+    <p>
+Unfortunately, libmeta supports only 32-bit builds, and also it has very complex API,<br />so instead of imitating it, we will use direct approach: call <code>metastat -p</code> which prints<br />metainit arguments that are easy to parse.<br /></p>
+    <p>
+<strong>NOTE</strong>: SVM helper supports only mirrors, stripes and software paritions in local metaset.<br /></p>
+<h2>Variables</h2><h3></h3>    <p>
+<br />Disables LVM2 devices probing.<br />Useful if HostInfo consumer is running from non-root user.<br /></p>
+    <p>
+Even if disabled, LVs may be tracked as dm-X devices.<br /></p>
+    <p>
+<strong>NOTE</strong>: disabling it makes LVM2 structure untrackable, thus causing unwanted<br />consequences, i.e. allowing <code>simpleio</code> module writing on disk owned by LVM.<br /></p>
+<p>
+<pre>
+boolean_t hi_linux_lvm2 
+</pre>
+</p>
+<h2>Functions</h2><a name="HI_DSK_FROM_OBJ"></a><h3>HI_DSK_FROM_OBJ</h3>    <p>
+<br />Conversion macros<br /></p>
+<p>
+<pre>
+#define HI_DSK_FROM_OBJ(object)
+</pre>
+</p>
+<a name="hi_dsk_dtor"></a><h3>hi_dsk_dtor</h3>    <p>
+<br />Destroy disk descriptor and free slave handles if needed<br /></p>
+<p>
+<pre>
+void hi_dsk_dtor(hi_object_t* object)
+</pre>
+</p>
+<a name="hi_dsk_create"></a><h3>hi_dsk_create</h3>    <p>
+<br />Allocate and initialize disk descriptor hi_dsk_info_t<br /></p>
+<p>
+<pre>
+hi_dsk_info_t* hi_dsk_create(void)
+</pre>
+</p>
+<a name="hi_dsk_add"></a><h3>hi_dsk_add</h3><span class="label label-success">public</span>    <p>
+<br />Add disk descriptor to global list </p>
+<p>
+<pre>
+STATIC_INLINE void hi_dsk_add(hi_dsk_info_t* di) 
+</pre>
+</p>
+<a name="hi_dsk_attach"></a><h3>hi_dsk_attach</h3><span class="label label-success">public</span>    <p>
+<br />Attach disk descriptor to parent as a slave<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>di</strong> - Slave disk descriptor<br /></li>
+            <li>
+<strong>parent</strong> - Parent disk descriptor<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void hi_dsk_attach(hi_dsk_info_t* di, hi_dsk_info_t* parent) 
+</pre>
+</p>
+<a name="hi_dsk_find"></a><h3>hi_dsk_find</h3><span class="label label-success">public</span>    <p>
+<br />Find disk by it's name<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>name</strong> - - name of disk<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />disk descriptor or NULL if it wasn't found<br /></p>
+<p>
+<pre>
+STATIC_INLINE hi_dsk_info_t* hi_dsk_find(const char* name) 
+</pre>
+</p>
+<a name="hi_dsk_list"></a><h3>hi_dsk_list</h3><span class="label label-success">public</span>    <p>
+<br />Probe system's disk (if needed) and return pointer<br />to global disk descriptor list head<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>reprobe</strong> - Probe system's disks again<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />pointer to head or NULL if probe failed<br /></p>
+<p>
+<pre>
+STATIC_INLINE list_head_t* hi_dsk_list(boolean_t reprobe) 
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_enum_hi_dsk_type"></a><h3>typedef enum hi_dsk_type</h3>    <p>
+<br />DiskInfo object type<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>HI_DSKT_UNKNOWN</strong> - unknown object (shouldn't be exposed, used internally)<br /></li>
+            <li>
+<strong>HI_DSKT_DISK</strong> - real or virtual disk drive<br /></li>
+            <li>
+<strong>HI_DSKT_PARTITION</strong> - partition on disk drive<br /></li>
+            <li>
+<strong>HI_DSKT_POOL</strong> - Volume Manager "pool" -- collection of disks, partitions                              or whatever. Note that pools haven't real block device                                 corresponding to it, it is used only to show hierarchy<br /></li>
+            <li>
+<strong>HI_DSKT_VOLUME</strong> - Logical Volume that resiedes on disks, partitions or inside pools<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef enum hi_dsk_type {
+    HI_DSKT_UNKNOWN,
+
+    HI_DSKT_DISK,
+    HI_DSKT_PARTITION,
+    HI_DSKT_POOL,
+    HI_DSKT_VOLUME
+} hi_dsk_type_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_dsk_info"></a><h3>typedef struct hi_dsk_info</h3>    <p>
+<br />DiskInfo descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>d_hdr</strong> - HiObject header<br /></li>
+            <li>
+<strong>d_disk_name</strong> - Unique name of disk device. For volume managers symbolic name may                            be namespaced, i.e. md:d10 or zfs:volume to ensure uniqueness                                Same as <code>d_hdr.name</code><br /></li>
+            <li>
+<strong>d_path</strong> - Path to corresponding block device. For devices those not support                             direct access, this field may contain some meaningful path, which                            however couldn't be argument to <code>open()</code> or <code>CreateFile()</code>. See                                platform notes for details.<br /></li>
+            <li>
+<strong>d_mode</strong> - Access permissions to that disk object.<br /></li>
+            <li>
+<strong>d_size</strong> - Size of disk, volume, pool or partition in bytes<br /></li>
+            <li>
+<strong>d_type</strong> - Type of that descriptor<br /></li>
+            <li>
+<strong>d_bus_type</strong> - (optional) Identifies how this disk plugged into hierarchy. May be                             name of the bus or a driver handling that bus or contain volume                             manager name along with volume manager device subtype<br /></li>
+            <li>
+<strong>d_port</strong> - (optional) Optional identifier of hardware port where disk is                                 plugged in. Usually it is SCSI host, SCSI target and SCSI LUN<br /></li>
+            <li>
+<strong>d_id</strong> - (optional) Identifier provided by lower layer<br /></li>
+            <li>
+<strong>d_model</strong> - (optional) For disk drives - vendor and model of disk<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_dsk_info {
+    hi_object_header_t    d_hdr;
+#define d_disk_name     d_hdr.name
+
+    /* Mandatory fields */
+    AUTOSTRING char* d_path;
+    int  d_mode;
+    uint64_t d_size;
+    hi_dsk_type_t d_type;
+
+    /* Optional fields */
+    AUTOSTRING char* d_bus_type;
+    AUTOSTRING char* d_port;
+    AUTOSTRING char* d_id;
+    AUTOSTRING char* d_model;
+} hi_dsk_info_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

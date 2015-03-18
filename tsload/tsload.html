@@ -40,6 +40,22 @@ Use this API to build custom agent on top of libtsload<br /></p>
 #define TSLOAD_OK   0
 </pre>
 </p>
+<a name="TSLOAD_PARAM_NULL"></a><a name="TSLOAD_PARAM_BOOLEAN"></a><a name="TSLOAD_PARAM_INTEGER"></a><a name="TSLOAD_PARAM_FLOAT"></a><a name="TSLOAD_PARAM_STRING"></a><a name="TSLOAD_PARAM_RANDGEN"></a><a name="TSLOAD_PARAM_RANDVAR"></a><a name="TSLOAD_PARAM_MASK"></a><a name="TSLOAD_PARAM_ARRAY_FLAG"></a><a name="TSLOAD_PARAM_MAP_FLAG"></a><h3>TSLOAD_PARAM_NULL, TSLOAD_PARAM_RANDVAR, TSLOAD_PARAM_MASK, TSLOAD_PARAM_MAP_FLAG, TSLOAD_PARAM_BOOLEAN, TSLOAD_PARAM_ARRAY_FLAG, TSLOAD_PARAM_INTEGER, TSLOAD_PARAM_FLOAT, TSLOAD_PARAM_RANDGEN, TSLOAD_PARAM_STRING</h3>    <p>
+<br />TSLoad parameter types. Used for describing complex parameters<br /></p>
+<p>
+<pre>
+#define TSLOAD_PARAM_NULL   0
+#define TSLOAD_PARAM_BOOLEAN    1
+#define TSLOAD_PARAM_INTEGER    2
+#define TSLOAD_PARAM_FLOAT  3
+#define TSLOAD_PARAM_STRING 4
+#define TSLOAD_PARAM_RANDGEN    5
+#define TSLOAD_PARAM_RANDVAR    6
+#define TSLOAD_PARAM_MASK   0x0ff
+#define TSLOAD_PARAM_ARRAY_FLAG 0x100
+#define TSLOAD_PARAM_MAP_FLAG   0x200
+</pre>
+</p>
 <h2>Functions</h2><a name="tsload_error_msg_func"></a><a name="tsload_error_msg"></a><h3>tsload_error_msg, tsload_error_msg_func</h3>    <p>
 <br />Hook that called when one of high-level operations encounters errors.<br />May be called multiple times during one call<br /></p>
 <p>
@@ -71,6 +87,15 @@ LIBIMPORT tsload_requests_report_func tsload_requests_report
 LIBEXPORT void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_walker_func walker)
 </pre>
 </p>
+<a name="tsload_walk_random_generators"></a><a name="tsload_walk_random_variators"></a><a name="tsload_walk_tp_dispatchers"></a><a name="tsload_walk_rqsched_variators"></a><a name="tsload_walk_request_schedulers"></a><h3>tsload_walk_tp_dispatchers, tsload_walk_random_variators, tsload_walk_rqsched_variators, tsload_walk_request_schedulers, tsload_walk_random_generators</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void* tsload_walk_random_generators(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+LIBEXPORT void* tsload_walk_random_variators(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+LIBEXPORT void* tsload_walk_tp_dispatchers(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+LIBEXPORT void* tsload_walk_rqsched_variators(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+LIBEXPORT void* tsload_walk_request_schedulers(tsload_walk_op_t op, void* arg, hm_walker_func walker)
+</pre>
+</p>
 <a name="tsload_get_resources"></a><a name="tsload_get_hostinfo"></a><h3>tsload_get_resources, tsload_get_hostinfo</h3><span class="label label-success">public</span><p>
 <pre>
 LIBEXPORT tsobj_node_t* tsload_get_resources(void)
@@ -90,9 +115,9 @@ LIBEXPORT tsobj_node_t* tsload_get_hostinfo(void)
             <li>
 <strong>deadline</strong> - deadline for request execution<br /></li>
             <li>
-<strong>wl_chain_params</strong> - parameters of chaining in [experiment.json][ref/experiment_json] format<br /></li>
+<strong>wl_chain_params</strong> - parameters of chaining in <a href="../ref/experiment_json.html">experiment.json</a> format<br /></li>
             <li>
-<strong>rqsched_params</strong> - parameters of request scheduler in [experiment.json][ref/experiment_json] format<br /></li>
+<strong>rqsched_params</strong> - parameters of request scheduler in <a href="../ref/experiment_json.html">experiment.json</a> format<br /></li>
             <li>
 <strong>wl_params</strong> - workload and request param configuration<br /></li>
 </ul>
@@ -197,7 +222,7 @@ LIBEXPORT int tsload_unconfigure_workload(const char* wl_name)
             <li>
 <strong>discard</strong> - if set to B_TRUE, threadpool will discard requests that missed their step<br /></li>
             <li>
-<strong>disp</strong> - parameters of threadpool dispatcher according to [experiment.json][ref/experiment_json] format<br /></li>
+<strong>disp</strong> - parameters of threadpool dispatcher according to <a href="../ref/experiment_json.html">experiment.json</a> format<br /></li>
 </ul>
 </p>
 <p>
@@ -212,7 +237,7 @@ LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads
             <li>
 <strong>tp_name</strong> - name of threadpool<br /></li>
             <li>
-<strong>sched</strong> - scheduling parameters according to [experiment.json][ref/experiment_json] format<br /></li>
+<strong>sched</strong> - scheduling parameters according to <a href="../ref/experiment_json.html">experiment.json</a> format<br /></li>
 </ul>
 </p>
 <p>
@@ -226,40 +251,32 @@ LIBEXPORT void* tsload_walk_threadpools(tsload_walk_op_t op, void* arg, hm_walke
 LIBEXPORT int tsload_destroy_threadpool(const char* tp_name)
 </pre>
 </p>
-<a name="tsload_init"></a><h3>tsload_init</h3><span class="label label-success">public</span>    <p>
-<br />Initialize TSLoad engine<br /></p>
-    <p>
-<em>ARGUMENTS</em><br />        <ul>
-            <li>
-<strong>pre_subsys</strong> - array of subsystems that should be initialized before libtsload subsystems<br /></li>
-            <li>
-<strong>pre_count</strong> - count of elements in pre_subsys<br /></li>
-            <li>
-<strong>post_subsys</strong> - array of subsystems that initialized after libtsload<br /></li>
-            <li>
-<strong>post_count</strong> - count of elements in post_subsys<br /></li>
-</ul>
-</p>
-<p>
+<a name="tsload_init"></a><a name="tsload_start"></a><h3>tsload_start, tsload_init</h3><span class="label label-success">public</span><p>
 <pre>
 LIBEXPORT int tsload_init(struct subsystem* pre_subsys, unsigned pre_count,struct subsystem* post_subsys, unsigned post_count)
-</pre>
-</p>
-<a name="tsload_start"></a><h3>tsload_start</h3><span class="label label-success">public</span><p>
-<pre>
 LIBEXPORT int tsload_start(const char* basename)
 </pre>
 </p>
-<h2>Types</h2><a name="typedef_enum_tsload_walk_op"></a><h3>typedef enum tsload_walk_op</h3>    <p>
+<h2>Types</h2><a name="typedef_struct_tsload_param"></a><h3>typedef struct tsload_param</h3><p>
+<pre>
+typedef struct tsload_param {
+    int            type;
+    const char* name;
+    const char* hint;
+} tsload_param_t;
+
+</pre>
+</p>
+<a name="typedef_enum_tsload_walk_op"></a><h3>typedef enum tsload_walk_op</h3>    <p>
 <br />Walkie-talkie. Operations for tsload_walk_ functions<br /></p>
     <p>
 <em>VALUES</em><br />        <ul>
             <li>
 <strong>TSLOAD_WALK_FIND</strong> - Find element identified by key stored in arg<br /></li>
             <li>
-<strong>TSLOAD_WALK_JSON</strong> - Do TSLOAD_WALK_FIND but return formatted JSONNODE<br /></li>
+<strong>TSLOAD_WALK_TSOBJ</strong> - Do TSLOAD_WALK_FIND but return formatted tsobj_node_t<br /></li>
             <li>
-<strong>TSLOAD_WALK_JSON_ALL</strong> - Walks over hashmap and return json representation of all items. args are ignored<br /></li>
+<strong>TSLOAD_WALK_TSOBJ_ALL</strong> - Walks over hashmap and return TSObject of all items. args are ignored<br /></li>
             <li>
 <strong>TSLOAD_WALK_WALK</strong> - Walk over hashmap traditionally. arg - context of the walker<br /></li>
 </ul>

@@ -62,7 +62,7 @@ You may pass an context variable into thread in t_init(), like workload_t<br />i
 </pre>
 </p>
     <p>
-<em>NOTES</em><br />On Solaris mutex_* and cv_* function names are reserved by libc, so threads library          prefixes it's names with ts.<br /></p>
+<em>NOTES</em><br />On Solaris mutex_<em> and cv_</em> function names are reserved by libc, so threads library          prefixes it's names with ts.<br /></p>
 <h2>Constants</h2><a name="THREAD_EVENT_INITIALIZER"></a><a name="THREAD_MUTEX_INITIALIZER"></a><a name="THREAD_KEY_INITIALIZER"></a><h3>THREAD_KEY_INITIALIZER, THREAD_EVENT_INITIALIZER, THREAD_MUTEX_INITIALIZER</h3>    <p>
 <br />Default object initializers </p>
 <p>
@@ -227,7 +227,7 @@ LIBEXPORT void t_exit(thread_t* t)
 <br />Wait until thread starts<br /></p>
 <p>
 <pre>
-LIBEXPORT void t_wait_start(thread_t* thread)
+LIBEXPORT void t_wait_start(thread_t* t)
 </pre>
 </p>
 <a name="t_join"></a><h3>t_join</h3><span class="label label-success">public</span>    <p>
@@ -244,6 +244,11 @@ LIBEXPORT void t_join(thread_t* thread)
 <p>
 <pre>
 LIBEXPORT void t_destroy(thread_t* thread)
+</pre>
+</p>
+<a name="t_notify_state"></a><h3>t_notify_state</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT void t_notify_state(thread_t* t, thread_state_t state)
 </pre>
 </p>
 <a name="threads_init"></a><a name="threads_fini"></a><h3>threads_init, threads_fini</h3><span class="label label-success">public</span><p>
@@ -369,6 +374,10 @@ typedef unsigned    thread_id_t;
             <li>
 <strong>t_name</strong> - name of thread<br /></li>
             <li>
+<strong>t_mutex</strong> - protects t_state and t_condvar<br /></li>
+            <li>
+<strong>t_condvar</strong> - notifies owner that thread is started/finished<br /></li>
+            <li>
 <strong>t_arg</strong> - argument to a thread (processed in THREAD_ENTRY)<br /></li>
             <li>
 <strong>t_ret_code</strong> - return code of thread<br /></li>
@@ -380,7 +389,7 @@ typedef struct thread {
     plat_thread_t    t_impl;
     plat_sched_t    t_sched_impl;
 
-    atomic_t        t_state_atomic;
+    thread_state_t    t_state;
 
     thread_id_t      t_id;
     int                t_local_id;
@@ -388,11 +397,13 @@ typedef struct thread {
     unsigned long   t_system_id;
 
     char             t_name[TNAMELEN];
-
-    /* When thread finishes, it notifies parent thread thru t_event
-     * FIXME: Rewrite with cv/mutex, non-atomic t_state */
-    thread_event_t*    t_event;
-
+    
+    /* We cannot use tutil primitives directly because
+       it may break TS_LOCK_DEBUG and introduce a deadlock
+       Fallback directly to platform versions */
+    plat_thread_mutex_t        t_mutex;
+    plat_thread_cv_t        t_condvar;
+    
     void*            t_arg;
     unsigned        t_ret_code;
 

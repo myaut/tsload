@@ -1,0 +1,158 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="sysfs.html"><strong>Prev</strong>(sysfs)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="wmi.html"><strong>Next</strong>(WMI)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>MiniPICL</h1><h3></h3>    <p>
+In Solaris Platform Information and Control Library (PICL) provides<br />access to various platform information organized as a tree. Unfortunately,<br />64-bit version of libpicl, library shipped to work with picld is broken.<br /></p>
+    <p>
+This module mimics libpicl behavior, but implements only a subset of it.<br /></p>
+    <p>
+All functions have similiar prototypes as libpicl ones do, so use<br /><code>man function_name</code> to get information on them.<br /></p>
+    <p>
+<h4>References</h4></p>
+    <p>
+<a href="https://community.oracle.com/thread/3532313">libpicl is broken for 64-bit apps</a><br />Oracle Bug 18409563 - libpicl is broken for 64-bit apps<br /></p>
+<h2>Constants</h2><a name="PICL_SUCCESS"></a><a name="PICL_FAILURE"></a><a name="PICL_NORESPONSE"></a><a name="PICL_UNKNOWNSERVICE"></a><a name="PICL_NOTINITIALIZED"></a><a name="PICL_INVALIDARG"></a><a name="PICL_VALUETOOBIG"></a><a name="PICL_PROPNOTFOUND"></a><a name="PICL_NOTTABLE"></a><a name="PICL_NOTNODE"></a><a name="PICL_NOTPROP"></a><a name="PICL_ENDOFLIST"></a><a name="PICL_PROPEXISTS"></a><a name="PICL_NOTWRITABLE"></a><a name="PICL_PERMDENIED"></a><a name="PICL_INVALIDHANDLE"></a><a name="PICL_STALEHANDLE"></a><a name="PICL_NOTSUPPORTED"></a><a name="PICL_TIMEDOUT"></a><a name="PICL_CANTDESTROY"></a><a name="PICL_TREEBUSY"></a><a name="PICL_CANTPARENT"></a><a name="PICL_RESERVEDNAME"></a><a name="PICL_INVREFERENCE"></a><a name="PICL_WALK_CONTINUE"></a><a name="PICL_WALK_TERMINATE"></a><a name="PICL_NODENOTFOUND"></a><a name="PICL_NOSPACE"></a><a name="PICL_NOTREADABLE"></a><a name="PICL_PROPVALUNAVAILABLE"></a><h3>PICL_FAILURE, PICL_NOTINITIALIZED, PICL_NODENOTFOUND, PICL_SUCCESS, PICL_WALK_TERMINATE, PICL_TREEBUSY, PICL_ENDOFLIST, PICL_UNKNOWNSERVICE, PICL_CANTPARENT, PICL_INVREFERENCE, PICL_WALK_CONTINUE, PICL_VALUETOOBIG, PICL_INVALIDHANDLE, PICL_RESERVEDNAME, PICL_NOSPACE, PICL_NOTWRITABLE, PICL_PROPEXISTS, PICL_PROPNOTFOUND, PICL_NOTTABLE, PICL_TIMEDOUT, PICL_PROPVALUNAVAILABLE, PICL_STALEHANDLE, PICL_NOTPROP, PICL_INVALIDARG, PICL_CANTDESTROY, PICL_NOTNODE, PICL_PERMDENIED, PICL_NORESPONSE, PICL_NOTREADABLE, PICL_NOTSUPPORTED</h3>    <p>
+<br />PICL error codes<br /></p>
+<p>
+<pre>
+#define PICL_SUCCESS    0
+#define PICL_FAILURE    1
+#define PICL_NORESPONSE 2
+#define PICL_UNKNOWNSERVICE 3
+#define PICL_NOTINITIALIZED 4
+#define PICL_INVALIDARG 5
+#define PICL_VALUETOOBIG    6
+#define PICL_PROPNOTFOUND   7
+#define PICL_NOTTABLE   8
+#define PICL_NOTNODE    9
+#define PICL_NOTPROP    10
+#define PICL_ENDOFLIST  11
+#define PICL_PROPEXISTS 12
+#define PICL_NOTWRITABLE    13
+#define PICL_PERMDENIED 14
+#define PICL_INVALIDHANDLE  15
+#define PICL_STALEHANDLE    16
+#define PICL_NOTSUPPORTED   17
+#define PICL_TIMEDOUT   18
+#define PICL_CANTDESTROY    19
+#define PICL_TREEBUSY   20
+#define PICL_CANTPARENT 21
+#define PICL_RESERVEDNAME   22
+#define PICL_INVREFERENCE   23
+#define PICL_WALK_CONTINUE  24
+#define PICL_WALK_TERMINATE 25
+#define PICL_NODENOTFOUND   26
+#define PICL_NOSPACE    27
+#define PICL_NOTREADABLE    28
+#define PICL_PROPVALUNAVAILABLE 29
+</pre>
+</p>
+<h2>Functions</h2><a name="picl_get_root"></a><h3>picl_get_root</h3><p>
+<pre>
+TSDOC_FORCE int picl_get_root(picl_nodehdl_t *rooth)
+</pre>
+</p>
+<a name="picl_get_propval"></a><a name="picl_get_propval_by_name"></a><h3>picl_get_propval_by_name, picl_get_propval</h3><p>
+<pre>
+TSDOC_FORCE int picl_get_propval(picl_prophdl_t proph, void *valbuf, size_t nbytes)
+TSDOC_FORCE int picl_get_propval_by_name(picl_nodehdl_t nodeh, const char *propname,void *valbuf, size_t nbytes)
+</pre>
+</p>
+<a name="picl_get_prop_by_name"></a><h3>picl_get_prop_by_name</h3><p>
+<pre>
+TSDOC_FORCE int picl_get_prop_by_name(picl_nodehdl_t nodeh, const char *name,picl_prophdl_t *proph)
+</pre>
+</p>
+<a name="picl_get_propinfo"></a><a name="picl_get_propinfo_by_name"></a><h3>picl_get_propinfo_by_name, picl_get_propinfo</h3><p>
+<pre>
+TSDOC_FORCE int picl_get_propinfo(picl_prophdl_t proph, picl_propinfo_t *pinfo)
+TSDOC_FORCE int picl_get_propinfo_by_name(picl_nodehdl_t nodeh, const char *prop_name,picl_propinfo_t *pinfo, picl_prophdl_t *proph)
+</pre>
+</p>
+<a name="picl_walk_tree_by_class"></a><h3>picl_walk_tree_by_class</h3><p>
+<pre>
+TSDOC_FORCE int picl_walk_tree_by_class(picl_nodehdl_t rooth, const char *classname,void *c_args, int (*callback_fn)(picl_nodehdl_t hdl, void *args))
+</pre>
+</p>
+<a name="picl_initialize"></a><a name="picl_shutdown"></a><h3>picl_shutdown, picl_initialize</h3><p>
+<pre>
+TSDOC_FORCE int picl_initialize(void)
+TSDOC_FORCE int picl_shutdown(void)
+</pre>
+</p>
+<h2>Types</h2><h3></h3><p>
+<pre>
+typedef uint64_t picl_nodehdl_t;
+
+typedef uint64_t picl_prophdl_t;
+
+</pre>
+</p>
+<a name="picl_prop_type_t"></a><h3>picl_prop_type_t</h3><p>
+<pre>
+typedef enum {
+    PICL_PTYPE_UNKNOWN = 0x0,
+    PICL_PTYPE_VOID,
+    PICL_PTYPE_INT,
+    PICL_PTYPE_UNSIGNED_INT,
+    PICL_PTYPE_FLOAT,
+    PICL_PTYPE_REFERENCE,
+    PICL_PTYPE_TABLE,
+    PICL_PTYPE_TIMESTAMP,
+    PICL_PTYPE_BYTEARRAY,
+    PICL_PTYPE_CHARSTRING
+} picl_prop_type_t;
+
+</pre>
+</p>
+<a name="picl_propinfo_t"></a><h3>picl_propinfo_t</h3><p>
+<pre>
+typedef struct {
+    picl_prop_type_t    type;
+    unsigned int        accessmode;
+    size_t                size;
+    char                name[PICL_PROPNAMELEN_MAX];
+} picl_propinfo_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

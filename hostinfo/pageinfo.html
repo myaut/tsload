@@ -1,0 +1,117 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="cpuinfo.html"><strong>Prev</strong>(CPUInfo)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="diskinfo.html"><strong>Next</strong>(DiskInfo)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>PageInfo</h1><h3></h3>    <p>
+Gets allowed sizes of virtual memory pages<br /></p>
+<h3></h3>    <p>
+<h3>Linux</h3></p>
+    <p>
+Uses directory names in <code>/sys/kernel/mm/hugepages/</code> to get hugepage sizes and<br /><code>sysconf(_SC_PAGE_SIZE)</code> to get default page size.<br /></p>
+<h3></h3>    <p>
+<h3>Solaris</h3></p>
+    <p>
+Uses getpagesizes() and getpagesize() libc calls.<br /></p>
+<h3></h3>    <p>
+<h3>Windows</h3></p>
+    <p>
+Uses GetSystemInfo() to get default pagesize and GetLargePageMinimum()<br />to get one huge page size. No TLB information is provided.<br /></p>
+<h2>Constants</h2><a name="HI_PIF_PAGEINFO"></a><a name="HI_PIF_TLBINFO"></a><a name="HI_PIF_DEFAULT"></a><a name="HI_PIF_HUGEPAGE"></a><h3>HI_PIF_TLBINFO, HI_PIF_DEFAULT, HI_PIF_PAGEINFO, HI_PIF_HUGEPAGE</h3>    <p>
+<br />Page information flags that are saved into <code>pi_flags</code> field.<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>HI_PIF_PAGEINFO</strong> - this entry contains page information<br /></li>
+            <li>
+<strong>HI_PIF_TLBINFO</strong> - this entry contains TLB information<br /></li>
+            <li>
+<strong>HI_PIF_DEFAULT</strong> - this is default pagesize (minimum)<br /></li>
+            <li>
+<strong>HI_PIF_HUGEPAGE</strong> - this page is considered "large"<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+#define HI_PIF_PAGEINFO 0x01
+#define HI_PIF_TLBINFO  0x02
+#define HI_PIF_DEFAULT  0x04
+#define HI_PIF_HUGEPAGE 0x08
+</pre>
+</p>
+<h2>Functions</h2><a name="hi_get_pageinfo"></a><h3>hi_get_pageinfo</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Get information on supported page sizes by platform<br />Returns array of <code>hi_page_info_t</code> structures<br /></p>
+    <p>
+Availabilty of most information is platform-dependent, but<br />this function guarantee to provide correct pagesize for <code>HI_PIF_DEFAULT</code> pageinfo<br /></p>
+    <p>
+TLB information is not provided, but it may be provided by <a href="cpuinfo.html">CPUInfo</a></p>
+    <p>
+Returned array is statically allocated, no need to dispose it.<br /></p>
+<p>
+<pre>
+LIBEXPORT PLATAPI hi_page_info_t* hi_get_pageinfo(void)
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_hi_page_info"></a><h3>typedef struct hi_page_info</h3>    <p>
+<br />Information about page supported by processor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>pi_flags</strong> - flags (see above). If set to 0, this is last entry in array<br /></li>
+            <li>
+<strong>pi_size</strong> - size of page in bytes<br /></li>
+            <li>
+<strong>pi_itlb_entries</strong> - number of instruction TLB entries<br /></li>
+            <li>
+<strong>pi_dtlb_entries</strong> - number of data TLB entries<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_page_info {
+    int    pi_flags;
+    size_t pi_size;
+    int    pi_itlb_entries;
+    int    pi_dtlb_entries;
+} hi_page_info_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

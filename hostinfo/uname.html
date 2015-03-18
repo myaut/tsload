@@ -1,0 +1,126 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="hitrace.html"><strong>Prev</strong>(hitrace)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="cpuinfo.html"><strong>Next</strong>(CPUInfo)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>UName</h1><h3></h3>    <p>
+Get information on hardware platform and operating system agent is running on.<br /></p>
+    <p>
+Strings that are returned by uname functions are statically allocated in<br />libhostinfo, no need to dispose them<br /></p>
+    <p>
+These functions are optional, and may return generic data is they are not<br />implemented on target platform<br /></p>
+<h3></h3>    <p>
+<h3>Linux</h3></p>
+    <p>
+Linux shares implementation with POSIX, but provides domain name from <code>uname()</code> output.<br /></p>
+    <p>
+<code>hi_get_os_name()</code> is redefined because <code>uname()</code> provides only a Linux Kernel name.<br />It collects information from following sources:<br />        <ul>
+            <li>
+<code>/etc/oracle-release</code> for Oracle Enterprise Linux<br /></li>
+            <li>
+<code>/etc/redhat-release</code> for RHEL other derivatives<br /></li>
+            <li>
+<code>/etc/SuSE-release</code> for SuSE derivatives<br /></li>
+            <li>
+<code>lsb_release</code> output for any other Linux<br /></li>
+</ul>
+</p>
+    <p>
+It also cuts out irrelevant words i.e. <code>CentOS release 6.3 (Final)</code> -&gt; <code>CentOS 6.3</code></p>
+    <p>
+<code>hi_get_sys_name()</code> provides information from <code>/sys/class/dmi/id/</code> for x86 platforms<br />for non-x86 platforms, it'll probably return "Unknown system" string<br /></p>
+<h3></h3>    <p>
+<h3>POSIX</h3></p>
+    <p>
+These functions are simple wrappers around <code>uname()</code> system call.<br />Getting hardware platform name and DNS domain name is not supported<br /></p>
+<h3></h3>    <p>
+<h3>Solaris</h3></p>
+    <p>
+On Solaris <code>hi_get_os_name()</code> / <code>hi_get_os_release()</code> are based on <code>/etc/release</code></p>
+    <p>
+First line of release file looks like:<br /></p>
+    <p>
+    <pre>
+&lt;lot of spaces&gt; &lt;name of Solaris&gt; &lt;Version fields&gt; &lt;KernelID&gt; [SPARC|X86] &lt;misc. info&gt;
+</pre>
+</p>
+    <p>
+Uses SPARC|X86 as an anchor to provide Kernel ID as OS release and rest of /etc/release's<br />first line as osname. Misc info is ignored<br /></p>
+    <p>
+<code>hi_get_sys_name()</code> is implemented only for x86 using libsmbios<br /> </p>
+<h3></h3>    <p>
+<h3>Windows</h3></p>
+    <p>
+Uses GetVersionEx() and GetSystemInfo() pair of calls to get all system information<br />GetComputerName*() functions provide host name and domain<br /></p>
+    <p>
+<strong>NOTE</strong>: Operating system name is deduced from <code>dwMajorVersion</code> / <code>dwMinorVersion</code><br />so for newer Windows versions it may return "Unknown ..."<br /></p>
+    <p>
+http://msdn.microsoft.com/en-us/library/windows/desktop/ms724429%28v=vs.85%29.aspx<br /></p>
+<h2>Functions</h2><a name="hi_get_os_name"></a><a name="hi_get_os_release"></a><h3>hi_get_os_release, hi_get_os_name</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns operating system name and version </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI const char* hi_get_os_name()
+LIBEXPORT PLATAPI const char* hi_get_os_release()
+</pre>
+</p>
+<a name="hi_get_nodename"></a><a name="hi_get_domainname"></a><h3>hi_get_nodename, hi_get_domainname</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns nodename and domain name of current host</p>
+<p>
+<pre>
+LIBEXPORT PLATAPI const char* hi_get_nodename()
+LIBEXPORT PLATAPI const char* hi_get_domainname()
+</pre>
+</p>
+<a name="hi_get_mach"></a><h3>hi_get_mach</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns machine architecture </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI const char* hi_get_mach()
+</pre>
+</p>
+<a name="hi_get_sys_name"></a><h3>hi_get_sys_name</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
+<br />Returns system model and vendor </p>
+<p>
+<pre>
+LIBEXPORT PLATAPI const char* hi_get_sys_name()
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

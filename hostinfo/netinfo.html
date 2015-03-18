@@ -1,0 +1,337 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="fsinfo.html"><strong>Prev</strong>(FSInfo)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="sysfs.html"><strong>Next</strong>(sysfs)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>NetInfo</h1><h3></h3>    <p>
+Gathers information about network devices plugged into system, their<br />relationships including link aggregation, or bridges and VLANs running on<br />top of network device and IPv4 and IPv6 addresses bound to that devices.<br /></p>
+    <p>
+We will refer to network device as <strong>NIC</strong> and to address as <strong>interface</strong><br />in subsequent documentation.<br /></p>
+<h3></h3>    <p>
+<h3>Linux</h3></p>
+    <p>
+Walks <code>/sys/class/net</code> to collect NICs and their properties and hierarchy.<br />Uses <code>getifaddrs()</code> to fetch information on IP addresses.<br /></p>
+    <p>
+<strong>NOTE</strong>: Because 8021q driver not supports SYSFS bindings, we deduce vlan id<br />from NIC name if it contains dot.<br /></p>
+    <p>
+<strong>NOTE</strong>: To distiguish IPv4 interface, IPv6 interface and NIC which have same name<br />in <code>getifaddrs()</code> logic, it puts interfaces into "ip" or "ipv4" namespaces.<br /></p>
+<h3></h3>    <p>
+<h3>Solaris</h3></p>
+    <p>
+Uses libdlmgmt library to gather network devices. Like libpicl it has broken<br />implementation, so some of the calls are work-arounded using kstat.<br /></p>
+    <p>
+Because Solaris 10 doesn't support <code>getifaddrs()</code>, it uses SIOCGLIFNUM and<br />SIOCGLIFCONF ioctls to collect interfaces.<br /></p>
+    <p>
+<strong>NOTE</strong>: To distiguish IPv4 interface, IPv6 interface and NIC which have same name<br />in <code>getifaddrs()</code> logic, it puts interfaces into "ip" or "ipv4" namespaces.<br /></p>
+<h3></h3>    <p>
+<h3>Windows</h3></p>
+    <p>
+Fetch information about network objects using GetAdaptersAddresses<br /></p>
+    <p>
+<strong>NOTE</strong>: Doesn't support WMI because latter doen't provide MMU, also<br />does not have support for teaming, VLAN and other virtual NICs.<br /></p>
+    <p>
+<strong>NOTE</strong>: To distinguish interface address and NIC name, it adds id<br />as an end to NIC name, i.e. "Local Area Connection #1:0"<br /></p>
+<h3></h3>    <p>
+<h3>WMI</h3></p>
+    <p>
+WMI-based implementation of NetInfo. Currently not supported.<br /></p>
+    <p>
+Uses Win32_NetworkAdapter WMI table to gather information<br /></p>
+<h2>Functions</h2><a name="HI_NET_FROM_OBJ"></a><a name="HI_NET_TO_OBJ"></a><a name="HI_NET_PARENT_OBJ"></a><a name="HI_NET_PARENT"></a><h3>HI_NET_TO_OBJ, HI_NET_FROM_OBJ, HI_NET_PARENT, HI_NET_PARENT_OBJ</h3>    <p>
+<br />Conversion macros<br /></p>
+<p>
+<pre>
+#define HI_NET_FROM_OBJ(object)
+#define HI_NET_TO_OBJ(object)
+#define HI_NET_PARENT_OBJ(object)
+#define HI_NET_PARENT(object)
+</pre>
+</p>
+<a name="hi_net_add"></a><h3>hi_net_add</h3><span class="label label-success">public</span>    <p>
+<br />Add network object to a global list </p>
+<p>
+<pre>
+STATIC_INLINE void hi_net_add(hi_net_object_t* netobj) 
+</pre>
+</p>
+<a name="hi_net_attach"></a><h3>hi_net_attach</h3><span class="label label-success">public</span>    <p>
+<br />Attach network object to parent as a slave<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>netobj</strong> - Slave network object<br /></li>
+            <li>
+<strong>parent</strong> - Parent network object<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+STATIC_INLINE void hi_net_attach(hi_net_object_t* netobj, hi_net_object_t* parent) 
+</pre>
+</p>
+<a name="hi_net_find"></a><h3>hi_net_find</h3><span class="label label-success">public</span>    <p>
+<br />Find network object by it's name<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>name</strong> - - name of network object<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />network object or NULL if it wasn't found<br /></p>
+<p>
+<pre>
+STATIC_INLINE hi_net_object_t* hi_net_find(const char* name) 
+</pre>
+</p>
+<a name="hi_net_list"></a><h3>hi_net_list</h3><span class="label label-success">public</span>    <p>
+<br />Probe system's network objects (if needed) and return pointer<br />to global network object list head<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>reprobe</strong> - Probe system's network objects again<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />pointer to head or NULL if probe failed<br /></p>
+<p>
+<pre>
+STATIC_INLINE list_head_t* hi_net_list(boolean_t reprobe) 
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_enum_hi_net_device_type"></a><h3>typedef enum hi_net_device_type</h3>    <p>
+<br />Type of NIC<br /></p>
+<p>
+<pre>
+typedef enum hi_net_device_type {
+    HI_NET_UNKNOWN,
+    HI_NET_ETHERNET,
+    HI_NET_X25,
+    HI_NET_TOKEN_RING,
+    HI_NET_WIRELESS,
+    HI_NET_INFINIBAND,
+    HI_NET_POINT_TO_POINT,
+    HI_NET_TUNNEL,
+    HI_NET_VIRTUAL,
+
+    HI_NET_DEV_MAX
+} hi_net_device_type_t;
+
+</pre>
+</p>
+<a name="typedef_enum_hi_net_device_duplex"></a><h3>typedef enum hi_net_device_duplex</h3>    <p>
+<br />Current state of NIC link<br /></p>
+    <p>
+<em>NOTES</em><br />Not all NICs support reporting of simplex or half-duplex, thus full-duplex will be used<br /></p>
+<p>
+<pre>
+typedef enum hi_net_device_duplex {
+    HI_NET_NO_LINK,
+    HI_NET_SIMPLEX,
+    HI_NET_HALF_DUPLEX,
+    HI_NET_FULL_DUPLEX
+} hi_net_device_duplex_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_net_device"></a><h3>typedef struct hi_net_device</h3>    <p>
+<br />NIC descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>type</strong> - NIC type<br /></li>
+            <li>
+<strong>speed</strong> - NIC speed in bits/s<br /></li>
+            <li>
+<strong>duplex</strong> - link state<br /></li>
+            <li>
+<strong>mtu</strong> - Maximum Transfer Unit in bytes<br /></li>
+            <li>
+<strong>address</strong> - Hardware address for that NIC (for ethernet - MAC address).                         Address is represented as a string with colon-separated bytes                        formatted as hexademical numbers<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_net_device {
+    hi_net_device_type_t     type;
+    long                     speed;
+    hi_net_device_duplex_t    duplex;
+    int                         mtu;
+
+    char                    address[HI_NET_DEV_ADDR_STRLEN];
+} hi_net_device_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_net_address_flags"></a><h3>typedef struct hi_net_address_flags</h3>    <p>
+<br />Interface flags<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>up</strong> - interface is enabled from operating system<br /></li>
+            <li>
+<strong>running</strong> - interface is enabled from hardware (i.e. link is present)<br /></li>
+            <li>
+<strong>dynamic</strong> - interface address is assigned dynamically (i.e. using DHCP)<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />For information on <code>nofailover</code> and <code>deprecated</code> see                              <a href="http://docs.oracle.com/cd/E19253-01/816-5166/6mbb1kq31/">ifconfig(1M)</a><br /></p>
+<p>
+<pre>
+typedef struct hi_net_address_flags {
+    boolean_t    up;
+    boolean_t    running;
+    boolean_t    dynamic;
+    /* For Solaris IPMP */
+    boolean_t    nofailover;
+    boolean_t     deprecated;
+} hi_net_address_flags_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_net_ipv4_address"></a><h3>typedef struct hi_net_ipv4_address</h3>    <p>
+<br />IPv4 interface<br /></p>
+    <p>
+<code>address</code> and <code>netmask</code> are represented as strings in <em>dotted decimal</em> notation.<br /></p>
+<p>
+<pre>
+typedef struct hi_net_ipv4_address {
+    hi_net_address_flags_t flags;
+    char address[HI_NET_IPv4_STRLEN];
+    char netmask[HI_NET_IPv4_STRLEN];
+} hi_net_ipv4_address_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_net_ipv6_address"></a><h3>typedef struct hi_net_ipv6_address</h3>    <p>
+<br />IPv4 interface<br /></p>
+    <p>
+<code>address</code> and <code>netmask</code> are represented as strings in RFC5952 format<br /></p>
+    <p>
+<em>NOTES</em><br /><code>inet_ntop()</code> and similiar functions are used to convert IPv6 address to string<br /></p>
+<p>
+<pre>
+typedef struct hi_net_ipv6_address {
+    hi_net_address_flags_t flags;
+    char address[HI_NET_IPv6_STRLEN];
+    char netmask[HI_NET_IPv6_STRLEN];
+} hi_net_ipv6_address_t;
+
+</pre>
+</p>
+<a name="typedef_enum_hi_net_object_type"></a><h3>typedef enum hi_net_object_type</h3>    <p>
+<br />Type of NetInfo object<br /></p>
+    <p>
+<em>VALUES</em><br />        <ul>
+            <li>
+<strong>HI_NET_LOOPBACK</strong> - loopback NIC<br /></li>
+            <li>
+<strong>HI_NET_DEVICE</strong> - any non-loopback NIC<br /></li>
+            <li>
+<strong>HI_NET_VLAN</strong> - VLAN interface that is working on top of the                                 NIC and adds tag to it like in 802.1q standard.<br /></li>
+            <li>
+<strong>HI_NET_BRIDGE</strong> - Virtual Bridge<br /></li>
+            <li>
+<strong>HI_NET_BOND</strong> - bond - aggregation of two or more NICs acting as                             a single entity<br /></li>
+            <li>
+<strong>HI_NET_SWITCH</strong> - virtual switch working on top of NIC<br /></li>
+            <li>
+<strong>HI_NET_IPv4_ADDRESS</strong> - IPv4 interface<br /></li>
+            <li>
+<strong>HI_NET_IPv6_ADDRESS</strong> - IPv6 interface<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef enum hi_net_object_type {
+    HI_NET_LOOPBACK,
+    HI_NET_DEVICE,
+    HI_NET_VLAN,
+    HI_NET_BRIDGE,
+    HI_NET_BOND,
+    HI_NET_SWITCH,
+    HI_NET_IPv4_ADDRESS,
+    HI_NET_IPv6_ADDRESS,
+
+    HI_NET_MAXIMUM
+} hi_net_object_type_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_net_object"></a><h3>typedef struct hi_net_object</h3>    <p>
+<br />NetInfo descriptor<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>hdr</strong> - HIObject header<br /></li>
+            <li>
+<strong>n_net_name</strong> - alias for <code>hdr.name</code> - name of NetInfo object<br /></li>
+            <li>
+<strong>type</strong> - type of descriptor<br /></li>
+            <li>
+<strong>device</strong> - for <code>HI_NET_DEVICE</code> - device descriptor<br /></li>
+            <li>
+<strong>ipv4_address</strong> - for <code>HI_NET_IPv4_ADDRESS</code> - IPv4 address descriptor<br /></li>
+            <li>
+<strong>ipv6_address</strong> - for <code>HI_NET_IPv6_ADDRESS</code> - IPv6 address descriptor<br /></li>
+            <li>
+<strong>vlan_id</strong> - for <code>HI_NET_VLAN</code> - vlan number<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_net_object {
+    hi_object_header_t        hdr;
+#define n_net_name          hdr.name
+    
+    hi_net_object_type_t     type;
+
+    union {
+        hi_net_device_t     device;
+        hi_net_ipv4_address_t ipv4_address;
+        hi_net_ipv6_address_t ipv6_address;
+        int vlan_id;
+    };
+} hi_net_object_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

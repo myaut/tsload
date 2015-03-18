@@ -84,6 +84,14 @@ LIBEXPORT void* mod_load_symbol(module_t* mod, const char* name)
 LIBEXPORT module_t* mod_get_first()
 </pre>
 </p>
+<a name="plat_mod_open"></a><a name="plat_mod_close"></a><a name="plat_mod_load_symbol"></a><a name="plat_mod_error_msg"></a><h3>plat_mod_open, plat_mod_load_symbol, plat_mod_close, plat_mod_error_msg</h3><span class="label label-success">public</span><span class="label label-info">plat</span><p>
+<pre>
+LIBEXPORT PLATAPI int plat_mod_open(plat_mod_library_t* lib, const char* path)
+LIBEXPORT PLATAPI int plat_mod_close(plat_mod_library_t* lib)
+LIBEXPORT PLATAPI void* plat_mod_load_symbol(plat_mod_library_t* lib, const char* name)
+LIBEXPORT PLATAPI char* plat_mod_error_msg(void)
+</pre>
+</p>
 <a name="mod_init"></a><a name="mod_fini"></a><h3>mod_init, mod_fini</h3><span class="label label-success">public</span><p>
 <pre>
 LIBEXPORT int mod_init(void)

@@ -41,19 +41,25 @@ Where global options are:<br />        <ul>
 <p>
 Experiment constsists of current config and several "runs", that contain versions of config (maybe with altered parameters) and experiment results. Experiment config is a file named <a href="experiment_json.html">experiment.json</a> Each run identified by it's unique number called <strong>runid</strong>. <br /></p>
 <p>
-<h3>List available workload types</h3></p>
+<h3>List capabilities</h3></p>
 <p>
 <a name="workload"></a></p>
 <p>
-<code>$ tsexperiment workload|wl [-j] [WLT]...</code><br />Lists supported workload types with it's parameters. If WLT arguments are specified, shows only information on desired workload types.<br /></p>
+<code>$ tsexperiment info [CAPABILITY] [-x] [-H] [-l] [-j] [NAME]...</code><br />Lists supported TSLoad Core capabilities with it's parameters. If NAME arguments are specified, shows only information on desired capabilities.<br /></p>
 <p>
-Option:<br />        <ul>
+Options:<br />        <ul>
         <li>
- -j - Print in JSON format   <br /></li>
+ -j - Print in JSON format   <br />    </li>
+        <li>
+ -x - Print extended data such as parameters and descriptions<br />    </li>
+        <li>
+ -H - Do not print headers<br />    </li>
+        <li>
+ -l - Print legend<br /></li>
 </ul>
 </p>
 <p>
-<h4>Output description</h4></p>
+<h4>Output description for workload types</h4></p>
 <p>
 Output columns for workload types:<br />       <ul>
         <li>

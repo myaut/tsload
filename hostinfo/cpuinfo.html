@@ -1,0 +1,399 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="uname.html"><strong>Prev</strong>(UName)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="pageinfo.html"><strong>Next</strong>(PageInfo)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>CPUInfo</h1><h3></h3>    <p>
+CPUInfo collects information on CPU-Memory subsystem, and builds<br />hierarchy which consists of following objects:<br /></p>
+    <p>
+        <ul>
+            <li>
+<strong>Node</strong> - on NUMA systems - collection of processors and memory                         where all processors may uniformly access memory.                            On UMA systems there is only single root Node<br />   </li>
+            <li>
+<strong>Chip</strong> - single processor package<br />   </li>
+            <li>
+<strong>Core</strong> - single processor core<br />   </li>
+            <li>
+<strong>Strand</strong> - hardware thread. Minimum CPU object capable of running                     software thread<br />   </li>
+            <li>
+<strong>Cache</strong> - in-CPU memory. Each cache subdevice has its own object in                   CPUInfo hierarchy<br /></li>
+</ul>
+</p>
+    <p>
+CPUInfo is purely hierarchial: Nodes -&gt; Chip -&gt; Core -&gt; Strand. Cache devices<br />may be bound to Core or to Chip objects.<br /></p>
+    <p>
+Each object has corresponding structure which contains its properties and<br /><code>hi_cpu_objtype_t</code> value, see following table:<br /></p>
+    <p>
+        <table class="table">
+            <tr>
+                <td>
+<strong>Type</strong></td>
+                <td>
+<strong>structure</strong></td>
+                <td>
+<code>hi_cpu_objtype_t</code></td>
+                <td>
+Naming schema</td>
+</tr>
+            <tr>
+                <td>
+Node </td>
+                <td>
+<code>hi_cpu_node_t</code></td>
+                <td>
+<code>HI_CPU_NODE</code></td>
+                <td>
+ node:NODEID</td>
+</tr>
+            <tr>
+                <td>
+Chip </td>
+                <td>
+<code>hi_cpu_chip_t</code></td>
+                <td>
+<code>HI_CPU_CHIP</code></td>
+                <td>
+ chip:CHIPID</td>
+</tr>
+            <tr>
+                <td>
+Core </td>
+                <td>
+ (not used) </td>
+                <td>
+<code>HI_CPU_CORE</code></td>
+                <td>
+ core:CHIPID:COREID</td>
+</tr>
+            <tr>
+                <td>
+Strand </td>
+                <td>
+ (not used) </td>
+                <td>
+<code>HI_CPU_STRAND</code></td>
+                <td>
+ strand:CHIPID:COREID:STRANDID</td>
+</tr>
+            <tr>
+                <td>
+Cache </td>
+                <td>
+<code>hi_cpu_cache_t</code></td>
+                <td>
+<code>HI_CPU_CACHE</code></td>
+                <td>
+ cache:LEVEL:CACHEID where LEVEL is l1, l2, l3 or tlb</td>
+</tr>
+            <tr>
+                <td>
+</td>
+</tr>
+</table>
+</p>
+<h3></h3>    <p>
+<h3>Linux</h3></p>
+    <p>
+Reads information about cpus (that are considered as NUMA-nodes)<br />from SYSFS directory <code>/sys/devices/system/node</code>. Frequency and CPU<br />model is provided by <code>/proc/cpuinfo</code></p>
+    <p>
+CPU frequency is taken from <code>cpufreq</code> driver if from <code>/sys/devices/system/cpu</code>.<br />If it is not possible, CPUInfo reads frequency <code>/proc/cpuinfo</code> file.<br /></p>
+    <p>
+To determine cache relationship with CPU objects it uses <code>shared_cpu_list</code> file<br />on SYSFS.<br /></p>
+    <p>
+<strong>NOTE</strong>: Node ids are also reliable on Linux, so they may be used in <code>mbind()</code> calls<br /></p>
+<h3></h3>    <p>
+<h3>Solaris</h3></p>
+    <p>
+Uses liblgrp to gather NUMA nodes, kstat to collect information about CPUs and<br />picl daemon to find caches.<br /></p>
+    <p>
+picl daemon only operates with processor instances, so there is hard to determine if<br />cache is assigned to chip or core. So code uses simple assumption: it compares <code>cache_id</code><br />from kstat within chip. If it differs, last level cache is individual for cores,<br />otherwise it is shared between them.<br /></p>
+<h3></h3>    <p>
+<h3>Windows</h3></p>
+    <p>
+Uses Windows registry <code>HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\</code><br />to get processor frequency and name (alterable by user, but most reliable way<br />Windows provides).<br /></p>
+    <p>
+Whole logic is build upon <code>GetLogicalProcessorInformation()</code> call which also<br />provides relationships<br /></p>
+    <p>
+<strong>NOTE</strong>: Windows 7 and 2008 R2 (64-bit versions) support processor groups<br />which allow them to go beyound 64 processor limit. CPUInfo doesn't support<br />them, so it is limited to 64 bit<br /></p>
+    <p>
+<strong>NOTE</strong>: Windows provides only free amount of memory on per-node basis,<br />so we currently use this value also for total amount memory (wrong!)<br /></p>
+<h2>Functions</h2><a name="HI_CPU_CACHEID"></a><h3>HI_CPU_CACHEID</h3>    <p>
+<br />Generates ID of the cache<br /></p>
+<p>
+<pre>
+#define HI_CPU_CACHEID(level, type)
+</pre>
+</p>
+<a name="HI_CPU_FROM_OBJ"></a><a name="HI_CPU_TO_OBJ"></a><a name="HI_CPU_PARENT_OBJ"></a><a name="HI_CPU_PARENT"></a><h3>HI_CPU_FROM_OBJ, HI_CPU_PARENT_OBJ, HI_CPU_PARENT, HI_CPU_TO_OBJ</h3>    <p>
+<br />Conversion macros<br /></p>
+<p>
+<pre>
+#define HI_CPU_FROM_OBJ(object)
+#define HI_CPU_TO_OBJ(object)
+#define HI_CPU_PARENT_OBJ(object)
+#define HI_CPU_PARENT(object)
+</pre>
+</p>
+<a name="hi_cpu_attach"></a><a name="hi_cpu_detach"></a><h3>hi_cpu_detach, hi_cpu_attach</h3><span class="label label-success">public</span>    <p>
+<br />Attaches/detaches CPU objects<br /></p>
+    <p>
+<em>REFERENCE</em><br />hi_obj_attach<br />hi_obj_detach<br /></p>
+<p>
+<pre>
+STATIC_INLINE void hi_cpu_attach(hi_cpu_object_t* object, hi_cpu_object_t* parent) 
+STATIC_INLINE void hi_cpu_detach(hi_cpu_object_t* object, hi_cpu_object_t* parent) 
+</pre>
+</p>
+<a name="hi_cpu_find"></a><h3>hi_cpu_find</h3><span class="label label-success">public</span>    <p>
+<br />Find cpu object by it's name<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>name</strong> - - name of CPU object<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />cpu object descriptor or NULL if it wasn't found<br /></p>
+    <p>
+<em>REFERENCE</em><br />hi_cpu_find_byid<br /></p>
+<p>
+<pre>
+STATIC_INLINE hi_cpu_object_t* hi_cpu_find(const char* name) 
+</pre>
+</p>
+<a name="hi_cpu_find_byid"></a><h3>hi_cpu_find_byid</h3>    <p>
+<br />Find CPU object by it's type and id. More confortable than searching by object name.<br />Walks global list, than walk parents if needed<br /></p>
+    <p>
+If parent == NULL, parents aren't checked<br /></p>
+<p>
+<pre>
+void* hi_cpu_find_byid(hi_cpu_object_t* parent, hi_cpu_objtype_t type, int id)
+</pre>
+</p>
+<a name="hi_cpu_list"></a><h3>hi_cpu_list</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE list_head_t* hi_cpu_list(boolean_t reprobe) 
+</pre>
+</p>
+<a name="hi_cpu_num_cpus"></a><a name="hi_cpu_num_cores"></a><a name="hi_cpu_mem_total"></a><h3>hi_cpu_num_cpus, hi_cpu_num_cores, hi_cpu_mem_total</h3><span class="label label-success">public</span>    <p>
+<br />Returns total count of Strands, Cores or memory available to system<br /></p>
+<p>
+<pre>
+LIBEXPORT int hi_cpu_num_cpus(void)
+LIBEXPORT int hi_cpu_num_cores(void)
+LIBEXPORT size_t hi_cpu_mem_total(void)
+</pre>
+</p>
+<a name="hi_cpu_mask"></a><h3>hi_cpu_mask</h3><span class="label label-success">public</span>    <p>
+<br />Create cpumask for cpu object<br /></p>
+    <p>
+For caches processes nearest core/chip object (parent)<br />For other cpu objects - processes all child strands<br />For null creates mask that includes all strands</p>
+<p>
+<pre>
+LIBEXPORT int hi_cpu_mask(hi_cpu_object_t* object, cpumask_t* mask)
+</pre>
+</p>
+<h2>Types</h2><a name="hi_cpu_cache_type_t"></a><h3>hi_cpu_cache_type_t</h3><p>
+<pre>
+typedef enum {
+    HI_CPU_CACHE_UNIFIED,
+    HI_CPU_CACHE_DATA,
+    HI_CPU_CACHE_INSTRUCTION,
+} hi_cpu_cache_type_t;
+
+</pre>
+</p>
+<a name="hi_cpu_objtype_t"></a><h3>hi_cpu_objtype_t</h3><p>
+<pre>
+typedef enum {
+    HI_CPU_NODE,
+    HI_CPU_CHIP,
+    HI_CPU_CORE,
+    HI_CPU_STRAND,
+    HI_CPU_CACHE
+} hi_cpu_objtype_t;
+
+</pre>
+</p>
+<a name="hi_cpu_stat_t"></a><h3>hi_cpu_stat_t</h3><p>
+<pre>
+typedef struct {
+    uint32_t nodes;
+
+    uint32_t mem_total;
+    uint32_t mem_free;
+} hi_cpu_stat_t;
+
+</pre>
+</p>
+<a name="hi_cpu_node_t"></a><h3>hi_cpu_node_t</h3>    <p>
+<br />Descriptor of <strong>Node</strong></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>cm_mem_total</strong> - Total amount of memory of this node<br /></li>
+            <li>
+<strong>cm_mem_free</strong> - Free memory of this node (DEPRECATED)<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct {
+    uint64_t cm_mem_total;
+    uint64_t cm_mem_free;
+} hi_cpu_node_t;
+
+</pre>
+</p>
+<a name="hi_cpu_chip_t"></a><h3>hi_cpu_chip_t</h3>    <p>
+<br />Descriptor of <strong>Chip</strong></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>cp_name</strong> - Stock name of CPU chip<br /></li>
+            <li>
+<strong>cp_freq</strong> - CPU frequency in MHz<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct {
+    AUTOSTRING char* cp_name;
+    uint64_t cp_freq;
+} hi_cpu_chip_t;
+
+</pre>
+</p>
+<a name="hi_cpu_core_t"></a><h3>hi_cpu_core_t</h3><p>
+<pre>
+typedef struct {
+    int unused;
+} hi_cpu_core_t;
+
+</pre>
+</p>
+<a name="hi_cpu_strand_t"></a><h3>hi_cpu_strand_t</h3><p>
+<pre>
+typedef struct {
+    int unused;
+} hi_cpu_strand_t;
+
+</pre>
+</p>
+<a name="hi_cpu_cache_t"></a><h3>hi_cpu_cache_t</h3>    <p>
+<br />Descriptor of <strong>Cache</strong></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>c_level</strong> - level of cache. For TLB units it is set to <code>HI_CPU_CACHE_TLB_LEVEL</code><br /></li>
+            <li>
+<strong>c_type</strong> - what information can keep this cache: data, instructions or both<br /></li>
+            <li>
+<strong>c_size</strong> - size of cache in bytes<br /></li>
+            <li>
+<strong>c_associativity</strong> - associativity of cache<br /></li>
+            <li>
+<strong>c_unit_size.line</strong> - size of cache line for memory cache<br /></li>
+            <li>
+<strong>c_unit_size.page</strong> - up to four page sizes this TLB unit may keep<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />TLB units also considered as cache objects, but this information           is rarely provided by OS (Solaris is best).<br /></p>
+<p>
+<pre>
+typedef struct {
+    int                    c_level;
+    hi_cpu_cache_type_t c_type;
+    uint32_t               c_size;
+    int                 c_associativity;
+    union {
+        int                line;
+        long            page[4];
+    } c_unit_size;
+} hi_cpu_cache_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_cpu_object"></a><h3>typedef struct hi_cpu_object</h3>    <p>
+<br />Main CPUInfo descriptor<br /></p>
+    <p>
+Each object as <code>id</code> which is unique across all objects of that <code>type</code> (except for caches).<br /></p>
+    <p>
+Most of object ids are generated by HostInfo, but for <strong>Strand</strong> objects they are<br />taken from operating system, so they may be reused in various API calls like CPU mask<br />creation.<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>hdr</strong> - HIObject header<br /></li>
+            <li>
+<strong>c_cpu_name</strong> - name of CPU object (same as <code>hdr.name</code>)<br /></li>
+            <li>
+<strong>id</strong> - object id<br /></li>
+            <li>
+<strong>type</strong> - object type<br /></li>
+            <li>
+<strong>node</strong> - for Nodes - descriptor of type <code>hi_cpu_node_t</code><br /></li>
+            <li>
+<strong>chip</strong> - for Chips - descriptor of type <code>hi_cpu_chip_t</code><br /></li>
+            <li>
+<strong>cache</strong> - for Caches - descriptor of type <code>hi_cpu_cache_t</code><br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_cpu_object {
+    hi_object_header_t        hdr;
+#define c_cpu_name          hdr.name
+    
+    int                     id;
+    hi_cpu_objtype_t         type;
+
+    union {
+        hi_cpu_node_t node;
+        hi_cpu_chip_t chip;
+        hi_cpu_core_t core;
+        hi_cpu_strand_t strand;
+        hi_cpu_cache_t cache;
+    };
+} hi_cpu_object_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

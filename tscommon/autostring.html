@@ -174,10 +174,16 @@ LIBEXPORT void aas_set_impl(char** aas, const char* str)
 #define aas_set(aas, str)
 </pre>
 </p>
-<a name="aas_init"></a><a name="aas_free"></a><h3>aas_free, aas_init</h3><span class="label label-success">public</span><p>
+<a name="aas_free"></a><h3>aas_free</h3><span class="label label-success">public</span>    <p>
+<br />Frees auto-allocated string (if it was dynamically allocated)<br /></p>
+<p>
+<pre>
+LIBEXPORT void aas_free(char** aas)
+</pre>
+</p>
+<a name="aas_init"></a><h3>aas_init</h3><span class="label label-success">public</span><p>
 <pre>
 static char** aas_init(char** aas) 
-LIBEXPORT void aas_free(char** aas)
 </pre>
 </p>
 

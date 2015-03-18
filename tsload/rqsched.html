@@ -31,60 +31,114 @@
 <div class="container max-height no-overflow">
 	<div id="content" nevow:render="content">
 		<h1>Request schedulers</h1><h3></h3><h3></h3>    <p>
+<h4>Checking correctness of request scheduling with R</h4></p>
+    <p>
+        <ul>
+            <li>
+ Create and run experiment<br /> </li>
+            <li>
+ Export data to a csv<br /> </li>
+            <li>
+ Run the following commands to plot PDF of scheduling times:<br />        rq &lt;- read.table('path/to/file.csv', sep=',', header=TRUE)<br />        st &lt;- sort(rq$rq_sched_time)<br />        N &lt;- length(st) - 2<br />        plot(density(st<a name="1:N+1"></a> - st<a name="0:N"></a>))<br /></li>
+</ul>
+</p>
+    <p>
+PDF plot should match expected<br /></p>
+<h3></h3>    <p>
 <h4>Inter-arrival time request scheduler</h4></p>
 <h3></h3>    <p>
 <h4>Think-time based request scheduler</h4></p>
-<h2>Types</h2><a name="typedef_struct_rqsched_class"></a><h3>typedef struct rqsched_class</h3><p>
+<h2>Functions</h2><a name="rqsvar_step"></a><h3>rqsvar_step</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void rqsvar_step(rqsched_t* rqs, double iat) 
+</pre>
+</p>
+<a name="rqsvar_register"></a><a name="rqsvar_unregister"></a><h3>rqsvar_unregister, rqsvar_register</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int rqsvar_register(module_t* mod, rqsvar_class_t* rqsvar_class)
+LIBEXPORT int rqsvar_unregister(module_t* mod, rqsvar_class_t* rqsvar_class)
+</pre>
+</p>
+<a name="rqsched_register"></a><a name="rqsched_unregister"></a><h3>rqsched_register, rqsched_unregister</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int rqsched_register(module_t* mod, rqsched_class_t* rqs_class)
+LIBEXPORT int rqsched_unregister(module_t* mod, rqsched_class_t* rqs_class)
+</pre>
+</p>
+<a name="rqsched_init"></a><a name="rqsched_fini"></a><h3>rqsched_init, rqsched_fini</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int rqsched_init(void)
+LIBEXPORT void rqsched_fini(void)
+</pre>
+</p>
+<h2>Types</h2><a name="typedef_struct_rqsvar_class"></a><h3>typedef struct rqsvar_class</h3><p>
+<pre>
+typedef struct rqsvar_class {
+    AUTOSTRING char* rqsvar_name;
+    
+    randvar_class_t* rqsvar_rvclass;
+    struct tsload_param* rqsvar_params;
+    
+    int (*rqsvar_init)(struct rqsched_var* var);
+    void (*rqsvar_destroy)(struct rqsched_var* var);
+    
+    int (*rqsvar_set_int)(struct rqsched_var* var, const char* name, long value);
+    int (*rqsvar_set_double)(struct rqsched_var* var, const char* name, double value);
+    
+    int (*rqsvar_step)(struct rqsched_var* var, double iat);
+    
+    module_t* rqsvar_module;
+    struct rqsvar_class* rqsvar_next;
+} rqsvar_class_t;
+
+</pre>
+</p>
+<a name="typedef_struct_rqsched_class"></a><h3>typedef struct rqsched_class</h3><p>
 <pre>
 typedef struct rqsched_class {
-    char rqsched_name[RQSCHEDNAMELEN];
+    AUTOSTRING char* rqsched_name;
+    const char* rqsched_description;
+    
+    int rqsched_flags;
+    struct tsload_param* rqsched_params;
 
-    void (*rqsched_fini)(workload_t* wl);
+    int  (*rqsched_proc_tsobj)(tsobj_node_t* node, workload_t* wl, struct rqsched* rqs);
+    void (*rqsched_fini)(workload_t* wl, struct rqsched* rqs);
 
     void (*rqsched_step)(workload_step_t* step);        /* Called when new step starts */
 
     void (*rqsched_pre_request)(request_t* rq);        /* Called while request is scheduling */
     void (*rqsched_post_request)(request_t* rq);        /* Called when request is complete */
+    
+    module_t* rqsched_module;
+    struct rqsched_class* rqsched_next;
 } rqsched_class_t;
 
 </pre>
 </p>
-<a name="rqsched_distribution_t"></a><h3>rqsched_distribution_t</h3><p>
+<a name="typedef_struct_rqsched_var"></a><h3>typedef struct rqsched_var</h3><p>
 <pre>
-typedef enum {
-    RQSD_UNIFORM,
-    RQSD_EXPONENTIAL,
-    RQSD_ERLANG,
-    RQSD_NORMAL
-} rqsched_distribution_t;
-
-</pre>
-</p>
-<a name="typedef_struct_rqsched_common"></a><h3>typedef struct rqsched_common</h3><p>
-<pre>
-typedef struct rqsched_common {
-    rqsched_distribution_t rqs_distribution;
-
-    randgen_t* rqs_randgen;
-    randvar_t* rqs_randvar;
-
+typedef struct rqsched_var {
+    rqsvar_class_t* class;
+    randgen_t* randgen;
+    randvar_t* randvar;
+    
     union {
-        double u_scope;
-        int    e_shape;
-        double n_dispersion;
-    } rqs_params;
-} rqsched_common_t;
+        double dval;
+        long   lval;
+        void*  private;
+    } params;
+} rqsched_var_t;
 
 </pre>
 </p>
-<a name="typedef_struct_rqsched_think"></a><h3>typedef struct rqsched_think</h3><p>
+<a name="typedef_struct_rqsched"></a><h3>typedef struct rqsched</h3><p>
 <pre>
-typedef struct rqsched_think {
-    rqsched_common_t common;
-
-    randgen_t* rqs_user_randgen;
-    int rqs_nusers;
-} rqsched_think_t;
+typedef struct rqsched {
+    rqsched_class_t* rqs_class;
+    rqsched_var_t* rqs_var;
+    void* rqs_private;
+} rqsched_t;
 
 </pre>
 </p>

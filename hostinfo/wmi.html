@@ -1,0 +1,185 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="minipicl.html"><strong>Prev</strong>(MiniPICL)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>WMI</h1><h3></h3>    <p>
+Provides gateway to Windows Management Instrumentation. Written in C++<br />but its interface is exportable to C code.<br /></p>
+    <p>
+<strong>NOTE</strong>: all <code>unsigned short*</code> arguments accept wide (UNICODE) strings,<br />because WMI uses them internally, so write <code>L"string"</code> in your code<br /></p>
+<h2>Constants</h2><a name="HI_WMI_OK"></a><a name="HI_WMI_ERROR_INIT_COM"></a><a name="HI_WMI_ERROR_SECURITY"></a><a name="HI_WMI_ERROR_CREATE_LOCATOR"></a><a name="HI_WMI_ERROR_CONNECT"></a><a name="HI_WMI_ERROR_QUERY"></a><a name="HI_WMI_ERROR_FETCH_PROPERTY"></a><a name="HI_WMI_ERROR_CONVERT_PROPERTY"></a><h3>HI_WMI_ERROR_INIT_COM, HI_WMI_ERROR_CONNECT, HI_WMI_ERROR_CREATE_LOCATOR, HI_WMI_ERROR_SECURITY, HI_WMI_OK, HI_WMI_ERROR_QUERY, HI_WMI_ERROR_FETCH_PROPERTY, HI_WMI_ERROR_CONVERT_PROPERTY</h3>    <p>
+<br />WMI error codes<br /></p>
+<p>
+<pre>
+#define HI_WMI_OK   0
+#define HI_WMI_ERROR_INIT_COM   -1
+#define HI_WMI_ERROR_SECURITY   -2
+#define HI_WMI_ERROR_CREATE_LOCATOR -3
+#define HI_WMI_ERROR_CONNECT    -4
+#define HI_WMI_ERROR_QUERY  -5
+#define HI_WMI_ERROR_FETCH_PROPERTY -6
+#define HI_WMI_ERROR_CONVERT_PROPERTY   -7
+</pre>
+</p>
+<a name="HI_WMI_ROOT_CIMV2"></a><h3>HI_WMI_ROOT_CIMV2</h3>    <p>
+<br />Root namespace<br /></p>
+<p>
+<pre>
+#define HI_WMI_ROOT_CIMV2   "ROOT\\CIMV2"
+</pre>
+</p>
+<h2>Functions</h2><a name="hi_wmi_connect"></a><h3>hi_wmi_connect</h3>    <p>
+<br />Connect to WMI and initialize handle<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wmi</strong> - pointer to unitialized wmi handle<br /></li>
+            <li>
+<strong>ns</strong> - WMI namespace<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_WMI_OK if everything was fine or an error code<br /></p>
+<p>
+<pre>
+int hi_wmi_connect(hi_wmi_t* wmi, const char* ns) 
+</pre>
+</p>
+<a name="hi_wmi_disconnect"></a><h3>hi_wmi_disconnect</h3>    <p>
+<br />Disconnect to WMI and reset handle<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wmi</strong> - pointer to connected wmi handle<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void hi_wmi_disconnect(hi_wmi_t* wmi) 
+</pre>
+</p>
+<a name="hi_wmi_query"></a><h3>hi_wmi_query</h3>    <p>
+<br />Run a query<br /></p>
+    <p>
+Data is returned as several rows in iterator <code>iter</code>. Initially<br />iterator contains no row, so you should call <code>hi_wmi_next()</code> to<br />fetch first row.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>wmi</strong> - pointer to unitialized wmi handle<br /></li>
+            <li>
+<strong>iter</strong> - unitialized iterator to walk over results<br /></li>
+            <li>
+<strong>dialect</strong> - wide string containing dialect of query, usually <code>L"WQL"</code><br /></li>
+            <li>
+<strong>query</strong> - wide string containing query string<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_WMI_OK if everything was fine or an error code<br /></p>
+<p>
+<pre>
+int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, unsigned short* dialect, unsigned short* query) 
+</pre>
+</p>
+<a name="hi_wmi_next"></a><h3>hi_wmi_next</h3>    <p>
+<br />Fetch next row from iterator. If query failed or no more rows are available,<br />returns B_FALSE. If next row was fetched, returns B_TRUE.<br /></p>
+<p>
+<pre>
+boolean_t hi_wmi_next(hi_wmi_iter_t* iter) 
+</pre>
+</p>
+<a name="hi_wmi_get_string_raw"></a><h3>hi_wmi_get_string_raw</h3>    <p>
+<br />Get a raw (UNICODE) string value from row<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>iter</strong> - WMI iterator<br /></li>
+            <li>
+<strong>name</strong> - wide string -- name of attribute<br /></li>
+            <li>
+<strong>str</strong> - destination string buffer (statically allocated)<br /></li>
+            <li>
+<strong>len</strong> - length of string buffer<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_WMI_OK if everything went fine, or HI_WMI_ERROR_FETCH_PROPERTY<br /></p>
+<p>
+<pre>
+int hi_wmi_get_string_raw(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len) 
+</pre>
+</p>
+<a name="hi_wmi_get_string"></a><h3>hi_wmi_get_string</h3>    <p>
+<br />Same as <code>hi_wmi_get_string_raw()</code>, but converts string to ASCII<br /></p>
+<p>
+<pre>
+int hi_wmi_get_string(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len) 
+</pre>
+</p>
+<a name="hi_wmi_get_integer"></a><h3>hi_wmi_get_integer</h3>    <p>
+<br />Same as <code>hi_wmi_get_string_raw()</code>, but gets integer<br /></p>
+<p>
+<pre>
+int hi_wmi_get_integer(hi_wmi_iter_t* iter, unsigned short* name, int64_t* pi) 
+</pre>
+</p>
+<a name="hi_wmi_get_boolean"></a><h3>hi_wmi_get_boolean</h3>    <p>
+<br />Same as <code>hi_wmi_get_string_raw()</code>, but gets boolean<br /></p>
+<p>
+<pre>
+int hi_wmi_get_boolean(hi_wmi_iter_t* iter, unsigned short* name, boolean_t* pb) 
+</pre>
+</p>
+<h2>Types</h2><a name="hi_wmi_t"></a><h3>hi_wmi_t</h3><p>
+<pre>
+typedef struct {
+    IWbemLocator *loc;
+    IWbemServices *svc;
+} hi_wmi_t;
+
+</pre>
+</p>
+<a name="hi_wmi_iter_t"></a><h3>hi_wmi_iter_t</h3><p>
+<pre>
+typedef struct {
+    IEnumWbemClassObject* enumerator;
+    IWbemClassObject *cls_obj;
+} hi_wmi_iter_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

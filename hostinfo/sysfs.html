@@ -1,0 +1,206 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+<li><a href="netinfo.html"><strong>Prev</strong>(NetInfo)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="minipicl.html"><strong>Next</strong>(MiniPICL)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>sysfs</h1><h3></h3>    <p>
+As Linux Kernel documentation implies, sysfs is:<br /></p>
+    <blockquote>
+&gt;  sysfs is a ram-based filesystem initially based on ramfs. It provides<br />a means to export kernel data structures, their attributes, and the<br />linkages between them to userspace.<br /></blockquote>
+    <p>
+Currently, sysfs contains many information vital for HostInfo: i.e. NUMA<br />topology and properties of block devices.<br /></p>
+    <p>
+Because each attribute represented as a single file, accessing it<br />require following actions:<br />    1. Build path of sysfs file (usually done by <code>path_join_aas)</code>.<br /> 2. Open that file and check for errors<br /> 3. Read data and coerce types where needed<br />Following functions can do that in a single call.<br /></p>
+    <p>
+<h4>Paths</h4></p>
+    <p>
+Path is usually passed to these functions in three arguments:<br />         <ul>
+            <li>
+<code>root</code> -- root directory where objects that are currently processed              are located<br /> </li>
+            <li>
+<code>name</code> -- name of processed object<br /> </li>
+            <li>
+<code>object</code> -- name or path of attribute<br /></li>
+</ul>
+</p>
+    <p>
+These arguments are then passed to <code>path_join*</code> functions as varargs, so<br />If you set one of them to NULL, following arguments will be omitted,<br />so if you do not have <code>name</code>, you should pass attribute name as <code>name</code><br />and <code>NULL</code> as <code>object</code>.<br /></p>
+    <p>
+I.e. to get UUID of DM device, <code>/sys/block</code>, <code>dm-0</code> and <code>dm/uuid</code> are passed.<br />It is useful because, <code>/sys/block</code> is global for all devices, and <code>dm/uuid</code> is<br />a universal path to UUID, while <code>dm-0</code> may be easily replaced with other DM names.<br /></p>
+<h2>Functions</h2><a name="hi_linux_sysfs_readstr"></a><h3>hi_linux_sysfs_readstr</h3>    <p>
+<br />Read string into statically allocated buffer.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>str</strong> - pointer to buffer<br /></li>
+            <li>
+<strong>len</strong> - length of buffer<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_LINUX_SYSFS_ERROR if file cannot be opened or HI_LINUX_SYSFS_OK<br /></p>
+    <p>
+<em>NOTES</em><br />Returned string is NULL-terminated, but may contain trailing NL symbol                 Use <code>fixstr</code> functions to fix that<br />If there are additional characters in sysfs file, they would be ignored.              If you are not sure about size of buffer, use <code>aas</code> version<br /></p>
+<p>
+<pre>
+int hi_linux_sysfs_readstr(const char* root, const char* name, const char* object,char* str, int len)
+</pre>
+</p>
+<a name="hi_linux_sysfs_readstr_aas"></a><h3>hi_linux_sysfs_readstr_aas</h3>    <p>
+<br />Read string into auto-allocated string<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - pointer to auto-allocated string<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_LINUX_SYSFS_ERROR if file cannot be opened or HI_LINUX_SYSFS_OK<br /></p>
+    <p>
+<em>NOTES</em><br />Returned string is NULL-terminated, but may contain trailing NL symbol                 Use <code>fixstr</code> functions to fix that<br /></p>
+<p>
+<pre>
+int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* object,char** aas)
+</pre>
+</p>
+<a name="hi_linux_sysfs_readuint"></a><h3>hi_linux_sysfs_readuint</h3>    <p>
+<br />Read unsigned integer represented in decimal form from sysfs<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>defval</strong> - if reading was unsuccessful, returns this value<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />value from sysfs is everything went fine or <code>defval</code><br /></p>
+<p>
+<pre>
+uint64_t hi_linux_sysfs_readuint(const char* root, const char* name, const char* object,uint64_t defval)
+</pre>
+</p>
+<a name="hi_linux_sysfs_readbitmap"></a><h3>hi_linux_sysfs_readbitmap</h3>    <p>
+<br />Read bitmap represented in human readable form from sysfs<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>bitmap</strong> - pointer to pre-allocated bitmap<br /></li>
+            <li>
+<strong>len</strong> - length of bitmap in double words<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if               reading failed or overflow occured.<br /></p>
+<p>
+<pre>
+int hi_linux_sysfs_readbitmap(const char* root, const char* name, const char* object,uint32_t* bitmap, int len)
+</pre>
+</p>
+<a name="hi_linux_sysfs_fixstr"></a><h3>hi_linux_sysfs_fixstr</h3>    <p>
+<br />Fix sysfs string: replace newlines <code>\n</code> with spaces in-place<br /></p>
+<p>
+<pre>
+void hi_linux_sysfs_fixstr(char* p)
+</pre>
+</p>
+<a name="hi_linux_sysfs_fixstr2"></a><h3>hi_linux_sysfs_fixstr2</h3>    <p>
+<br />Fix sysfs string 2: replace last newline <code>\n</code> with null-terminator </p>
+<p>
+<pre>
+void hi_linux_sysfs_fixstr2(char* p)
+</pre>
+</p>
+<a name="hi_linux_sysfs_walk"></a><h3>hi_linux_sysfs_walk</h3>    <p>
+<br />Walk over sysfs directory and call function for each entry<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>root</strong> - path to directory<br /></li>
+            <li>
+<strong>proc</strong> - walker function that receives file name<br /></li>
+            <li>
+<strong>arg</strong> - argument passed as second argument to <code>proc()</code><br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if            opening directory failed<br /></p>
+<p>
+<pre>
+int hi_linux_sysfs_walk(const char* root,void (*proc)(const char* name, void* arg), void* arg)
+</pre>
+</p>
+<a name="hi_linux_sysfs_walkbitmap"></a><h3>hi_linux_sysfs_walkbitmap</h3>    <p>
+<br />Parse bitmap using <code>hi_linux_sysfs_readbitmap()</code> and call function <code>proc()</code><br />for all bits that are set to 1.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>count</strong> - maximum number of bits<br /></li>
+            <li>
+<strong>proc</strong> - walker function that receives bit id<br /></li>
+            <li>
+<strong>arg</strong> - argument passed as second argument to <code>proc()</code><br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if               reading failed or overflow occured.<br /></p>
+    <p>
+<em>REFERENCE</em><br />hi_linux_sysfs_readbitmap<br /></p>
+<p>
+<pre>
+int hi_linux_sysfs_walkbitmap(const char* root, const char* name, const char* object, int count,void (*proc)(int id, void* arg), void* arg)
+</pre>
+</p>
+<a name="hi_linux_sysfs_readlink_aas"></a><h3>hi_linux_sysfs_readlink_aas</h3>    <p>
+<br />Reads symbolic link destination from sysfs, and copies it to<br />auto-allocated string <code>aas</code>.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>aas</strong> - auto-allocated string<br /></li>
+            <li>
+<strong>basename</strong> - if this flag is set, take basename of link destination                        before copying<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if               <code>path_join_aas()</code> or <code>readlink()</code> were failed<br /></p>
+<p>
+<pre>
+int hi_linux_sysfs_readlink_aas(const char* root, const char* name, const char* object,char** aas, boolean_t basename)
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

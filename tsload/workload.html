@@ -410,7 +410,7 @@ cfg_thread()    --&gt; CONFIGURING
             <li>
 <strong>wl_start_clock</strong> - Clock when workload was run by threadpool. Used to normalize request times to            start time of workload<br /></li>
             <li>
-<strong>wl_time</strong> - Current clock of workload: wl_start_clock + step * tp_quantum<br /></li>
+<strong>wl_time</strong> - Current clock of workload: wl_start_clock + step  tp_quantum<br /></li>
             <li>
 <strong>wl_current_step</strong> - Current step of workload<br /></li>
             <li>
@@ -420,7 +420,7 @@ cfg_thread()    --&gt; CONFIGURING
             <li>
 <strong>wl_rqsched_class</strong> - Workload request scheduler<br /></li>
             <li>
-<strong>wl_rqsched_private</strong> - Private data for request scheduler<br /></li>
+<strong>wl_rqsched_private</strong> - Request scheduler<br /></li>
 </ul>
 </p>
 <p>
@@ -465,7 +465,7 @@ typedef struct workload {
     double             wl_chain_probability;
 
     struct rqsched_class* wl_rqsched_class;
-    void* wl_rqsched_private;
+    struct rqsched* wl_rqsched_private;
 
     struct workload* wl_hm_next;        /**&lt; next in workload hashmap*/
 

@@ -259,7 +259,7 @@ LIBEXPORT PLATAPI int nsk_setnb(nsk_socket* socket, boolean_t nonblocking)
 <a name="nsk_poll"></a><h3>nsk_poll</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
 <br />Wait on incoming data or disconnect of socket.<br />Polling of multiple sockets is not supported<br /></p>
     <p>
-<em>RETURN VALUES</em><br />One of NSK_POLL_* results<br /></p>
+<em>RETURN VALUES</em><br />One of NSK_POLL_ results<br /></p>
 <p>
 <pre>
 LIBEXPORT PLATAPI int nsk_poll(nsk_socket* socket, ts_time_t timeout)
@@ -277,7 +277,7 @@ LIBEXPORT PLATAPI int nsk_send(nsk_socket* socket, void* data, size_t len)
 <a name="nsk_recv"></a><h3>nsk_recv</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
 <br />Receive data from socket<br /></p>
     <p>
-<em>RETURN VALUES</em><br />one of NSK_RECV_* value<br /></p>
+<em>RETURN VALUES</em><br />one of NSK_RECV_ value<br /></p>
 <p>
 <pre>
 LIBEXPORT PLATAPI int nsk_recv(nsk_socket* socket, void* data, size_t len)

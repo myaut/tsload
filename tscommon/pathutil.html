@@ -41,7 +41,19 @@
 #define PATHPARTMAXLEN  256
 </pre>
 </p>
-<h2>Functions</h2><a name="path_join_array"></a><h3>path_join_array</h3><span class="label label-success">public</span>    <p>
+<h2>Functions</h2><a name="path_cmp"></a><a name="path_cmp_n"></a><h3>path_cmp, path_cmp_n</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE int path_cmp(const char* a1, const char* a2) 
+STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) 
+</pre>
+</p>
+<a name="path_cmp"></a><a name="path_cmp_n"></a><h3>path_cmp, path_cmp_n</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE int path_cmp(const char* a1, const char* a2) 
+STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) 
+</pre>
+</p>
+<a name="path_join_array"></a><h3>path_join_array</h3><span class="label label-success">public</span>    <p>
 <br />Create path from array into string. Similiar to python's os.path.join<br /></p>
     <p>
 <em>ARGUMENTS</em><br />        <ul>
@@ -164,6 +176,50 @@ For example:<br /><code>path_remove("/opt/tsload/var/tsload", "var/tsload") -&gt
 <p>
 <pre>
 LIBEXPORT char* path_remove(char* result, size_t len, const char* abspath, const char* path)
+</pre>
+</p>
+<a name="path_argfile"></a><h3>path_argfile</h3><span class="label label-success">public</span>    <p>
+<br />Based on argument <code>arg</code> provided by user deduces if he provided<br />path to configuration file (which name is defined by <code>cfgfname</code>)<br />or to a directory containing it.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>cfgdir</strong> - resulting buffer containing directory with config<br /></li>
+            <li>
+<strong>cfglen</strong> - length of cfgdir buffer<br /></li>
+            <li>
+<strong>cfgfname</strong> - default file name for configuration file<br /></li>
+            <li>
+<strong>arg</strong> - argument entered by user<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br /><code>argdir</code><br /></p>
+    <p>
+<em>NOTES</em><br />This function doesn't check if file exists, directory is accessible, etc.<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_argfile(char* cfgdir, size_t len, const char* cfgfname, const char* arg)
+</pre>
+</p>
+<a name="path_abslink"></a><h3>path_abslink</h3><span class="label label-success">public</span>    <p>
+<br />Read symbolic link and if its destination is not absolute,<br />make it relative to path. If path was absolute, will make destination<br />path absolute too.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>linkpath</strong> - resulting buffer containing link destination<br /></li>
+            <li>
+<strong>linklen</strong> - length of <code>linkpath</code><br /></li>
+            <li>
+<strong>path</strong> - path to symbolic link<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />NULL if readlink()/path_split() was unsuccessful or <code>path_join_array</code> result<br /></p>
+    <p>
+<em>REFERENCE</em><br />path_join_array<br /></p>
+<p>
+<pre>
+LIBEXPORT char* path_abslink(char* linkpath, size_t linklen, const char* path)
 </pre>
 </p>
 <h2>Types</h2><a name="path_split_iter_t"></a><h3>path_split_iter_t</h3>    <p>

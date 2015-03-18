@@ -1,0 +1,404 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>HostInfo API Reference</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-center">
+<li><a href="index.html"><strong>Up</strong>(HostInfo API Reference)</a></li>
+</ul>
+<ul class="nav pull-center">
+<li><a href="reference.html"><strong>Reference</strong></a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="hitrace.html"><strong>Next</strong>(hitrace)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<h1>HostInfo Object</h1><h3></h3>    <p>
+Abstract hi object container implementation<br /></p>
+    <p>
+Host object may be a device, filesystem or network interface - so<br />generally speaking it is any entity that could be utilized by loader or monitor.<br /></p>
+    <p>
+Objects are split into several subsystems:<br />        <ul>
+            <li>
+<a href="cpuinfo.html">CPU</a> - cpus, cores, strands, NUMA nodes with memory<br /></li>
+            <li>
+<a href="diskinfo.html">DISK</a> - hard disks and SSDs, partitions, volumes and pools of volumes<br /></li>
+            <li>
+<a href="fsinfo.html">FS</a> - filesystems<br /></li>
+            <li>
+<a href="netinfo.html">NET</a> - NICs and network interfaces<br /></li>
+</ul>
+</p>
+    <p>
+<code>hi_obj_subsys</code> contains global table of implemented subsystems. Each subsystem has<br />global list of objects (which contains not only root objects) accessible by <code>hi_obj_list</code>.<br /></p>
+    <p>
+Each object represented by implementation-specific structure, but each begins<br />with header hi_object_header_t. Also, each subsystem implements their own object<br />methods which proxy requests to hi_object, and custom operations:<br /></p>
+    <p>
+<code>hi_dsk_list(...) -&gt; hi_obj_list(HI_SUBSYS_DISK, ...) -&gt; subsys-&gt;ops-&gt;op_probe [hi_dsk_probe]</code></p>
+    <p>
+Objects are forming a hierarchy: each object may have multiple parents (but refer<br />only to first of them, usually object has only one parent, so this is enough) and<br />multiple children. Every children reference is represented by  <code>hi_object_child_t</code> structure.<br />First child node is embedded into its object, if multiple parents are exist, it is<br />allocated from heap.<br /></p>
+    <p>
+Object lifetime:<br /></p>
+    <p>
+    <pre>
+1. hi_*_create - creates new object (implemented by subsystem)
+      -&gt; hi_obj_header_init
+      -&gt; hi_obj_child_init
+  (Subsystem fills in object information)
+2. hi_*_add
+      (Creates object name)
+         -&gt; hi_obj_add
+
+3 (optional). hi_obj_attach
+
+...
+
+n. hi_obj_destroy
+        -&gt; subsys-&gt;ops-&gt;op_dtor
+</pre>
+</p>
+    <p>
+When list of objects is accessed for first time, we call <code>subsys-&gt;op-&gt;op_probe</code><br />to read it from operating system. Current subsystem state is identified by <code>subsys-&gt;state</code> field:<br /></p>
+    <p>
+    <pre>
+              hi_obj_list            op_probe
+ NOT_PROBED -------------&gt; PROBING -----------&gt; OK -------+
+     ^                               |                    |
+     |                               +--------&gt; ERROR ----+
+     |                                                    |
+     +----------------------------------------------------+
+                 hi_obj_destroy_all || reprobe
+</pre>
+</p>
+<h2>Functions</h2><a name="hi_obj_header_init"></a><h3>hi_obj_header_init</h3>    <p>
+<br />Initialize object header<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sid</strong> - subsystem identifier<br /></li>
+            <li>
+<strong>hdr</strong> - object header<br /></li>
+            <li>
+<strong>name</strong> - default object name<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+void hi_obj_header_init(hi_obj_subsys_id_t sid, hi_object_header_t* hdr, const char* name)
+</pre>
+</p>
+<a name="hi_obj_attach"></a><h3>hi_obj_attach</h3><span class="label label-success">public</span>    <p>
+<br />Attach object hdr to parent<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>object</strong> - object to attach<br /></li>
+            <li>
+<strong>parent</strong> - parent object<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly -- use subsystem's equivalent<br /></p>
+<p>
+<pre>
+LIBEXPORT void hi_obj_attach(hi_object_t* hdr, hi_object_t* parent)
+</pre>
+</p>
+<a name="hi_obj_detach"></a><h3>hi_obj_detach</h3><span class="label label-success">public</span>    <p>
+<br />Detach object from parent<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>object</strong> - object to detach<br /></li>
+            <li>
+<strong>parent</strong> - parent object<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly -- use subsystem's equivalent<br /></p>
+<p>
+<pre>
+LIBEXPORT void hi_obj_detach(hi_object_t* hdr, hi_object_t* parent)
+</pre>
+</p>
+<a name="hi_obj_destroy"></a><h3>hi_obj_destroy</h3><span class="label label-success">public</span>    <p>
+<br />Destroy object and its children recursively (if no more parents<br />for this child left). If object is not root (has parents), doesn't<br />destroy anything and returns 1, otherwise returns 0.<br /></p>
+    <p>
+Frees child handlers then calls subsystem-specific destructor<br /></p>
+<p>
+<pre>
+LIBEXPORT int hi_obj_destroy(hi_object_t* object)
+</pre>
+</p>
+<a name="hi_obj_destroy_all"></a><h3>hi_obj_destroy_all</h3><span class="label label-success">public</span>    <p>
+<br />Destroy all objects for subsystem sid<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sid</strong> - subsystem identifier<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void hi_obj_destroy_all(hi_obj_subsys_id_t sid)
+</pre>
+</p>
+<a name="hi_obj_add"></a><h3>hi_obj_add</h3><span class="label label-success">public</span>    <p>
+<br />Add object to global list<br /></p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly -- use subsystem's equivalent<br /></p>
+<p>
+<pre>
+LIBEXPORT void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object)
+</pre>
+</p>
+<a name="hi_obj_find"></a><h3>hi_obj_find</h3><span class="label label-success">public</span>    <p>
+<br />Find object by it's name<br /></p>
+    <p>
+TODO: hashmap cache?<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sid</strong> - subsystem identifier<br /></li>
+            <li>
+<strong>name</strong> - object name<br /></li>
+</ul>
+</p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly -- use subsystem's equivalent<br /></p>
+<p>
+<pre>
+LIBEXPORT hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name)
+</pre>
+</p>
+<a name="hi_obj_list"></a><h3>hi_obj_list</h3><span class="label label-success">public</span>    <p>
+<br />Get list head of hostinfo object list<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>sid</strong> - subsystem identifier<br /></li>
+            <li>
+<strong>reprobe</strong> - reread objects from operating system<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />list head or NULL if probe error occured, or subsystem identifier            is invalid<br /></p>
+    <p>
+<em>NOTES</em><br />Do not call this function directly -- use subsystem's equivalent<br /></p>
+<p>
+<pre>
+LIBEXPORT list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe)
+</pre>
+</p>
+<a name="hi_obj_load_helper"></a><h3>hi_obj_load_helper</h3><span class="label label-success">public</span>    <p>
+<br />Load HostInfo helper library<br /></p>
+    <p>
+location of helper libraries is determined by <code>hi_obj_modpath</code> variable<br />and should be deduced or taken from environment by application before<br /><code>hi_obj_init()</code> is called.<br /></p>
+    <p>
+Call this function in context of <code>subsys-&gt;op_init()</code> call.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>helper</strong> - statically allocated helper object<br /></li>
+            <li>
+<strong>libname</strong> - exact filename of helper library including $SHOBJSUFFIX<br /></li>
+            <li>
+<strong>probefunc</strong> - exact name of probe function inside that library<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />non-zero value on error, or 0 if all went fine<br /></p>
+    <p>
+<em>NOTES</em><br />Purpose of the helpers is to remove number of statically linked                   libraries from <code>libhostinfo.so</code>. So if helper loading was unsuccessful          this function still return 0. So check <code>helper-&gt;loaded</code> to ensure that       helper is useable.<br /></p>
+<p>
+<pre>
+LIBEXPORT int hi_obj_load_helper(hi_obj_helper_t* helper, const char* libname, const char* probefunc)
+</pre>
+</p>
+<a name="hi_obj_unload_helper"></a><h3>hi_obj_unload_helper</h3><span class="label label-success">public</span>    <p>
+<br />Release resources used by HostInfo helper<br /></p>
+    <p>
+ Call this function in context of <code>subsys-&gt;op_fini()</code> call.<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>helper</strong> - statically allocated helper object<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+LIBEXPORT void hi_obj_unload_helper(hi_obj_helper_t* helper)
+</pre>
+</p>
+<a name="hi_obj_init"></a><a name="hi_obj_fini"></a><h3>hi_obj_fini, hi_obj_init</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int hi_obj_init(void)
+LIBEXPORT void hi_obj_fini(void)
+</pre>
+</p>
+<a name="tsobj_hi_format_all"></a><h3>tsobj_hi_format_all</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT tsobj_node_t* tsobj_hi_format_all(boolean_t reprobe)
+</pre>
+</p>
+<a name="hi_for_each_object"></a><a name="hi_for_each_object_safe"></a><a name="hi_for_each_child"></a><a name="hi_for_each_child_safe"></a><h3>hi_for_each_child_safe, hi_for_each_object, hi_for_each_object_safe, hi_for_each_child</h3>    <p>
+<br />Iterate over object list or its children<br /></p>
+    <p>
+<code>hi_for_each_object</code> and <code>hi_for_each_object_safe</code> take list returned by<br /><code>hi_obj_list()</code> and its equivalent and return entries as <code>hi_object_t*</code>.<br /></p>
+    <p>
+<code>hi_for_each_child</code> and <code>hi_for_each_child_safe</code> take parent object represented<br />as <code>hi_object_t*</code> and return entries of <code>hi_object_child_t*</code>.<br /></p>
+    <p>
+<em>NOTES</em><br />these macros are working with <code>hi_object_t</code> raw objects              to access specific HostInfo object like CPU or disk, use subsystem       conversion operations<br /></p>
+    <p>
+<em>REFERENCE</em><br />list_for_each_entry, list_for_each_entry_safe<br /></p>
+<p>
+<pre>
+#define hi_for_each_object(object, list)
+#define hi_for_each_object_safe(object, next, list)
+#define hi_for_each_child(child, parent)
+#define hi_for_each_child_safe(child, next, parent)
+</pre>
+</p>
+<h2>Types</h2><a name="hi_obj_subsys_id_t"></a><h3>hi_obj_subsys_id_t</h3><p>
+<pre>
+typedef enum {
+    HI_SUBSYS_CPU,
+    HI_SUBSYS_DISK,
+    HI_SUBSYS_NET,
+    HI_SUBSYS_FS,
+
+    HI_SUBSYS_MAX
+} hi_obj_subsys_id_t;
+
+</pre>
+</p>
+<a name="hi_obj_subsys_ops_t"></a><h3>hi_obj_subsys_ops_t</h3>    <p>
+<br />HostInfo object subsystem operations<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>op_probe</strong> - function that gets objects from OS and adds it to                  HostInfo heierarchy<br /></li>
+            <li>
+<strong>op_dtor</strong> - destructor of HostInfo object that de-allocates                    subsystem-specific fields i.e. strings<br /></li>
+            <li>
+<strong>op_init</strong> - initialize subsystem (once)<br /></li>
+            <li>
+<strong>op_fini</strong> - destroy subsystem (once)<br /></li>
+            <li>
+<strong>op_tsobj_format</strong> - generates TSObject for HostInfo object<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct {
+    hi_obj_probe_op        op_probe;
+    hi_obj_dtor_op        op_dtor;
+    hi_obj_init_op        op_init;
+    hi_obj_fini_op        op_fini;
+
+    hi_obj_tsobj_format_op     op_tsobj_format;
+} hi_obj_subsys_ops_t;
+
+</pre>
+</p>
+<a name="hi_obj_subsys_t"></a><h3>hi_obj_subsys_t</h3><p>
+<pre>
+typedef struct {
+    hi_obj_subsys_id_t     id;
+    char*                 name;
+    hi_obj_subsys_ops_t* ops;
+    list_head_t             list;
+    int                     state;
+} hi_obj_subsys_t;
+
+</pre>
+</p>
+<a name="hi_obj_helper_t"></a><h3>hi_obj_helper_t</h3><p>
+<pre>
+typedef struct {
+    boolean_t loaded;
+    
+    AUTOSTRING char* path;
+    plat_mod_library_t lib;
+    
+    hi_obj_probe_op    op_probe;
+} hi_obj_helper_t;
+
+</pre>
+</p>
+<a name="hi_object_child_t"></a><h3>hi_object_child_t</h3><p>
+<pre>
+typedef struct {
+    struct hi_object_header* parent;
+    struct hi_object_header* object;
+
+    list_node_t         node;
+    int                type;
+} hi_object_child_t;
+
+</pre>
+</p>
+<a name="typedef_struct_hi_object_header"></a><h3>typedef struct hi_object_header</h3>    <p>
+<br />Header of all HostInfo objects<br /></p>
+    <p>
+Should be included for all corresponding structures as first member<br /></p>
+    <p>
+<em>MEMBERS</em><br />        <ul>
+            <li>
+<strong>sid</strong> - id of subsystem to which this HostInfo object relate<br /></li>
+            <li>
+<strong>node</strong> - storage for keeping child reference<br /></li>
+            <li>
+<strong>list_node</strong> - list node for global HostInfo object list<br /></li>
+            <li>
+<strong>children</strong> - head node for object's children<br /></li>
+            <li>
+<strong>name</strong> - unique name of object<br /></li>
+</ul>
+</p>
+<p>
+<pre>
+typedef struct hi_object_header {
+    hi_obj_subsys_id_t            sid;
+    hi_object_child_t            node;
+    list_node_t                    list_node;
+    list_head_t                 children;
+
+    unsigned short                ref_count;
+
+    AUTOSTRING char*            name;
+} hi_object_header_t;
+
+</pre>
+</p>
+<h3></h3><p>
+<pre>
+typedef hi_object_header_t  hi_object_t;
+
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>
