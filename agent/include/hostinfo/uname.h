@@ -25,6 +25,18 @@
 
 
 /**
+ * @module UName 
+ * 
+ * Get information on hardware platform and operating system agent is running on.
+ * 
+ * Strings that are returned by uname functions are statically allocated in
+ * libhostinfo, no need to dispose them
+ * 
+ * These functions are optional, and may return generic data is they are not 
+ * implemented on target platform
+ */
+
+/**
  * Returns operating system name and version */
 LIBEXPORT PLATAPI const char* hi_get_os_name();
 LIBEXPORT PLATAPI const char* hi_get_os_release();

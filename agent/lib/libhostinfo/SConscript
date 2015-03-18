@@ -31,3 +31,22 @@ if lib.SupportedPlatform('solaris') and GetOption('svm'):
     SConscript('svm/SConscript', 'lib')
 
 lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
+
+lib.Append(TSDOC_SPACE='hostinfo')
+tsdoc = [lib.DocBuilder(['#include/hostinfo/hiobject.h', 'hiobject.c']),
+         lib.DocBuilder(['include/hitrace.h', 'hitrace.c']),
+         
+         lib.DocBuilder(['#include/hostinfo/uname.h', Glob("plat/*/uname.c")]),
+         lib.DocBuilder(['#include/hostinfo/cpuinfo.h', 'cpuinfo.c', Glob("plat/*/cpuinfo.c")]),
+         lib.DocBuilder(['#include/hostinfo/pageinfo.h', Glob("plat/*/pageinfo.c")]),
+         lib.DocBuilder(['#include/hostinfo/diskinfo.h', 'diskinfo.c', Glob("plat/*/diskinfo.c"),
+                         'lvm2/lvm2.c', 'zfs/zfs.c', 'svm/svm.c']),
+         lib.DocBuilder(['#include/hostinfo/fsinfo.h', 'fsinfo.c', Glob("plat/*/fsinfo.c")]),
+         lib.DocBuilder(['#include/hostinfo/netinfo.h', 'netinfo.c', Glob("plat/*/netinfo.c"),
+                         'net-wmi/net-wmi.c']),
+         
+         lib.DocBuilder(['plat/linux/sysfs.h', 'plat/linux/sysfs.c']),
+         lib.DocBuilder(['plat/solaris/minipicl.h', 'plat/solaris/minipicl.c']),
+         lib.DocBuilder(['plat/win/wmi.h', 'plat/win/wmi.cpp']),
+         ]
+env.Append(TSDOC = tsdoc)

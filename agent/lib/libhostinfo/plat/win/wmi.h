@@ -25,6 +25,15 @@
 
 #include <tsload/defs.h>
 
+/**
+ * @module WMI
+ * 
+ * Provides gateway to Windows Management Instrumentation. Written in C++
+ * but its interface is exportable to C code. 
+ * 
+ * __NOTE__: all `unsigned short*` arguments accept wide (UNICODE) strings, 
+ * because WMI uses them internally, so write `L"string"` in your code
+ */
 
 #ifdef __cplusplus
 
@@ -43,18 +52,21 @@ typedef struct {
 
 #else
 
-typedef struct {
+TSDOC_HIDDEN typedef struct {
 	void *loc;
 	void *svc;
 } hi_wmi_t;
 
-typedef struct {
+TSDOC_HIDDEN typedef struct {
 	 void* enumerator;
 	 void* cls_obj;
 } hi_wmi_iter_t;
 
 #endif
 
+/**
+ * WMI error codes
+ */
 #define HI_WMI_OK						0
 #define HI_WMI_ERROR_INIT_COM			-1
 #define HI_WMI_ERROR_SECURITY			-2
@@ -64,6 +76,9 @@ typedef struct {
 #define HI_WMI_ERROR_FETCH_PROPERTY		-6
 #define HI_WMI_ERROR_CONVERT_PROPERTY	-7
 
+/**
+ * Root namespace
+ */
 #define HI_WMI_ROOT_CIMV2			"ROOT\\CIMV2"
 
 #ifdef __cplusplus

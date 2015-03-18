@@ -28,9 +28,6 @@
 #include <string.h>
 
 
-/**
- * diskinfo.c - reads information about disks from operating system
- * */
 mp_cache_t hi_dsk_cache;
 
 /**

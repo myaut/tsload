@@ -35,12 +35,23 @@
 #include <sys/dkio.h>
 #include <sys/vtoc.h>
 
-
-/* Unfortunately, libmeta supports only 32-bit builds, and also
- * it has very complex API, so instead of imitating it, we will
- * use direct approach: call `metastat -p`.
+/**
+ * ### Solaris Volume Manager
  * 
- * It prints metainit arguments that are easy to parse. */
+ * Enumerates SVM devices as volumes (some of them like mirrors may reside on top of volumes).
+ * Real type of SVM device is saved in `d_bus_type`.
+ * 
+ * Unfortunately, libmeta supports only 32-bit builds, and also it has very complex API, 
+ * so instead of imitating it, we will use direct approach: call `metastat -p` which prints 
+ * metainit arguments that are easy to parse. 
+ *
+ * __NOTE__: SVM helper supports only mirrors, stripes and software paritions in local metaset.
+ */
+
+/* TODO: metaset
+ * TODO: hsp, trans, raid devices
+ * TODO: track metadbs
+ */
 
 #ifndef METASTAT_PATH
 #define METASTAT_PATH "/usr/sbin/metastat"

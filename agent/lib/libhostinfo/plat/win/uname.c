@@ -45,8 +45,15 @@ LIBEXPORT PLATAPIDECL(hi_get_sys_name) char hi_win_sys_name[SYSNAMELEN] = "Unkno
 boolean_t hi_win_sysname_found = B_FALSE;
 
 /**
- * See full example here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms724429%28v=vs.85%29.aspx
- * We do not expose editions, so it became much shorter
+ * ### Windows
+ * 
+ * Uses GetVersionEx() and GetSystemInfo() pair of calls to get all system information
+ * GetComputerName*() functions provide host name and domain
+ * 
+ * __NOTE__: Operating system name is deduced from `dwMajorVersion` / `dwMinorVersion`
+ * so for newer Windows versions it may return "Unknown ..."
+ * 
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/ms724429%28v=vs.85%29.aspx
  * */
 
 static void hi_win_get_osinfo(void);

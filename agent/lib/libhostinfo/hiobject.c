@@ -38,33 +38,37 @@
 #include <assert.h>
 
 /**
- * HostInfo Object - abstract host object container implementation
+ * @module HostInfo Object 
+ * 
+ * Abstract hi object container implementation
  *
  * Host object may be a device, filesystem or network interface - so
  * generally speaking it is any entity that could be utilized by loader or monitor.
  *
  * Objects are split into several subsystems:
- * - CPU - cpus, cores, strands, NUMA nodes with memory
- * - DISK - hard disks and SSDs, partitions, volumes and pools of volumes
- * - FS - filesystems
- * - NET - NICs and network interfaces
+ * * [CPU][hostinfo/cpuinfo] - cpus, cores, strands, NUMA nodes with memory
+ * * [DISK][hostinfo/diskinfo] - hard disks and SSDs, partitions, volumes and pools of volumes
+ * * [FS][hostinfo/fsinfo] - filesystems
+ * * [NET][hostinfo/netinfo] - NICs and network interfaces
  *
- * hi_obj_subsys contains global table of implemented subsystems. Each subsystem has
- * global list of objects (which contains not only root objects) accessible by hi_obj_list.
+ * `hi_obj_subsys` contains global table of implemented subsystems. Each subsystem has
+ * global list of objects (which contains not only root objects) accessible by `hi_obj_list`.
  *
  * Each object represented by implementation-specific structure, but each begins
  * with header hi_object_header_t. Also, each subsystem implements their own object
  * methods which proxy requests to hi_object, and custom operations:
  *
- * hi_dsk_list(...) -> hi_obj_list(HI_SUBSYS_DISK, ...) -> subsys->ops->op_probe [hi_dsk_probe]
+ * `hi_dsk_list(...) -> hi_obj_list(HI_SUBSYS_DISK, ...) -> subsys->ops->op_probe [hi_dsk_probe]`
  *
  * Objects are forming a hierarchy: each object may have multiple parents (but refer
  * only to first of them, usually object has only one parent, so this is enough) and
- * multiple children. Every children reference is represented by  hi_object_child_t structure.
+ * multiple children. Every children reference is represented by  `hi_object_child_t` structure.
  * First child node is embedded into its object, if multiple parents are exist, it is
  * allocated from heap.
  *
  * Object lifetime:
+ * 
+ * ```
  * 1. hi_*_create - creates new object (implemented by subsystem)
  *       -> hi_obj_header_init
  *       -> hi_obj_child_init
@@ -79,10 +83,12 @@
  *
  * n. hi_obj_destroy
  * 		-> subsys->ops->op_dtor
+ * ```
  *
- * When list of objects is accessed for first time, we call subsys->op->op_probe
- * to read it from operating system. Current subsystem state is identified by subsys->state field:
- *
+ * When list of objects is accessed for first time, we call `subsys->op->op_probe`
+ * to read it from operating system. Current subsystem state is identified by `subsys->state` field:
+ * 
+ * ```
  *               hi_obj_list            op_probe
  *  NOT_PROBED -------------> PROBING -----------> OK -------+
  *      ^                               |                    |
@@ -90,6 +96,7 @@
  *      |                                                    |
  *      +----------------------------------------------------+
  *                  hi_obj_destroy_all || reprobe
+ * ```
  */
 
 #ifdef PLAT_LINUX
@@ -181,6 +188,9 @@ void hi_obj_header_init(hi_obj_subsys_id_t sid, hi_object_header_t* hdr, const c
 
 /**
  * Attach object hdr to parent
+ * 
+ * @note Do not call this function directly -- use subsystem's equivalent
+ * 
  * @param object	object to attach
  * @param parent 	parent object
  */
@@ -211,6 +221,9 @@ void hi_obj_attach(hi_object_t* object, hi_object_t* parent) {
 
 /**
  * Detach object from parent
+ * 
+ * @note Do not call this function directly -- use subsystem's equivalent
+ * 
  * @param object	object to detach
  * @param parent 	parent object
  * */
@@ -280,6 +293,7 @@ int hi_obj_destroy(hi_object_t* object) {
 
 /**
  * Destroy all objects for subsystem sid
+ * 
  * @param sid		subsystem identifier
  */
 void hi_obj_destroy_all(hi_obj_subsys_id_t sid) {
@@ -306,6 +320,8 @@ void hi_obj_destroy_all(hi_obj_subsys_id_t sid) {
 
 /**
  * Add object to global list
+ * 
+ * @note Do not call this function directly -- use subsystem's equivalent
  * */
 void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object) {
 	hi_obj_subsys_t* subsys = get_subsys(sid);
@@ -316,9 +332,12 @@ void hi_obj_add(hi_obj_subsys_id_t sid, hi_object_t* object) {
 
 /**
  * Find object by it's name
+ * 
+ * @note Do not call this function directly -- use subsystem's equivalent
+ * 
  * @param sid 	subsystem identifier
  * @param name	object name
- *
+ * 
  * TODO: hashmap cache?
  * */
 hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name) {
@@ -340,11 +359,14 @@ hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name) {
 
 /**
  * Get list head of hostinfo object list
+ * 
+ * @note Do not call this function directly -- use subsystem's equivalent
+ * 
  * @param sid 		subsystem identifier
  * @param reprobe 	reread objects from operating system
  *
- * @return list head or NULL if probe error occured, or subsystem identifier
- * is invalid
+ * @return list head or NULL if probe error occured, or subsystem identifier	\
+ *         is invalid
  * */
 list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe) {
 	hi_obj_subsys_t* subsys = get_subsys(sid);
@@ -374,8 +396,30 @@ probe:
 	return NULL;
 }
 
+/**
+ * Load HostInfo helper library
+ * 
+ * location of helper libraries is determined by `hi_obj_modpath` variable
+ * and should be deduced or taken from environment by application before
+ * `hi_obj_init()` is called.
+ * 
+ * Call this function in context of `subsys->op_init()` call.
+ * 
+ * @note Purpose of the helpers is to remove number of statically linked  		\
+ * 		 libraries from `libhostinfo.so`. So if helper loading was unsuccessful	\
+ *       this function still return 0. So check `helper->loaded` to ensure that \
+ *       helper is useable.
+ * 
+ * @param helper statically allocated helper object
+ * @param libname exact filename of helper library including $SHOBJSUFFIX
+ * @param probefunc exact name of probe function inside that library
+ * 
+ * @return non-zero value on error, or 0 if all went fine
+ */
 int hi_obj_load_helper(hi_obj_helper_t* helper, const char* libname, const char* probefunc) {
 	int ret;
+	
+	helper->loaded = B_FALSE;
 	
 	path_join_aas(aas_init(&helper->path), hi_obj_modpath, libname, NULL);
 	
@@ -404,7 +448,14 @@ int hi_obj_load_helper(hi_obj_helper_t* helper, const char* libname, const char*
 	return 0;
 }
 
-int hi_obj_unload_helper(hi_obj_helper_t* helper) {
+/**
+ * Release resources used by HostInfo helper
+ *
+ *  Call this function in context of `subsys->op_fini()` call.
+ * 
+ * @param helper statically allocated helper object
+ */
+void hi_obj_unload_helper(hi_obj_helper_t* helper) {
 	aas_free(&helper->path);
 	
 	if(helper->loaded)

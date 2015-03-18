@@ -25,7 +25,7 @@
 
 #ifdef HOSTINFO_TRACE
 /**
- * Trace flags for hostinfo */
+ * Tuneable: trace flags for hostinfo */
 unsigned hi_trace_flags = 0;
 #endif
 

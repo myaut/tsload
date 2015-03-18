@@ -45,11 +45,20 @@
 #undef list_node
 
 /**
- * diskinfo (Solaris)
+ * ### Solaris
  *
- * Uses libdiskmgt to enumerate disks/partitions
- *
- * TODO: access rights check
+ * Uses libdiskmgt to enumerate disks/partitions. Probes VTOC slices as
+ * disk partitions that could be children of partitions. For disks that provide
+ * WWN, it is saved as `d_id`.
+ * 
+ * For disk drives trailing sX or pX slice/partition identifier is shrinked.
+ * 
+ * __NOTE__: It also probes ZFS and SVM, but only adds links if ZFS or SVM device
+ * reside on real disk or partition. If you build SVM pool on top of ZVOL and vice
+ * versa, DiskInfo won't track that relationship.
+ */
+
+/* TODO: access rights check
  * TODO: d_port identification
  * */
 
@@ -108,7 +117,7 @@ typedef struct {
 	int sd_flags;
 } hi_sol_dsk_t;
 
-/**
+/*
  * Small set of libdiskmgmt adapters that allow to make
  * code cleaner. Instead of checking error after each
  * operation, composes them into bigger subsets.
@@ -274,7 +283,7 @@ int hi_sol_dm_read_aliases(hi_sol_dsk_t* dsk) {
 	return 0;
 }
 
-/**
+/*
  * Walk over ddp list of DM descriptors, and call proc function for each descriptor
  * Useful for slices/partitions walking
  *

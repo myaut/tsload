@@ -28,7 +28,14 @@
 
 #include <windows.h>
 
-
+/**
+ * Connect to WMI and initialize handle
+ * 
+ * @param wmi   pointer to unitialized wmi handle
+ * @param ns    WMI namespace
+ * 
+ * @return HI_WMI_OK if everything was fine or an error code
+ */
 int hi_wmi_connect(hi_wmi_t* wmi, const char* ns) {
 	HRESULT hres;
 	int err = HI_WMI_OK;
@@ -96,6 +103,11 @@ end:
 	return err;
 }
 
+/**
+ * Disconnect to WMI and reset handle
+ * 
+ * @param wmi   pointer to connected wmi handle
+ */
 void hi_wmi_disconnect(hi_wmi_t* wmi) {
 	if(wmi->svc) {
 		wmi->svc->Release();
@@ -111,6 +123,20 @@ void hi_wmi_disconnect(hi_wmi_t* wmi) {
 	CoUninitialize();
 }
 
+/**
+ * Run a query
+ * 
+ * Data is returned as several rows in iterator `iter`. Initially 
+ * iterator contains no row, so you should call `hi_wmi_next()` to
+ * fetch first row.
+ * 
+ * @param wmi   pointer to unitialized wmi handle
+ * @param iter  unitialized iterator to walk over results
+ * @param dialect wide string containing dialect of query, usually `L"WQL"`
+ * @param query wide string containing query string
+ * 
+ * @return HI_WMI_OK if everything was fine or an error code
+ */
 int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, unsigned short* dialect, unsigned short* query) {
 	HRESULT hres;
 
@@ -125,6 +151,10 @@ int hi_wmi_query(hi_wmi_t* wmi, hi_wmi_iter_t* iter, unsigned short* dialect, un
 	return HI_WMI_OK;
 }
 
+/**
+ * Fetch next row from iterator. If query failed or no more rows are available,
+ * returns B\_FALSE. If next row was fetched, returns B\_TRUE.
+ */
 boolean_t hi_wmi_next(hi_wmi_iter_t* iter) {
 	ULONG ret;
 	HRESULT hres;
@@ -141,6 +171,16 @@ boolean_t hi_wmi_next(hi_wmi_iter_t* iter) {
 	return B_FALSE;
 }
 
+/**
+ * Get a raw (UNICODE) string value from row
+ * 
+ * @param iter		WMI iterator
+ * @param name		wide string -- name of attribute
+ * @param str 		destination string buffer (statically allocated)
+ * @param len 		length of string buffer
+ * 
+ * @return HI_WMI_OK if everything went fine, or HI_WMI_ERROR_FETCH_PROPERTY
+ */
 int hi_wmi_get_string_raw(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len) {
 	VARIANT vtProp;
 	HRESULT hres;
@@ -158,6 +198,9 @@ int hi_wmi_get_string_raw(hi_wmi_iter_t* iter, unsigned short* name, char* str, 
 	return HI_WMI_OK;
 }
 
+/**
+ * Same as `hi_wmi_get_string_raw()`, but converts string to ASCII
+ */
 int hi_wmi_get_string(hi_wmi_iter_t* iter, unsigned short* name, char* str, size_t len) {
 	VARIANT vtProp;
 	HRESULT hres;
@@ -178,6 +221,9 @@ int hi_wmi_get_string(hi_wmi_iter_t* iter, unsigned short* name, char* str, size
 	return HI_WMI_OK;
 }
 
+/**
+ * Same as `hi_wmi_get_string_raw()`, but gets integer
+ */
 int hi_wmi_get_integer(hi_wmi_iter_t* iter, unsigned short* name, int64_t* pi) {
 	VARIANT vtProp;
 	VARIANT vtProp2;
@@ -200,7 +246,9 @@ int hi_wmi_get_integer(hi_wmi_iter_t* iter, unsigned short* name, int64_t* pi) {
 	return HI_WMI_OK;
 }
 
-
+/**
+ * Same as `hi_wmi_get_string_raw()`, but gets boolean
+ */
 int hi_wmi_get_boolean(hi_wmi_iter_t* iter, unsigned short* name, boolean_t* pb) {
 	VARIANT vtProp;
 	HRESULT hres;

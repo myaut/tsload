@@ -23,6 +23,42 @@
 
 #include <tsload/defs.h>
 
+/**
+ * @module sysfs
+ * 
+ * As Linux Kernel documentation implies, sysfs is:
+ * 
+ *  >  sysfs is a ram-based filesystem initially based on ramfs. It provides
+ * a means to export kernel data structures, their attributes, and the 
+ * linkages between them to userspace. 
+ * 
+ * Currently, sysfs contains many information vital for HostInfo: i.e. NUMA
+ * topology and properties of block devices.
+ * 
+ * Because each attribute represented as a single file, accessing it
+ * require following actions:
+ * 	1. Build path of sysfs file (usually done by `path_join_aas)`. 
+ *  2. Open that file and check for errors
+ *  3. Read data and coerce types where needed
+ * Following functions can do that in a single call.
+ * 
+ * #### Paths
+ * 
+ * Path is usually passed to these functions in three arguments:
+ *  * `root` -- root directory where objects that are currently processed \
+ *              are located
+ *  * `name` -- name of processed object
+ *  * `object` -- name or path of attribute
+ * 
+ * These arguments are then passed to `path_join*` functions as varargs, so 
+ * If you set one of them to NULL, following arguments will be omitted, 
+ * so if you do not have `name`, you should pass attribute name as `name`
+ * and `NULL` as `object`.
+ * 
+ * I.e. to get UUID of DM device, `/sys/block`, `dm-0` and `dm/uuid` are passed.
+ * It is useful because, `/sys/block` is global for all devices, and `dm/uuid` is
+ * a universal path to UUID, while `dm-0` may be easily replaced with other DM names.
+ */
 
 #define HI_LINUX_SYSFS_BLOCK	32
 

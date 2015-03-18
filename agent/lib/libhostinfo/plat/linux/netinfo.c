@@ -39,13 +39,19 @@
 
 
 /**
- * ### NetInfo (Linux)
+ * ### Linux
  *
- * Fetch information about network objects from Linux
- * 	- Uses /sys/class/net to walk over network devices (both physical and virtual)
- * 	- Uses getifaddrs() to fetch information on IP addresses
- *
- * 	TODO: OpenVSwitch
+ * Walks `/sys/class/net` to collect NICs and their properties and hierarchy.
+ * Uses `getifaddrs()` to fetch information on IP addresses.
+ * 
+ * __NOTE__: Because 8021q driver not supports SYSFS bindings, we deduce vlan id 
+ * from NIC name if it contains dot.
+ * 
+ * __NOTE__: To distiguish IPv4 interface, IPv6 interface and NIC which have same name
+ * in `getifaddrs()` logic, it puts interfaces into "ip" or "ipv4" namespaces.
+ */
+
+/* 	TODO: OpenVSwitch
  */
 
 #define SYS_NET_PATH		"/sys/class/net"
@@ -227,8 +233,8 @@ static void hi_linux_net_addr_probe(void) {
 	hi_net_address_flags_t* flags = NULL;
 
 	char* name;
-	char* ifa_name;
-	char* addr_name;
+	char* dev_name;
+	const char* colon;
 
 	if (getifaddrs(&ifaddr) == -1) {
 		hi_net_dprintf("hi_linux_net_addr_probe: getifaddrs() failed, errno: %d\n", errno);
@@ -246,26 +252,22 @@ static void hi_linux_net_addr_probe(void) {
 
 		/* Let's find device this IP address is attached to */
 		aas_init(&name);
-		aas_init(&addr_name);
-		aas_init(&ifa_name);
+		aas_init(&dev_name);
 
-		aas_copy(&ifa_name, ifa->ifa_name);
-		aas_copy(&addr_name, strchr(ifa_name, ':'));
-
-		if(addr_name == NULL) {
-			addr_name = "primary";
-		}
-
-		/* To ensure that primary IP address won't collide with
-		 * device name, use 'primary' suffix */
-		aas_printf(&name, "%s:%s:%s",
-				   (family == AF_INET)? "ip" : "ipv6",
-				   ifa_name, addr_name);
-
-		parent = hi_net_find(ifa_name);
-
+		colon = strchr(ifa->ifa_name, ':');
+		if(colon == NULL)
+			aas_copy(&dev_name, ifa->ifa_name);
+		else
+			aas_copy_n(&dev_name, ifa->ifa_name, colon - ifa->ifa_name);
+		
+		aas_printf(&name, "%s:%s", (family == AF_INET)? "ip" : "ipv6", ifa->ifa_name);
+		
+		parent = hi_net_find(dev_name);
+		
+		aas_free(&dev_name);
+		
 		if(parent == NULL) {
-			hi_net_dprintf("hi_linux_net_addr_probe: Couldn't find device %s\n", ifa_name);
+			hi_net_dprintf("hi_linux_net_addr_probe: Couldn't find device '%s'\n", ifa->ifa_name);
 			continue;
 		}
 
@@ -309,8 +311,6 @@ static void hi_linux_net_addr_probe(void) {
 		hi_net_attach(addr, parent);
 
 		aas_free(&name);
-		aas_free(&ifa_name);
-		aas_free(&addr_name);
 	}
 
 	freeifaddrs(ifaddr);

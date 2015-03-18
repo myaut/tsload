@@ -27,6 +27,11 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+/**
+ * ### Solaris
+ * 
+ * Uses getpagesizes() and getpagesize() libc calls.
+ */
 
 #define PAGEINFOLEN					8
 

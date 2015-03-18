@@ -28,11 +28,6 @@
 
 #include <ctype.h>
 
-
-/**
- * cpuinfo.c - reads information about cpus
- * */
-
 mp_cache_t hi_cpu_obj_cache;
 
 hi_cpu_object_t* hi_cpu_object_create(hi_cpu_object_t* parent, hi_cpu_objtype_t type, int id) {

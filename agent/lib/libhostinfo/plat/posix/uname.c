@@ -28,6 +28,13 @@
 static boolean_t uname_read = B_FALSE;
 static struct utsname uname_data;
 
+/**
+ * ### POSIX
+ * 
+ * These functions are simple wrappers around `uname()` system call. 
+ * Getting hardware platform name and DNS domain name is not supported
+ */
+
 struct utsname* hi_get_uname() {
 	if(!uname_read) {
 		uname(&uname_data);

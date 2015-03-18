@@ -29,16 +29,29 @@
 
 #include <windows.h>
 
-
 #define HI_WIN_MAXCPUS		64
 
-
 /**
- * cpuinfo (Windows)
- *
- * TODO: CPU model
- * TODO: node memory
+ * ### Windows
+ * 
+ * Uses Windows registry `HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\`
+ * to get processor frequency and name (alterable by user, but most reliable way 
+ * Windows provides).
+ * 
+ * Whole logic is build upon `GetLogicalProcessorInformation()` call which also
+ * provides relationships
+ * 
+ * __NOTE__: Windows 7 and 2008 R2 (64-bit versions) support processor groups
+ * which allow them to go beyound 64 processor limit. CPUInfo doesn't support
+ * them, so it is limited to 64 bit
+ * 
+ * __NOTE__: Windows provides only free amount of memory on per-node basis,
+ * so we currently use this value also for total amount memory (wrong!)
+ * 
+ * 
  */
+
+/* TODO: node memory */
 
 /* Windows only provides numbers for "logical processors" (strands)
  * So we keep our own counter for cores.

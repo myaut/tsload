@@ -36,10 +36,19 @@
 
 
 /**
- * cpuinfo (Linux)
+ * ### Linux
  *
  * Reads information about cpus (that are considered as NUMA-nodes)
- * from /sys/devices/system/node.
+ * from SYSFS directory `/sys/devices/system/node`. Frequency and CPU
+ * model is provided by `/proc/cpuinfo`
+ * 
+ * CPU frequency is taken from `cpufreq` driver if from `/sys/devices/system/cpu`. 
+ * If it is not possible, CPUInfo reads frequency `/proc/cpuinfo` file.
+ * 
+ * To determine cache relationship with CPU objects it uses `shared_cpu_list` file
+ * on SYSFS.
+ * 
+ * __NOTE__: Node ids are also reliable on Linux, so they may be used in `mbind()` calls
  */
 
 /* FIXME: Should be taken from kernel config */

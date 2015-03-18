@@ -35,13 +35,13 @@
 
 
 /**
- * cpuinfo (Solaris)
+ * ### Solaris
  *
  * Uses liblgrp to gather NUMA nodes, kstat to collect information about CPUs and
- * libpicl to find caches.
+ * picl daemon to find caches.
  *
- * libpicl only operates with processor instances, so there is hard to determine if
- * cache is assigned to chip or core. So code uses simple assumption: it compares 'cache_id'
+ * picl daemon only operates with processor instances, so there is hard to determine if
+ * cache is assigned to chip or core. So code uses simple assumption: it compares `cache_id`
  * from kstat within chip. If it differs, last level cache is individual for cores,
  * otherwise it is shared between them.
  */
@@ -116,7 +116,7 @@ struct cache_walk_args {
 	boolean_t first_cpu;
 };
 
-/**
+/*
  * Taken from usr/src/lib/libprtdiag_psr/sparc/schumacher/common/schumacher.c */
 static uint64_t
 picl_get_uint_propval(picl_nodehdl_t modh, char *prop_name, int *ret)

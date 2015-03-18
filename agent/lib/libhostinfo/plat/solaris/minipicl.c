@@ -31,7 +31,6 @@
 #include <door.h>
 #include <sys/mman.h>
 
-
 /*
  * Ouch! 64-bit version of Solaris libpicl is broken because it uses enum's in binary protocol:
  * (see more here: https://community.oracle.com/thread/3532313)

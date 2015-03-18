@@ -38,14 +38,30 @@
 
 
 /**
- * diskinfo (Windows)
+ * ### Windows
  *
- * Uses WinAPI and Driver's Setup API to enumerate disks/partitions
+ * Unlike traditional approach which goes from the top by enumerating drive letters from A: to Z:
+ * or using generic `\\PhysicalDriveX\` device names, DiskInfo on Windows uses SetupDi APIs to
+ * get PnP device ids. Than using ioctls it iterates its partitions. 
+ * 
+ * However, meaningful disk unit in Windows is Volume, so DiskInfo iterates over available volumes
+ * using `FindFirstVolume()`/`FindNextVolume()`, collects volume extents and them binds volumes
+ * to disk partitions according block numbers on which they reside. Also, it construct FSInfo 
+ * objects from volume information.
+ * 
+ * __NOTE__: Currently `\\PhysicalDriveX\` device name isn't generated and DiskInfo use PNP
+ * device name. This behavior may change in future versions of DiskInfo.
+ * 
+ * __NOTE__: Currently DiskInfo uses generic suffix `PartitionX` for partitions which is not useable 
+ * in API calls. It is only used for reference.
  *
- * @see http://support.microsoft.com/kb/264203
- * @see http://velisthoughts.blogspot.ru/2012/02/enumerating-and-using-partitions-and.html
- *
- * TODO: PNPDeviceId -> PhysicalDisk and correct partition naming
+ * __References__:
+ * * [Enumdisk1.exe: Enumdisk Sample for Enumerating Disk Devices](http://support.microsoft.com/kb/264203/en)
+ * * [Enumerating and using partitions and volumes in Windows operating system](http://velisthoughts.blogspot.ru/2012/02/enumerating-and-using-partitions-and.html)
+ */
+
+
+/* TODO: PNPDeviceId -> PhysicalDisk and correct partition naming
  * */
 
 #define HIWINVOLFSNAMELEN	32
@@ -159,7 +175,7 @@ void hi_win_dsk_cleanup(hi_win_dsk_t* dsk) {
 		mp_free(dsk->layout_buf);
 }
 
-/**
+/*
  * Wrapper for DeviceIoControl that allocates buffer if needed
  *
  * If out_buf_len == 0, hi_win_disk_ioctl uses temporary storage
@@ -456,7 +472,7 @@ void hi_win_bind_part_vol(hi_win_dsk_t* dsk, hi_dsk_info_t* partdi, LONGLONG par
 	}
 }
 
-/**
+/*
  * Process partitions
  * */
 int hi_win_proc_partitions(hi_win_dsk_t* dsk, hi_dsk_info_t* parent) {
@@ -583,7 +599,7 @@ int hi_win_proc_disk(hi_win_dsk_t* dsk) {
 	return HI_WIN_DSK_OK;
 }
 
-/**
+/*
  * Wrapper for SetupDiGetDeviceRegistryProperty.
  *
  * During first pass it's gets desired buffer size for property,
@@ -617,7 +633,7 @@ int hi_win_get_reg_property(hi_win_dsk_t* dsk, DWORD property, char** buf) {
 	return HI_WIN_DSK_OK;
 }
 
-/**
+/*
  * Process device */
 int hi_win_proc_dev(hi_win_dsk_t* dsk) {
 	DWORD error_code;
@@ -651,7 +667,7 @@ int hi_win_proc_dev(hi_win_dsk_t* dsk) {
 	return HI_WIN_DSK_OK;
 }
 
-/**
+/*
  * Process device interface
  *
  * Collects PnP device path here*/

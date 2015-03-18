@@ -86,6 +86,27 @@
 * [][tscommon/getopt]
 * [][tscommon/ilog2]
 
+### HostInfo API Reference
+[__external_index__] [__reference__] [__refprefix__:hi_] [__docspace__:hostinfo]
+
+* [][hostinfo/hiobject]
+* [][hostinfo/hitrace]
+
+#### Information providers
+
+* [][hostinfo/uname]
+* [][hostinfo/cpuinfo]
+* [][hostinfo/pageinfo]
+* [][hostinfo/diskinfo]
+* [][hostinfo/fsinfo]
+* [][hostinfo/netinfo]
+
+#### Helper libraries and components
+
+* [][hostinfo/sysfs]
+* [][hostinfo/minipicl]
+* [][hostinfo/wmi]
+
 ### TSLoad Core API Reference
 [__external_index__] [__reference__] [__docspace__:tsload]
 

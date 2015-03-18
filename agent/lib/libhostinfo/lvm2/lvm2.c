@@ -30,6 +30,24 @@
 
 #include <lvm2app.h>
 
+/**
+ * ### LVM2
+ * 
+ * Uses liblvm2app to get information about Logical Volume Manager 2 on Linux
+ * Volume Groups (VGs) are considered as pools, while Logical Volumes (LVs) are 
+ * added as volumes.
+ * 
+ * Hides its objects in namespace `lvm2` so naming schema is `lvm2:VGNAME[:LVNAME]`.
+ * 
+ * __NOTE__: LVM2 resides on top of device mapper which nodes are collected by
+ * generic DiskInfo code. So, `dm-X` volumes are bound to real LVM2 volumes
+ * adding extra layer of indirection:
+ * 
+ * __NOTE__: Access to `/dev/mapper/control` require admin privileges, so it may
+ * fail entire DiskInfo probing. Set `hi_linux_lvm2` tunable to `false` to disable
+ * LVM2 probing.
+ */
+
 #define DEV_MAPPER_CONTROL		"/dev/mapper/control"
 
 lvm_t libh;

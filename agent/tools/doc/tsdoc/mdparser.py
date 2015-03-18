@@ -203,6 +203,10 @@ class MarkdownParser:
                 count = self.ctl_count(idx, '*')
                 self.styled_text(count, idx, char)
                 return idx + count 
+        elif char == '`':
+            count = self.ctl_count(idx, '`')
+            self.inline_code(count, idx)
+            return idx + count
         elif char == '_':
             count = self.ctl_count(idx, '_')
             self.styled_text(count, idx, char)
@@ -536,6 +540,28 @@ class MarkdownParser:
                 print '%s=%s ' % (attr, value),
         
         print opttext
+
+class MiniMarkdownParser(MarkdownParser):
+    def parse(self):
+        idx = 0
+        length = len(self.text)
+        
+        while idx < length:
+            char = self.text[idx]
+            
+            if self.TRACE:
+                self.dump_state(idx)
+            
+            try:
+                idx = self._parse_at(idx, char)
+            except Exception as e:
+                self._error(idx, e)
+            
+            continue
+        
+        self.end_text(idx)
+                                    
+        return self.block.parts
 
 if __name__ == "__main__":
     import sys

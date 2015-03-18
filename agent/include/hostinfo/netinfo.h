@@ -26,11 +26,24 @@
 
 #include <hostinfo/hiobject.h>
 
+/**
+ * @module NetInfo 
+ * 
+ * Gathers information about network devices plugged into system, their 
+ * relationships including link aggregation, or bridges and VLANs running on
+ * top of network device and IPv4 and IPv6 addresses bound to that devices.
+ * 
+ * We will refer to network device as __NIC__ and to address as __interface__ 
+ * in subsequent documentation.
+ */
 
 #define HI_NET_DEV_ADDR_STRLEN		48
 #define HI_NET_IPv4_STRLEN			16
 #define HI_NET_IPv6_STRLEN			42
 
+/**
+ * Type of NIC
+ */
 typedef enum hi_net_device_type {
 	HI_NET_UNKNOWN,
 	HI_NET_ETHERNET,
@@ -45,6 +58,12 @@ typedef enum hi_net_device_type {
 	HI_NET_DEV_MAX
 } hi_net_device_type_t;
 
+/**
+ * Current state of NIC link
+ * 
+ * @note Not all NICs support reporting of simplex or half-duplex, \
+ * thus full-duplex will be used
+ */
 typedef enum hi_net_device_duplex {
 	HI_NET_NO_LINK,
 	HI_NET_SIMPLEX,
@@ -52,6 +71,17 @@ typedef enum hi_net_device_duplex {
 	HI_NET_FULL_DUPLEX
 } hi_net_device_duplex_t;
 
+/**
+ * NIC descriptor
+ * 
+ * @member type NIC type
+ * @member speed NIC speed in bits/s
+ * @member duplex link state
+ * @member mtu Maximum Transfer Unit in bytes
+ * @member address Hardware address for that NIC (for ethernet - MAC address). 		\
+ *  			   Address is represented as a string with colon-separated bytes 	\
+ *				   formatted as hexademical numbers
+ */
 typedef struct hi_net_device {
 	hi_net_device_type_t 	type;
 	long 					speed;
@@ -61,6 +91,16 @@ typedef struct hi_net_device {
 	char					address[HI_NET_DEV_ADDR_STRLEN];
 } hi_net_device_t;
 
+/**
+ * Interface flags
+ * 
+ * @note For information on `nofailover` and `deprecated` see 					\
+ * 		 [ifconfig(1M)](http://docs.oracle.com/cd/E19253-01/816-5166/6mbb1kq31/)
+ * 
+ * @member up interface is enabled from operating system
+ * @member running interface is enabled from hardware (i.e. link is present)
+ * @member dynamic interface address is assigned dynamically (i.e. using DHCP)
+ */
 typedef struct hi_net_address_flags {
 	boolean_t	up;
 	boolean_t	running;
@@ -70,18 +110,44 @@ typedef struct hi_net_address_flags {
 	boolean_t 	deprecated;
 } hi_net_address_flags_t;
 
+/**
+ * IPv4 interface
+ * 
+ * `address` and `netmask` are represented as strings in _dotted decimal_ notation.
+ */
 typedef struct hi_net_ipv4_address {
 	hi_net_address_flags_t flags;
 	char address[HI_NET_IPv4_STRLEN];
 	char netmask[HI_NET_IPv4_STRLEN];
 } hi_net_ipv4_address_t;
 
+/**
+ * IPv4 interface
+ * 
+ * `address` and `netmask` are represented as strings in RFC5952 format 
+ * 
+ * @note `inet_ntop()` and similiar functions are used to convert IPv6 address to string
+ */
 typedef struct hi_net_ipv6_address {
 	hi_net_address_flags_t flags;
 	char address[HI_NET_IPv6_STRLEN];
 	char netmask[HI_NET_IPv6_STRLEN];
 } hi_net_ipv6_address_t;
 
+/**
+ * Type of NetInfo object
+ * 
+ * @value	HI_NET_LOOPBACK	loopback NIC
+ * @value	HI_NET_DEVICE	any non-loopback NIC
+ * @value	HI_NET_VLAN		VLAN interface that is working on top of the 	\
+ * 							NIC and adds tag to it like in 802.1q standard.
+ * @value 	HI_NET_BRIDGE	Virtual Bridge
+ * @value 	HI_NET_BOND		bond - aggregation of two or more NICs acting as \
+ * 							a single entity
+ * @value	HI_NET_SWITCH	virtual switch working on top of NIC
+ * @value	HI_NET_IPv4_ADDRESS		IPv4 interface
+ * @value	HI_NET_IPv6_ADDRESS		IPv6 interface
+ */
 typedef enum hi_net_object_type {
 	HI_NET_LOOPBACK,
 	HI_NET_DEVICE,
@@ -95,9 +161,21 @@ typedef enum hi_net_object_type {
 	HI_NET_MAXIMUM
 } hi_net_object_type_t;
 
+/**
+ * NetInfo descriptor
+ * 
+ * @member hdr			HIObject header
+ * @member n_net_name	alias for `hdr.name` - name of NetInfo object
+ * @member type			type of descriptor
+ * @member device		for `HI_NET_DEVICE` - device descriptor
+ * @member ipv4_address for `HI_NET_IPv4_ADDRESS` - IPv4 address descriptor
+ * @member ipv6_address for `HI_NET_IPv6_ADDRESS` - IPv6 address descriptor
+ * @member vlan_id		for `HI_NET_VLAN` - vlan number
+ */
 typedef struct hi_net_object {
 	hi_object_header_t		hdr;
-
+#define n_net_name			hdr.name
+	
 	hi_net_object_type_t 	type;
 
 	union {
@@ -108,6 +186,9 @@ typedef struct hi_net_object {
 	};
 } hi_net_object_t;
 
+/**
+ * Conversion macros
+ */
 #define HI_NET_FROM_OBJ(object)		((hi_net_object_t*) (object))
 #define HI_NET_TO_OBJ(object)		((hi_object_t*) (object))
 #define HI_NET_PARENT_OBJ(object)	object->hdr.node.parent

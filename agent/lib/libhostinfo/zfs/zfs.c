@@ -33,6 +33,31 @@
 #include <sys/statvfs.h>
 #include <errno.h>
 
+/**
+ * ### ZFS
+ * 
+ * Uses libzfs to gather information about ZFS on POSIX platforms, which is combined 
+ * file system/volume manager. 
+ * 
+ * ZFS names reside in namespace `zfs`, so naming schema is `zfs:ZPOOLNAME[:ZVOLNAME|VDEVNAME]`
+ * 
+ * Recursively walks over ZPOOL_CONFIG_VDEV_TREE over CHILDREN, SPARES and L2CACHE devices.
+ * 
+ * Considers VDEVs (except for leaf disk VDEVs) as a subpools, so `HI_DSKT_POOL` created
+ * per each VDEV and it is added as a slave to master ZPOOL. For VDEVs `d_bus_type` is 
+ * set to `ZPOOL:VDEV` without specifying real nature of VDEV (log, l2cache, hostspare or data),
+ * while name of VDEV is set to `zfs:ZPOOLNAME:VDEVNAME`.
+ * 
+ * `d_path` for pools is set to `/dev/zfs` (administration device).
+ * 
+ * Size of pool/subpool is measured by ZFS internal asize variable. However, it is reference
+ * to allocable size, so for RAID-Zx, copies, compression or dedup, this value doesn't represent 
+ * actual amount of user data which could be written on pool. For pool `asize` is calculated as 
+ * sum of asizes of top-level VDEVs.
+ * 
+ * Since ZFS is a filesystem, this helper creates FSInfo objects too.
+ */
+
 void hi_zfs_proc_fs(zfs_handle_t* zfs, const char* zname, hi_dsk_info_t* zpdi) {
 	hi_fsinfo_t* fsi;
 	char mountpoint[PATHMAXLEN];

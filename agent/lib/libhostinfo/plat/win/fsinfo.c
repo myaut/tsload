@@ -27,6 +27,15 @@
 
 #define HIWNETBUFLEN		(16 * SZ_KB)
 
+/**
+ * ### Windows
+ * 
+ * Local filesystems are added by DiskInfo code while iterating over volumes.
+ * FSInfo adds network drives to them by using `WNetOpenEnum()` API call
+ * 
+ * Windows implementation doesn't support number of files 
+ */
+
 void hi_win_get_fssizes(const char* name, hi_fsinfo_t* fsi) {
 	ULARGE_INTEGER free, total;
 	DWORD spc, bps, freecl, totalcl;

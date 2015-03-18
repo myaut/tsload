@@ -37,13 +37,17 @@
 
 
 /**
- * diskinfo (Linux)
+ * ### Linux
  *
- * Walks /sys/block and searches for dm- or sda/hda devices
- *
- * TODO: fallback to /proc/partitions
- * TODO: d_port identification
+ * Walks /sys/block and searches for dm- or sda/hda devices, identifies their subpartitions
+ * and slaves from SYSFS. Paths are generated as `/dev/DEVNAME`
+ * 
+ * For device-mapper devices `dm/uuid` is provided as `d_id`
+ * 
+ * Provides SCSI host identifier `proc_name` as a `d_bus_type` (usually set to driver name).
  * */
+
+/* TODO: fallback to /proc/partitions */
 
 /**
  * Disables LVM2 devices probing. 
@@ -51,7 +55,7 @@
  * 
  * Even if disabled, LVs may be tracked as dm-X devices.
  * 
- * NOTE: disabling it makes LVM2 structure untrackable, thus causing unwanted
+ * __NOTE__: disabling it makes LVM2 structure untrackable, thus causing unwanted
  * consequences, i.e. allowing `simpleio` module writing on disk owned by LVM.
  */
 boolean_t hi_linux_lvm2 = B_TRUE;
@@ -68,8 +72,8 @@ hi_obj_helper_t hi_lvm2_helper;
 /* DISK_MAX_PARTS + 1  */
 #define INVALID_PARTITION_ID	257
 
-/**
- * @return: -1 if device not exists or access mask
+/*
+ * @return -1 if device not exists or access mask
  * */
 int hi_linux_make_dev_path(const char* name, char** aas_dev_path) {
 	char* p;

@@ -7,7 +7,7 @@ from collections import defaultdict, OrderedDict
 
 from tsdoc import *
 from tsdoc.blocks import *
-from tsdoc.mdparser import MarkdownParser
+from tsdoc.mdparser import MarkdownParser, MiniMarkdownParser
 
 VERBOSE = os.getenv('TSDOC_VERBOSE', None) is not None
 _TRACE_DOCS = []
@@ -176,6 +176,8 @@ class TSDocPage(DocPage):
                 if isinstance(defobj, Function):
                     is_header = defobj.source.endswith('.h')
                     
+                    if 'TSDOC_FORCE' in defobj.specifiers:
+                        group.public = True
                     if 'LIBEXPORT' in defobj.specifiers:
                         group.public = True
                         group.labels.append(TSDocPage.LABEL_PUBLIC)
@@ -319,8 +321,15 @@ class TSDocPage(DocPage):
             param_list = ListBlock()
             
             for param in params:
+                try:
+                    parser = MiniMarkdownParser(param.description, self.page_path)
+                    parts = parser.parse()
+                except MarkdownParser.ParseException as mpe:
+                    print >> sys.stderr, '%s/%s: %s' %(self.docspace, self.name, str(mpe))
+                    parts = [param.description]
+                
                 entry = ListEntry(1, [BoldText(param.name),
-                                      ' - ', param.description, '\n'])
+                                      ' - '] + parts + ['\n'])
                 param_list.add(entry)
             
             param_block.add(param_list)
@@ -338,7 +347,13 @@ class TSDocPage(DocPage):
             note_block.add('\n')
             
             for note in notes:
-                note_block.extend([note.note, '\n'])
+                try:
+                    parser = MiniMarkdownParser(note.note, self.page_path)
+                    parts = parser.parse()
+                    note_block.extend(parts + ['\n'])
+                except MarkdownParser.ParseException as mpe:
+                    print >> sys.stderr, '%s/%s: %s' %(self.docspace, self.name, str(mpe))
+                    note_block.extend([note.note, '\n'])
             
             block.add(note_block)
         
@@ -376,13 +391,14 @@ class IndexPage(MarkdownPage):
     REFERENCE_HEADER = 'Reference'
     
     class DocSpaceReference(DocPage):
-        def __init__(self, docspace, references):
+        def __init__(self, docspace, references, ref_prefix = ''):
             name = 'reference'
             
             DocPage.__init__(self, docspace, name)
             
             self.references = references
             self.header = IndexPage.REFERENCE_HEADER
+            self.ref_prefix = ref_prefix
             
             self.links = []
             
@@ -393,8 +409,12 @@ class IndexPage(MarkdownPage):
             
             for (ref_link, ref_part) in self.references.items():
                 if isinstance(ref_part, CodeReference):
-                    name = ref_part.ref_name                    
-                    first_letter = name[0].upper()
+                    name = ref_part.ref_name
+                    if self.ref_prefix and name.lower().startswith(self.ref_prefix):
+                        realname = name[len(self.ref_prefix):]
+                        first_letter = (self.ref_prefix + realname[0]).upper()
+                    else:
+                        first_letter = name[0].upper()
                     
                     sorted_refs[first_letter][name] = (ref_link, ref_part)
             
@@ -416,7 +436,7 @@ class IndexPage(MarkdownPage):
                 self.blocks.append(block) 
     
     class DocSpaceIndex(DocPage):
-        def __init__(self, header, docspace, is_external, gen_reference):
+        def __init__(self, header, docspace, is_external, gen_reference, ref_prefix = ''):
             name = 'index'
             
             DocPage.__init__(self, docspace, name)
@@ -426,6 +446,7 @@ class IndexPage(MarkdownPage):
             
             self.is_external = is_external
             self.gen_reference = gen_reference
+            self.ref_prefix = ref_prefix
             
             self.reference = None
         
@@ -597,7 +618,8 @@ class IndexPage(MarkdownPage):
         
         def _create_reference(self):
             reference = IndexPage.DocSpaceReference(self.docspace,
-                                                    self.references)
+                                                    self.references,
+                                                    self.ref_prefix)
             
             self.pages['reference'] = reference
             self.reference = reference
@@ -680,6 +702,7 @@ class IndexPage(MarkdownPage):
         
         is_external = False
         gen_reference = False
+        ref_prefix = ''
         
         blocks = []
         
@@ -711,6 +734,8 @@ class IndexPage(MarkdownPage):
                         is_external = True
                     elif tag == '__reference__':
                         gen_reference = True
+                    elif tag.startswith('__refprefix__'):
+                        _, ref_prefix = tag.split(':')
                     elif tag.startswith('__docspace__'):
                         _, docspace = tag.split(':')
                     
@@ -724,7 +749,7 @@ class IndexPage(MarkdownPage):
                 
                 # Create new index entry
                 docspace_index = IndexPage.DocSpaceIndex(header, docspace, 
-                                                   is_external, gen_reference)
+                                                   is_external, gen_reference, ref_prefix)
                 docspace_index.blocks = blocks
                 
                 header = None

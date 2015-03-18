@@ -29,6 +29,14 @@
 
 #include <sys/statvfs.h>
 
+/**
+ * ### POSIX
+ * 
+ * Uses `statvfs()` syscall to gather statistics on file systems and 
+ * `getmntent()` function to iterate over mounted filesystems in file
+ * `/etc/mtab` (Linux) or `/etc/mnttab` (Solaris).
+ */
+
 int hi_fsinfo_statvfs(hi_fsinfo_t* fsi) {
 	struct statvfs vfsmnt;
 	

@@ -7,6 +7,12 @@
 
 #include <windows.h>
 
+/**
+ * ### Windows
+ * 
+ * Uses GetSystemInfo() to get default pagesize and GetLargePageMinimum() 
+ * to get one huge page size. No TLB information is provided.
+ */
 
 boolean_t hi_win_pageinfo_probed = B_FALSE;
 hi_page_info_t hi_win_pageinfo[3];

@@ -33,9 +33,6 @@ HOSTINFOAPI char hi_obj_modpath[];
 
 struct hi_object_header;
 
-/* Windows have long network interface names,
- * so provide large space for storing them */
-
 typedef enum {
 	HI_SUBSYS_CPU,
 	HI_SUBSYS_DISK,
@@ -54,9 +51,19 @@ typedef int  (*hi_obj_probe_op)(void);
 typedef void (*hi_obj_dtor_op)(struct hi_object_header* obj);
 typedef int   (*hi_obj_init_op)(void);
 typedef void  (*hi_obj_fini_op)(void);
-
 typedef tsobj_node_t* (*hi_obj_tsobj_format_op)(struct hi_object_header* obj);
 
+/**
+ * HostInfo object subsystem operations
+ * 
+ * @member op_probe function that gets objects from OS and adds it to \
+ *                  HostInfo heierarchy
+ * @member op_dtor  destructor of HostInfo object that de-allocates   \
+ *                  subsystem-specific fields i.e. strings
+ * @member op_init  initialize subsystem (once)
+ * @member op_fini  destroy subsystem (once)
+ * @member op_tsobj_format  generates TSObject for HostInfo object
+ */
 typedef struct {
 	hi_obj_probe_op		op_probe;
 	hi_obj_dtor_op		op_dtor;
@@ -100,6 +107,17 @@ typedef struct {
 	int				type;
 } hi_object_child_t;
 
+/**
+ * Header of all HostInfo objects 
+ * 
+ * Should be included for all corresponding structures as first member
+ * 
+ * @member sid id of subsystem to which this HostInfo object relate
+ * @member node storage for keeping child reference
+ * @member list_node list node for global HostInfo object list
+ * @member children head node for object's children
+ * @member name unique name of object
+ */
 typedef struct hi_object_header {
 	hi_obj_subsys_id_t			sid;
 	hi_object_child_t			node;
@@ -108,7 +126,7 @@ typedef struct hi_object_header {
 
 	unsigned short				ref_count;
 
-	char*						name;
+	AUTOSTRING char*			name;
 } hi_object_header_t;
 
 typedef hi_object_header_t	hi_object_t;
@@ -126,20 +144,34 @@ LIBEXPORT hi_object_t* hi_obj_find(hi_obj_subsys_id_t sid, const char* name);
 LIBEXPORT list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe);
 
 LIBEXPORT int hi_obj_load_helper(hi_obj_helper_t* helper, const char* libname, const char* probefunc);
-LIBEXPORT int hi_obj_unload_helper(hi_obj_helper_t* helper);
+LIBEXPORT void hi_obj_unload_helper(hi_obj_helper_t* helper);
 
 LIBEXPORT int hi_obj_init(void);
 LIBEXPORT void hi_obj_fini(void);
 
 LIBEXPORT tsobj_node_t* tsobj_hi_format_all(boolean_t reprobe);
 
+/**
+ * Iterate over object list or its children
+ * 
+ * `hi_for_each_object` and `hi_for_each_object_safe` take list returned by 
+ * `hi_obj_list()` and its equivalent and return entries as `hi_object_t*`. 
+ * 
+ * `hi_for_each_child` and `hi_for_each_child_safe` take parent object represented 
+ * as `hi_object_t*` and return entries of `hi_object_child_t*`.
+ * 
+ * @see list_for_each_entry, list_for_each_entry_safe
+ * 
+ * @note these macros are working with `hi_object_t` raw objects		\
+ *       to access specific HostInfo object like CPU or disk, use subsystem \
+ *       conversion operations
+ */
 #define hi_for_each_object(object, list)	\
 		list_for_each_entry(hi_object_t, object, list, list_node)
-#define hi_for_each_child(child, parent)	\
-		list_for_each_entry(hi_object_child_t, child, &(parent)->children, node)
-
 #define hi_for_each_object_safe(object, next, list)	\
 		list_for_each_entry_safe(hi_object_t, object, next, list, list_node)
+#define hi_for_each_child(child, parent)	\
+		list_for_each_entry(hi_object_child_t, child, &(parent)->children, node)
 #define hi_for_each_child_safe(child, next, parent)	\
 		list_for_each_entry_safe(hi_object_child_t, child, next, &(parent)->children, node)
 

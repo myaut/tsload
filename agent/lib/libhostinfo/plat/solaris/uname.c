@@ -32,13 +32,20 @@
 /* FIXME: smbios is x86-specific */
 #include <sys/smbios.h>
 
-/* Based on /etc/release
+/**
+ * ### Solaris
+ * 
+ * On Solaris `hi_get_os_name()` / `hi_get_os_release()` are based on `/etc/release`
  *
  * First line of release file looks like:
+ * ```
  * <lot of spaces> <name of Solaris> <Version fields> <KernelID> [SPARC|X86] <misc. info>
+ * ```
  *
  * Uses SPARC|X86 as an anchor to provide Kernel ID as OS release and rest of /etc/release's
  * first line as osname. Misc info is ignored
+ * 
+ * `hi_get_sys_name()` is implemented only for x86 using libsmbios
  *  */
 
 /* bootadm uses 80 as a constant */

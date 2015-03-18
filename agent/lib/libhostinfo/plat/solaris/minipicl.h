@@ -23,10 +23,30 @@
 
 #include <tsload/defs.h>
 
+/**
+ * @module MiniPICL
+ * 
+ * In Solaris Platform Information and Control Library (PICL) provides
+ * access to various platform information organized as a tree. Unfortunately,
+ * 64-bit version of libpicl, library shipped to work with picld is broken.
+ * 
+ * This module mimics libpicl behavior, but implements only a subset of it.
+ * 
+ * All functions have similiar prototypes as libpicl ones do, so use 
+ * `man function_name` to get information on them.
+ * 
+ * #### References
+ * 
+ * [libpicl is broken for 64-bit apps](https://community.oracle.com/thread/3532313)
+ * Oracle Bug 18409563 - libpicl is broken for 64-bit apps
+ */
 
 #define	PICL_PROPNAMELEN_MAX	256
 #define	PICL_CLASSNAMELEN_MAX	(PICL_PROPNAMELEN_MAX - sizeof ("__"))
 
+/**
+ * PICL error codes
+ */
 #define PICL_SUCCESS			0
 #define PICL_FAILURE    		1
 #define PICL_NORESPONSE 		2
@@ -94,24 +114,24 @@ typedef struct {
 
 #define	PICL_CLASS_PICL		"picl"
 
-int picl_get_root(picl_nodehdl_t *rooth);
+TSDOC_FORCE int picl_get_root(picl_nodehdl_t *rooth);
 
-int picl_get_propval(picl_prophdl_t proph, void *valbuf, size_t nbytes);
-int picl_get_propval_by_name(picl_nodehdl_t nodeh, const char *propname,
+TSDOC_FORCE int picl_get_propval(picl_prophdl_t proph, void *valbuf, size_t nbytes);
+TSDOC_FORCE int picl_get_propval_by_name(picl_nodehdl_t nodeh, const char *propname,
 			void *valbuf, size_t nbytes);
 
-int picl_get_prop_by_name(picl_nodehdl_t nodeh, const char *name,
+TSDOC_FORCE int picl_get_prop_by_name(picl_nodehdl_t nodeh, const char *name,
     picl_prophdl_t *proph);
 
-int picl_get_propinfo(picl_prophdl_t proph, picl_propinfo_t *pinfo);
-int picl_get_propinfo_by_name(picl_nodehdl_t nodeh, const char *prop_name,
+TSDOC_FORCE int picl_get_propinfo(picl_prophdl_t proph, picl_propinfo_t *pinfo);
+TSDOC_FORCE int picl_get_propinfo_by_name(picl_nodehdl_t nodeh, const char *prop_name,
 				picl_propinfo_t *pinfo, picl_prophdl_t *proph);
 
-int picl_walk_tree_by_class(picl_nodehdl_t rooth, const char *classname,
+TSDOC_FORCE int picl_walk_tree_by_class(picl_nodehdl_t rooth, const char *classname,
 		void *c_args, int (*callback_fn)(picl_nodehdl_t hdl, void *args));
 
-int picl_initialize(void);
-int picl_shutdown(void);
+TSDOC_FORCE int picl_initialize(void);
+TSDOC_FORCE int picl_shutdown(void);
 
 #endif /* MINIPICL_H_ */
 

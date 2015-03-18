@@ -19,7 +19,19 @@
 #include <errno.h>
 #include <stdio.h>
 
-
+/**
+ * Read string into statically allocated buffer.
+ * 
+ * @note Returned string is NULL-terminated, but may contain trailing NL symbol		\
+ * 		 Use `_fixstr` functions to fix that
+ * @note If there are additional characters in sysfs file, they would be ignored. 	\
+ * 		 If you are not sure about size of buffer, use `_aas` version
+ * 
+ * @param str pointer to buffer
+ * @param len length of buffer
+ * 
+ * @return HI_LINUX_SYSFS_ERROR if file cannot be opened or HI_LINUX_SYSFS_OK
+ */
 int hi_linux_sysfs_readstr(const char* root, const char* name, const char* object,
 						   char* str, int len) {
 	AUTOSTRING char* path;
@@ -40,7 +52,7 @@ int hi_linux_sysfs_readstr(const char* root, const char* name, const char* objec
 		return HI_LINUX_SYSFS_ERROR;
 	}
 
-	num = read(fd, str, len);
+	num = read(fd, str, len - 1);
 	*(str + num) = '\0';
 
 	close(fd);
@@ -50,6 +62,16 @@ int hi_linux_sysfs_readstr(const char* root, const char* name, const char* objec
 	return HI_LINUX_SYSFS_OK;
 }
 
+/**
+ * Read string into auto-allocated string
+ * 
+ * @note Returned string is NULL-terminated, but may contain trailing NL symbol		\
+ * 		 Use `_fixstr` functions to fix that
+ * 
+ * @param aas pointer to auto-allocated string
+ * 
+ * @return HI_LINUX_SYSFS_ERROR if file cannot be opened or HI_LINUX_SYSFS_OK
+ */
 int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* object,
 						   	   char** aas) {
 	AUTOSTRING char* path;
@@ -112,7 +134,12 @@ int hi_linux_sysfs_readstr_aas(const char* root, const char* name, const char* o
 }
 
 /**
- * Read unsigned integer from sysfs */
+ * Read unsigned integer represented in decimal form from sysfs
+ * 
+ * @param defval if reading was unsuccessful, returns this value
+ *
+ * @return value from sysfs is everything went fine or `defval`
+ * */
 uint64_t hi_linux_sysfs_readuint(const char* root, const char* name, const char* object,
 								 uint64_t defval) {
 	char str[64];
@@ -193,6 +220,15 @@ int hi_linux_sysfs_parsebitmap(const char* str, uint32_t* bitmap, int len) {
 	return HI_LINUX_SYSFS_OK;
 }
 
+/**
+ * Read bitmap represented in human readable form from sysfs
+ * 
+ * @param bitmap 	pointer to pre-allocated bitmap
+ * @param len		length of bitmap in double words 
+ * 
+ * @return HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if	\
+ * 		   reading failed or overflow occured.
+ */
 int hi_linux_sysfs_readbitmap(const char* root, const char* name, const char* object,
 						   uint32_t* bitmap, int len) {
 	char str[128];
@@ -211,7 +247,8 @@ int hi_linux_sysfs_readbitmap(const char* root, const char* name, const char* ob
 }
 
 /**
- * Fix sysfs string: replace \n with spaces */
+ * Fix sysfs string: replace newlines `\n` with spaces in-place
+ * */
 void hi_linux_sysfs_fixstr(char* p) {
 	if(p == NULL)
 		return;
@@ -224,7 +261,7 @@ void hi_linux_sysfs_fixstr(char* p) {
 }
 
 /**
- * Fix sysfs string 2: replace last \n with \0 */
+ * Fix sysfs string 2: replace last newline `\n` with null-terminator */
 void hi_linux_sysfs_fixstr2(char* p) {
 	if(*p == '\0')
 		return;
@@ -239,7 +276,16 @@ void hi_linux_sysfs_fixstr2(char* p) {
 	}
 }
 
-
+/**
+ * Walk over sysfs directory and call function for each entry
+ * 
+ * @param root path to directory
+ * @param proc walker function that receives file name
+ * @param arg  argument passed as second argument to `proc()`
+ * 
+ * @return HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if	\
+ *         opening directory failed
+ */
 int hi_linux_sysfs_walk(const char* root,
 					   void (*proc)(const char* name, void* arg), void* arg) {
 	plat_dir_t* dirp;
@@ -268,6 +314,19 @@ int hi_linux_sysfs_walk(const char* root,
 	return HI_LINUX_SYSFS_OK;
 }
 
+/**
+ * Parse bitmap using `hi_linux_sysfs_readbitmap()` and call function `proc()`
+ * for all bits that are set to 1.
+ * 
+ * @param count 	maximum number of bits
+ * @param proc		walker function that receives bit id
+ * @param arg 		 argument passed as second argument to `proc()`
+ * 
+ * @return HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if	\
+ * 		   reading failed or overflow occured.
+ * 
+ * @see hi_linux_sysfs_readbitmap
+ */
 int hi_linux_sysfs_walkbitmap(const char* root, const char* name, const char* object, int count,
 					   	      void (*proc)(int id, void* arg), void* arg) {
 	int len = count / 32;
@@ -293,6 +352,17 @@ int hi_linux_sysfs_walkbitmap(const char* root, const char* name, const char* ob
 	return HI_LINUX_SYSFS_OK;
 }
 
+/**
+ * Reads symbolic link destination from sysfs, and copies it to
+ * auto-allocated string `aas`.
+ * 
+ * @param aas		auto-allocated string 
+ * @param basename	if this flag is set, take basename of link destination	\
+ * 					before copying
+ * 
+ * @return HI_LINUX_SYSFS_OK if everything went fine or HI_LINUX_SYSFS_ERROR if	\
+ * 		   `path_join_aas()` or `readlink()` were failed
+ */
 int hi_linux_sysfs_readlink_aas(const char* root, const char* name, const char* object,
 						   	    char** aas, boolean_t basename) {
 	AUTOSTRING char* path;

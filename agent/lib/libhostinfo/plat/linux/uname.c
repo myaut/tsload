@@ -28,6 +28,23 @@
 #include <unistd.h>
 #include <sys/utsname.h>
 
+/**
+ * ### Linux
+ * 
+ * Linux shares implementation with POSIX, but provides domain name from `uname()` output.
+ * 
+ * `hi_get_os_name()` is redefined because `uname()` provides only a Linux Kernel name.
+ * It collects information from following sources:
+ * * `/etc/oracle-release` for Oracle Enterprise Linux
+ * * `/etc/redhat-release` for RHEL other derivatives
+ * * `/etc/SuSE-release` for SuSE derivatives
+ * * `lsb_release` output for any other Linux
+ * 
+ * It also cuts out irrelevant words i.e. `CentOS release 6.3 (Final)` -> `CentOS 6.3`
+ * 
+ * `hi_get_sys_name()` provides information from `/sys/class/dmi/id/` for x86 platforms
+ * for non-x86 platforms, it'll probably return "Unknown system" string
+ */
 
 #define SYS_DMI_PATH		"/sys/class/dmi/id/"
 

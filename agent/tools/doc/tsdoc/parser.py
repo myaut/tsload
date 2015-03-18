@@ -842,6 +842,13 @@ class DefinitionGroupParser:
             return True 
         return False
     
+    def _is_hidden(self, defobj):
+        names = defobj.name
+        if isinstance(names, str):
+            names = [defobj.name]
+        return any(name.startswith('TSDOC_HIDDEN') 
+                   for name in names)
+    
     def _add_defobj(self, def_parser):
         defobj = def_parser.parse()
         
@@ -853,6 +860,9 @@ class DefinitionGroupParser:
             line = '\t%s\t%s\t@%s:%d' % (defobj.__class__.__name__.upper(),
                                         defobj.name, source, defobj.lineno)
             print >> sys.stderr, line
+        
+        if self._is_hidden(defobj):
+            return
         
         if isinstance(defobj, list):
             self.defs.extend(defobj)

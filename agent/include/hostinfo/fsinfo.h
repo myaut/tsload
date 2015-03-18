@@ -26,8 +26,39 @@
 #include <hostinfo/hiobject.h>
 #include <hostinfo/diskinfo.h>
 
+/**
+ * @module FSInfo
+ * 
+ * Gets information on mounted filesystems. 
+ * 
+ * Note that unlike other HIObject subsystems, filesystems are not forming a hierarchy:
+ * if mountpoint resides on other filesystem, it wont be set as child to it. 
+ * 
+ * Since usually filesystems reside on disk devices, FSInfo object contains reference
+ * to corresponding DiskInfo object, and FSInfo probing causes DiskInfo probing as well.
+ */
+
 #define FSTYPELEN		32
 
+/**
+ * File system information descriptor
+ * 
+ * @member fs_hdr			HIObject header
+ * @member fs_mountpoint	alias to `fs_hdr.name` - absolute path where filesystem is mounted
+ * @member fs_type			type of filesystem
+ * @member fs_devpath		path to device that holds filesystem. Not necessary a name or `d_path` \
+ * 							in DiskInfo hierarchy
+ * @member fs_device		corresponding DiskInfo device
+ * @member fs_host			(not supported) hostname for network filesystem
+ * @member fs_block_size	maximum size of filesystem block
+ * @member fs_frag_size		fragments size or minimum size of block
+ * @member fs_ino_count		(optional) total number of file entries that created or can be created
+ * @member fs_ino_free		(optional) number of file entries that can be created
+ * @member fs_space			filesystem total space in bytes
+ * @member fs_space_free	filesystem free space in bytes
+ * @member fs_readonly		is file system mounted in readonly mode?
+ * @member fs_namemax		maximum length of filesystem name
+ */
 typedef struct hi_fsinfo {
 	hi_object_header_t fs_hdr;
 #define fs_mountpoint  fs_hdr.name
@@ -53,6 +84,9 @@ typedef struct hi_fsinfo {
 	unsigned long fs_namemax;
 } hi_fsinfo_t;
 
+/**
+ * Conversion macros
+ */
 #define HI_FSINFO_FROM_OBJ(object)		((hi_fsinfo_t*) (object))
 
 hi_fsinfo_t* hi_fsinfo_create(const char* mntpt, const char* fstype, 
@@ -69,6 +103,7 @@ STATIC_INLINE void hi_fsinfo_add(hi_fsinfo_t* fsi) {
 
 /**
  * Find filesystem by it's mountpoint
+ * 
  * @param name - name of disk
  *
  * @return filesystem information or NULL if it wasn't found
@@ -85,7 +120,7 @@ STATIC_INLINE hi_fsinfo_t* hi_fsinfo_find(const char* mntpt) {
  *
  * @return pointer to head or NULL if probe failed
  * 
- * @note May call hi_dsk_list() with reprobe = B_FALSE
+ * @note May call `hi_dsk_list()` with reprobe = B_FALSE
  */
 STATIC_INLINE list_head_t* hi_fsinfo_list(boolean_t reprobe) {
 	return hi_obj_list(HI_SUBSYS_FS, reprobe);

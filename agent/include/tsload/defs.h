@@ -176,8 +176,9 @@ STATIC_INLINE double round(double val)
 #endif
 #endif
 
-/* Hint to TSDOC that function is not documentable */
+/* Hint to TSDOC if function is documentable or should be strongly ignored */
 #define TSDOC_HIDDEN
+#define TSDOC_FORCE
 
 /**
  * Hint that string is automatically allocated

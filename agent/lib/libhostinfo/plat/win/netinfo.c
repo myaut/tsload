@@ -21,7 +21,6 @@
 #include <tsload/autostring.h>
 
 #include <hostinfo/netinfo.h>
-#include <hostinfo/plat/wmi.h>
 
 #include <hitrace.h>
 
@@ -30,18 +29,22 @@
 #include <iphlpapi.h>
 #include <windows.h>
 
-
-
 /**
- * ### NetInfo (Linux)
+ * ### Windows
  *
  * Fetch information about network objects using GetAdaptersAddresses
- *
+ * 
+ * __NOTE__: Doesn't support WMI because latter doen't provide MMU, also 
+ * does not have support for teaming, VLAN and other virtual NICs.
+ * 
+ * __NOTE__: To distinguish interface address and NIC name, it adds id
+ * as an end to NIC name, i.e. "Local Area Connection #1:0"
+ */
+
+ /*
  * TODO: Implement WMI alternative (it does not support MTU sic!)
  * TODO: Support for teaming, VLAN, etc.
  */
-
-#ifndef HI_NET_WINDOWS_USE_WMI
 
 static void create_ip_netmask(uint8_t* netmask, int length) {
 	uint8_t* p = netmask;
@@ -249,114 +252,3 @@ PLATAPI int hi_net_probe(void) {
 
 	return HI_PROBE_OK;
 }
-
-
-#else
-
-int hi_win_net_probe_netdev(hi_wmi_t* wmi) {
-	hi_net_object_t* netobj;
-	hi_net_device_t* netdev;
-
-	char name[HIOBJNAMELEN];
-	char net_conn_id[256];
-	char macaddress[HI_NET_DEV_ADDR_STRLEN];
-	int64_t typeid;
-	int64_t speed;
-	boolean_t net_enabled;
-
-	hi_wmi_iter_t iter;
-	int ret = hi_wmi_query(wmi, &iter, L"WQL",
-			   L"SELECT AdapterTypeID,MACAddress,Name,NetConnectionID,NetEnabled,Speed FROM Win32_NetworkAdapter");
-
-	if(ret != HI_WMI_OK) {
-		hi_net_dprintf("hi_net_probe: Failed to query Win32_NetworkAdapter\n");
-		return ret;
-	}
-
-	while(hi_wmi_next(&iter)) {
-		/* Fetch props from WMI */
-		if(hi_wmi_get_string(&iter, L"Name", name, HIOBJNAMELEN) != HI_WMI_OK) {
-			hi_net_dprintf("hi_net_probe: Failed to fetch Win32_NetworkAdapter.Name\n");
-			continue;
-		}
-
-		if(hi_wmi_get_string(&iter, L"MACAddress",
-				macaddress, HI_NET_DEV_ADDR_STRLEN) != HI_WMI_OK) {
-			macaddress[0] = '\0';
-		}
-
-		if(hi_wmi_get_integer(&iter, L"AdapterTypeID", &typeid) != HI_WMI_OK) {
-			hi_net_dprintf("hi_net_probe: Failed to fetch Win32_NetworkAdapter.AdapterTypeID for %s\n", name);
-			continue;
-		}
-
-		if(hi_wmi_get_integer(&iter, L"Speed", &speed) != HI_WMI_OK) {
-			speed = 0;
-		}
-
-		if(hi_wmi_get_boolean(&iter, L"NetEnabled", &net_enabled) != HI_WMI_OK) {
-			net_enabled = B_FALSE;
-		}
-
-		/* Create device object */
-		netobj = hi_net_create(name, HI_NET_DEVICE);
-		netdev = &netobj->device;
-
-		/* FIXME: copy mac with lower case */
-		strncpy(netdev->address, macaddress, HI_NET_DEV_ADDR_STRLEN);
-
-		/* See http://msdn.microsoft.com/en-us/library/aa394216%28v=vs.85%29.aspx */
-		switch(typeid) {
-		case 0:
-		case 5:
-			netdev->type = HI_NET_ETHERNET;
-			break;
-		case 1:
-			netdev->type = HI_NET_TOKEN_RING;
-			break;
-		case 9:
-		case 10:
-			netdev->type = HI_NET_WIRELESS;
-			break;
-		}
-
-		/* Windows doesn't distinguish duplex modes, so assume it is full-duplex */
-		if(net_enabled) {
-			netdev->duplex = HI_NET_FULL_DUPLEX;
-			netdev->speed = speed;
-		}
-		else {
-			netdev->duplex = HI_NET_NO_LINK;
-		}
-
-		/* TODO: Probe IP addresses here */
-
-		hi_net_add(netobj);
-	}
-}
-
-/*platapi*/ int hi_net_probe(void) {
-	hi_wmi_t wmi;
-	int ret = HI_PROBE_OK;
-
-	hi_win_net_probe_adresses();
-
-	if(hi_wmi_connect(&wmi, HI_WMI_ROOT_CIMV2) != HI_WMI_OK) {
-		hi_net_dprintf("hi_net_probe: Failed to connect to WMI\n");
-
-		return HI_PROBE_ERROR;
-	}
-
-	ret = hi_win_net_probe_netdev(&wmi);
-	if(ret != HI_PROBE_OK)
-		goto end;
-
-	/* IP */
-
-end:
-	hi_wmi_disconnect(&wmi);
-
-	return ret;
-}
-
-#endif

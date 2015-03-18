@@ -40,10 +40,16 @@
 
 
 /**
- * ### netinfo - Solaris implementation
+ * ### Solaris
  *
- * Like in case with libpicl, 64-bit version of libdlmgmt is broken (but in this case - partially),
- * so we do not implement minidlmgmt here. However, some calls are workarounded through kstat.
+ * Uses libdlmgmt library to gather network devices. Like libpicl it has broken 
+ * implementation, so some of the calls are work-arounded using kstat. 
+ * 
+ * Because Solaris 10 doesn't support `getifaddrs()`, it uses SIOCGLIFNUM and 
+ * SIOCGLIFCONF ioctls to collect interfaces.
+ * 
+ * __NOTE__: To distiguish IPv4 interface, IPv6 interface and NIC which have same name
+ * in `getifaddrs()` logic, it puts interfaces into "ip" or "ipv4" namespaces.
  */
 
 static dladm_handle_t dld_handle;
@@ -192,7 +198,10 @@ static hi_net_object_t* hi_net_sol_create_phys(const char *name, datalink_id_t l
 		 * (100 M -> 1 G -> 10 G -> 40 G)
 		 *
 		 * Why 2Gbit/s? It was a bug in Citrix XenServer para-drivers for
-		 * Windows, so all virtual network devices had shown that speed. */
+		 * Windows, so all virtual network devices had shown that speed. 
+		 *
+		 * Also with rule of thumb 2 MHz per 2 Mbit of TCP traffic, 2Gbit/s seem to 
+		 * feet these numbers (modern processors are 2 GHz+)*/
 
 		netdev->duplex = HI_NET_FULL_DUPLEX;
 		netdev->speed = 2000000000;
@@ -397,9 +406,9 @@ static int hi_net_sol_getallifs(sa_family_t af, void (*add)(hi_net_object_t* par
 	hi_net_object_t* parent;
 
 	char* name;
-	char* ifa_name;
-	char* addr_name;
-
+	char* dev_name;
+	const char* colon;
+	
 	hi_net_sol_ifa_t ifa;
 
 	sa_family_t lifr_af;
@@ -421,28 +430,26 @@ static int hi_net_sol_getallifs(sa_family_t af, void (*add)(hi_net_object_t* par
 		hi_net_dprintf("hi_net_sol_getallifs: found iface %s [%s]\n", lifr->lifr_name,
 							(af == AF_INET6) ? "inet6" : "inet");
 
-		/* Parse lifr_name and find appropriate net object */
+		/* Let's find device this IP address is attached to */
 		aas_init(&name);
-		aas_init(&addr_name);
-		aas_init(&ifa_name);
+		aas_init(&dev_name);
 
-		aas_copy(&ifa_name, lifr->lifr_name);
-		aas_copy(&addr_name, strchr(ifa_name, ':'));
-
-		if(addr_name == NULL) {
-			addr_name = "primary";
-		}
-
-		/* To ensure that primary IP address won't collide with
-		 * device name, use 'primary' suffix */
-		aas_printf(&name, "%s:%s:%s",
-				   (af == AF_INET)? "ip" : "ipv6",
-				   ifa_name, addr_name);
-
-		parent = hi_net_find(ifa_name);
-
-		if(parent == NULL)
+		colon = strchr(lifr->lifr_name, ':');
+		if(colon == NULL)
+			aas_copy(&dev_name, lifr->lifr_name);
+		else
+			aas_copy_n(&dev_name, lifr->lifr_name, colon - lifr->lifr_name);
+		
+		aas_printf(&name, "%s:%s", (af == AF_INET)? "ip" : "ipv6", lifr->lifr_name);
+		
+		parent = hi_net_find(dev_name);
+		
+		aas_free(&dev_name);
+		
+		if(parent == NULL) {
+			hi_net_dprintf("hi_linux_net_addr_probe: Couldn't find device '%s'\n", lifr->lifr_name);
 			continue;
+		}
 
 		/* Load addresses */
 		memcpy(&ifa.ifa_addr, &lifr->lifr_addr, sizeof(struct sockaddr_storage));
@@ -458,8 +465,7 @@ static int hi_net_sol_getallifs(sa_family_t af, void (*add)(hi_net_object_t* par
 		add(parent, name, &ifa);
 
 		aas_free(&name);
-		aas_free(&ifa_name);
-		aas_free(&addr_name);
+		aas_free(&dev_name);
 	}
 
 	mp_free(lifrs);

@@ -28,6 +28,12 @@
 
 #include <unistd.h>
 
+/**
+ * ### Linux
+ * 
+ * Uses directory names in `/sys/kernel/mm/hugepages/` to get hugepage sizes and 
+ * `sysconf(_SC_PAGE_SIZE)` to get default page size.
+ */
 
 #define PAGEINFOLEN					8
 
@@ -68,7 +74,7 @@ PLATAPI hi_page_info_t* hi_get_pageinfo(void) {
 
 	i = 1;
 	hi_linux_sysfs_walk(SYS_HUGEPAGE_PATH, hi_linux_pi_hugeproc, &i);
-
+	
 	return hi_lnx_pageinfo;
 }
 

@@ -29,7 +29,35 @@
 
 #include <string.h>
 
+/**
+ * @module DiskInfo
+ * 
+ * DiskInfo retrives information on block devices available on system
+ * including Hard Disks and partitions on them, and Volume Manager objects
+ * 
+ * Due to complex logic of Disk Hierarchy and huge number of Volume Managers 
+ * (which of them of course has own logic on hierarchy), DiskInfo may look
+ * inconsistent, but it is best what we can do.
+ * 
+ * __NOTE__: Currently if pool or volume reside on partition, than partition 
+ * would be considered a child to that pool or volume. It also would be child 
+ * to disk drive. This rule may change in future releases of HostInfo.
+ * 
+ * Disk object children are sometimes called "slaves" due to Linux SYSFS naming
+ * scheme.
+ */
 
+/**
+ * DiskInfo object type
+ * 
+ * @value HI_DSKT_UNKNOWN	unknown object (shouldn't be exposed, used internally)
+ * @value HI_DSKT_DISK		real or virtual disk drive
+ * @value HI_DSKT_PARTITION	partition on disk drive
+ * @value HI_DSKT_POOL		Volume Manager "pool" -- collection of disks, partitions 	\
+ *                          or whatever. Note that pools haven't real block device		\
+ *                          corresponding to it, it is used only to show hierarchy
+ * @value HI_DSKT_VOLUME	Logical Volume that resiedes on disks, partitions or inside pools
+ */
 typedef enum hi_dsk_type {
 	HI_DSKT_UNKNOWN,
 
@@ -39,6 +67,28 @@ typedef enum hi_dsk_type {
 	HI_DSKT_VOLUME
 } hi_dsk_type_t;
 
+/**
+ * DiskInfo descriptor
+ * 
+ * @member d_hdr 		HiObject header 
+ * @member d_disk_name	Unique name of disk device. For volume managers symbolic name may	\
+ * 						be namespaced, i.e. md:d10 or zfs:volume to ensure uniqueness		\
+ * 						Same as `d_hdr.name`
+ * @member d_path		Path to corresponding block device. For devices those not support 	\
+ * 						direct access, this field may contain some meaningful path, which	\
+ * 						however couldn't be argument to `open()` or `CreateFile()`. See		\
+ * 						platform notes for details.
+ * @member d_mode		Access permissions to that disk object.
+ * @member d_size		Size of disk, volume, pool or partition in bytes
+ * @member d_type		Type of that descriptor
+ * @member d_bus_type	(optional) Identifies how this disk plugged into hierarchy. May be 	\
+ * 						name of the bus or a driver handling that bus or contain volume 	\
+ * 						manager name along with volume manager device subtype
+ * @member d_port		(optional) Optional identifier of hardware port where disk is 		\
+ * 						plugged in. Usually it is SCSI host, SCSI target and SCSI LUN
+ * @member d_id			(optional) Identifier provided by lower layer
+ * @member d_model		(optional) For disk drives - vendor and model of disk
+ */
 typedef struct hi_dsk_info {
 	hi_object_header_t	d_hdr;
 #define d_disk_name		d_hdr.name
@@ -51,17 +101,14 @@ typedef struct hi_dsk_info {
 
 	/* Optional fields */
 	AUTOSTRING char* d_bus_type;
-
-	/* For iSCSI LUNs - IQN,
-	   For FC LUNs - WWN
-	   For SCSI disks - bus/target/LUN
-	   For Vol managers - internal ID */
 	AUTOSTRING char* d_port;
-
 	AUTOSTRING char* d_id;
 	AUTOSTRING char* d_model;
 } hi_dsk_info_t;
 
+/**
+ * Conversion macros
+ */
 #define HI_DSK_FROM_OBJ(object)		((hi_dsk_info_t*) (object))
 
 PLATAPI int hi_dsk_probe(void);
