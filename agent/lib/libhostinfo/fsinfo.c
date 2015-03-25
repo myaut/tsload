@@ -75,6 +75,84 @@ int hi_fsinfo_probe(void) {
 	return hi_fsinfo_probe_impl(disks);
 }
 
+/**
+ * Find corresponding fsinfo object by path of file
+ * by comparing mountpoints with file path
+ * 
+ * @param path absolute path to file
+ * 
+ * @return NULL if not found or fsinfo object
+ */
+hi_fsinfo_t* hi_fsinfo_find_bypath(const char* path) {
+	path_split_iter_t iter1, iter2;
+	
+	list_head_t* fslist = hi_fsinfo_list(B_FALSE);
+	hi_object_t* fsobj;
+	hi_fsinfo_t* fsi;
+	hi_fsinfo_t* matchfsi = NULL;
+	
+	int i, matchi = 0;
+	
+	if(fslist == NULL)
+		return NULL;
+	
+	if(!path_is_abs(path))
+		return NULL;
+		
+	path_split(&iter1, PATHMAXPARTS, path);
+	
+	hi_for_each_object(fsobj, fslist) {
+		fsi = HI_FSINFO_FROM_OBJ(fsobj);
+		
+		path_split(&iter2, PATHMAXPARTS, fsi->fs_mountpoint);
+		
+		/* Mount point is too long for this path */
+		if(iter2.ps_num_parts > iter1.ps_num_parts)
+			continue;
+		
+		/* Check how many parts in iter1;iter2 are matching each other
+		 * If it is more than last search, replace previous matchfsi 
+		 * fsinfo object with current*/
+		for(i = 0; i < iter2.ps_num_parts; ++i) {
+			if(path_cmp(iter1.ps_parts[i], iter2.ps_parts[i]) != 0)
+				break;
+		}
+		
+		if(i == iter2.ps_num_parts && i > matchi) {
+			matchi = i;
+			matchfsi = fsi;
+		}
+	}
+	
+	return matchfsi;
+}
+
+/**
+ * Find corresponding fsinfo object by device
+ */
+hi_fsinfo_t* hi_fsinfo_find_bydev(hi_dsk_info_t* di) {
+	list_head_t* fslist = hi_fsinfo_list(B_FALSE);
+	hi_object_t* fsobj;
+	hi_fsinfo_t* fsi;
+	
+	if(fslist == NULL)
+		return NULL;
+	
+	hi_for_each_object(fsobj, fslist) {
+		fsi = HI_FSINFO_FROM_OBJ(fsobj);
+		
+		if(!fsi->fs_device)
+			continue;
+		
+		/* Compare names (not raw pointers, because di and fsi may be
+		 * from different probing incarnations ) */
+		if(strcmp(fsi->fs_device->d_disk_name, di->d_disk_name) == 0)
+			return fsi;
+	}
+	
+	return NULL;
+}
+
 tsobj_node_t* tsobj_hi_fsinfo_format(struct hi_object_header* object) {
 	hi_fsinfo_t* fsi = HI_FSINFO_FROM_OBJ(object);
 	tsobj_node_t* fsinfo = tsobj_new_node("tsload.hi.FileSystem");

@@ -1,7 +1,9 @@
 Import('env')
 
-if False:
-    mod = env.Clone()
-    
-    mod.PreparePlatform()
-    mod.Module('load', 'simpleio')
+mod = env.Clone()
+
+# FIXME: currently PreparePlatform has to install includes, which we 
+# don't want to do for modules
+mod.PreparePlatform('include/mod/simpleio')
+
+mod.Module('load', 'simpleio')

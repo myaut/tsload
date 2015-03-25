@@ -24,9 +24,9 @@
 #include <tsload/autostring.h>
 
 #include <hostinfo/diskinfo.h>
+#include <hostinfo/fsinfo.h>
 
 #include <string.h>
-
 
 mp_cache_t hi_dsk_cache;
 
@@ -77,6 +77,77 @@ void hi_dsk_fini(void) {
 	plat_hi_dsk_fini();
 	
 	mp_cache_destroy(&hi_dsk_cache);
+}
+
+/* hi_dsk_find_overlap()
+ * ---------------------
+ */
+
+hi_object_t* hi_dsk_check_poolvol(hi_dsk_info_t* di) {
+	list_head_t* dsklist = hi_dsk_list(B_FALSE);
+	
+	hi_object_t* pvobj;
+	hi_dsk_info_t* pvi;
+	
+	hi_object_child_t* child;
+	hi_dsk_info_t* childdi;
+	
+	hi_for_each_object(pvobj, dsklist) {
+		pvi = HI_DSK_FROM_OBJ(pvobj);
+		
+		if(pvi->d_type != HI_DSKT_POOL && pvi->d_type != HI_DSKT_VOLUME)
+			continue;
+		
+		hi_for_each_child(child, HI_DSK_TO_OBJ(pvi)) {
+			childdi = HI_DSK_FROM_OBJ(child->object);
+			
+			if(strcmp(childdi->d_disk_name, di->d_disk_name) == 0)
+				return pvobj;
+		}
+	}
+	
+	return NULL;
+}
+
+/**
+ * Helper for `diskio` workload type -- finds if selected 
+ * disk overlaps with pool, volume or filesystem
+ * 
+ * @note pools (`HI_DSKT_POOL`) are not supported here
+ * 
+ * @param di chosen disk
+ * 
+ * @return disk or filesystem this disk overlaps
+ */
+hi_object_t* hi_dsk_check_overlap(hi_dsk_info_t* di) {
+	hi_object_t* overlap = NULL;
+	hi_fsinfo_t* fsi;
+	
+	/* Object has filesystem? */
+	fsi = hi_fsinfo_find_bydev(di);
+	if(fsi != NULL) 
+		return HI_FSINFO_TO_OBJ(fsi);
+	
+	/* Disks and partitions may contain subpartitions */
+	if(di->d_type == HI_DSKT_DISK || di->d_type == HI_DSKT_PARTITION) {
+		hi_object_child_t* child;
+		hi_dsk_info_t* spi;
+		
+		hi_for_each_child(child, HI_DSK_TO_OBJ(di)) {
+			spi = HI_DSK_FROM_OBJ(child->object);
+			
+			if(spi->d_type == HI_DSKT_PARTITION) {
+				/* Recursively find overlap */
+				overlap = hi_dsk_check_overlap(spi);
+				if(overlap != NULL) 
+					return overlap;
+			}
+		}
+	}
+	
+	/* Recursively walk pools and volumes and find volumes that reside
+	 * on this disk device. */
+	return hi_dsk_check_poolvol(di);
 }
 
 const char* tsobj_hi_dsk_format_class(hi_dsk_info_t* di) {

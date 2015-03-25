@@ -147,7 +147,7 @@ typedef struct {
 		/*WLP_STRING_SET*/
 		struct {
 			int ss_num;
-			char** ss_strings;
+			const char** ss_strings;
 		};
 	};
 } wlp_range_t;

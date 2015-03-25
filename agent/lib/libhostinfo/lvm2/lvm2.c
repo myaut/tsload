@@ -67,6 +67,19 @@ int hi_lin_proc_lvm_pv(pv_t pv, hi_dsk_info_t* vgdi, const char* vgname) {
 	pvdi = hi_dsk_find(devname);
 	
 	if(pvdi == NULL) {
+		/* May be a symlink in /dev/disk/... was used -- try again */
+		char linkname[PATHMAXLEN];
+		
+		path_abslink(linkname, PATHMAXLEN, pvname);
+		hi_dsk_dprintf("hi_lin_proc_lvm_pv: Found PV '%s' - trying with symlink -> '%s'\n",
+					   pvname, linkname);
+		
+		/* path_split() should copy it to iter space, so linkname may be freed */
+		devname = path_basename(&iter, linkname);
+		pvdi = hi_dsk_find(devname);
+	}
+	
+	if(pvdi == NULL) {
 		hi_dsk_dprintf("hi_lin_proc_lvm_pv: Found PV '%s' - cannot find device '%s'\n", 
 					   pvname, devname);
 		return HI_PROBE_ERROR;

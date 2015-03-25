@@ -84,7 +84,7 @@ PLATAPI int hi_fsinfo_probe_impl(list_head_t* disks) {
 		
 		fsi = hi_fsinfo_create(mnt->mnt_mountp, mnt->mnt_fstype, mnt->mnt_special);
 		
-		fsi->fs_readonly = strncmp(mnt->mnt_mntopts, "rw", 2) != 0;
+		fsi->fs_readonly = plat_fs_is_readonly(mnt->mnt_mntopts);
 		
 		hi_fsinfo_statvfs(fsi);
 		hi_fsinfo_bind_dev(fsi, disks);

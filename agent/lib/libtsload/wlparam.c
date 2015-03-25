@@ -181,8 +181,8 @@ static int tsobj_wlparam_strset_proc(tsobj_node_t* node, wlp_descr_t* wlp, void*
 	}
 
 	tsload_error_msg(TSE_INVALID_VALUE,
-					 WLP_ERROR_PREFIX "string was not found",
-					 wl->wl_name, wlp->name);
+					 WLP_ERROR_PREFIX "string '%s' was not found",
+					 wl->wl_name, wlp->name, str);
 
 	return WLPARAM_OUTSIDE_RANGE;
 }

@@ -257,8 +257,7 @@ int json_parse_string(struct json_parser* parser, json_buffer_t* buf, json_str_t
 		}
 
 		if(*data == '\\') {
-			idx += 2;
-			data += 2;
+			++idx; ++data;
 			have_escaped = B_TRUE;
 		}
 

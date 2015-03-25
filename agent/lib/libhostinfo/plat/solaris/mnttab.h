@@ -20,6 +20,8 @@
 
 #include <tsload/defs.h>
 
+#include <string.h>
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/mnttab.h>
@@ -46,6 +48,10 @@ STATIC_INLINE boolean_t	plat_filter_fs(plat_mntent_t* mnt) {
 		return B_TRUE;
 	
 	return B_FALSE;
+}
+
+STATIC_INLINE plat_fs_is_readonly(const char* mntopts) {
+	return strncmp(mntopts, "ro", 2) == 0;
 }
 
 #endif

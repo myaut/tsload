@@ -110,6 +110,7 @@ typedef struct hi_dsk_info {
  * Conversion macros
  */
 #define HI_DSK_FROM_OBJ(object)		((hi_dsk_info_t*) (object))
+#define HI_DSK_TO_OBJ(di)			(&di->d_hdr)
 
 PLATAPI int hi_dsk_probe(void);
 void hi_dsk_dtor(hi_object_t* object);
@@ -117,6 +118,8 @@ int hi_dsk_init(void);
 void hi_dsk_fini(void);
 
 hi_dsk_info_t* hi_dsk_create(void);
+
+LIBEXPORT hi_object_t* hi_dsk_check_overlap(hi_dsk_info_t* di);
 
 
 /**

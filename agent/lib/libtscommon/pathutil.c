@@ -49,8 +49,6 @@ const int psep_length = 1;
 
 #endif
 
-
-
 /**
  * Create path from array into string. Similiar to python's os.path.join
  *

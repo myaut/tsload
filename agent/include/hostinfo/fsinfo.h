@@ -88,10 +88,14 @@ typedef struct hi_fsinfo {
  * Conversion macros
  */
 #define HI_FSINFO_FROM_OBJ(object)		((hi_fsinfo_t*) (object))
+#define HI_FSINFO_TO_OBJ(fsi) 			(&fsi->fs_hdr)
 
 hi_fsinfo_t* hi_fsinfo_create(const char* mntpt, const char* fstype, 
 							 const char* devpath);
 void hi_fsinfo_dtor(hi_object_header_t* object);
+
+LIBEXPORT hi_fsinfo_t* hi_fsinfo_find_bypath(const char* path);
+LIBEXPORT hi_fsinfo_t* hi_fsinfo_find_bydev(hi_dsk_info_t* di);
 
 void hi_fsinfo_bind_dev(hi_fsinfo_t* fsi, list_head_t* disks);
 

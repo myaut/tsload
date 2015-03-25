@@ -1,7 +1,7 @@
 
 /*
     This file is part of TSLoad.
-    Copyright 2013, Sergey Klyaus, ITMO University
+    Copyright 2015, Sergey Klyaus, Tune-IT
 
     TSLoad is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,12 +18,14 @@
 
 
 
-#ifndef IOFILE_H_
-#define IOFILE_H_
+#ifndef PLAT_WIN_IOFILE_H_
+#define PLAT_WIN_IOFILE_H_
+
+#include <windows.h>
 
 typedef struct {
-	int fd;
+	HANDLE hdl;
 } plat_io_file_t;
 
-#endif /* IOFILE_H_ */
+#endif 
 

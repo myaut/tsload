@@ -371,9 +371,18 @@ int hi_win_proc_volume(char* vol_name) {
 	if(!GetVolumeInformation(vol_name, vol->name_ex, MAX_PATH,
 							 &vol->serial_no, &vol->fs_namemax, &vol->fs_flags, 
 						     vol->fs_name, HIWINVOLFSNAMELEN)) {
-		hi_dsk_dprintf("hi_win_proc_volume: failed GetVolumeInformation(%s): code %d\n", 
-		 			   vol_name, GetLastError());
-		return HI_WIN_DSK_ERROR;
+		if(GetLastError() != ERROR_UNRECOGNIZED_VOLUME) {
+			hi_dsk_dprintf("hi_win_proc_volume: failed GetVolumeInformation(%s): code %d\n", 
+						vol_name, GetLastError());
+			return HI_WIN_DSK_ERROR;
+		}
+		
+		/* RAW filesystem */
+		vol->serial_no = 0;
+		vol->fs_namemax = 0;
+		vol->fs_flags = 0;
+		strncpy(vol->name_ex, vol_name, MAX_PATH);
+		strncpy(vol->fs_name, "RAW", HIWINVOLFSNAMELEN);
 	}
 	
 	hi_dsk_dprintf("hi_win_proc_volume: find volume: %s, fs type: %s, size %lld\n", 

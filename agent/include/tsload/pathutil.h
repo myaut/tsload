@@ -51,6 +51,11 @@ STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
 	return _strnicmp(a1, a2, n);
 }
 
+STATIC_INLINE boolean_t path_is_abs(const char* path) {
+	/* Check if it is UNC path or it resides on drive */
+	return (path[0] == '\\' && path[1] == '\\') || path[1] == ':';
+}
+
 #elif defined(PLAT_POSIX)
 
 STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
@@ -58,6 +63,10 @@ STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
 }
 STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
 	return strncmp(a1, a2, n);
+}
+
+STATIC_INLINE boolean_t path_is_abs(const char* path) {
+	return path[0] == '/';
 }
 
 #else
