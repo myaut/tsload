@@ -78,6 +78,12 @@ class DocPage(object):
     def gen_link_to(self, page):        
         doc_dir = os.path.dirname(self.doc_path)
         return os.path.relpath(page.doc_path, doc_dir)
+    
+    def set_header_from_link(self, link):
+        if not self.header and link.text:
+            self.header = link.text
+        elif self.header and not link.text:
+            link.text = self.header
 
 class MarkdownPage(DocPage):
     def __init__(self, page_path):
@@ -456,10 +462,10 @@ class IndexPage(MarkdownPage):
             
             # Collect links and references from all pages
             for page in self.pages.values():
-                links = self._collect_ref_links(page)
+                links = self._collect_ref_links(page, False)
                 self.links.extend(links)
             
-            self.index_links = self._collect_ref_links(self)
+            self.index_links = self._collect_ref_links(self, True)
             self.links.extend(self.index_links)
             
             # Generate reference
@@ -523,7 +529,7 @@ class IndexPage(MarkdownPage):
             if '#' in name:
                 name = name[:name.rfind('#')]
             
-            if docspace_name != self.docspace:                  
+            if docspace_name != self.docspace:
                 for docspace in self.docspaces:
                     if docspace_name == docspace.docspace:
                         break
@@ -535,11 +541,12 @@ class IndexPage(MarkdownPage):
             try:
                 return docspace.pages[name]
             except KeyError:
-                print >> sys.stderr, 'WARNING: Link "%s" not found in docspace "%s"' % (link.where,
-                                                                                        self.docspace)  
+                print >> sys.stderr, 'WARNING: Link "%s" not found in docspace "%s", available pages: %s' % (link.where,
+                                                                                                             docspace.docspace,
+                                                                                                             ', '.join(docspace.pages.keys()))
                 return None
         
-        def _collect_ref_links(self, page):
+        def _collect_ref_links(self, page, is_index):
             def pred(part):
                 return isinstance(part, Reference) or \
                        (isinstance(part, Link) and part.type == Link.INTERNAL)
@@ -553,6 +560,8 @@ class IndexPage(MarkdownPage):
                                              part.text)
                     self.references[full_ref] = part
                 else:
+                    if is_index:
+                        page.set_header_from_link(part)
                     links.append((page, part))
             
             return links
@@ -601,10 +610,10 @@ class IndexPage(MarkdownPage):
                     print >> sys.stderr, 'WARNING: Not found page for link "%s"' % link
                     continue
                 
-                if not page.header and link.text:
-                    page.header = link.text
-                elif page.header and not link.text:
-                    link.text = page.header
+                # Not all page headers are set in _collect_ref_links()
+                # so set them here but only if reference page is an docspace index page
+                if isinstance(refpage, IndexPage.DocSpaceIndex):
+                    page.set_header_from_link(link)
                 
                 where = link.where
                 if '#' in where:

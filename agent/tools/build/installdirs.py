@@ -1,7 +1,7 @@
 # In Windows we install all binaries into installation root and prettify directories names
 # env[key]    POSIX directory    WIN directory     param name    param help
 install_dirs = [('INSTALL_BIN',      'bin/',          '',   
-                    'bindir',   'loader modules'),
+                    'bindir',   'binary files'),
                 ('INSTALL_LIB',      'lib/',          '',    
                     'libdir',   'shared libraries'),
                 ('INSTALL_ETC',      'etc/',             'Configuration\\',   

@@ -137,10 +137,11 @@ class MarkdownParser:
     
     def _parse_code(self, idx, char):
         count = self.ctl_count(idx, '`')
-                
+             
         if count >= 3:
-            # this is code block
-            self.code_block(count, idx)
+            # this is code block and not inline code
+            if self.icode_cnt == -1:
+                self.code_block(count, idx)
         elif not isinstance(self.block, Code):
             # inline code
             self.inline_code(count, idx)

@@ -22,7 +22,7 @@
 * [Build system][devel/build]
 * [Platform-specific builds][devel/plat]
 * [TSDoc][devel/tsdoc]
-* [Tests][devel/tsdoc]
+* [Tests][devel/tests]
 
 ### TSLoad reference
 [__docspace__:ref]

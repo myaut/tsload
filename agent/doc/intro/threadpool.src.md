@@ -5,6 +5,8 @@ Since TSLoad is designed to simulate multi-user environments, it has concept of 
 
 Threadpool consists of control thread and set of worker threads. Threadpool is synchronous: timeline of threadpool is separated into steps, and at beginning of each step, it generates requests that have to be executed during this step. Step duration interval is constant and called _quantum_, while second primary parameter of threadpool is _num\_threads_ that represents number of workers in this pool. Each step is parametrised by number of requests per each workload class that should be run during this step.
 
+__NOTE__: Threadpools are deprecated as of TSLoad 0.2. They will be replaced with more flexible and modular __loaders and channels__.
+
 #### Threadpool dispatchers
  
 At beginning of each step requests are represent a queue, so they have to be dispatched to worker threads. To do so, worker and control threads are calling dispatcher. There are three main implementations of it in TSLoad 0.2:
