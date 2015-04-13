@@ -508,7 +508,7 @@ void wlpgen_gen_random(wlp_generator_t* gen, void* param) {
 			}
 		}
 		else {
-			switch(gen->wlp->type) {
+			switch(wlp_get_base_type(gen->wlp)) {
 			case WLP_INTEGER:
 				val = rv_variate_double(randgen->rv);
 				WLPGEN_GEN_RANDOM(wlp_integer_t, round(val), param);
