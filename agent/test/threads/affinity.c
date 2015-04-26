@@ -68,9 +68,12 @@ int test_main() {
 	thread_t threads[NUM_THREADS];
 
 	cpumask_t* thread_mask = NULL;
+	
+	strncpy(hi_obj_modpath, getenv("TS_HIMODPATH"), PATHMAXLEN);
 
 	mempool_init();
 	threads_init();
+	hi_obj_init();
 
 	/* Get cpu id and mask for it */
 	cpuid = get_first_cpu();
@@ -101,7 +104,8 @@ int test_main() {
 
 	cpumask_destroy(thread_mask);
 	cpumask_destroy(mask);
-
+	
+	hi_obj_fini();
 	threads_fini();
 	mempool_fini();
 

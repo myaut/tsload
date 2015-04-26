@@ -13,6 +13,8 @@
 #include <tsload/pathutil.h>
 #include <tsload/init.h>
 
+#include <hostinfo/hiobject.h>
+
 #include <tsload.h>
 
 extern int tsload_test_main();
@@ -41,6 +43,8 @@ int test_main(int argc, char* argv[]) {
 
 	getcwd(cwd, PATHMAXLEN);
 	path_join(mod_search_path, MODPATHLEN, cwd, "mod", NULL);
+	
+	strncpy(hi_obj_modpath, getenv("TS_HIMODPATH"), PATHMAXLEN);
 
 	init();
 

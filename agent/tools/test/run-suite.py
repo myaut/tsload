@@ -316,7 +316,7 @@ class TestRunner(Thread):
         core_path = os.path.join(self.test_dir, 'core')
         
         if os.path.exists(core_path):
-            core_name = 'core_' + test_name.replace(os.sep, '_')
+            core_name = 'core_' + test_name.replace('/', '_')
             
             if sys.platform == 'win32':
                 core_name += '.dmp'
@@ -362,7 +362,10 @@ class TestRunner(Thread):
         
         if sys.platform in ['linux2', 'sunos5']:
             test_env['LD_LIBRARY_PATH'] = self.lib_dir
-            
+        
+        # For all tests
+        test_env['TS_HIMODPATH'] = self.lib_dir
+        
         # For system tests (tsexperiment)
         test_env['TS_MODPATH'] = self.mod_dir
         test_env['TS_LOGFILE'] = self.log_name
@@ -375,6 +378,10 @@ class TestRunner(Thread):
         test_env['TS_INSTALL_MOD_LOAD'] = 'mod'
         
         return test_env 
+    
+    def prepare_test(self, cfg_name):
+        test = self.read_test_config(cfg_name)
+        self.prepare_test_dir(test)
     
     def run_test(self, cfg_name):
         # Prepare test environment and generate command for it
@@ -563,7 +570,17 @@ class TestSuite(object):
             self.formatter.report_block('Some files are left in test directory:', 
                                         '\n'.join(file_list))
     def run(self):
-        for cfg_name in sys.argv[1:]:
+        args = sys.argv[1:]
+        
+        if '--prepare' in args:
+            test_cfg = args[args.index('--prepare') + 1]
+            self.runners[0].prepare_test(test_cfg)
+            
+            print 'Prepared test directory %s' % (self.runners[0].test_dir)
+            
+            return
+        
+        for cfg_name in args:
             self.queue.put(cfg_name)
             
         self.queue.join()
