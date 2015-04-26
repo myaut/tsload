@@ -363,7 +363,7 @@ if env['_INTERNAL']:
             # FIXME: Build service fails when creating PDBs on Windows
             # C1902 - looks like cl.exe couldn't connect to mspdbsrv.exe
             if 'TSLOAD_PDBSERV_DISABLE' not in os.environ:
-                env.Append(CCFLAGS = ["/Zi"])
+                env.Append(CCFLAGS = ["/Z7"])
                 env.Append(LINKFLAGS =  ["/debug"])
             env.Append(CCFLAGS = ['/Od'])           
     else:

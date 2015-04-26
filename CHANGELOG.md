@@ -1,15 +1,21 @@
-### TSLoad 0.3
+### TSLoad 0.3.0
 
-TSLoad server release + monitoring functionality embedded into agent
-Release date: ?
+Release date: ???
+
+* Loaders & channels
+
+### TSLoad 0.2 beta
+
+Release date: ???
+
+* OS-specific binary packages
 
 ### TSLoad 0.2 alpha #2
 
-Release date: ?
+Release date: 26 Apr 2015
 
 * Complete HostInfo implementation
-* BigMem module
-* SimpleIO module + swat-import
+* SimpleIO module v2
 
 ### TSLoad 0.2 alpha #1
 

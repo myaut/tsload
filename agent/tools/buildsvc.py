@@ -286,6 +286,8 @@ class BuildServer(object):
         remotepath = os.path.join(self.repodir, logpath)
         localpath = os.path.join(outdir, self.name + '_' + logname)
         
+        self._log(BuildServer.LOG_ALL, 'Fetching %s -> %s\n', remotepath, localpath)
+        
         self.sftp.get(remotepath, localpath)
     
     def _remote_stat(self, remote_path):

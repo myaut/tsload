@@ -27,7 +27,7 @@
 #include <assert.h>
 
 
-#define NUM_THREADS		16
+#define NUM_THREADS		4
 #define STEPS			4096
 
 /* Atomically increased counter */

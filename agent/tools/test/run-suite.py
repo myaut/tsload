@@ -228,33 +228,39 @@ class TestRunner(Thread):
     def copy_test_files(self, dest_dir, files, log_copy = False):
         ''' Copies files for test. Helper for prepare_test_dir'''
         for fn in files:
-            # See above in read_uses
-            args = {}
-            if isinstance(fn, tuple):
-                fn, args = fn 
-            
-            # Cut-out SCons root-dir marking
-            if fn.startswith('#'):
-                fn = fn[1:]
-                        
-            dest_name = args.get('rename', os.path.basename(fn))
-            dest_path = os.path.join(dest_dir, dest_name)        
-            
-            if args.get('remove') is None:
-                if os.path.isdir(fn):
-                    shutil.copytree(fn, dest_path)
-                else:
-                    shutil.copy(fn, dest_path)
+            try:
+                self._copy_test_file(dest_dir, fn, log_copy)
+            except Exception as e:
+                raise TestError("Failed processing copy-directive '%s'" % (fn, ), e)
+    
+    def _copy_test_file(self, dest_dir, fn, log_copy):
+        # See above in read_uses
+        args = {}
+        if isinstance(fn, tuple):
+            fn, args = fn 
+        
+        # Cut-out SCons root-dir marking
+        if fn.startswith('#'):
+            fn = fn[1:]
                     
-                chmod = args.get('chmod')
-                if chmod is not None:
-                    mode = int(chmod, 8)
-                    os.chmod(dest_path, mode)
+        dest_name = args.get('rename', os.path.basename(fn))
+        dest_path = os.path.join(dest_dir, dest_name)        
+        
+        if args.get('remove') is None:
+            if os.path.isdir(fn):
+                shutil.copytree(fn, dest_path)
             else:
-                os.remove(dest_path)
-            
-            if log_copy:
-                self.copy_log += '%s -> %s chmod:%s rm:%s\n' % (fn, dest_path, chmod, args.get('remove'))
+                shutil.copy(fn, dest_path)
+                
+            chmod = args.get('chmod')
+            if chmod is not None:
+                mode = int(chmod, 8)
+                os.chmod(dest_path, mode)
+        else:
+            os.remove(dest_path)
+        
+        if log_copy:
+            self.copy_log += '%s -> %s chmod:%s rm:%s\n' % (fn, dest_path, chmod, args.get('remove'))
     
     def prepare_test_dir(self, test):
         ''' Creates necessary directories in test directory 
