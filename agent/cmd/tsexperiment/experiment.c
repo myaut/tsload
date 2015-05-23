@@ -418,12 +418,13 @@ static long experiment_generate_id(experiment_t* root) {
 
 	if(runid_file != NULL) {
 		runid_file = freopen(runid_path, "w", runid_file);
+		if(runid_file == NULL)
+			return -1;
 	}
 	else {
 		runid_file = fopen(runid_path, "w");
-		if(runid_file == NULL) {
+		if(runid_file == NULL)
 			return -1;
-		}
 
 		plat_flock(fileno(runid_file), LOCK_EX);
 	}
@@ -455,7 +456,7 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 
 	if(runid == -1) {
 		tse_experiment_error_msg(root, EXPERR_CREATE_ALLOC_RUNID,
-								 "Couldn't allocate runid for experiment!");
+								 "Couldn't allocate runid for experiment: errno %d!", errno);
 		exp_create_error = EXPERR_CREATE_ALLOC_RUNID;
 		return NULL;
 	}
