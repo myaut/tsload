@@ -34,6 +34,7 @@ struct fileio_workload {
 	wlp_integer_t 	 file_size;
 	wlp_bool_t 		 sync;
 	wlp_bool_t	 	 sparse;
+	wlp_bool_t 		 overwrite;
 };
 
 struct diskio_workload {

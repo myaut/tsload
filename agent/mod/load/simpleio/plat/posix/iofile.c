@@ -50,6 +50,9 @@ PLATAPI int io_file_stat(io_file_t* iof) {
 
 	iof->iof_exists = stat(iof->iof_path, &s) != -1;
 	
+	if(iof->iof_exists)
+		iof->iof_file_size = s.st_size;
+	
 	return 0;
 }
 

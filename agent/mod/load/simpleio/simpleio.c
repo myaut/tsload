@@ -103,6 +103,13 @@ MODEXPORT wlp_descr_t fileio_extra_params[] = {
 		"Allow sparse creation of data",
 		offsetof(struct fileio_workload, sparse)
 	},
+	{ WLP_BOOL, WLPF_OPTIONAL,
+		WLP_NO_RANGE(),
+		WLP_BOOLEAN_DEFAULT(B_FALSE),
+		"overwrite",
+		"Overwrite file if it is already exists",
+		offsetof(struct fileio_workload, overwrite)
+	},
 	{ WLP_SIZE, WLPF_NO_FLAGS,
 		WLP_NO_RANGE(),
 		WLP_NO_DEFAULT(),
@@ -198,7 +205,8 @@ int simpleio_write_file(workload_t* wl, struct fileio_workload* fiowl, struct si
  *        (on POSIX all paths will be descendants of root /, so it doesn't apply) 
  *      - File size shouldn't exceed 90% of filesystem free space
  *        (tunable via `fileio_size_threshold`)
- *      - File shouldn't exist
+ *      - File shouldn't exist if overwrite option is not set or have same size as 
+ *        passed in workload parameters
  * */
 int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct simpleio_wldata* simpleio) {
 	int ret;
@@ -244,9 +252,21 @@ int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct 
 		goto iof_error;
 	
 	if(iof->iof_exists) {
-		wl_notify(wl, WLS_CFG_FAIL, 0,
-				  "File '%s' is already exists, SimpleIO won't overwrite it", fiowl->path);
-		return -1;
+		if(!fiowl->overwrite) {
+			wl_notify(wl, WLS_CFG_FAIL, 0,
+					"File '%s' is already exists, SimpleIO won't overwrite it", fiowl->path);
+			return -1;
+		}
+		
+		if(iof->iof_file_size != fiowl->file_size) {
+			wl_notify(wl, WLS_CFG_FAIL, 0,
+					"File '%s' has different size: %"PRIu64"b is expected, % "PRIu64"b is actual", 
+					fiowl->path, fiowl->file_size, iof->iof_file_size);
+			return -1;
+		}
+		
+		/* TODO: Some additional checks to prevent ovewriting important files 
+		 * i.e. check file owner and user running TSLoad */
 	}
 
 	logmsg(LOG_INFO, "Creating file '%s' with size %" PRIu64, fiowl->path, (uint64_t) fiowl->file_size);
@@ -260,8 +280,12 @@ int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct 
 		      fiowl->path, fsi->fs_mountpoint, fsi->fs_type, 
 		      (fsi->fs_device) ? fsi->fs_device->d_disk_name : fsi->fs_devpath);
 	
+	/* File existed at the moment we opened it, no need to overwrite it */
+	if(iof->iof_exists) 
+		return 0;
+	
 	simpleio->do_remove = B_TRUE;
-
+	
 	if(fiowl->sparse) {
 		char eof = 3;
 		

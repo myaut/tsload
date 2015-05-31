@@ -43,10 +43,32 @@ PLATAPI int io_file_init(io_file_t* iof, io_file_type_t type, const char* path, 
 	return 0;
 }
 
-PLATAPI int io_file_stat(io_file_t* iof) {
-	DWORD attrib = GetFileAttributes(iof->iof_path);
-
-	iof->iof_exists = (attrib != INVALID_FILE_ATTRIBUTES);
+PLATAPI int io_file_stat(io_file_t* iof)
+{
+    /* From http://stackoverflow.com/questions/8991192/check-filesize-without-opening-file-in-c */
+    WIN32_FILE_ATTRIBUTE_DATA fad;
+	LARGE_INTEGER size;
+	
+	/* Assume that file exists, but if GetFileAttributesEx fails, it doesn't */
+	iof->iof_exists = B_TRUE;
+	
+    if (!GetFileAttributesEx(iof->iof_path, GetFileExInfoStandard, &fad)) {
+		DWORD error = GetLastError();
+		
+		if(error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
+			iof->iof_exists = B_FALSE;
+			return 0;
+		}
+		
+		aas_printf(&iof->iof_error_msg, "Failed to GetFileAttributesEx('%s'): error %d", 
+				   iof->iof_path, error);
+		
+        return -1;
+	}
+    
+    size.HighPart = fad.nFileSizeHigh;
+    size.LowPart = fad.nFileSizeLow;
+    iof->iof_file_size = (uint64_t) size.QuadPart;
 	
 	return 0;
 }
@@ -56,7 +78,7 @@ PLATAPI int io_file_open(io_file_t* iof, boolean_t rdwr, boolean_t sync) {
 	DWORD share = FILE_SHARE_READ | 
 				  ((rdwr || iof->iof_file_type == IOF_BLOCKDEV) ? FILE_SHARE_WRITE : 0);
 	DWORD flags = (sync)?  FILE_FLAG_WRITE_THROUGH : 0;
-	DWORD creat = (iof->iof_file_type == IOF_BLOCKDEV) 
+	DWORD creat = (iof->iof_exists || iof->iof_file_type == IOF_BLOCKDEV) 
 						? OPEN_EXISTING : CREATE_NEW;
 	
 	HANDLE hdl;
