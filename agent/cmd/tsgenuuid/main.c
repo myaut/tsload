@@ -28,7 +28,7 @@ char moncfg_path[PATHMAXLEN];
 
 void usage(int err, const char* reason, ...);
 
-void parse_options(int argc, char* argv[]) {
+void parse_options(int argc, char* const argv[]) {
 	int ok = 1;
 
 	int c;

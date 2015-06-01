@@ -155,7 +155,7 @@ tsobj_node_t* tsobj_tpd_class_format(tp_disp_class_t* tpd_class) {
 tp_disp_t* tsobj_tp_disp_proc(tsobj_node_t* node) {
 	tp_disp_t* tpd = NULL;
 	tp_disp_class_t* tpd_class;
-	char* type;
+	const char* type;
 	int err;
 	
 	if(tsobj_get_string(node, "type", &type) != TSOBJ_OK)

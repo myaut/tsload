@@ -97,7 +97,7 @@ wlp_type_t wlp_get_base_type(wlp_descr_t* wlp) {
 static tsobj_node_t* tsobj_wlparam_strset_format(wlp_descr_t* wlp) {
 	tsobj_node_t* node = json_new_node(NULL);
 	int i;
-	char* str;
+	const char* str;
 
 	for(i = 0; i < wlp->range.ss_num; ++i) {
 		str = wlp->range.ss_strings[i];

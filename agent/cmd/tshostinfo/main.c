@@ -51,7 +51,7 @@ void deduce_paths(void) {
 	}
 }
 
-void parse_options(int argc, char* argv[]) {
+void parse_options(int argc, char* const argv[]) {
 	int c;
 
 	while((c = plat_getopt(argc, argv, "vhlxjX:")) != -1) {

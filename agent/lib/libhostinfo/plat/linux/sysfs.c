@@ -189,7 +189,7 @@ int bitmap_add_interval(char* p, char* pm, char* ps, uint32_t* bitmap, int len) 
 
 int hi_linux_sysfs_parsebitmap(const char* str, uint32_t* bitmap, int len) {
 	int ret;
-	char *p = str;
+	char *p = (char*) str;
 	char *pm = NULL;
 	char *ps = p;
 

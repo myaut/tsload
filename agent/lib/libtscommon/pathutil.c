@@ -220,7 +220,7 @@ static const char* strrchr_x(const char* s, const char* from, int c) {
  *
  * @return Pointer to first part or NULL in case of error
  * */
-char* path_split(path_split_iter_t* iter, int max, const char* path) {
+const char* path_split(path_split_iter_t* iter, int max, const char* path) {
     char* dest = iter->ps_storage;
     long max_parts = abs(max);
     size_t part_len = 0;
@@ -300,7 +300,7 @@ char* path_split(path_split_iter_t* iter, int max, const char* path) {
  * Returns next path part from iterator or NULL if all parts was
  * walked.
  * */
-char* path_split_next(path_split_iter_t* iter) {
+const char* path_split_next(path_split_iter_t* iter) {
     if(iter->ps_part == iter->ps_num_parts) {
 #ifdef PLAT_POSIX
     	if(iter->ps_last_is_root) {
@@ -318,7 +318,7 @@ char* path_split_next(path_split_iter_t* iter) {
 /**
  * Resets iterator to beginning
  * */
-char* path_split_reset(path_split_iter_t* iter) {
+const char* path_split_reset(path_split_iter_t* iter) {
 	iter->ps_part = 1;
 
 	return iter->ps_parts[0];
@@ -341,9 +341,9 @@ char* path_split_reset(path_split_iter_t* iter) {
 char* path_remove(char* result, size_t len, const char* abspath, const char* path) {
 	path_split_iter_t si_abspath, si_path;
 	int count = 1;
-	char* part_abspath;
-	char* part_path;
-	char* root;
+	const char* part_abspath;
+	const char* part_path;
+	const char* root;
 
 	/* If path is empty - simply return abspath */
 	if(strlen(path) == 0 ||

@@ -82,7 +82,7 @@ int parse_get_range(const char* range) {
 	return 0;
 }
 
-void parse_options_args(int argc, const char* argv[]) {
+void parse_options_args(int argc, char* const argv[]) {
 	int ok = 1;
 	int c;
 	int argi;

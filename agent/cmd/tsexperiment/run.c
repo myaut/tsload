@@ -91,7 +91,7 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 
 	json_node_t* file;
 
-	char* step_fn;
+	const char* step_fn;
 	char step_path[PATHMAXLEN];
 	char step_dest_path[PATHMAXLEN];
 

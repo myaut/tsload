@@ -42,7 +42,7 @@ LIBEXPORT struct subsystem xsubsys[XSUBSYS_COUNT] = {
 
 void usage(int err, const char* reason, ...);
 
-void parse_options(int argc, char* argv[]) {
+void parse_options(int argc, char* const argv[]) {
 	int fflag = 0;
 
 	int c;

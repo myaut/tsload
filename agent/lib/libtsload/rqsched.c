@@ -101,7 +101,7 @@ int tsobj_rqsched_proc_variator(tsobj_node_t* node, workload_t* wl, rqsched_var_
 	tsload_param_t* rv_param;
 	
 	json_node_t* randgen;
-	char* distribution;
+	const char* distribution;
 
 	int err;
 
@@ -196,7 +196,7 @@ int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl) {
 	rqsched_t* rqs = NULL;
 	int ret = RQSCHED_TSOBJ_OK;
 
-	char* rqsched_type;
+	const char* rqsched_type;
 
 	wl->wl_rqsched_class = NULL;
 	wl->wl_rqsched_private = NULL;

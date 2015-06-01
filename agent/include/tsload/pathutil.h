@@ -18,14 +18,15 @@
 
 
 
-#ifndef FNUTIL_H_
-#define FNUTIL_H_
+#ifndef PATHUTIL_H_
+#define PATHUTIL_H_
 
 #include <tsload/defs.h>
 
 #include <stdlib.h>
 #include <string.h>
 
+#include <tsload/plat/pathutil.h>
 
 /**
  * @module Path processing utilities
@@ -42,38 +43,6 @@
 LIBIMPORT const char* path_curdir;
 LIBIMPORT const char* path_separator;
 
-#if defined(PLAT_WIN)
-
-STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
-	return _stricmp(a1, a2);
-}
-STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
-	return _strnicmp(a1, a2, n);
-}
-
-STATIC_INLINE boolean_t path_is_abs(const char* path) {
-	/* Check if it is UNC path or it resides on drive */
-	return (path[0] == '\\' && path[1] == '\\') || path[1] == ':';
-}
-
-#elif defined(PLAT_POSIX)
-
-STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
-	return strcmp(a1, a2);
-}
-STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
-	return strncmp(a1, a2, n);
-}
-
-STATIC_INLINE boolean_t path_is_abs(const char* path) {
-	return path[0] == '/';
-}
-
-#else
-
-#error "Unknown path comparator for this platform"
-
-#endif
 
 /**
  * Temporary storage for path splitting operations
@@ -95,16 +64,16 @@ LIBEXPORT char* path_join_array(char* dest, size_t len, int num_parts, const cha
 LIBEXPORT char* path_join(char* dest, size_t len, ...);
 LIBEXPORT char* path_join_aas(char** aas, ...);
 
-LIBEXPORT char* path_split(path_split_iter_t* iter, int max, const char* path);
-LIBEXPORT char* path_split_next(path_split_iter_t* iter);
-LIBEXPORT char* path_split_reset(path_split_iter_t* iter);
+LIBEXPORT const char* path_split(path_split_iter_t* iter, int max, const char* path);
+LIBEXPORT const char* path_split_next(path_split_iter_t* iter);
+LIBEXPORT const char* path_split_reset(path_split_iter_t* iter);
 
 /**
  * Returns directory name. Uses iter as temporary storage
  *
  * @note uses path_split */
-STATIC_INLINE char* path_dirname(path_split_iter_t* iter, const char* path) {
-	char* dirname = NULL;
+STATIC_INLINE const char* path_dirname(path_split_iter_t* iter, const char* path) {
+	const char* dirname = NULL;
 	path_split(iter, -2, path);
 
 	dirname = path_split_next(iter);
@@ -118,7 +87,7 @@ STATIC_INLINE char* path_dirname(path_split_iter_t* iter, const char* path) {
  * Returns name of file. Uses iter as temporary storage
  *
  * @note uses path_split */
-STATIC_INLINE char* path_basename(path_split_iter_t* iter, const char* path) {
+STATIC_INLINE const char* path_basename(path_split_iter_t* iter, const char* path) {
 	return path_split(iter, -2, path);
 }
 

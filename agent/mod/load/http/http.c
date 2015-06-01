@@ -145,7 +145,7 @@ MODEXPORT int http_run_request(request_t* rq) {
   struct http_request* hrq = (struct http_request*) rq->rq_params;
   struct http_data* hd = (struct http_data*) rq->rq_workload->wl_private;
 
-  const char url[MAXURILEN];
+  char url[MAXURILEN];
 
   snprintf(url, MAXURILEN, "http://%s%s", hd->serveraddr, hrq->uri);
 

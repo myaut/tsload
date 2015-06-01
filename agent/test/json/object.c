@@ -79,7 +79,7 @@ void test_object_node(void) {
 
 	boolean_t b = B_FALSE;
 	int i = -1;
-	char* s = "bye!";
+	const char* s = "bye!";
 
 	assert(json_parse(buf, &obj) == JSON_OK);
 	assert(json_size(obj) == 3);

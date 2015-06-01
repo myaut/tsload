@@ -269,7 +269,7 @@ LIBEXPORT int json_get_integer_ul(json_node_t* parent, const char* name, unsigne
 LIBEXPORT int json_get_integer_tm(json_node_t* parent, const char* name, ts_time_t* val);
 LIBEXPORT int json_get_double(json_node_t* parent, const char* name, double* val);
 LIBEXPORT int json_get_double_n(json_node_t* parent, const char* name, double* val);
-LIBEXPORT int json_get_string(json_node_t* parent, const char* name, char** val);
+LIBEXPORT int json_get_string(json_node_t* parent, const char* name, const char** val);
 LIBEXPORT int json_get_boolean(json_node_t* parent, const char* name, boolean_t* val);
 LIBEXPORT int json_get_array(json_node_t* parent, const char* name, json_node_t** val);
 LIBEXPORT int json_get_node(json_node_t* parent, const char* name, json_node_t** val);

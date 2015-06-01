@@ -1,7 +1,7 @@
 
 /*
     This file is part of TSLoad.
-    Copyright 2012-2013, Sergey Klyaus, ITMO University
+    Copyright 2015, Sergey Klyaus, Tune-IT
 
     TSLoad is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,20 +16,20 @@
     along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
 */  
 
+#ifndef PLAT_POSIX_PATHUTIL_H_
+#define PLAT_POSIX_PATHUTIL_H_
 
+#include <string.h>
 
-#ifndef GETOPT_H_
-#define GETOPT_H_
+STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
+	return strcmp(a1, a2);
+}
+STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) {
+	return strncmp(a1, a2, n);
+}
 
-#include <tsload/defs.h>
+STATIC_INLINE boolean_t path_is_abs(const char* path) {
+	return path[0] == '/';
+}
 
-
-LIBIMPORT int opterr;
-LIBIMPORT int optind;
-LIBIMPORT int optopt;
-LIBIMPORT char *optarg;
-
-LIBEXPORT PLATAPI int plat_getopt(int argc, char* const argv[], const char* options);
-
-#endif /* GETOPT_H_ */
-
+#endif

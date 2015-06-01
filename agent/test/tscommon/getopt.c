@@ -14,7 +14,7 @@
  * On non-POSIX platform libtscommon implements it's own plat_getopt().
  */
 
-const char* testargs[] = {
+char* testargs[] = {
     "progname",
     "-c",
     "-aftest2abc",

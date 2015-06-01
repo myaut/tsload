@@ -804,7 +804,7 @@ tsobj_node_t* tsobj_request_format_all(list_head_t* rq_list) {
 static int tsobj_workload_proc_chain(workload_t* wl, tsobj_node_t* wl_chain_params) {
 	workload_t* parent = NULL;
 
-	char* wl_chain_name;
+	const char* wl_chain_name = NULL;
 	double wl_chain_probability = -1.0;
 	randgen_t* wl_chain_rg = NULL;
 

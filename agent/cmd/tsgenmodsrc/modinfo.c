@@ -87,7 +87,7 @@ int modinfo_check_dir(const char* modinfo_dir, boolean_t silent) {
  * Returns final value
  */
 const char* modinfo_read_var(json_node_t* vars, modvar_t* var, const char* fmtstr, ...) {
-	char* value;
+	const char* value = NULL;
 	int err = JSON_NOT_FOUND;
 
 	json_errno_clear();
@@ -354,8 +354,8 @@ int modinfo_read_config(const char* modinfo_path) {
 	json_node_t* vars = NULL;
 	json_node_t* wltypes = NULL;
 
-	char* modname = NULL;
-	char* modtype = "load";
+	const char* modname = NULL;
+	const char* modtype = "load";
 
 	int ret = MODINFO_OK;
 
@@ -410,7 +410,7 @@ int modinfo_create_cflags(json_node_t* bldenv, const char* varname, const char* 
 	json_node_t* cflags;
 	json_node_t* cflag;
 	int cfid;
-	char* cflag_str;
+	const char* cflag_str;
 
 	size_t len = 0, cflag_len, capacity = 512;
 	char* str = NULL;
@@ -479,7 +479,7 @@ int modinfo_read_buildenv(const char* root_path, const char* bldenv_path) {
 	json_node_t* bldenv;
 	int ret = MODINFO_OK;
 	char path[PATHMAXLEN];
-	char* value;
+	const char* value = NULL;
 
 	json_buffer_t* buf = NULL;
 

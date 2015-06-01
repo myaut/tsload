@@ -21,7 +21,7 @@ STATIC_INLINE tsobj_node_t* tsobj_popitem(tsobj_node_t* parent, int id);
 STATIC_INLINE int tsobj_get_integer_i64(tsobj_node_t* parent, const char* name, int64_t* val);
 STATIC_INLINE int tsobj_get_double(tsobj_node_t* parent, const char* name, double* val);
 STATIC_INLINE int tsobj_get_double_n(tsobj_node_t* parent, const char* name, double* val);
-STATIC_INLINE int tsobj_get_string(tsobj_node_t* parent, const char* name, char** val);
+STATIC_INLINE int tsobj_get_string(tsobj_node_t* parent, const char* name, const char** val);
 STATIC_INLINE int tsobj_get_boolean(tsobj_node_t* parent, const char* name, boolean_t* val);
 STATIC_INLINE int tsobj_get_array(tsobj_node_t* parent, const char* name, tsobj_node_t** val);
 STATIC_INLINE int tsobj_get_node(tsobj_node_t* parent, const char* name, tsobj_node_t** val);

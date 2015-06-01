@@ -30,6 +30,10 @@
  * Used instead of statically-allocated strings as read-only buffers
  * (after allocation, string should be freed and allocated again)
  *
+ * Auto-allocated strings may be mutable, but you should ensure that
+ * they were not constructed from aas_set() call. In that case behavior
+ * is undefined.
+ * 
  * Since arguments passed to AAS may be mutable (but should not be),
  * it uses "n" functions to protect from possible buffer overflow.
  */

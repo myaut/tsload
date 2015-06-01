@@ -103,7 +103,7 @@ void read_environ() {
 	}
 }
 
-void parse_options(int argc, const char* argv[]) {
+void parse_options(int argc, char* const argv[]) {
 	int c;
 
 	while((c = plat_getopt(argc, argv, "+e:X:hv")) != -1) {

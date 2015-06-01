@@ -60,7 +60,7 @@ struct tm_component {
  *
  * @return 0 if dst was not enough or number of printed characters
  */
-size_t tm_human_print(ts_time_t t, const char* dst, size_t size) {
+size_t tm_human_print(ts_time_t t, char* dst, size_t size) {
 	struct tm_component components[] = {
 		{ TS_TIME_SEC(t), "s" },
 		{ TS_TIME_MS(t), "ms" },
@@ -96,7 +96,7 @@ size_t tm_human_print(ts_time_t t, const char* dst, size_t size) {
 /**
  * Prints date-time in nice format (%H:%M:%S %d.%m.%Y)
  */
-size_t tm_datetime_print(ts_time_t t, const char* dst, size_t size) {
+size_t tm_datetime_print(ts_time_t t, char* dst, size_t size) {
 	time_t unix_start_time;
 
 	unix_start_time = TS_TIME_TO_UNIX(t);

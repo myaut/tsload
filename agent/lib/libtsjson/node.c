@@ -329,14 +329,14 @@ int json_get_double_n(json_node_t* parent, const char* name, double* val) {
 	return JSON_OK;
 }
 
-int json_get_string(json_node_t* parent, const char* name, char** val) {
+int json_get_string(json_node_t* parent, const char* name, const char** val) {
 	json_node_t* node = json_find(parent, name);
 	int err = json_check_type(node, JSON_STRING);
 
 	if(err != JSON_OK)
 		return err;
 
-	*val = (char*) node->jn_data.s;
+	*val = (const char*) node->jn_data.s;
 	return JSON_OK;
 }
 
@@ -357,7 +357,7 @@ int json_get_string_copy(json_node_t* parent, const char* name, char* val, size_
 }
 
 int json_get_string_aas(json_node_t* parent, const char* name, char** aas) {
-	char* str;
+	const char* str;
 	size_t aas_ret;
 	int ret = json_get_string(parent, name, &str);
 
@@ -509,8 +509,10 @@ int json_set_number(json_node_t* node, const char* val) {
 	parser.index = 0;
 	parser.lineno = 0;
 	parser.newline = 0;
-
-	buf.buffer = val;
+	
+	/* JSON buffers may alter data, but json_parse_number()
+	   shouldn't do it, so we play nice like non-const data was passed*/
+	buf.buffer = (char*) val;
 	buf.size = strlen(val);
 
 	return json_parse_number(&parser, &buf, &node);

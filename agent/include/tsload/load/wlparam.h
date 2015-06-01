@@ -158,7 +158,7 @@ typedef struct {
 	wlp_bool_t b;
 	wlp_integer_t i;
 	wlp_float_t f;
-	char* s;
+	const char* s;
 	wlp_strset_t ssi;
 } wlp_default_t;
 
@@ -216,8 +216,8 @@ typedef struct {
 	wlp_range_t range;
 	wlp_default_t defval;
 
-	char* name;
-	char* description;
+	const char* name;
+	const char* description;
 
 	size_t off;
 } wlp_descr_t;

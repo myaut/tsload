@@ -324,7 +324,7 @@ static char number_table_get(int c) {
 int json_parse_number(struct json_parser* parser, json_buffer_t* buf, json_node_t** object) {
 	int mode = 0;
 
-	char* literal;
+	const char* literal;
 	char* endptr;
 
 	double d;

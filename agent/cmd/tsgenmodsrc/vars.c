@@ -180,9 +180,12 @@ modvar_t* modvar_add_string(modvar_t* var, int i, const char* str) {
 modvar_t* modvar_get(const char* name) {
 	modvar_name_t vn;
 	modvar_t* var;
-		
-	vn.ns = var_namespace;
-	vn.name = name;
+	
+	/* Variables kept in var hash table should use autostrings
+	   but in our case we only need search criteria, so hack
+	   our way by using direct values of constant strings. */
+	vn.ns = (char*) var_namespace;
+	vn.name = (char*) name;
 
 	/* Search in local namespace */
 	var = hash_map_find(&var_hash_map, &vn);

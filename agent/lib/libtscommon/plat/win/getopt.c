@@ -44,7 +44,7 @@ int opt_state = OPT_OK;
 
 /* TODO: Support for -- */
 
-PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
+PLATAPI int plat_getopt(int argc, char* const argv[], const char* options) {
     static const char* p_opt = NULL;
 
     if(opt_state == OPT_FAIL)

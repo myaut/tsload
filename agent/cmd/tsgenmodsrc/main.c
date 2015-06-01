@@ -88,7 +88,7 @@ modtarget_t tgt_build[] = {
 int init(void);
 void usage(int ret, const char* reason, ...);
 
-static void parse_options(int argc, char* argv[]) {
+static void parse_options(int argc, char* const argv[]) {
 	int ok = 1;
 	int argi;
 	int c;

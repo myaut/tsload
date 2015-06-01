@@ -278,7 +278,7 @@ void hi_linux_disk_proc_disk(const char* name, void* arg) {
 }
 
 void hi_linux_disk_proc_slave(const char* name, void* arg) {
-	char* parent_name = (char*) arg;
+	const char* parent_name = arg;
 
 	hi_dsk_info_t *parent, *di;
 
@@ -300,7 +300,7 @@ void hi_linux_disk_proc_slaves(const char* name, void* arg) {
 
 	path_join(slaves_path, 128, SYS_BLOCK_PATH, name, "slaves", NULL);
 
-	hi_linux_sysfs_walk(slaves_path, hi_linux_disk_proc_slave, name);
+	hi_linux_sysfs_walk(slaves_path, hi_linux_disk_proc_slave, (void*) name);
 }
 
 int hi_lin_probe_lvm(void) {

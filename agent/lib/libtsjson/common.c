@@ -135,7 +135,8 @@ json_str_t json_str_reference(json_buffer_t* buf, int from, int to) {
 }
 
 void json_str_free(json_str_t json_str, json_buffer_t* buf) {
-	const char* str = (const char*) json_str;
+	/* Cast away constness since we are deallocating string */
+	char* str = (char*) json_str;
 	char tag = str[-1];
 
 	if(tag == JSON_STR_DYNAMIC) {

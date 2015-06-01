@@ -1,7 +1,7 @@
 
 /*
     This file is part of TSLoad.
-    Copyright 2012-2014, Sergey Klyaus, ITMO University
+    Copyright 2012-2015, Sergey Klyaus, Tune-IT
 
     TSLoad is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,10 +20,9 @@
 
 #include <tsload/defs.h>
 
+#include <unistd.h>
 
-extern int getopt(int argc, const char* argv[], const char* options);
-
-PLATAPI int plat_getopt(int argc, const char* argv[], const char* options) {
+PLATAPI int plat_getopt(int argc, char* const argv[], const char* options) {
 	return getopt(argc, argv, options);
 }
 

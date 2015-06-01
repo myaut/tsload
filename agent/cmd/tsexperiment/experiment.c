@@ -55,7 +55,7 @@ static char* strrchr_y(const char* s, int c) {
         --from;
     } while(*from != c);
 
-    return from;
+    return (char*) from;
 }
 
 DECLARE_HASH_MAP_STRKEY(exp_workload_hash_map, exp_workload_t, EWLHASHSIZE, wl_name, wl_next, EWLHASHMASK);

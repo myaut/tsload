@@ -294,7 +294,7 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 	FILE* file;
 
 	json_node_t* j_hostname;
-	char* hostname = NULL;
+	const char* hostname = NULL;
 
 	if(!ctx->have_dest) {
 		/* -d flag was not provided - use experiment dir. Couldn't do this

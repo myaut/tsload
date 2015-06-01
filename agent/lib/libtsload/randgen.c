@@ -181,7 +181,7 @@ tsobj_node_t* tsobj_randgen_class_format(randgen_class_t* rg_class) {
 
 randgen_t* tsobj_randgen_proc(tsobj_node_t* node) {
 	randgen_class_t* rg_class = NULL;
-	char* rg_class_name;
+	const char* rg_class_name;
 
 	int error;
 	int64_t seed;
@@ -228,7 +228,7 @@ randvar_t* tsobj_randvar_proc(tsobj_node_t* node, randgen_t* rg) {
 	randvar_t* rv = NULL;
 	randvar_class_t* rv_class;
 	tsload_param_t* rv_param;
-	char* rv_class_name;
+	const char* rv_class_name;
 	int ret = RV_PARAM_OK;
 	
 	if(tsobj_get_string(node, "class", &rv_class_name) != TSOBJ_OK)

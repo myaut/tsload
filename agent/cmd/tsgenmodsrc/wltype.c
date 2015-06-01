@@ -337,7 +337,7 @@ int modinfo_parse_wlp_strset(wlp_descr_t* param, json_node_t* j_param) {
 			goto bad_json; }
 
 int modinfo_parse_wlparam(wlp_descr_t* param, json_node_t* j_param) {
-	char* type;
+	const char* type;
 	int wlpt;
 	int err_defval = JSON_NOT_FOUND, err_min = JSON_NOT_FOUND,
 		err_max = JSON_NOT_FOUND, err = JSON_OK;

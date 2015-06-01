@@ -62,7 +62,7 @@ int tse_show_list_walk(const char* name, json_node_t* parent, json_node_t* node,
 
 #define TSE_SHOW_JSON_PARAM_STRING(agent, name)								\
 	{																		\
-		char* str;															\
+		const char* str;													\
 		if(json_get_string(agent, name, &str) == JSON_OK) {					\
 			TSE_SHOW_PARAM("%s", name, str);								\
 		}																	\
@@ -78,7 +78,7 @@ int tse_show_list_walk(const char* name, json_node_t* parent, json_node_t* node,
 
 int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
 	exp_threadpool_t* etp = (exp_threadpool_t*) obj;
-	char* disp = NULL;
+	const char* disp = NULL;
 	char quantum[40];
 
 	if(etp->tp_disp != NULL) {
@@ -95,7 +95,7 @@ int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
 
 int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
 	exp_workload_t* ewl = (exp_threadpool_t*) obj;
-	char* rqsched = NULL;
+	const char* rqsched = NULL;
 
 	if(ewl->wl_rqsched != NULL) {
 		json_get_string(ewl->wl_rqsched, "type", &rqsched);

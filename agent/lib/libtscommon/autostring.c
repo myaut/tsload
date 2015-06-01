@@ -44,7 +44,9 @@ char* aas_allocate(size_t count) {
 }
 
 void aas_set_impl(char** aas, const char* str) {
-	*aas = str + 1;
+	/* AAS string can be mutable if they were created
+	   with aas_copy or aas_vprintf, so cast away constness here. */
+	*aas = (char*) str + 1;
 }
 
 /**

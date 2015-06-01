@@ -129,8 +129,8 @@ static void csv_header_iter_init(csv_hdr_iter_t* iter, const char* header) {
 }
 
 static void csv_header_iter_next_opt(csv_chars_t* chars, csv_hdr_iter_t* iter) {
-	char* opt2;
-	char* next = (iter->tmp == NULL)
+	const char* opt2;
+	const char* next = (iter->tmp == NULL)
 		? (iter->ptr + iter->length) : iter->tmp;
 
 	if(!iter->opt)

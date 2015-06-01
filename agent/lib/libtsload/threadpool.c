@@ -711,7 +711,7 @@ static int tsobj_tp_bind_worker(thread_pool_t* tp, int wid, tsobj_node_t* node) 
 	tsobj_node_t* obj_node;
 	int obj_id;
 
-	char* obj_name;
+	const char* obj_name;
 	hi_cpu_object_t* object;
 
 	int err = SCHED_ERROR;
@@ -760,7 +760,7 @@ end:
 }
 
 static int tsobj_tp_schedule_worker(thread_pool_t* tp, int wid, tsobj_node_t* node) {
-	char* policy;
+	const char* policy;
 	int err;
 
 	tp_worker_t* worker = tp->tp_workers + wid;
@@ -847,7 +847,7 @@ int tsobj_tp_schedule(thread_pool_t* tp, tsobj_node_t* sched) {
 	int err;
 
 	tsobj_node_t* worker_sched;
-	char* wid_str;
+	const char* wid_str;
 	int wid_id;
 	tsobj_node_t* wid_node;
 	tsobj_node_t* wid_item;
