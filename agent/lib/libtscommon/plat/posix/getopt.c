@@ -21,6 +21,7 @@
 #include <tsload/defs.h>
 
 #include <unistd.h>
+#include <stdio.h>
 
 PLATAPI int plat_getopt(int argc, char* const argv[], const char* options) {
 	return getopt(argc, argv, options);
