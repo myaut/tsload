@@ -111,7 +111,7 @@ int print_cpu_info(int flags) {
 		node = HI_CPU_FROM_OBJ(object);
 
 		if(node->type == HI_CPU_NODE) {
-			printf("%-4d %-4s %-4s %-4s %-12lld %-12lld\n", node->id, "", "",
+			printf("%-4d %-4s %-4s %-4s %-12"PRId64" %-12"PRId64"\n", node->id, "", "",
 							"", node->node.cm_mem_total, node->node.cm_mem_free);
 
 			if(flags & INFO_XDATA) {
@@ -120,7 +120,7 @@ int print_cpu_info(int flags) {
 		}
 		else if(!(flags & INFO_XDATA) &&
 				node->type == HI_CPU_CHIP) {
-					printf("\t%-3d %lld %s\n", node->id, node->chip.cp_freq,
+					printf("\t%-3d %"PRId64" %s\n", node->id, node->chip.cp_freq,
 									node->chip.cp_name);
 		}
 

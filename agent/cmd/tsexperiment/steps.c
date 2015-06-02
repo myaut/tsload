@@ -406,7 +406,8 @@ int step_trace_fetch_step(experiment_t* exp, step_workload_trace_t* stwl, long s
 			/* Request count provided by upper generator differs
 			 * from number of reported requests. Trace failed :( */
 			tse_experiment_error_msg(exp, EXPERR_STEPS_END_OF_TRACE,
-									 "TSFile ended prematurely on %d entry\n", index);
+									 "Workload '%s': TSFile ended prematurely on %d entry\n", 
+									  stwl->ewl->wl_name, index);
 			return STEP_ERROR;
 		}
 
@@ -416,7 +417,8 @@ int step_trace_fetch_step(experiment_t* exp, step_workload_trace_t* stwl, long s
 			err = tsfile_get_entries(ewl->wl_file, strq->rqe, index, index + 1);
 			if(err != TSFILE_OK) {
 				tse_experiment_error_msg(exp, EXPERR_STEPS_TRACE_TSFILE_ERROR,
-										 "TSFile read error %d\n", stwl->ewl->wl_name, err);
+										 "Workload '%s': TSFile read error: %d\n", 
+							             stwl->ewl->wl_name, err);
 
 				mp_free(strq);
 				return STEP_ERROR;

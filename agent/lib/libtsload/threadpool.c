@@ -215,7 +215,7 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	}
 
 	if(quantum < tp_min_quantum) {
-		logmsg(LOG_WARN, "Failed to create thread_pool %s: too small quantum %lld (%lld minimum)",
+		logmsg(LOG_WARN, "Failed to create thread_pool %s: too small quantum %"PRItm" (%"PRItm" minimum)",
 						name, quantum, tp_min_quantum);
 		return NULL;
 	}

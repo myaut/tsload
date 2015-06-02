@@ -63,7 +63,7 @@ thread_result_t control_thread(thread_arg_t arg) {
 	tp->tp_time = tm_get_clock();
 
 	while(!tp->tp_is_dead) {
-		logmsg(LOG_TRACE, "Threadpool '%s': control thread is running (tm: %lld)",
+		logmsg(LOG_TRACE, "Threadpool '%s': control thread is running (tm: %"PRItm")",
 					tp->tp_name, tp->tp_time);
 
 		mutex_lock(&tp->tp_mutex);

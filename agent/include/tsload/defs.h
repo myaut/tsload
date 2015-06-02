@@ -168,6 +168,15 @@ STATIC_INLINE double round(double val)
 # 	include <inttypes.h>
 #endif
 
+/* Format specifiers for size_t and ssize_t */
+#if defined(_MSC_VER)
+#define PRIsz		"Iu"
+#define PRIssz		"Id"
+#else
+#define PRIsz		"zu"
+#define PRIssz		"zd"
+#endif
+
 #ifndef HAVE_DECL_VA_COPY
 #ifdef _MSC_VER
 #define va_copy(dst, src) (dst = src)

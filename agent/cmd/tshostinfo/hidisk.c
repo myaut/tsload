@@ -92,7 +92,7 @@ int print_disk_info(int flags) {
 	hi_for_each_object(object, disk_list) {
 		di = HI_DSK_FROM_OBJ(object);
 
-		printf("%-12s %-6s %-16llu %c%c %s\n", object->name,
+		printf("%-12s %-6s %-16"PRId64" %c%c %s\n", object->name,
 					disk_get_type(di), di->d_size,
 					(di->d_mode & R_OK)? 'R' : '-',
 					(di->d_mode & W_OK)? 'W' : '-',

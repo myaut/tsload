@@ -69,6 +69,8 @@
 LIBEXPORT char* aas_allocate(size_t count);
 
 LIBEXPORT size_t aas_vprintf(char** aas, const char* format, va_list va);
+
+STATIC_INLINE size_t aas_printf(char** aas, const char* format, ...) CHECKFORMAT(printf, 2, 3);
 STATIC_INLINE size_t aas_printf(char** aas, const char* format, ...) {
 	va_list va;
 	size_t ret;

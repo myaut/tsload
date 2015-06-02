@@ -31,9 +31,11 @@
 #define TSE_PRINT_NOLOG			(~TSE_ERR_DEST_LOG)
 
 int tse_vprintf(int flags, const char* fmtstr, va_list va);
-int tse_printf(int flags, const char* format, ...);
+int tse_printf(int flags, const char* format, ...)
+	CHECKFORMAT(printf, 2, 3);
 
-int tse_experiment_error_msg(experiment_t* exp, unsigned experr, const char* format, ...);
+int tse_experiment_error_msg(experiment_t* exp, unsigned experr, const char* format, ...)
+	CHECKFORMAT(printf, 3, 4);
 
 void tse_error_enable_dest(int dest);
 void tse_error_disable_dest(int dest);

@@ -105,7 +105,7 @@ MODEXPORT int http_wl_config(workload_t* wl) {
 
 	hd->fnull = plat_open_null();
 	if(hd->fnull == NULL) {
-		wl_notify(wl, WLS_CFG_FAIL, -1, "Failed to open 'null' file", hwp->server);
+		wl_notify(wl, WLS_CFG_FAIL, -1, "Failed to open 'null' file");
 		mp_free(hd);
 		return 1;
 	}

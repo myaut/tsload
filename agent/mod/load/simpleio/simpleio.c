@@ -260,7 +260,7 @@ int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct 
 		
 		if(iof->iof_file_size != fiowl->file_size) {
 			wl_notify(wl, WLS_CFG_FAIL, 0,
-					"File '%s' has different size: %"PRIu64"b is expected, % "PRIu64"b is actual", 
+					"File '%s' has different size: %"PRIu64"b is expected, %"PRIu64"b is actual", 
 					fiowl->path, fiowl->file_size, iof->iof_file_size);
 			return -1;
 		}

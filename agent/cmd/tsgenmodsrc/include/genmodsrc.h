@@ -149,7 +149,8 @@ STATIC_INLINE modvar_t* modvar_vprintf(modvar_t* var, const char* fmtstr, va_lis
 	return var;
 }
 
-modvar_t* modvar_printf(modvar_t* var, const char* fmtstr, ...);
+modvar_t* modvar_printf(modvar_t* var, const char* fmtstr, ...) 
+	CHECKFORMAT(printf, 2, 3);
 
 modvar_t* modvar_set_gen(modvar_t* var, modsrc_value_gen_func valgen,
 					 	 modsrc_dtor_func dtor, void* arg);

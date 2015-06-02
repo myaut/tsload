@@ -65,7 +65,8 @@ typedef struct {
 typedef int (*hm_walker_func)(hm_item_t* object, void* arg);
 
 LIBEXPORT void hash_map_init(hashmap_t* hm, const char* name);
-LIBEXPORT hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...);
+LIBEXPORT hashmap_t* hash_map_create(hashmap_t* base, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT void hash_map_destroy(hashmap_t* hm);
 
 LIBEXPORT int  hash_map_insert(hashmap_t* hm, hm_item_t* object);

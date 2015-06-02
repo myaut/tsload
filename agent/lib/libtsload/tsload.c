@@ -497,7 +497,7 @@ int tsload_destroy_threadpool(const char* tp_name) {
 
 int tsload_start(const char* basename) {
 	logmsg(LOG_INFO, "Started %s on %s...", basename, hi_get_nodename());
-	logmsg(LOG_INFO, "Clock resolution is %llu", tm_get_clock_res());
+	logmsg(LOG_INFO, "Clock resolution is %"PRItm, tm_get_clock_res());
 
 	/*Wait until universe collapses or we receive a signal :)*/
 	t_eternal_wait();

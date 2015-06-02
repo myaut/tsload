@@ -88,7 +88,8 @@ typedef struct module {
 } module_t;
 
 LIBEXPORT module_t* mod_search(const char* name);
-LIBEXPORT int mod_error(module_t* mod, char* fmtstr, ...);
+LIBEXPORT int mod_error(module_t* mod, char* fmtstr, ...) 
+	CHECKFORMAT(printf, 2, 3);
 
 LIBEXPORT void* mod_load_symbol(module_t* mod, const char* name);
 

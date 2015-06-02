@@ -119,11 +119,11 @@ static const char* modpp_state_str(modpp_state_type_t type) {
 }
 
 void modpp_do_trace(const char* action, modpp_t* pp, modpp_state_t* state, char* end) {
-	fprintf(stderr, "%3d : %lx %6s %8s(%-16s) %d..%d [%s]\n",
-			pp->pp_lineno, (unsigned long) pp,
+	fprintf(stderr, "%3d : %p %6s %8s(%-16s) %d..%d [%s]\n",
+			pp->pp_lineno, pp,
 			action, modpp_state_str(state->type),
 			(state->varname) ? state->varname : "",
-			state->start - pp->pp_start, end - pp->pp_start,
+			(int) (state->start - pp->pp_start), (int) (end - pp->pp_start),
 			(var_namespace == NULL) ? "global" : var_namespace );
 }
 

@@ -65,7 +65,7 @@ void tsfile_init_nodes(tsfile_t* file) {
 
 	file->node_cache = mp_malloc(sizeof(json_node_t*) * tsfile_nodes_count);
 
-	mutex_init(&file->node_mutex, "tsfile-n-%x", file);
+	mutex_init(&file->node_mutex, "tsfile-n-%p", file);
 }
 
 void tsfile_destroy_nodes(tsfile_t* file) {

@@ -62,6 +62,7 @@ STATIC_INLINE void list_node_init(list_node_t *list)
 	list->prev = list;
 }
 
+STATIC_INLINE void list_head_init(list_head_t *list, const char* namefmt, ...) CHECKFORMAT(printf, 2, 3);
 STATIC_INLINE void list_head_init(list_head_t *list, const char* namefmt, ...)
 {
 	va_list va;

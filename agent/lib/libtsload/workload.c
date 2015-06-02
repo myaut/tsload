@@ -151,7 +151,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 
 		step->wls_workload = wl;
 		step->wls_rq_count = 0u;
-		list_head_init(&step->wls_trace_rqs, "wl-trace-%d", name);
+		list_head_init(&step->wls_trace_rqs, "wl-trace-%s", name);
 	}
 
 	wl->wl_hm_next = NULL;
@@ -217,7 +217,7 @@ void wl_destroy_impl(workload_t* wl) {
 		wl_destroy_request_list(&(wl->wl_step_queue[i].wls_trace_rqs));
 	}
 
-	wl_notify(wl, WLS_DESTROYED, 0, "status flags: %d", wl->wl_status_flags);
+	wl_notify(wl, WLS_DESTROYED, 0, "status flags: %lx", wl->wl_status_flags);
 
 	wlpgen_destroy_all(wl);
 
@@ -278,7 +278,7 @@ void wl_rele(workload_t* wl) {
 void wl_finish(workload_t* wl) {
 	long step = wl->wl_current_step;
 
-	wl_notify(wl, WLS_FINISHED, wl->wl_current_step, "");
+	wl_notify(wl, WLS_FINISHED, wl->wl_current_step, "%s", "");
 }
 
 /**
@@ -397,7 +397,7 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, workload_t, wl);
 	int ret;
 
-	wl_notify(wl, WLS_CONFIGURING, 0, "");
+	wl_notify(wl, WLS_CONFIGURING, 0, "%s", "");
 
 	ret = wl->wl_type->wlt_wl_config(wl);
 
@@ -411,7 +411,7 @@ thread_result_t wl_config_thread(thread_arg_t arg) {
 		tp_attach(wl->wl_tp, wl);
 	}
 
-	wl_notify(wl, WLS_CONFIGURED, 100, "");
+	wl_notify(wl, WLS_CONFIGURED, 100, "%s", "");
 
 
 THREAD_END:
@@ -591,8 +591,8 @@ request_t* wl_create_request(workload_t* wl, request_t* parent) {
 	list_add_tail(&rq->rq_wl_node, &wl->wl_requests);
 	mutex_unlock(&wl->wl_rq_mutex);
 
-	logmsg(LOG_TRACE, "Created request %s/%d step: %d sched_time: %lld", wl->wl_name,
-					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
+	logmsg(LOG_TRACE, "Created request %s/%d step: %ld sched_time: %"PRItm, wl->wl_name,
+					rq->rq_id, rq->rq_step, rq->rq_sched_time);
 
 	return rq;
 }
@@ -625,8 +625,8 @@ request_t* wl_clone_request(request_t* origin) {
 	list_add_tail(&rq->rq_wl_node, &wl->wl_requests);
 	mutex_unlock(&wl->wl_rq_mutex);
 
-	logmsg(LOG_TRACE, "Cloned request %s/%d step: %d sched_time: %lld", wl->wl_name,
-					rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
+	logmsg(LOG_TRACE, "Cloned request %s/%d step: %ld sched_time: %"PRItm, wl->wl_name,
+					rq->rq_id, rq->rq_step, rq->rq_sched_time);
 
 	return rq;
 }
@@ -659,8 +659,8 @@ request_t* wl_create_request_trace(workload_t* wl, int rq_id, long step, int use
 
 	rq->rq_flags = RQF_TRACE;
 
-	logmsg(LOG_TRACE, "Created trace-based request %s/%d step: %d sched_time: %lld", wl->wl_name,
-			rq->rq_id, rq->rq_step, (long long) rq->rq_sched_time);
+	logmsg(LOG_TRACE, "Created trace-based request %s/%d step: %ld sched_time: %"PRItm, wl->wl_name,
+			rq->rq_id, rq->rq_step, rq->rq_sched_time);
 
 	return rq;
 }
@@ -668,7 +668,7 @@ request_t* wl_create_request_trace(workload_t* wl, int rq_id, long step, int use
 /**
  * Destroy request memory */
 void wl_request_destroy(request_t* rq) {
-	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %d thread: %d", rq->rq_workload->wl_name,
+	logmsg(LOG_TRACE, "Destroyed request %s/%d step: %ld thread: %d", rq->rq_workload->wl_name,
 			rq->rq_id, rq->rq_step, rq->rq_thread_id);
 
 	list_del(&rq->rq_wl_node);
@@ -691,9 +691,9 @@ void wl_run_request(request_t* rq) {
 
 	ETRC_PROBE2(tsload__workload, request__start, workload_t*, wl, request_t*, rq);
 
-	logmsg(LOG_TRACE, "Running request %s/%d step: %d worker: #%d sched: %lld start: %lld",
+	logmsg(LOG_TRACE, "Running request %s/%d step: %ld worker: #%d sched: %"PRItm" start: %"PRItm,
 		rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, rq->rq_thread_id,
-		(long long) rq->rq_sched_time, (long long) rq->rq_start_time);
+		rq->rq_sched_time, rq->rq_start_time);
 
 	if(WL_HAD_STATUS(wl, WLS_FINISHED))
 		return;

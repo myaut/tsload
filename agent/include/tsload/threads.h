@@ -251,8 +251,10 @@ typedef struct thread {
  *
  * @note rmutex_init() is deprecated
  */
-LIBEXPORT void mutex_init(thread_mutex_t* mutex, const char* namefmt, ...);
-LIBEXPORT void rmutex_init(thread_mutex_t* mutex, const char* namefmt, ...);
+LIBEXPORT void mutex_init(thread_mutex_t* mutex, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
+LIBEXPORT void rmutex_init(thread_mutex_t* mutex, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT boolean_t mutex_try_lock(thread_mutex_t* mutex);
 LIBEXPORT void mutex_lock(thread_mutex_t* mutex);
 LIBEXPORT void mutex_unlock(thread_mutex_t* mutex);
@@ -261,7 +263,8 @@ LIBEXPORT void mutex_destroy(thread_mutex_t* mutex);
 /**
  * Read-write locks
  */
-LIBEXPORT void rwlock_init(thread_rwlock_t* rwlock, const char* namefmt, ...);
+LIBEXPORT void rwlock_init(thread_rwlock_t* rwlock, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT void rwlock_lock_read(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_lock_write(thread_rwlock_t* rwlock);
 LIBEXPORT void rwlock_unlock(thread_rwlock_t* rwlock);
@@ -270,7 +273,8 @@ LIBEXPORT void rwlock_destroy(thread_rwlock_t* rwlock);
 /**
  * Condition variables
  */
-LIBEXPORT void cv_init(thread_cv_t* cv, const char* namefmt, ...);
+LIBEXPORT void cv_init(thread_cv_t* cv, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT void cv_wait(thread_cv_t* cv, thread_mutex_t* mutex);
 LIBEXPORT void cv_wait_timed(thread_cv_t* cv, thread_mutex_t* mutex, ts_time_t timeout);
 LIBEXPORT void cv_notify_one(thread_cv_t* cv);
@@ -282,7 +286,8 @@ LIBEXPORT void cv_destroy(thread_cv_t* cv);
  *
  * @note this API is deprecated. Use condition variable + mutex pair
  */
-LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...);
+LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT void event_wait(thread_event_t* event);
 LIBEXPORT void event_wait_timed(thread_event_t* event, ts_time_t timeout);
 LIBEXPORT void event_notify_one(thread_event_t* event);
@@ -292,8 +297,8 @@ LIBEXPORT void event_destroy(thread_event_t* event);
 /**
  * Thread-local storage
  */
-LIBEXPORT void tkey_init(thread_key_t* key,
-			   	   	   	 const char* namefmt, ...);
+LIBEXPORT void tkey_init(thread_key_t* key, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT void tkey_destroy(thread_key_t* key);
 LIBEXPORT void tkey_set(thread_key_t* key, void* value);
 LIBEXPORT void* tkey_get(thread_key_t* key);
@@ -302,7 +307,8 @@ LIBEXPORT thread_t* t_self();
 
 LIBEXPORT void t_init(thread_t* thread, void* arg,
 					  thread_start_func start,
-		              const char* namefmt, ...);
+		              const char* namefmt, ...)
+							CHECKFORMAT(printf, 4, 5);
 LIBEXPORT thread_t* t_post_init(thread_t* t);
 LIBEXPORT void t_notify_state(thread_t* t, thread_state_t state);
 LIBEXPORT void t_exit(thread_t* t);

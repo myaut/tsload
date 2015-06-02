@@ -34,6 +34,9 @@
  * */
 typedef int64_t ts_time_t;
 
+/* Format specifier for ts_time_t */
+#define PRItm			PRId64
+
 #define TS_TIME_MAX 	LLONG_MAX
 
 #define TS_TIME_TO_UNIX(t)	((time_t) ((t) / T_SEC))

@@ -237,7 +237,8 @@ typedef struct {
 	AUTOSTRING char* msg;
 } wl_notify_msg_t;
 
-LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...);
+LIBEXPORT void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...)
+	CHECKFORMAT(printf, 4, 5);
 
 LIBEXPORT void wl_destroy(workload_t* wl);
 

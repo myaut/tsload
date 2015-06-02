@@ -269,7 +269,7 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 	file->cur_sb = 0ul;
 	file->sb_diff = 0;
 
-	mutex_init(&file->mutex, "tsfile-%x", file);
+	mutex_init(&file->mutex, "tsfile-%p", file);
 
 	tsfile_init_nodes(file);
 
@@ -330,7 +330,7 @@ tsfile_t* tsfile_open(const char* filename, tsfile_schema_t* schema) {
 	file->cur_sb = cur_sb;
 	file->header = header;
 
-	mutex_init(&file->mutex, "tsfile-%x", file);
+	mutex_init(&file->mutex, "tsfile-%p", file);
 
 	tsfile_init_nodes(file);
 

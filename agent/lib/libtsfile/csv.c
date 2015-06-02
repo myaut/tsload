@@ -654,11 +654,11 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 		value = ((char*) entry) + field->offset;
 
 		if(pos == line_len) {
-			logmsg(LOG_CRIT, "Line ended prematurely at %lld", pos);
+			logmsg(LOG_CRIT, "Line ended prematurely at %" PRIsz, pos);
 			return CSV_PARSE_LINE_ERROR;
 		}
 		if(pos > line_len) {
-			logmsg(LOG_CRIT, "Internal error: 'pos' %lld is outside line", pos);
+			logmsg(LOG_CRIT, "Internal error: 'pos' %"PRIsz" is outside line", pos);
 			return CSV_INTERNAL_ERROR;
 		}
 
@@ -678,8 +678,8 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 				continue;
 			}
 			else {
-				logmsg(LOG_CRIT, "Boolean parse error, unexpected literal '%s' at %d",
-						bool_value, (int) pos);
+				logmsg(LOG_CRIT, "Boolean parse error, unexpected literal '%s' at %"PRIsz,
+						bool_value, pos);
 				return CSV_PARSE_BOOL_ERROR;
 			}
 		}
@@ -703,7 +703,7 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 		scan_count = sscanf(line + pos, fmtstr, value, &scan_len);
 
 		if(scan_count == 0) {
-			logmsg(LOG_CRIT, "Failed to parse field at %lld. Format: %s", pos, fmtstr);
+			logmsg(LOG_CRIT, "Failed to parse field at %"PRIsz". Format: %s", pos, fmtstr);
 			return CSV_PARSE_FMT_ERROR;
 		}
 

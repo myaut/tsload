@@ -55,7 +55,8 @@ typedef struct squeue {
 	boolean_t sq_is_destroyed;
 } squeue_t;
 
-LIBEXPORT void squeue_init(squeue_t* sq, const char* namefmt, ...);
+LIBEXPORT void squeue_init(squeue_t* sq, const char* namefmt, ...)
+	CHECKFORMAT(printf, 2, 3);
 LIBEXPORT void squeue_push(squeue_t* sq, void* object);
 LIBEXPORT void* squeue_pop(squeue_t* sq);
 LIBEXPORT void squeue_destroy(squeue_t* sq, void (*el_free)(void* obj));
