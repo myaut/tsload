@@ -234,6 +234,8 @@ class TestRunner(Thread):
                 raise TestError("Failed processing copy-directive '%s'" % (fn, ), e)
     
     def _copy_test_file(self, dest_dir, fn, log_copy):
+        chmod = None
+        
         # See above in read_uses
         args = {}
         if isinstance(fn, tuple):

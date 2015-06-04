@@ -36,13 +36,14 @@
 #define CSV_HEADER_DUPLICATE -2
 #define CSV_HEADER_INVALID	 -3
 #define CSV_HEADER_MISSING	 -4
+#define CSV_HDR_INVALID_OPT	 -5
 
-#define CSV_PARSE_BOOL_ERROR -5
-#define CSV_PARSE_LINE_ERROR -6
-#define CSV_PARSE_FMT_ERROR  -7
+#define CSV_PARSE_BOOL_ERROR -6
+#define CSV_PARSE_LINE_ERROR -7
+#define CSV_PARSE_FMT_ERROR  -8
 
-#define CSV_READ_ERROR		 -8
-#define CSV_WRITE_ERROR		 -9
+#define CSV_READ_ERROR		 -9
+#define CSV_WRITE_ERROR		 -10
 
 typedef struct {
 	list_node_t		node;

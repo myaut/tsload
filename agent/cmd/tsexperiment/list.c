@@ -120,7 +120,7 @@ int tse_list(experiment_t* root, int argc, char* argv[]) {
 	printf("%-4s %-16s %-6s %-20s %s\n", "ID", "NAME", "STATUS", "DATE", "HOSTNAME");
 
 	list_head_init(&list, "tse_exp_list");
-	experiment_walk(root, tse_list_walk, &list);
+	experiment_walk(root, tse_list_walk, &list, NULL);
 
 	tse_list_print(&list);
 

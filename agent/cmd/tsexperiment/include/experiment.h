@@ -331,10 +331,12 @@ struct experiment_walk_ctx {
 };
 
 typedef int (*experiment_walk_func)(struct experiment_walk_ctx* ctx, void* context);
+typedef void (*experiment_noent_func)(void* context);
 
-experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, void* context);
+experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, void* context, 
+							  experiment_noent_func noent);
 
-int experiment_mkdir(experiment_t* exp);
+int experiment_mkdir(experiment_t* exp, experiment_t* root);
 int experiment_write(experiment_t* exp);
 
 typedef int (*experiment_cfg_walk_func)(const char* name, json_node_t* parent, json_node_t* node, void* context);

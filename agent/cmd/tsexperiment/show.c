@@ -135,7 +135,9 @@ int tse_show_normal(experiment_t* exp) {
 	TSE_SHOW_PARAM("%s", "name", exp->exp_name);
 	TSE_SHOW_PARAM("%s", "root", exp->exp_root);
 	TSE_SHOW_PARAM("%s", "directory", exp->exp_directory);
-	TSE_SHOW_PARAM("%d", "runid", exp->exp_runid);
+	
+	if(exp->exp_runid)
+		TSE_SHOW_PARAM("%d", "runid", exp->exp_runid);
 
 	start_time = experiment_cfg_find(exp->exp_config, "start_time", NULL, JSON_NUMBER_INTEGER);
 	if(start_time != NULL) {
@@ -176,7 +178,7 @@ int tse_show_normal(experiment_t* exp) {
 }
 
 int tse_show(experiment_t* root, int argc, char* argv[]) {
-	experiment_t* exp;
+	experiment_t* exp = NULL;
 
 	int mode = SHOW_NORMAL;
 	int c;
@@ -197,10 +199,9 @@ int tse_show(experiment_t* root, int argc, char* argv[]) {
 		}
 	}
 
-	exp = tse_shift_experiment_run(root, argc, argv);
-	if(exp == NULL) {
-		exp = root;
-	}
+	ret = tse_shift_experiment_run(root, &exp, argc, argv);
+	if(ret != CMD_OK)
+		return ret;
 
 	switch(mode) {
 	case SHOW_JSON:

@@ -25,6 +25,7 @@
 #include <tsload/time.h>
 #include <tsload/getopt.h>
 #include <tsload/list.h>
+#include <tsload/posixdecl.h>
 
 #include <tsload/load/workload.h>
 
@@ -35,14 +36,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 
-
-typedef void (*tse_report_wl_func)(experiment_t* exp, exp_workload_t* ewl, void* context);
+typedef int (*tse_report_wl_func)(experiment_t* exp, exp_workload_t* ewl, void* context);
 
 struct report_walk_context {
 	experiment_t* 	   exp;
 	tse_report_wl_func func;
 	void* 			   context;
+	int 			   ret;
 };
 
 struct report_time_stats {
@@ -67,8 +69,8 @@ int tse_report_workload_walk(hm_item_t* obj, void* context);
 
 int tse_report_common(experiment_t* root, int argc, char* argv[],
 					  int flags, tse_report_wl_func report, void* context) {
-	experiment_t* exp;
-	exp_workload_t* ewl;
+	experiment_t* exp = NULL;
+	exp_workload_t** ewllist = NULL;
 
 	struct report_walk_context ctx;
 
@@ -76,11 +78,9 @@ int tse_report_common(experiment_t* root, int argc, char* argv[],
 	int ret = CMD_OK;
 	int err;
 
-	exp = tse_shift_experiment_run(root, argc, argv);
-	if(exp == NULL) {
-		fputs("Couldn't open experiment run\n", stderr);
-		return CMD_INVALID_ARG;
-	}
+	ret = tse_shift_experiment_run(root, &exp, argc, argv);
+	if(ret != CMD_OK)
+		return ret;
 
 	argi = optind;
 
@@ -102,18 +102,37 @@ int tse_report_common(experiment_t* root, int argc, char* argv[],
 		ctx.context = context;
 		ctx.func = report;
 		ctx.exp = exp;
+		ctx.ret = CMD_OK;
 
 		hash_map_walk(exp->exp_workloads, tse_report_workload_walk, &ctx);
+		
+		ret = ctx.ret;
 	}
 	else {
-		for( ; argi < argc; ++argi) {
-			ewl = hash_map_find(exp->exp_workloads, argv[argi]);
-			if(ewl)
-				report(exp, ewl, context);
+		int ewlcount = argc - optind, ewli = 0;
+		ewllist = mp_malloc(sizeof(exp_workload_t*) * ewlcount);
+		
+		for(argi = optind ; ewli < ewlcount; ++argi, ++ewli) {
+			ewllist[ewli] = hash_map_find(exp->exp_workloads, argv[argi]);
+			
+			if(ewllist[ewli] == NULL) {
+				tse_command_error_msg(CMD_INVALID_ARG, "Couldn't find workload '%s'\n", argv[argi]);
+				ret = CMD_INVALID_ARG;
+				goto end;
+			}
+		}
+		
+		for(ewli = 0 ; ewli < ewlcount; ++ewli) {
+			ret = report(exp, ewllist[ewli], context);
+			if(ret != CMD_OK)
+				goto end;
 		}
 	}
 
 end:
+	if(ewllist)
+		mp_free(ewllist);
+
 	experiment_destroy(exp);
 
 	return ret;
@@ -121,9 +140,13 @@ end:
 
 int tse_report_workload_walk(hm_item_t* obj, void* context) {
 	struct report_walk_context* ctx = (struct report_walk_context*) context;
-
-	ctx->func(ctx->exp, (exp_workload_t*) obj, ctx->context);
-
+	int ret = ctx->func(ctx->exp, (exp_workload_t*) obj, ctx->context);
+	
+	if(ret != CMD_OK) {
+		ctx->ret = ret;
+		return HM_WALKER_STOP;
+	}
+	
 	return HM_WALKER_CONTINUE;
 }
 
@@ -179,7 +202,7 @@ void tse_process_rq_flags(exp_request_entry_t* rqe, struct report_stats* stats, 
 	}
 }
 
-void tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
+int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 	void* entry = mp_malloc(ewl->wl_file_schema->hdr.entry_size);
 	uint32_t rq_count = tsfile_get_count(ewl->wl_file);
 	exp_request_entry_t* rqe = (exp_request_entry_t*) entry;
@@ -240,6 +263,8 @@ void tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 	mp_free(exec_times);
 
 	mp_free(entry);
+	
+	return CMD_OK;
 }
 
 int tse_report(experiment_t* root, int argc, char* argv[]) {
@@ -280,7 +305,7 @@ struct tse_export_context {
 	list_head_t options;
 };
 
-void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
+int tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 	struct tse_export_context* ctx = (struct tse_export_context*) context;
 	struct tse_export_option* opt;
 
@@ -295,7 +320,12 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 
 	json_node_t* j_hostname;
 	const char* hostname = NULL;
+	
+	int err = CMD_OK;
+	
+	struct stat statbuf;
 
+	/* Process options -- generate file names and process destination path */
 	if(!ctx->have_dest) {
 		/* -d flag was not provided - use experiment dir. Couldn't do this
 		 * inside tse_export, cause it has no experiment we get it in tse_report_common() */
@@ -322,39 +352,73 @@ void tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) 
 	}
 
 	path_join(path, PATHMAXLEN, ctx->dest_path, filename, NULL);
+	
+	/* Check that destination path exist, and output file doesn't exist */
+	if(stat(ctx->dest_path, &statbuf) == -1)
+		err = CMD_NOT_EXISTS;
+	else if(access(ctx->dest_path, W_OK) == -1)
+		err = CMD_NO_PERMS;
+	
+	if(err != CMD_OK) {
+		tse_command_error_msg(err,
+			"Destination path '%s' does not exist or no permission\n", ctx->dest_path);
+		return err;
+	}
+	
+	/* Check if path exists, and if it already exist, return an error */
+	/* FIXME: Maybe it is better allow user to decide? */
+	if(stat(path, &statbuf) == 0) {
+		tse_command_error_msg(CMD_ALREADY_EXISTS,
+			"Destination file '%s' already exist\n", path);
+		return CMD_ALREADY_EXISTS;
+	}
 
 	backend = tsfile_backend_create(ctx->backend_name);
 
 	if(backend == NULL) {
-		tse_command_error_msg(CMD_GENERIC_ERROR,
+		tse_command_error_msg(CMD_INVALID_ARG,
 			"Couldn't create backend '%s'\n", ctx->backend_name);
-		return;
+		return CMD_INVALID_ARG;
 	}
 
+	/* Open file and export data to it */
 	file = fopen(path, "w");
 
 	if(file == NULL) {
 		tse_command_error_msg(CMD_GENERIC_ERROR,
 				"Couldn't export workload '%s' - error opening output file\n", ewl->wl_name);
 		tsfile_backend_destroy(backend);
-		return;
+		return CMD_GENERIC_ERROR;
 	}
 
 	/* Walk over options and apply them */
 	list_for_each_entry(struct tse_export_option, opt, &ctx->options, node) {
 		if(opt->wl_name == NULL || strcmp(opt->wl_name, ewl->wl_name) == 0) {
-			tsfile_backend_set(backend, opt->option);
+			err = tsfile_backend_set(backend, opt->option);
+			if(err == 0) {
+				tse_command_error_msg(CMD_INVALID_ARG,
+						"Invalid backend option '%s'\n", opt->option);
+				return CMD_INVALID_ARG;
+			}
 		}
 	}
 
 	rq_count = tsfile_get_count(ewl->wl_file);
-
 	tsfile_backend_set_files(backend, file, ewl->wl_file);
-	tsfile_backend_get(backend, 0, rq_count);
-
+	err = tsfile_backend_get(backend, 0, rq_count);
+	
 	tsfile_backend_destroy(backend);
+	fclose(file);
 
+	if(err < 0) {
+		tse_command_error_msg(CMD_GENERIC_ERROR,
+				"Failed to export workload '%s' - check log for detais\n", ewl->wl_name);
+		return CMD_GENERIC_ERROR;
+	}
+	
 	tse_printf(TSE_PRINT_ALL, "Exported workload '%s' to file %s\n", ewl->wl_name, path);
+	
+	return CMD_OK;
 }
 
 static void tse_add_option(list_head_t* options, const char* optarg) {

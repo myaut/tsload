@@ -195,11 +195,6 @@ static boolean_t csv_header_field_eq(csv_hdr_iter_t* iter, tsfile_field_t* field
 			strcpy(literal, defval);								\
 	} while(0)
 
-#define CSV_PARSE_INT_OPT(iter, binding, name, flag)				\
-		if(strncmp(iter->opt, name, iter->opt_length) == 0) {		\
-			binding->opt.int_flags |= flag;							\
-		}
-
 static int csv_parse_header_opts(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_binding_t* binding) {
 	tsfile_field_t* field = binding->field;
 
@@ -210,11 +205,21 @@ static int csv_parse_header_opts(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_b
 	}
 	else if(field->type == TSFILE_FIELD_INT) {
 		while(iter->opt != NULL) {
-			CSV_PARSE_INT_OPT(iter, binding, "hex", CSV_INT_HEX);
-			CSV_PARSE_INT_OPT(iter, binding, "unsigned", CSV_INT_UNSIGNED);
-
+			if(strncmp(iter->opt, "hex", iter->opt_length) == 0) {
+				binding->opt.int_flags |= CSV_INT_HEX;
+			}
+			else if(strncmp(iter->opt, "unsigned", iter->opt_length) == 0) {
+				binding->opt.int_flags |= CSV_INT_HEX;
+			}
+			else {
+				return CSV_HDR_INVALID_OPT;
+			}
+			
 			csv_header_iter_next_opt(chars, iter);
 		}
+	}
+	else {
+		return CSV_HDR_INVALID_OPT;
 	}
 
 	return CSV_OK;
@@ -225,13 +230,18 @@ static int csv_parse_header_field(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_
 	int bid, fid, count;
 
 	tsfile_field_t* field;
+	
+	int err;
 
 	count = schema->hdr.count;
 
 	for(bid = 0; bid < bcount; ++bid) {
 		if(csv_header_field_eq(iter, bindings[bid].field)) {
 			if(mode == CSV_HDR_UPDATE) {
-				return csv_parse_header_opts(chars, iter, bindings + bid);
+				err = csv_parse_header_opts(chars, iter, bindings + bid);
+				if(err != CSV_OK)
+					goto opt_error;
+				return CSV_OK;
 			}
 			else {
 				return csv_header_field_error(CSV_HEADER_DUPLICATE, iter,
@@ -250,13 +260,21 @@ static int csv_parse_header_field(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_
 
 		if(csv_header_field_eq(iter, field)) {
 			bindings[bcount].field = field;
+			err = csv_parse_header_opts(chars, iter, bindings + bid);
 
-			return csv_parse_header_opts(chars, iter, bindings + bid);
+			if(err != CSV_OK)
+				goto opt_error;
+			return CSV_OK;
 		}
 	}
 
 	return csv_header_field_error(CSV_HEADER_INVALID, iter,
 						"Header: unknown field '%s' at %d");
+
+opt_error:
+	return csv_header_field_error(err, iter,
+			"Header: field '%s' has invalid option at %d");
+	return err;
 }
 
 int csv_parse_header(csv_chars_t* chars, const char* header, csv_binding_t* bindings, tsfile_schema_t* schema,

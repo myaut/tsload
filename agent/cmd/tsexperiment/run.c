@@ -48,7 +48,7 @@ experiment_t* running = NULL;
 static thread_mutex_t	running_lock;
 
 int tse_experiment_set(experiment_t* exp, const char* option);
-int tse_prepare_experiment(experiment_t* exp, experiment_t* base);
+int tse_prepare_experiment(experiment_t* exp, experiment_t* base, experiment_t* root);
 
 static const char* tse_run_wl_status_msg(wl_status_t wls) {
 	switch(wls) {
@@ -363,6 +363,7 @@ int tse_run_wl_provide_step(exp_workload_t* ewl) {
 	ret = step_get_step(ewl->wl_steps, &step_id, &num_rqs, &trace_rqs);
 
 	if(ret == STEP_ERROR) {
+		mutex_unlock(&running->exp_mutex); 
 		tse_experiment_error_msg(running, EXPERR_STEP_PROVIDE_STEP_ERROR,
 				   "Couldn't process step %ld for workload '%s': "
 				   "steps failure\n", step_id, ewl->wl_name);
@@ -378,6 +379,7 @@ int tse_run_wl_provide_step(exp_workload_t* ewl) {
 		err = tsload_provide_step(ewl->wl_name, step_id, num_rqs, &trace_rqs, &status);
 
 		if(err != TSLOAD_OK) {
+			mutex_unlock(&running->exp_mutex);
 			tse_experiment_error_msg(running, EXPERR_STEP_PROVIDE_TSLOAD_ERROR,
 					   "Couldn't provide step %ld for workload '%s': "
 					   "TSLoad core error\n", step_id, ewl->wl_name);
@@ -387,6 +389,7 @@ int tse_run_wl_provide_step(exp_workload_t* ewl) {
 		}
 
 		if(status == WL_STEP_QUEUE_FULL) {
+			mutex_unlock(&running->exp_mutex);
 			tse_experiment_error_msg(running, EXPERR_STEP_PROVIDE_QFULL,
 					   "Couldn't provide step %ld for workload '%s': "
 					   "queue is full\n", step_id, ewl->wl_name);
@@ -410,13 +413,12 @@ int tse_run_wl_start_walk(hm_item_t* item, void* context) {
 
 	for(step = 0; step < (WLSTEPQSIZE - 1); ++step) {
 		ret = tse_run_wl_provide_step(ewl);
-
-		if(ret == STEP_ERROR) {
-			running->exp_status = EXPERIMENT_ERROR;
-			mutex_unlock(&running->exp_mutex);
+		
+		/* In case of error, tse_run_wl_provide_step will unlock `exp_mutex`,
+		 * no need to unlock it here. */
+		
+		if(ret == STEP_ERROR) 
 			return HM_WALKER_STOP;
-		}
-
 		if(ret == STEP_NO_RQS)
 			break;
 	}
@@ -693,10 +695,9 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 		}
 	}
 
-	base = tse_shift_experiment_run(root, argc, argv);
-	if(base == NULL) {
-		base = root;
-	}
+	ret = tse_shift_experiment_run(root, &base, argc, argv);
+	if(ret != CMD_OK)
+		goto end_name;
 
 	exp = experiment_create(root, base, exp_name);
 	if(exp == NULL) {
@@ -738,7 +739,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 		}
 	}
 
-	ret = tse_prepare_experiment(exp, base);
+	ret = tse_prepare_experiment(exp, base, root);
 	if(ret != CMD_OK)
 		goto end;
 
@@ -751,6 +752,8 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	}
 
 	experiment_run(exp);
+	if(exp->exp_status == EXPERIMENT_ERROR)
+		ret = CMD_GENERIC_ERROR;
 
 	/* Rewrite experiment config with updated information */
 	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("status"),
@@ -784,7 +787,7 @@ int tse_experiment_set(experiment_t* exp, const char* option) {
 	size_t length;
 
 	if(ptr == NULL)
-		return CMD_INVALID_OPT;
+		return CMD_INVALID_ARG;
 
 	length = min(ptr - option, PATHPARTMAXLEN - 1);
 	strncpy(name, option, length);
@@ -793,13 +796,13 @@ int tse_experiment_set(experiment_t* exp, const char* option) {
 	++ptr;
 
 	if(experiment_cfg_set(exp->exp_config, name, ptr) != EXP_CONFIG_OK) {
-		return CMD_INVALID_OPT;
+		return CMD_INVALID_ARG;
 	}
 
 	return CMD_OK;
 }
 
-int tse_prepare_experiment(experiment_t* exp, experiment_t* base) {
+int tse_prepare_experiment(experiment_t* exp, experiment_t* base, experiment_t* root) {
 	int err;
 	int ret;
 
@@ -812,7 +815,7 @@ int tse_prepare_experiment(experiment_t* exp, experiment_t* base) {
 		return ret;
 	}
 
-	err = experiment_mkdir(exp);
+	err = experiment_mkdir(exp, root);
 	if(err != EXPERIMENT_OK) {
 		ret = tse_experr_to_cmderr(err);
 		tse_command_error_msg(ret, "Couldn't create directory for experiment run. Error: %x\n", err);

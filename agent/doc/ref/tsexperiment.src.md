@@ -119,4 +119,3 @@ Options:
 	* -d - destination directory of output. If not set, then experiment run directory is used
 	* -F - desired format of output.
 	* -o option - options for TSFile backend. See more at [tsfutil][ref/tsfutil]
-

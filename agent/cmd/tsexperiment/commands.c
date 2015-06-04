@@ -103,21 +103,30 @@ int tse_do_command(const char* path, int argc, char* argv[]) {
 	return ret;
 }
 
-experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[]) {
+/**
+ * Reads next argument from `argv` using `optind` as current index.
+ * If no more arguments exist, returns `root`. In case of error, returns
+ * `NULL`. If experiment was successfully loaded, returns its config.
+ */
+int tse_shift_experiment_run(experiment_t* root, experiment_t** pexp, int argc, char* argv[]) {
 	int argi = optind++;
 	int runid;
 
 	int err;
 
-	experiment_t* exp = NULL;
+	experiment_t* exp = root;
 
 	if(argi < argc) {
-		runid = strtol(argv[argi], NULL, 10);
-
-		if(runid < 0) {
+		char* arg = argv[argi];
+		char* endptr = NULL;
+		char* end = arg + strlen(arg);
+		
+		runid = strtol(arg, &endptr, 10);
+		
+		if(runid < 0 || (runid == 0 && endptr != end)) {
 			tse_command_error_msg(CMD_INVALID_ARG,
-					"Invalid runid '%s' - should be positive integer\n", argv[argi]);
-			return NULL;
+					"Invalid runid '%s' - should be non-negative integer\n", argv[argi]);
+			return CMD_INVALID_ARG;
 		}
 
 		exp = experiment_load_run(root, runid);
@@ -125,11 +134,12 @@ experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[
 		if(exp == NULL) {
 			err = tse_experr_to_cmderr(experiment_load_error());
 			tse_command_error_msg(err, "Couldn't open experiment run with runid %d\n", runid);
-			return NULL;
+			return err;
 		}
 	}
 
-	return exp;
+	*pexp = exp;
+	return CMD_OK;
 }
 
 size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen) {

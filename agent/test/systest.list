@@ -139,21 +139,6 @@ report/wl_ok_2			"args=1 test1 test2"
 report/wl_invalid		"args=1 invalid_wl"			expect=return:4
 report/wl_invalid_2		"args=1 invalid_wl test2"	expect=return:4
 
-report/schema_noent	"args=1"						\
-	expect=return:11								\
-	"use=experiment/experiment-1/test1-schema.json 	\
-			remove:True								\
-			rename:experiment/experiment-1/test1-schema.json"
-report/schema_no_perms		"args=1"				\
-	expect=return:12								\
-	"use=experiment/experiment-1/test1-schema.json 	\
-			chmod:0000 								\
-			rename:experiment/experiment-1/test1-schema.json"
-report/broken_schema	"args=1"					\
-	expect=return:30								\
-	"use=broken-schema.json						 	\			
-			rename:experiment/experiment-1/test1-schema.json"		
-
 report/tsf_noent	"args=1" 						\
 	expect=return:11								\
 	"use=experiment/experiment-1/test1.tsf		 	\
@@ -191,6 +176,7 @@ export/wl_invalid_2		"args=1 invalid_wl test2"	expect=return:4
 export/backend_csv			"args=-F csv 1 "
 export/backend_json			"args=-F json 1"
 export/backend_jsonraw		"args=-F jsonraw 1"
+export/backend_bad			"args=-F bad 1"			expect=return:4
 											
 export/csv_valsep		"args=-F csv -o valsep=\; 1"
 export/csv_valsep_inval "args=-F csv -o 'valsep= II ' 1" 						\
@@ -198,17 +184,34 @@ export/csv_valsep_inval "args=-F csv -o 'valsep= II ' 1" 						\
 export/csv_opt_2		"args=-F csv -o noheader,valsep=\| 1"
 export/csv_header		"args=-F csv -o header=rq_flags 1"
 export/csv_header_2		"args=-F csv -o header=rq_flags:hex 1"
+
+# These tests should expect CMD_INVALID_ARG, but header is lazily 
+# parsed, so TSFile will treat this as get() error, not `set()` error
 export/csv_hdr_inval_field		"args=-F csv -o header=rq_no_such_field 1"		\
-						expect=return:4
+						expect=return:30
 export/csv_hdr_inval_subopt		"args=-F csv -o header=rq_flags:inval_subopt 1" \
-						expect=return:4
+						expect=return:30
 
 export/dest				"args=-F csv -d export 1" use=export
 export/dest_noent		"args=-F csv -d export 1"								\
 						expect=return:11
-export/dest_no_perms	"args=-F csv -d export 1" "use=export chown:0000"		\
+export/dest_no_perms	"args=-F csv -d export 1" "use=export chmod:0000"		\
 						expect=return:12
 
+export/schema_noent	"args=1"						\
+	expect=return:11								\
+	"use=experiment/experiment-1/test1-schema.json 	\
+			remove:True								\
+			rename:experiment/experiment-1/test1-schema.json"
+export/schema_no_perms		"args=1"				\
+	expect=return:12								\
+	"use=experiment/experiment-1/test1-schema.json 	\
+			chmod:0000 								\
+			rename:experiment/experiment-1/test1-schema.json"
+export/broken_schema	"args=1"					\
+	expect=return:30								\
+	"use=broken-schema.json						 	\
+			rename:experiment/experiment-1/test1-schema.json"
 # ---------------------------
 # RUN
 # This is also reduces workload start delay to 0.2 s since
@@ -225,7 +228,7 @@ run/reproduce_set_inval	"args=-s threadpools:1:quantum=200000000 1"				\
 run/trace				"args=-T 1"
 run/trace_set			"args=-T -s threadpools:test_tp:quantum=200000000 1"		\
 						expect=return:3
-run/reproduce_inval		"args=10"
+run/reproduce_inval		"args=10"		expect=return:11
 
 run/empty_workloads							\
 	"use=empty-workloads.json 				\

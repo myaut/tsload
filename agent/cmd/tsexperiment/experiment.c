@@ -356,6 +356,10 @@ static int experiment_load_run_walk(struct experiment_walk_ctx* ctx, void* conte
 	return EXP_WALK_CONTINUE;
 }
 
+static void experiment_load_run_noent(void* context) {
+	exp_load_error = EXPERR_LOAD_NO_DIR;
+}
+
 
 /**
  * Load config of experiment run by it's runid
@@ -366,7 +370,8 @@ static int experiment_load_run_walk(struct experiment_walk_ctx* ctx, void* conte
  * @return experiment or NULL if experiment was failed to load or runid doesn't exist
  */
 experiment_t* experiment_load_run(experiment_t* root, int runid) {
-	return experiment_walk(root, experiment_load_run_walk, &runid);
+	return experiment_walk(root, experiment_load_run_walk, &runid,
+						   experiment_load_run_noent);
 }
 
 /**
@@ -394,7 +399,7 @@ static int experiment_max_runid_walk(struct experiment_walk_ctx* ctx, void* cont
  *
  * @return -1 on error or next experiment id
  */
-static long experiment_generate_id(experiment_t* root) {
+static long experiment_generate_id(experiment_t* root, boolean_t use_file) {
 	FILE* runid_file;
 	long runid = -1;
 
@@ -406,13 +411,15 @@ static long experiment_generate_id(experiment_t* root) {
 	runid_file = fopen(runid_path, "r");
 	if(runid_file != NULL) {
 		plat_flock(fileno(runid_file), LOCK_EX);
-
-		fgets(runid_str, 32, runid_file);
-		runid = strtol(runid_str, NULL, 10);
+		
+		if(use_file) {
+			fgets(runid_str, 32, runid_file);
+			runid = strtol(runid_str, NULL, 10);
+		}
 	}
 
 	if(runid == -1) {
-		experiment_walk(root, experiment_max_runid_walk, &runid);
+		experiment_walk(root, experiment_max_runid_walk, &runid, NULL);
 	}
 	++runid;
 
@@ -447,7 +454,7 @@ static long experiment_generate_id(experiment_t* root) {
  * @param name custom name of experiment
  */
 experiment_t* experiment_create(experiment_t* root, experiment_t* base, const char* name) {
-	long runid = experiment_generate_id(root);
+	long runid = experiment_generate_id(root, B_TRUE);
 	experiment_t* exp = NULL;
 	char dir[PATHPARTMAXLEN];
 
@@ -533,11 +540,13 @@ void experiment_destroy(experiment_t* exp) {
 /**
  * Tries to create experiment subdirectory
  */
-int experiment_mkdir(experiment_t* exp) {
+int experiment_mkdir(experiment_t* exp, experiment_t* root) {
 	char path[PATHMAXLEN];
 
 	int ret;
-
+	
+	boolean_t retried = B_FALSE;
+	
 	if(exp->exp_runid == EXPERIMENT_ROOT) {
 		tse_experiment_error_msg(exp, EXPERR_MKDIR_IS_ROOT, "Failed to create experiment's run, "
 						 "cannot be performed on root");
@@ -552,9 +561,26 @@ int experiment_mkdir(experiment_t* exp) {
 		return ret;
 	}
 
+retry:
 	path_join(path, PATHMAXLEN, exp->exp_root, exp->exp_directory, NULL);
 
 	if(experiment_check_path_exists(path)) {
+		/* Possibly a stale or invalid id file, try to re-generate it */
+		int runid;
+		
+		if(!retried) {
+			runid = experiment_generate_id(root, B_FALSE);
+			
+			if(runid != -1) {
+				retried = B_TRUE;
+				
+				snprintf(exp->exp_directory, PATHPARTMAXLEN, "%s-%d", exp->exp_name, runid);
+				exp->exp_runid = runid;
+				
+				goto retry;
+			}
+		}
+				
 		tse_experiment_error_msg(exp, EXPERR_MKDIR_EXISTS,
 				"Failed to create experiment's run '%s': already exists", path);
 		return EXPERR_MKDIR_EXISTS;
@@ -673,7 +699,8 @@ int experiment_open_log(experiment_t* exp) {
  *
  * @note if run contains subruns inside it, experiment_walk() will ignore them
  */
-experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, void* context) {
+experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, void* context, 
+							  experiment_noent_func noent) {
 	plat_dir_t* dir = plat_opendir(root->exp_root);
 	plat_dir_entry_t* de = NULL;
 
@@ -711,7 +738,8 @@ experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, voi
 		switch(ret) {
 		case EXP_WALK_RETURN:
 			exp = experiment_load_dir(root->exp_root, ctx.runid, de->d_name);
-			aas_copy(&exp->exp_name, name);
+			if(exp)
+				aas_copy(&exp->exp_name, name);
 			/* FALLTHROUGH */
 		case EXP_WALK_BREAK:
 			plat_closedir(dir);
@@ -719,6 +747,9 @@ experiment_t* experiment_walk(experiment_t* root, experiment_walk_func pred, voi
 		}
 	}
 
+	if(noent)
+		noent(context);
+	
 	plat_closedir(dir);
 
 	return NULL;
@@ -939,11 +970,11 @@ int experiment_cfg_add(json_node_t* config, const char* parent_name, json_str_t 
 	/* Check if node not yet exists */
 	iter = json_find_opt(parent, JSON_C_STR(name));
 
-	if(iter == NULL) {
+	if(iter != NULL) {
 		if(!replace)
 			return EXP_CONFIG_DUPLICATE;
 
-		json_remove_node(parent, node);
+		json_remove_node(parent, iter);
 	}
 
 	json_add_node(parent, name, node);

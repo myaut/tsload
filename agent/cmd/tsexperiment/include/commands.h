@@ -48,7 +48,7 @@ const char* tse_exp_get_status_str(experiment_t* exp);
 
 int tse_do_command(const char* path, int argc, char* argv[]);
 
-experiment_t* tse_shift_experiment_run(experiment_t* root, int argc, char* argv[]);
+int tse_shift_experiment_run(experiment_t* root, experiment_t** pexp, int argc, char* argv[]);
 
 int tse_list_wltypes(experiment_t* root, int argc, char* argv[]);
 int tse_info(experiment_t* root, int argc, char* argv[]);
