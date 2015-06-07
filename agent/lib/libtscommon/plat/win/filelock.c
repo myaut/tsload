@@ -26,7 +26,7 @@
 #include <string.h>
 
 #include <windows.h>
-
+#include <io.h>
 
 PLATAPI int plat_flock(int fd, int operation) {
 	HANDLE h = _get_osfhandle(fd);

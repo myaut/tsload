@@ -33,13 +33,8 @@
  * @module Hash maps
  * */
 
-#ifdef _MSC_VER
-typedef char hm_item_t;
-typedef char hm_key_t;
-#else
 typedef void hm_item_t;
 typedef void hm_key_t;
-#endif
 
 #define HASH_MAP_STATIC		1
 #define HASH_MAP_DYNAMIC	2
@@ -61,6 +56,29 @@ typedef struct {
 	unsigned (*hm_hash_key)(const hm_key_t* key);
 	boolean_t (*hm_compare)(const hm_key_t* key1, const hm_key_t* key2);
 } hashmap_t;
+
+/* Visual C++ forbids pointer arithmetics for void*, so add 
+   this workaround for it. Defining hm_item_t as char* is bad
+   because it breaks implicit type conversions. */
+#ifndef _MSC_VER
+STATIC_INLINE void* hm_item_ptr(hm_item_t* obj, ptrdiff_t off) {
+	return obj + off;
+}
+#else
+STATIC_INLINE void* hm_item_ptr(hm_item_t* obj, ptrdiff_t off) {
+	return ((char*)obj) + off;
+}
+#endif
+
+STATIC_INLINE hm_key_t* hm_get_key(hashmap_t* hm, hm_item_t* obj) {
+	hm_key_t* key = hm_item_ptr(obj, hm->hm_off_key);
+
+	if(hm->hm_indirect) {
+		key = * (hm_key_t**) key;
+	}
+
+	return key;
+}
 
 typedef int (*hm_walker_func)(hm_item_t* object, void* arg);
 
@@ -102,7 +120,7 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask);
 	static type* hm_heads_##name[size];				\
 	hashmap_t name = {								\
 		SM_INIT(.hm_size, size),							\
-		SM_INIT(.hm_heads, (void**) hm_heads_##name),		\
+		SM_INIT(.hm_heads, (hm_item_t**) hm_heads_##name),	\
 		SM_INIT(.hm_indirect, is_indirect),					\
 		SM_INIT(.hm_type, HASH_MAP_STATIC),					\
 		SM_INIT(.hm_mutex, THREAD_MUTEX_INITIALIZER),		\

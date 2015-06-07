@@ -103,7 +103,7 @@ int tuneit_set_int_impl(const char* name, size_t sz, void* ptr) {
 		goto end;
 	}
 
-	row = (sz == 8)? 2 : (sz - 1);
+	row = (sz == 8)? 2 : ((int)sz - 1);
 	if(*opt->value == '0') {
 		if(*(opt->value + 1) == 'x') {
 			/* '0x' prefix --> hexademical values */
@@ -178,7 +178,6 @@ int tuneit_set_bool_impl(const char* name, boolean_t* ptr) {
 		*ptr = opt->bval;
 	}
 
-end:
 	tuneit_opt_destroy(opt);
 
 	return ret;

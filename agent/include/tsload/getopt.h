@@ -24,10 +24,10 @@
 #include <tsload/defs.h>
 
 
-LIBIMPORT int opterr;
-LIBIMPORT int optind;
-LIBIMPORT int optopt;
-LIBIMPORT char *optarg;
+TSJSONAPI int opterr;
+TSJSONAPI int optind;
+TSJSONAPI int optopt;
+TSJSONAPI char *optarg;
 
 LIBEXPORT PLATAPI int plat_getopt(int argc, char* const argv[], const char* options);
 

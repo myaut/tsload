@@ -26,11 +26,10 @@
 #include <stdio.h>
 #include <string.h>
 
-
-LIBEXPORT int opterr = 0;
-LIBEXPORT int optind = 1;
-LIBEXPORT int optopt = 0;
-LIBEXPORT char *optarg = NULL;
+int opterr = 0;
+int optind = 1;
+int optopt = 0;
+char *optarg = NULL;
 
 #define OPT_CHAR	'-'
 #define BAD_CHAR 	'?'

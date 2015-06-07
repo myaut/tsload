@@ -388,6 +388,9 @@ class BuildManager(object):
                 server.copy(repository)
             
             try: 
+                if 'clean' in targets:
+                    server.build(self.global_opts, '-c')
+                
                 if 'tests' in targets:
                     try:
                         server.build(self.global_opts, 'tests')

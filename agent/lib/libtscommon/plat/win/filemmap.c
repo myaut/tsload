@@ -40,7 +40,7 @@ PLATAPI int mmf_open(mmap_file_t* mmf, const char* filename, int mmfl) {
 
 PLATAPI void mmf_close(mmap_file_t* mmf) {
 	if(mmf->mmf_file != HFILE_ERROR)
-		CloseHandle(mmf->mmf_file);
+		CloseHandle((HANDLE) mmf->mmf_file);
 }
 
 PLATAPI int mmf_create(mmap_file_t* mmf, long long offset, size_t length, void** mapping_ptr) {

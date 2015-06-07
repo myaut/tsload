@@ -23,8 +23,10 @@
 
 #include <tsload/defs.h>
 
+/* This prevents complaints about _WINSOCKAPI_ redefinition, because it is defined 
+   by plat to prevent WinSock inclusion by windows.h */
+#undef _WINSOCKAPI_
 #include <winsock2.h>
-
 
 typedef SOCKET nsk_socket;
 

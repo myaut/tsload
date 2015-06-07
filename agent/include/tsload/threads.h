@@ -239,7 +239,7 @@ typedef struct thread {
 	ts_time_t		t_block_time;
 	thread_cv_t*	t_block_cv;
 	thread_mutex_t* t_block_mutex;
-	thread_mutex_t* t_block_rwlock;
+	thread_rwlock_t* t_block_rwlock;
 #endif
 
 	struct thread*	t_next;			/*< Next thread in global thread list*/

@@ -9,7 +9,8 @@ Import('env')
 
 lib = env.Clone()
 
-lib.Append(CCFLAGS = ['-O2'])
+lib.Macroses('LIBTSOBJ')
+# lib.Append(CCFLAGS = ['-O2'])
 
 # lib.PreparePlatform()
 lib.UseSubsystems('mempool', 'json')

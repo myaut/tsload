@@ -27,24 +27,13 @@
 
 #include <assert.h>
 
-
 /* Helper routines for hash map */
 STATIC_INLINE hm_item_t* hm_next(hashmap_t* hm, hm_item_t* obj) {
-	return *((hm_item_t**) (obj + hm->hm_off_next));
+	return *((hm_item_t**) hm_item_ptr(obj, hm->hm_off_next));
 }
 
 STATIC_INLINE void hm_set_next(hashmap_t* hm, hm_item_t* obj, hm_item_t* next) {
-	*((hm_item_t**) (obj + hm->hm_off_next)) = next;
-}
-
-STATIC_INLINE hm_key_t* hm_get_key(hashmap_t* hm, hm_item_t* obj) {
-	hm_key_t* key = (obj + hm->hm_off_key);
-
-	if(hm->hm_indirect) {
-		key = * (void**) key;
-	}
-
-	return key;
+	*((hm_item_t**) hm_item_ptr(obj, hm->hm_off_next)) = next;
 }
 
 STATIC_INLINE unsigned hm_hash_object(hashmap_t* hm, hm_item_t* obj) {

@@ -56,7 +56,7 @@ void* mp_cache_alloc(mp_cache_t* cache) {
 }
 
 void mp_cache_free(mp_cache_t* cache, void* ptr) {
-	return mp_cache_free_array(cache, ptr, 1);
+	mp_cache_free_array(cache, ptr, 1);
 }
 
 void* mp_malloc(size_t sz) {

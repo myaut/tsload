@@ -26,8 +26,6 @@
 
 
 PLATAPI int plat_mod_open(plat_mod_library_t* lib, const char* path) {
-	int error;
-
 	lib->lib_library = LoadLibrary(path);
 
 	if(!lib->lib_library) {

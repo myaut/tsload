@@ -250,17 +250,17 @@ static int json_writer_error_count(void* state) {
 }
 
 static void json_write_byte_count(void* state, char byte) {
-	long* count = (long*) state;
+	size_t* count = state;
 	++(*count);
 }
 
 static void json_write_string_count(void* state, const char* str) {
-	long* count = (long*) state;
+	size_t* count = state;
 	(*count) += strlen(str);
 }
 
 static void json_write_byte_array_count(void* state, const char* array, size_t sz) {
-	long* count = (long*) state;
+	size_t* count = state;
 	(*count) += sz;
 }
 
@@ -271,8 +271,8 @@ struct json_writer json_writer_count = {
 	json_write_byte_array_count
 };
 
-long json_write_count(json_node_t* node, boolean_t formatted) {
-	long count = 1;
+size_t json_write_count(json_node_t* node, boolean_t formatted) {
+	size_t count = 1;
 	int ret = json_write_impl(node, &json_writer_count, &count, formatted, 0);
 
 	if(ret != JSON_OK)

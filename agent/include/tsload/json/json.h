@@ -152,15 +152,15 @@ typedef struct json_node {
  * Hook for TSObj - catches JSON errors and passes them to TSObj
  * (note: parser errors are ignored)
  */
-typedef int (*json_error_msg_func)(int errno, const char* format, va_list va);
-LIBIMPORT json_error_msg_func json_error_msg;
+typedef int (*json_error_msg_func)(int error, const char* format, va_list va);
+TSJSONAPI json_error_msg_func json_error_msg;
 
 typedef struct json_error_state {
 	int   je_error;
 	char  je_message[JSONERRLEN];
 
 	int   je_line;
-	int   je_char;
+	size_t je_char;
 } json_error_state_t;
 
 /**
@@ -251,8 +251,8 @@ STATIC_INLINE json_type_t json_type_hinted(json_node_t* node) {
 
 LIBEXPORT json_node_t* json_find_opt(json_node_t* parent, const char* name);
 LIBEXPORT json_node_t* json_find(json_node_t* parent, const char* name);
-LIBEXPORT json_node_t* json_getitem(json_node_t* parent, int id);
-LIBEXPORT json_node_t* json_popitem(json_node_t* parent, int id);
+LIBEXPORT json_node_t* json_getitem(json_node_t* parent, unsigned int id);
+LIBEXPORT json_node_t* json_popitem(json_node_t* parent, unsigned int id);
 
 LIBEXPORT int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val);
 LIBEXPORT int json_get_integer_u8(json_node_t* parent, const char* name, uint8_t* val);
@@ -314,7 +314,7 @@ LIBEXPORT void json_node_destroy(json_node_t* node);
 
 LIBEXPORT int json_parse(json_buffer_t* buf, json_node_t** root);
 
-LIBEXPORT long json_write_count(json_node_t* node, boolean_t formatted);
+LIBEXPORT size_t json_write_count(json_node_t* node, boolean_t formatted);
 LIBEXPORT int json_write_buf(json_node_t* node, char* buf, size_t len, boolean_t formatted);
 LIBEXPORT int json_write_file(json_node_t* node, FILE* file, boolean_t formatted);
 

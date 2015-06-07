@@ -22,6 +22,7 @@
 #define LOG_SOURCE "modules"
 #include <tsload/log.h>
 
+#include <tsload/autostring.h>
 #include <tsload/mempool.h>
 #include <tsload/modules.h>
 #include <tsload/dirent.h>
@@ -105,7 +106,8 @@ module_t* mod_create() {
 	module_t* mod = (module_t*) mp_malloc(sizeof(module_t));
 
 	mod->mod_status = MOD_UNITIALIZED;
-
+	aas_init(&mod->mod_status_msg);
+	
 	mod->mod_next = NULL;
 
 	return mod;
@@ -132,6 +134,8 @@ void mod_destroy(module_t* mod) {
 	/*It doesn't unlink module from linked list because this function is called during cleanup*/
 	/*TODO: cleanup other fields like mod_private*/
 
+	aas_free(&mod->mod_status_msg);
+	
 	if(mod->mod_status == MOD_READY) {
 		mod->mod_unconfig(mod);
 	}
@@ -259,18 +263,16 @@ fail:
  * Report error from module mod
  */
 int mod_error(module_t* mod, char* fmtstr, ...) {
-	char status[512];
 	va_list args;
 
 	mod->mod_status = MOD_CONFIG_ERROR;
 
 	va_start(args, fmtstr);
-	vsnprintf(status, 512, fmtstr, args);
+	aas_vprintf(&mod->mod_status_msg, fmtstr, args);
 	va_end(args);
 
-	logmsg(LOG_WARN, "Error in module %s: %s", mod->mod_name, status);
-	mod->mod_status_msg = strdup(status);
-
+	logmsg(LOG_WARN, "Error in module %s: %s", mod->mod_name, mod->mod_status_msg);
+	
 	return 0;
 }
 

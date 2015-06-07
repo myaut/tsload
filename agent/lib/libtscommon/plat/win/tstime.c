@@ -24,7 +24,6 @@
 
 #include <windows.h>
 
-
 PLATAPI ts_time_t tm_get_time() {
 	FILETIME time;
 	ts_time_t now;

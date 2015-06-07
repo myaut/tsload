@@ -55,7 +55,7 @@ json_buffer_t* json_buf_create(char* data, size_t sz, boolean_t reuse) {
 	buf = mp_cache_alloc(&json_buffer_mp);
 	buf->buffer = buffer;
 	buf->size = sz;
-	buf->ref_count = (atomic_t) 0l;
+	buf->ref_count = 0l;
 
 	return buf;
 }
@@ -123,7 +123,7 @@ json_str_t json_str_create(const char* str) {
  * @param from Index of first character
  * @param to Index to last character
  */
-json_str_t json_str_reference(json_buffer_t* buf, int from, int to) {
+json_str_t json_str_reference(json_buffer_t* buf, size_t from, size_t to) {
 	char* json_buf = buf->buffer;
 
 	json_buf_hold(buf);

@@ -33,9 +33,9 @@
 
 struct json_parser {
 	int	lineno;			/* Number of line */
-	int newline;		/* Last index of newline character */
+	size_t newline;		/* Last index of newline character */
 
-	int index;
+	size_t index;
 };
 
 struct json_writer {
@@ -59,7 +59,7 @@ STATIC_INLINE void json_buf_rele(json_buffer_t* buf) {
 	}
 }
 
-json_str_t json_str_reference(json_buffer_t* buf, int from, int to);
+json_str_t json_str_reference(json_buffer_t* buf, size_t from, size_t to);
 void json_str_free(json_str_t json_str, json_buffer_t* buf);
 
 json_node_t* json_node_create(json_buffer_t* buf, json_type_t type);
@@ -79,11 +79,13 @@ STATIC_INLINE int json_set_parser_error(struct json_parser* parser, int error, c
 }
 
 STATIC_INLINE int json_set_error(int error) {
+#pragma warning(disable : 4146)
 	/* This is intended to be unitialized, because it will be ignored
 	 * by json_set_error_va (fmt == NULL) */
 	va_list va;
 
 	return json_set_error_va(NULL, error, NULL, va);
+#pragma warning(default : 4146)
 }
 
 STATIC_INLINE int json_set_error_str(int error, const char* fmt, ...) {

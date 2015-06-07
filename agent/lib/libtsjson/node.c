@@ -210,7 +210,7 @@ json_node_t* json_find(json_node_t* parent, const char* name) {
  *
  * @see json_popitem
  */
-json_node_t* json_getitem(json_node_t* parent, int id) {
+json_node_t* json_getitem(json_node_t* parent, unsigned int id) {
 	json_node_t* node;
 	int nid = 0;
 
@@ -242,7 +242,7 @@ json_node_t* json_getitem(json_node_t* parent, int id) {
  *
  * @see json_getitem
  */
-json_node_t* json_popitem(json_node_t* parent, int id) {
+json_node_t* json_popitem(json_node_t* parent, unsigned int id) {
 	json_node_t* node = json_getitem(parent, id);
 
 	if(node != NULL) {
@@ -286,11 +286,11 @@ int json_get_integer_i64(json_node_t* parent, const char* name, int64_t* val) {
 
 DECLARE_JSON_GET_INTEGER(u8, uint8_t, 0, 255)
 DECLARE_JSON_GET_INTEGER(u16, uint16_t, 0, 65535)
-DECLARE_JSON_GET_INTEGER(u32, uint32_t, 0, 4294967295)
+DECLARE_JSON_GET_INTEGER(u32, uint32_t, 0, 4294967295ull)
 
 DECLARE_JSON_GET_INTEGER(i8, int8_t, -128, 127)
 DECLARE_JSON_GET_INTEGER(i16, int16_t, -32768, 32767)
-DECLARE_JSON_GET_INTEGER(i32, int32_t,	-2147483648, 2147483647)
+DECLARE_JSON_GET_INTEGER(i32, int32_t,	-2147483648ll, 2147483647ll)
 
 DECLARE_JSON_GET_INTEGER(i, int, INT_MIN, INT_MAX)
 DECLARE_JSON_GET_INTEGER(l, long, LONG_MIN, LONG_MAX)

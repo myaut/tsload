@@ -40,8 +40,8 @@
 
 #define PATHMAXPARTS   32
 
-LIBIMPORT const char* path_curdir;
-LIBIMPORT const char* path_separator;
+TSCOMMONAPI const char* path_curdir;
+TSCOMMONAPI const char* path_separator;
 
 
 /**

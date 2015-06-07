@@ -7,7 +7,7 @@ Import('env')
 
 lib = env.Clone()
 
-lib.Macroses('LIBHOSTINFO')
+lib.Macroses('LIBTSCOMMON')
 
 # dl for modules
 # pthread for thread-handling

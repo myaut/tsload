@@ -77,7 +77,7 @@ typedef struct module {
 	char* mod_name;
 
 	mod_status_t mod_status;
-	char* mod_status_msg;
+	AUTOSTRING char* mod_status_msg;
 
 	mod_config_func mod_config;
 	mod_config_func mod_unconfig;

@@ -81,7 +81,7 @@ static char json_whitespace_table[256] = {
  */
 
 static boolean_t skip_whitespace(struct json_parser* parser, json_buffer_t* buf) {
-	int idx; char* data;
+	size_t idx; char* data;
 	char mode = JSON_SPACE;
 
 	GET_STATE(idx, data);
@@ -134,7 +134,7 @@ static int unicode_from_hex(char* s) {
  * @return Negative value if error was occured (error code) or number of characters \
  * 		   that was cut out from buffer
  */
-static int unescape_string(struct json_parser* parser, json_buffer_t* buf, int idx, int to) {
+static int unescape_string(struct json_parser* parser, json_buffer_t* buf, size_t idx, size_t to) {
 	char* str = buf->buffer + idx;
 	char* end = buf->buffer + to;
 	char* dst = str;
@@ -238,8 +238,8 @@ static int unescape_string(struct json_parser* parser, json_buffer_t* buf, int i
 }
 
 int json_parse_string(struct json_parser* parser, json_buffer_t* buf, json_str_t* string) {
-	int idx; char* data;
-	int from, to;
+	size_t idx; char* data;
+	size_t from, to;
 	int ret;
 
 	boolean_t have_escaped = B_FALSE;
@@ -330,7 +330,7 @@ int json_parse_number(struct json_parser* parser, json_buffer_t* buf, json_node_
 	double d;
 	int64_t i;
 
-	int idx; char* data;
+	size_t idx; char* data;
 	GET_STATE(idx, data);
 
 	errno = 0;
@@ -386,7 +386,7 @@ int json_parse_node(struct json_parser* parser, json_buffer_t* buf, json_node_t*
 	json_str_t name = NULL;
 	json_node_t* value = NULL;
 
-	int idx; char* data;
+	size_t idx; char* data;
 	int ret = JSON_OK;
 
 	char end_char = (is_array)? ']' : '}';
@@ -487,7 +487,7 @@ error:
 }
 
 int json_parse_literal(struct json_parser* parser, json_buffer_t* buf, const char* literal, size_t len) {
-	int idx; char* data;
+	size_t idx; char* data;
 
 	GET_STATE(idx, data);
 
@@ -510,9 +510,7 @@ int json_parse_literal(struct json_parser* parser, json_buffer_t* buf, const cha
 }
 
 int json_parse_value(struct json_parser* parser, json_buffer_t* buf, json_node_t** object) {
-	int err;
-
-	int idx; char* data;
+	size_t idx; char* data;
 
 	int ret;
 	json_str_t str;

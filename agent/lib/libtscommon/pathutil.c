@@ -63,7 +63,7 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
     const char* part = parts[0];
     char* end;
     int i = 0;
-    int idx = 0;
+    size_t idx = 0;
     size_t part_len = 0;
 
     dest[0] = '\0';
@@ -343,7 +343,6 @@ char* path_remove(char* result, size_t len, const char* abspath, const char* pat
 	int count = 1;
 	const char* part_abspath;
 	const char* part_path;
-	const char* root;
 
 	/* If path is empty - simply return abspath */
 	if(strlen(path) == 0 ||
@@ -392,7 +391,6 @@ char* path_remove(char* result, size_t len, const char* abspath, const char* pat
  */
 char* path_argfile(char* cfgdir, size_t cfglen, const char* cfgfname, const char* arg) {
 	size_t arglen = strlen(arg);
-	size_t fnlen;
 	
 	const char* tail;
 	path_split_iter_t iter;

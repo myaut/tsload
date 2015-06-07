@@ -24,7 +24,6 @@
 
 #include <windows.h>
 
-
 typedef NTSTATUS (NTAPI *NtDelayExecution_func)(BOOLEAN Alertable, PLARGE_INTEGER DelayInterval);
 NtDelayExecution_func NtDelayExecution;
 

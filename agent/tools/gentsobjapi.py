@@ -31,7 +31,7 @@ api_tail = '''
 
 typedef struct tsobj_api tsobj_api_t;
 
-LIBIMPORT tsobj_api_t* tsobj_api_impl;
+TSOBJAPI tsobj_api_t* tsobj_api_impl;
 '''
 
 function_body = ''' {

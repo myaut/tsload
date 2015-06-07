@@ -21,17 +21,6 @@
 
 #include <tsload/obj/obj.h>
 
-
-STATIC_INLINE hm_key_t* hm_get_key(hashmap_t* hm, hm_item_t* obj) {
-	hm_key_t* key = (obj + hm->hm_off_key);
-
-	if(hm->hm_indirect) {
-		key = * (void**) key;
-	}
-
-	return key;
-}
-
 int tsobj_hm_walker(hm_item_t* object, void* arg) {
 	struct hm_fmt_context* context = (struct hm_fmt_context*) arg;
 	tsobj_node_t* item_node = context->formatter(object);
