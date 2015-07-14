@@ -55,7 +55,7 @@ STATIC_INLINE boolean_t	plat_filter_fs(plat_mntent_t* mnt) {
 	return B_FALSE;
 }
 
-STATIC_INLINE plat_fs_is_readonly(const char* mntopts) {
+STATIC_INLINE boolean_t plat_fs_is_readonly(const char* mntopts) {
 	return strncmp(mntopts, "rw", 2) != 0;
 }
 

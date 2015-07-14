@@ -146,7 +146,12 @@ int json_write_number(json_node_t* num, struct json_writer* writer, void* state)
 			count = snprintf(buf, 32, "%f", d);
 		}
 	}
-
+	
+	if(count > 31) {
+		/* This shouldn't happen, but it did. Report as error */
+		return json_set_error_str(JSON_BUFFER_OVERFLOW, "Too long number that didn't fit into buffer.");
+	}
+	
 	writer->write_string(state, buf);
 
 	return writer->writer_error(state);

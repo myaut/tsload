@@ -46,9 +46,11 @@ char* disk_get_type(hi_dsk_info_t* di) {
 	return "???";
 }
 
-#define PRINT_DISK_XSTR(what, str) 					\
-			if(str)									\
-				printf("\t%-7s: %s\n", what, str);
+#define PRINT_DISK_XSTR(what, str)					\
+			printf("\t%-7s: %s\n", what, str)
+
+#define PRINT_DISK_XSTR_SAFE(what, str) 					\
+			if(str) PRINT_DISK_XSTR(what, str)
 
 void print_disk_slaves(hi_dsk_info_t* parent) {
 	hi_object_child_t* child;
@@ -102,15 +104,15 @@ int print_disk_info(int flags) {
 			continue;
 
 		if(di->d_type != HI_DSKT_PARTITION) {
-			PRINT_DISK_XSTR("id", di->d_id);
-			PRINT_DISK_XSTR("bus", di->d_bus_type);
-			PRINT_DISK_XSTR("port", di->d_port);
+			PRINT_DISK_XSTR_SAFE("id", di->d_id);
+			PRINT_DISK_XSTR_SAFE("bus", di->d_bus_type);
+			PRINT_DISK_XSTR_SAFE("port", di->d_port);
 
 			print_disk_slaves(di);
 		}
 
 		if(di->d_type == HI_DSKT_DISK)
-			PRINT_DISK_XSTR("model", di->d_model);
+			PRINT_DISK_XSTR_SAFE("model", di->d_model);
 	}
 
 	return INFO_OK;

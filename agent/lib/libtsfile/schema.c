@@ -131,7 +131,7 @@ tsfile_schema_t* json_tsfile_schema_proc(json_node_t* root, boolean_t auto_offse
 	tsfile_schema_t* schema = NULL;
 	tsfile_field_t* schema_field;
 	ptrdiff_t offset = (ptrdiff_t) -1;
-	int field_count, fi;
+	unsigned field_count, fi;
 	int err;
 
 	json_node_t *size, *fields, *field;
@@ -140,7 +140,7 @@ tsfile_schema_t* json_tsfile_schema_proc(json_node_t* root, boolean_t auto_offse
 	PARSE_SCHEMA_PARAM(root, size, "entry_size", JSON_NUMBER);
 	PARSE_SCHEMA_PARAM(root, fields, "fields", JSON_NODE);
 
-	field_count = json_size(fields);
+	field_count = (unsigned) json_size(fields);
 
 	if(field_count > MAXFIELDCOUNT) {
 		tsfile_error_msg(TSE_MESSAGE_FORMAT, "Too many fields in schema");

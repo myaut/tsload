@@ -47,7 +47,7 @@
 
 typedef struct {
 	list_node_t		node;
-	int				count;
+	unsigned		count;
 
 	char			byte[1];
 } csv_entry_chunk_t;

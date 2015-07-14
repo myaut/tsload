@@ -88,8 +88,6 @@ int tse_printf(int flags, const char* format, ...) {
 
 int tse_error_msg_va(const char* errclass, const char* codefmt, int code,
 					  const char* format, va_list va) {
-	va_list vatmp;
-
 	int ret = 0;
 
 	char* fmtstr = NULL;
@@ -115,26 +113,20 @@ int tse_error_msg_va(const char* errclass, const char* codefmt, int code,
 	return ret;
 }
 
-int tse_tsload_error_msg(ts_errcode_t code, const char* format, ...) {
-	int ret;
+void tse_tsload_error_msg(ts_errcode_t code, const char* format, ...) {
 	va_list va;
 
 	va_start(va, format);
-	ret = tse_error_msg_va("TSLOAD", "%03d", code, format, va);
+	(void) tse_error_msg_va("TSLOAD", "%03d", code, format, va);
 	va_end(va);
-
-	return ret;
 }
 
-int tse_tsfile_error_msg(ts_errcode_t code, const char* format, ...) {
-	int ret;
+void tse_tsfile_error_msg(ts_errcode_t code, const char* format, ...) {
 	va_list va;
 
 	va_start(va, format);
-	ret = tse_error_msg_va("TSFILE", "%03d", code, format, va);
+	(void) tse_error_msg_va("TSFILE", "%03d", code, format, va);
 	va_end(va);
-
-	return ret;
 }
 
 int tse_tsobj_error_msg(int tsobj_errno, const char* format, va_list va) {

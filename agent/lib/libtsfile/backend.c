@@ -116,7 +116,7 @@ int tsf_json_add(tsf_backend_t* backend) {
 	json_buffer_t* buf;
 	json_node_t* node;
 
-	int count;
+	size_t count;
 
 	/* Read everything from file into str
 	 * Couldn't memory map file because file may be stdin
@@ -171,7 +171,7 @@ int tsf_json_add(tsf_backend_t* backend) {
 		return 1;
 	}
 
-	logmsg(LOG_INFO, "Added %d JSON entries to TSFile", count);
+	logmsg(LOG_INFO, "Added %" PRIsz " JSON entries to TSFile", count);
 
 	return 0;
 }
@@ -244,7 +244,6 @@ int tsf_csv_get(tsf_backend_t* backend, int start, int end) {
 	int ret;
 
 	size_t entry_size = schema->hdr.entry_size;
-	size_t write_len;
 	void* entries = NULL;
 	void* entry;
 	int entry_idx = start, entry_count = 0, i = 0;
@@ -276,7 +275,8 @@ int tsf_csv_get(tsf_backend_t* backend, int start, int end) {
 	entries = mp_malloc(csv_entries_cache_count * entry_size);
 
 	while(entry_idx < end) {
-		entry_count = min(end - entry_idx, csv_entries_cache_count);
+		entry_count = min((unsigned) (end - entry_idx), 
+						  csv_entries_cache_count);
 
 		ret = tsfile_get_entries(backend->ts_file, entries, entry_idx, entry_idx + entry_count);
 		if(ret != TSFILE_OK) {

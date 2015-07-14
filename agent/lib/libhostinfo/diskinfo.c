@@ -55,7 +55,7 @@ hi_dsk_info_t* hi_dsk_create(void) {
  * Destroy disk descriptor and free slave handles if needed
  * */
 void hi_dsk_dtor(hi_object_header_t* object) {
-	hi_dsk_info_t* di = (hi_object_t*) object;
+	hi_dsk_info_t* di = HI_DSK_FROM_OBJ(object);
 
 	aas_free(&di->d_path);
 	aas_free(&di->d_port);

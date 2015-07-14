@@ -45,7 +45,6 @@ thread_result_t control_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, thread_pool_t, tp);
 	ts_time_t tm = tm_get_time();
 	workload_t *wl;
-	int wl_count = 0, wl_count_prev = 0, wli = 0;
 	int wid = 0;
 
 	int wi;
@@ -67,10 +66,6 @@ thread_result_t control_thread(thread_arg_t arg) {
 					tp->tp_name, tp->tp_time);
 
 		mutex_lock(&tp->tp_mutex);
-		wl_count = tp->tp_wl_count;
-
-
-		wl_count_prev = wl_count;
 
 		tp->tp_disp->tpd_class->control_report(tp);
 

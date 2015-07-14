@@ -153,7 +153,8 @@ size_t tse_exp_print_start_time(experiment_t* exp, char* date, size_t buflen) {
 		return tm_datetime_print(start_time_tm, date, buflen);
 	}
 
-	return strcpy(date, "???");
+	strcpy(date, "???");
+	return sizeof("???");
 }
 
 const char* tse_exp_get_status_str(experiment_t* exp) {

@@ -82,6 +82,7 @@ STATIC_INLINE ts_errcode_t tsobj_error_code() {
 
 #define TSOBJ_STR				JSON_STR
 #define TSOBJ_C_STR				JSON_C_STR
+#define TSOBJ_NULL_STR			JSON_NULL_STR
 
 typedef void tsobj_node_t;
 typedef json_type_t tsobj_type_t;

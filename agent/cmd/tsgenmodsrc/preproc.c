@@ -319,6 +319,11 @@ int modpp_destroy_pp(modpp_t* pp) {
 	return ret;
 }
 
+/* Wrapper for modvar_set_get() */
+void modpp_pp_dtor(void* pp) {
+	modpp_destroy_pp(pp);
+}
+
 /**
  * write variable to output file
  *
@@ -422,7 +427,7 @@ static int modpp_commit_define(modpp_t* pp, modpp_state_t* def, char* end) {
 	defpp = modpp_create_pp(def->lineno + 1, def->start, end - def->start, NULL);
 
 	var = modvar_set_gen(modvar_create_dn(def->varname), modpp_define_generate,
-						 modpp_destroy_pp, defpp);
+						 modpp_pp_dtor, defpp);
 
 	if(var == NULL) {
 		fprintf(stderr, "Cannot create define '%s' - may be already exists",

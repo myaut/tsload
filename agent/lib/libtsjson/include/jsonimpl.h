@@ -79,13 +79,17 @@ STATIC_INLINE int json_set_parser_error(struct json_parser* parser, int error, c
 }
 
 STATIC_INLINE int json_set_error(int error) {
+#ifdef _MSC_VER
 #pragma warning(disable : 4146)
+#endif
 	/* This is intended to be unitialized, because it will be ignored
 	 * by json_set_error_va (fmt == NULL) */
 	va_list va;
 
 	return json_set_error_va(NULL, error, NULL, va);
+#ifdef _MSC_VER
 #pragma warning(default : 4146)
+#endif
 }
 
 STATIC_INLINE int json_set_error_str(int error, const char* fmt, ...) {

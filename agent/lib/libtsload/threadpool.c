@@ -637,7 +637,8 @@ tsobj_node_t* tsobj_tp_format(hm_item_t* object) {
 
 	mutex_lock(&tp->tp_mutex);
 	list_for_each_entry(workload_t, wl, &tp->tp_wl_head, wl_tp_node) {
-		tsobj_add_string(wl_list, NULL, wl->wl_name);
+		tsobj_add_string(wl_list, TSOBJ_NULL_STR, 
+						 tsobj_str_create(wl->wl_name));
 	}
 	mutex_unlock(&tp->tp_mutex);
 

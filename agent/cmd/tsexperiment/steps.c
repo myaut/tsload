@@ -373,8 +373,10 @@ step_request_trace_t* step_trace_create_rq(exp_workload_t* ewl) {
 	list_node_init(&strq->node);
 	strq->chain_next = NULL;
 
-	strq->rqe = ((char*) strq) + sizeof(step_request_trace_t);
-	strq->rq_params = ((char*) strq->rqe) + sizeof(exp_request_entry_t);
+	strq->rqe = 
+		(exp_request_entry_t*) (((unsigned long) strq) + sizeof(step_request_trace_t));
+	strq->rq_params = 
+		(void*) (((unsigned long) strq->rqe) + sizeof(exp_request_entry_t));
 
 	return strq;
 }

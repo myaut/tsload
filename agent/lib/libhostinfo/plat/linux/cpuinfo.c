@@ -334,8 +334,10 @@ void hi_linux_proc_strand(int strandid, void* arg) {
 	coreid = hi_linux_sysfs_readuint(SYS_NODE_PATH, name, "topology/core_id", HI_LINUX_MAXCPUS);
 	chipid = hi_linux_sysfs_readuint(SYS_NODE_PATH, name, "topology/physical_package_id", HI_LINUX_MAXCPUS);
 
-	if(coreid == HI_LINUX_MAXCPUS || chipid == HI_LINUX_MAXCPUS)
-		return HI_LINUX_SYSFS_ERROR;
+	if(coreid == HI_LINUX_MAXCPUS || chipid == HI_LINUX_MAXCPUS) {
+		hi_cpu_dprintf("hi_linux_proc_strand: Failed to read topology files\n");
+		return;
+	}
 
 	/* Find processor and core objects. If they do not exist, create new ones */
 	chip = hi_cpu_find_byid(node, HI_CPU_CHIP, chipid);

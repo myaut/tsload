@@ -96,7 +96,7 @@ int json_set_error_va(struct json_parser* parser, int error, const char* fmt, va
 
 		if(parser) {
 			char msg2[20];
-			snprintf(msg2, 20, " at %d:%d", state->je_line, state->je_char);
+			snprintf(msg2, 20, " at %d:%" PRIsz, state->je_line, state->je_char);
 
 			strncat(state->je_message, msg2, JSONERRLEN - count);
 		}

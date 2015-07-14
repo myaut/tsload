@@ -77,7 +77,7 @@ int tse_show_list_walk(const char* name, json_node_t* parent, json_node_t* node,
 	}
 
 int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
-	exp_threadpool_t* etp = (exp_threadpool_t*) obj;
+	exp_threadpool_t* etp = obj;
 	const char* disp = NULL;
 	char quantum[40];
 
@@ -94,7 +94,7 @@ int tse_show_tp_walker(hm_item_t* obj, void* ctx) {
 }
 
 int tse_show_wl_walker(hm_item_t* obj, void* ctx) {
-	exp_workload_t* ewl = (exp_threadpool_t*) obj;
+	exp_workload_t* ewl = obj;
 	const char* rqsched = NULL;
 
 	if(ewl->wl_rqsched != NULL) {

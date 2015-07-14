@@ -232,7 +232,6 @@ int tsfile_fill_entry(tsfile_t* file, json_node_t* node, void* entry) {
 	int fi;
 
 	void* value;
-	char* str;
 
 	json_node_t* j_field;
 

@@ -279,10 +279,8 @@ opt_error:
 
 int csv_parse_header(csv_chars_t* chars, const char* header, csv_binding_t* bindings, tsfile_schema_t* schema,
 					 csv_hdr_mode_t mode, int bcount) {
-	int bid, fid, count;
-	int binding_count;
-	size_t length, name_length;
-
+	int bid, count;
+	
 	csv_hdr_iter_t iter;
 
 	int ret = CSV_OK;
@@ -511,12 +509,12 @@ static const char* csv_int_format_table[4][6] = {
 };
 
 static const char* csv_int_format_str(csv_binding_t* binding, boolean_t is_scanf) {
-	int i, j;
+	unsigned i, j;
 	int int_flags = binding->opt.int_flags;
 
 	i = (binding->field->size == 8)
 			? 2
-			: binding->field->size - 1;
+			: (unsigned)(binding->field->size - 1);
 
 	j = (int_flags & CSV_INT_HEX)
 			? 1

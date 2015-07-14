@@ -50,6 +50,7 @@
 
 #define JSON_STR(str)	 (json_str_t) ((const char*)("C" str) + 1)
 #define JSON_C_STR(json_str) ((const char*) (json_str))
+#define JSON_NULL_STR	 ((json_str_t) NULL)
 
 // typedef const char* json_str_t;
 
