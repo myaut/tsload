@@ -119,7 +119,7 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
 # name of the project, version, root path
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
-env['TSVERSION'] = '0.2.0-alpha2'
+env['TSVERSION'] = '0.2.0-beta'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
 # this variable is a hint for build system that we 

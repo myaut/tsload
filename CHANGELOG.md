@@ -4,11 +4,17 @@ Release date: ???
 
 * Loaders & channels
 
-### TSLoad 0.2 beta
+### TSLoad 0.2 
 
 Release date: ???
 
 * OS-specific binary packages
+
+### TSLoad 0.2 beta
+
+Release date: 19 Jul 2015
+
+* Fix warnings and bugs
 
 ### TSLoad 0.2 alpha #2
 
