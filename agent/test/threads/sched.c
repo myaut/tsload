@@ -30,13 +30,18 @@
 
 
 thread_t t;
-thread_event_t ev;
+
+boolean_t finished = B_FALSE;
+thread_mutex_t mtx;
+thread_cv_t cv;
 
 thread_result_t test_thread_sched(thread_arg_t arg) {
 	THREAD_ENTRY(arg, void, unused);
-
-	event_notify_one(&ev);
-	event_wait(&ev);
+	
+	mutex_lock(&mtx);
+	if(!finished)
+		cv_wait(&cv, &mtx);
+	mutex_unlock(&mtx);
 
 THREAD_END:
 	THREAD_FINISH(arg);
@@ -60,7 +65,7 @@ struct param params[] = {{"uprilim", 20}, {"upri", 10}};
 
 int test_main() {
 	char policy_value[10];
-	int value;
+	int64_t value;
 	int pid;
 	int pcount = 0;
 	
@@ -69,10 +74,10 @@ int test_main() {
 	threads_init();
 	sched_init();
 
-	event_init(&ev, "test_thread_start");
+	cv_init(&cv, "test_thread_end");
 	t_init(&t, NULL, test_thread_sched, "test_thread_sched");
 
-	event_wait(&ev);
+	t_wait_start(&t);
 
 	assert(sched_set_policy(&t, policy) == SCHED_OK);
 
@@ -99,12 +104,15 @@ int test_main() {
 #endif
 	}
 	
-	event_notify_one(&ev);
+	mutex_lock(&mtx);
+	finished = B_TRUE;
+	cv_notify_one(&cv);
+	mutex_unlock(&mtx);
 
 	t_join(&t);
 	t_destroy(&t);
 
-	event_destroy(&ev);
+	cv_destroy(&cv);
 
 	sched_fini();
 	threads_fini();

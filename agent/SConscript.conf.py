@@ -291,7 +291,7 @@ if env.SupportedPlatform('linux'):
     # Always run checks so sconf cache won't be confused by changed order of tests
     if not conf.CheckDeclaration('lvm_init', '#include <lvm2app.h>'):
         if GetOption('lvm2'):
-            raise StopError('lvm_init() is missing. Install `lvm2-devel` package or disable LVM with --disable-lvm2 option (not recommended).')
+            raise StopError('lvm_init() is missing. Install `lvm2-devel` or `liblvm2-dev` package or disable LVM with --disable-lvm2 option (not recommended).')
     
 if env.SupportedPlatform('posix'):
     if GetOption('zfs'):
@@ -373,7 +373,7 @@ if env.SupportedPlatform('win'):
 # UUID checks
 if env.SupportedPlatform('linux') or env.SupportedPlatform('solaris'):
     if not conf.CheckDeclaration('uuid_generate_time', '#include <uuid/uuid.h>'):
-        raise StopError('uuid_generate_time() is missing. Maybe you need libuuid-devel or something?')
+        raise StopError('uuid_generate_time() is missing. Maybe you have to install `libuuid-devel` or `uuid-dev`?')
 
 #------------------------------
 # hostinfo checks?
