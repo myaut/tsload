@@ -217,7 +217,13 @@ int do_command(void) {
 
 	if(schema == NULL)
 		return 1;
-
+	
+	if(backend == NULL) {
+		backend = tsfile_backend_create(TSFUTIL_DEFAULT_BACKEND);
+		if(backend == NULL)
+			return 1;
+	}
+	
 	if(command == COMMAND_CREATE) {
 		ts_file = tsfile_create(tsf_path, schema);
 	}
@@ -229,7 +235,7 @@ int do_command(void) {
 	if(ts_file == NULL) {
 		return 1;
 	}
-
+	
 	if(command != COMMAND_CREATE) {
 		if(command == COMMAND_GET_COUNT) {
 			uint32_t count = tsfile_get_count(ts_file);

@@ -12,7 +12,9 @@ from optparse import SUPPRESS_HELP
 sys.path.append(os.path.join('tools', 'build'))
 
 from pathutil import *
-import tstest
+# We can't set correct sys.path in test/.*SConscript so pre-fill
+# module cache with required modules from root SConstruct
+import tstest, ordereddict
 
 # ------------------------
 # ENVIRONMENT HELPERS

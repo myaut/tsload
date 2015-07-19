@@ -726,7 +726,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 				}
 			}
 			else {
-				err = CMD_INVALID_OPT;
+				ret = CMD_INVALID_OPT;
 				tse_command_error_msg(CMD_INVALID_OPT,
 						"Altering experiment options is not allowed in trace mode\n");
 				goto end;
@@ -734,7 +734,7 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 			break;
 		case '?':
 			/* Shouldn't be here */
-			err =  CMD_INVALID_OPT;
+			ret =  CMD_INVALID_OPT;
 			goto end;
 		}
 	}

@@ -38,6 +38,7 @@
 #define SCHED_INVALID_POLICY	-3
 #define SCHED_INVALID_PARAM		-4
 #define SCHED_INVALID_VALUE		-5
+#define SCHED_NOT_PERMITTED		-6
 
 PLATAPI void plat_tsched_init(thread_t* thread);
 PLATAPI void plat_tsched_destroy(thread_t* thread);
@@ -111,7 +112,8 @@ LIBEXPORT PLATAPI int sched_set_param(thread_t* thread, const char* name, int64_
  * Calls operating system to commit changes made by sched_set_policy() and sched_set_param()
  *
  * @return SCHED_ERROR in case of system error, SCHED_INVALID_PARAM/SCHED_INVALID_POLICY if \
- *     thread was not properly initialized
+ *     thread was not properly initialized, SCHED_NOT_PERMITTED if you do not have 			\
+ *     permissions to alter scheduling policy. 
  */
 LIBEXPORT PLATAPI int sched_commit(thread_t* thread);
 

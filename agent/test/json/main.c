@@ -33,7 +33,8 @@ void dump_error(void) {
 	json_error_state_t* state = json_get_error();
 
 	if(state) {
-		fprintf(stderr, "%s at %d:%d\n", state->je_message, state->je_line, state->je_char);
+		fprintf(stderr, "%s at %d:%" PRIsz "\n", 
+				state->je_message, state->je_line, state->je_char);
 	}
 }
 

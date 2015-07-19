@@ -135,7 +135,7 @@ STATIC_INLINE modvar_t* modvar_set(modvar_t* var, const char* value) {
 	if(var == NULL)
 		return NULL;
 	
-	aas_copy(&var->v_value.str, value);
+	aas_copy(aas_init(&var->v_value.str), value);
 	var->v_type = VAR_STRING;
 	return var;
 }
@@ -143,7 +143,7 @@ STATIC_INLINE modvar_t* modvar_vprintf(modvar_t* var, const char* fmtstr, va_lis
 	if(var == NULL)
 		return NULL;
 
-	aas_vprintf(&var->v_value.str, fmtstr, va);
+	aas_vprintf(aas_init(&var->v_value.str), fmtstr, va);
 	var->v_type = VAR_STRING;
 	
 	return var;

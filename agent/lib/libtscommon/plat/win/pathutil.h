@@ -33,4 +33,17 @@ STATIC_INLINE boolean_t path_is_abs(const char* path) {
 	return (path[0] == '\\' && path[1] == '\\') || path[1] == ':';
 }
 
+STATIC_INLINE boolean_t path_is_separator(const char* path) {
+	/* Windows can support both separators, so... */
+	return *path == '/' || *path == '\\';
+}
+
+STATIC_INLINE void path_append_separator(char* path, size_t len) {
+	/* In Windows we want to keep uniform separators across path */
+	if(strchr(path, "/") != NULL)
+		strncat(path, "/", len);
+	else
+		strncat(path, "\\", len);
+}
+
 #endif

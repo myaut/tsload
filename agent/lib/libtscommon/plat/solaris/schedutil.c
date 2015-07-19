@@ -153,7 +153,8 @@ PLATAPI int sched_set_affinity(thread_t* thread , cpumask_t* mask) {
 				/* In Solaris 10, psets may be disabled if pools are not configured.  */
 				return SCHED_NOT_SUPPORTED;
 			}
-
+			if(errno == EPERM) 
+				return SCHED_NOT_PERMITTED;
 			return SCHED_ERROR;
 		}
 
@@ -365,9 +366,12 @@ PLATAPI int sched_commit(thread_t* thread) {
 					 thread->t_sched_impl.clname, parms);
 
 	parms->pc_vaparmscnt = 0;
-
-	if(err != 0)
+	
+	if(err != 0) {
+		if(errno == EPERM)
+			return SCHED_NOT_PERMITTED;
 		return SCHED_ERROR;
+	}
 
 	return SCHED_OK;
 #endif

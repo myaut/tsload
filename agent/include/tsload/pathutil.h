@@ -41,8 +41,6 @@
 #define PATHMAXPARTS   32
 
 TSCOMMONAPI const char* path_curdir;
-TSCOMMONAPI const char* path_separator;
-
 
 /**
  * Temporary storage for path splitting operations

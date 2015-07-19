@@ -214,13 +214,10 @@ typedef struct tsf_backend_class {
 LIBEXPORT tsf_backend_t* tsfile_backend_create(const char* name);
 LIBEXPORT void tsfile_backend_set_files(tsf_backend_t* backend, FILE* file, tsfile_t* ts_file);
 LIBEXPORT void tsfile_backend_destroy(tsf_backend_t* backend);
+LIBEXPORT int tsfile_backend_get(tsf_backend_t* backend, int start, int end);
 
 STATIC_INLINE int tsfile_backend_set(tsf_backend_t* backend, const char* option) {
 	return backend->tsf_class->set(backend, option);
-}
-
-STATIC_INLINE int tsfile_backend_get(tsf_backend_t* backend, int start, int end) {
-	return backend->tsf_class->get(backend, start, end);
 }
 
 STATIC_INLINE int tsfile_backend_add(tsf_backend_t* backend) {

@@ -33,14 +33,12 @@
 #if defined(PLAT_WIN)
 const char* path_curdir = ".";
 const char* path_parentdir = "..";
-const char* path_separator = "\\";
 const int psep_length = 1;
 
 #elif defined(PLAT_POSIX)
 
 const char* path_curdir = ".";
 const char* path_parentdir = "..";
-const char* path_separator = "/";
 const int psep_length = 1;
 
 #else
@@ -73,10 +71,9 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
         if(part_len > len)
             return NULL;
 
-        /* If previous part was not finished by separator,
-         * add it (works only if psep_length == 1 */
-        if(i != 0 && dest[idx - 1] != *path_separator) {
-        	strncat(dest + idx, path_separator, len);
+        /* If previous part was not finished by separator, add it*/
+        if(i != 0 && !path_is_separator(dest + idx - 1)) {
+        	path_append_separator(dest, len);
 
             len -= psep_length;
             idx += psep_length;
@@ -94,7 +91,7 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
 	/* On Windows trailing slashes are not allowed i.e. in FindFirstFileEx()
 	 * so if it is a last part and part is empty, ignore it */
     end = dest + idx - psep_length;
-    if(*end == *path_separator)
+    if(path_is_separator(end))
     	*end = '\0';
 #endif
 
@@ -190,13 +187,27 @@ static int path_split_add(path_split_iter_t* iter, const char* part, const char*
     return 1;
 }
 
-static const char* strrchr_x(const char* s, const char* from, int c) {
+static const char* str_find(const char* s, 
+							boolean_t (*pred)(const char* s)) {
+    while(!(pred(s))) {
+        if(*s == '\0')
+            return NULL;
+
+        ++s;
+    }
+
+    return s;
+}
+
+
+static const char* str_find_reverse(const char* s, const char* from, 
+									boolean_t (*pred)(const char* s)) {
     do {
         if(from == s)
             return NULL;
 
         --from;
-    } while(*from != c);
+    } while(!(pred(from)));
 
     return from;
 }
@@ -233,7 +244,7 @@ const char* path_split(path_split_iter_t* iter, int max, const char* path) {
      * In POSIX we have to simulate it (for absolute paths only).
      * I.e. for /abc/ it is "", "abc" in straight order and "abc", "" in reverse order */
 #if defined(PLAT_POSIX)
-    if(max > 0 && *path == *path_separator) {
+    if(max > 0 && path_is_separator(path)) {
     	iter->ps_parts[0] = "";
     	iter->ps_num_parts = 1;
     	iter->ps_last_is_root = B_FALSE;
@@ -241,7 +252,7 @@ const char* path_split(path_split_iter_t* iter, int max, const char* path) {
     else {
     	iter->ps_parts[0] = NULL;
 		iter->ps_num_parts = 0;
-		iter->ps_last_is_root = (*path == *path_separator);
+		iter->ps_last_is_root = path_is_abs(path);
     }
 #elif defined(PLAT_WIN)
     iter->ps_parts[0] = NULL;
@@ -257,7 +268,7 @@ const char* path_split(path_split_iter_t* iter, int max, const char* path) {
     	const char *begin, *orig;
     	begin = orig = path + strlen(path);
 
-        while((begin = strrchr_x(path, begin, *path_separator)) != NULL) {
+        while((begin = str_find_reverse(path, begin, path_is_separator)) != NULL) {
             if(max == -1)
                 break;
 
@@ -280,7 +291,7 @@ const char* path_split(path_split_iter_t* iter, int max, const char* path) {
     	const char *end, *orig;
     	end = orig = path;
 
-        while((end = strchr(end, *path_separator)) != NULL) {
+        while((end = str_find(end, path_is_separator)) != NULL) {
             if(max == 1)
                 break;
 
@@ -403,7 +414,7 @@ char* path_argfile(char* cfgdir, size_t cfglen, const char* cfgfname, const char
 	
 	/* If arg ends with path separator, than it is obviously a directory. Separator is removed. */
 	tail = arg + arglen - psep_length;
-	if(path_cmp(tail, path_separator) == 0) {
+	if(path_is_separator(tail)) {
 		strncpy(cfgdir, arg, cfglen);		
 		*(cfgdir + strlen(cfgdir) - psep_length) = '\0';
 		

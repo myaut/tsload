@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 
+#define TSFUTIL_DEFAULT_BACKEND "json"
 
 #define COMMAND_CREATE		0
 #define COMMAND_ADD			1

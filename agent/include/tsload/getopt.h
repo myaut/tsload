@@ -23,11 +23,17 @@
 
 #include <tsload/defs.h>
 
+/* getopt is implemented by libtscommon on Windows, but uses libc on Unix. */
+#ifdef PLAT_WIN
+#define GETOPTAPI	TSCOMMONAPI
+#else
+#define GETOPTAPI	extern
+#endif
 
-TSJSONAPI int opterr;
-TSJSONAPI int optind;
-TSJSONAPI int optopt;
-TSJSONAPI char *optarg;
+GETOPTAPI int opterr;
+GETOPTAPI int optind;
+GETOPTAPI int optopt;
+GETOPTAPI char *optarg;
 
 LIBEXPORT PLATAPI int plat_getopt(int argc, char* const argv[], const char* options);
 

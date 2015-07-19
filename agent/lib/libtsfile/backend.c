@@ -297,6 +297,8 @@ end:
 		mp_free(entries);
 
 	mp_free(bindings);
+	if(ret < 0)		/* Treat CSV errors (which are negative) as general error */
+		return 1;
 	return ret;
 }
 
@@ -368,6 +370,8 @@ end:
 	csv_entry_list_destroy(&list);
 
 	mp_free(bindings);
+	if(ret < 0)		/* Treat CSV errors (which are negative) as general error */
+		return 1;
 	return ret;
 }
 
@@ -415,6 +419,21 @@ tsf_backend_t* tsfile_backend_create(const char* name) {
 
 	return backend;
 }
+
+int tsfile_backend_get(tsf_backend_t* backend, int start, int end) {
+	if(start < 0 || end < 0) {
+		logmsg(LOG_CRIT, "Entry indexes in TSFile range cannot be negative!");
+		return 1;
+	}
+	
+	if(end < start) {
+		logmsg(LOG_CRIT, "Last entry index in TSFile range shouldn't precede first entry!");
+		return 1;
+	}
+	
+	return backend->tsf_class->get(backend, start, end);
+}
+
 
 void tsfile_backend_set_files(tsf_backend_t* backend, FILE* file, tsfile_t* ts_file) {
 	backend->file = file;

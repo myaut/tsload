@@ -63,7 +63,9 @@ int test_main() {
 	int value;
 	int pid;
 	int pcount = 0;
-
+	
+	int ret;
+	
 	threads_init();
 	sched_init();
 
@@ -81,19 +83,22 @@ int test_main() {
 		assert(sched_set_param(&t, params[pid].name, params[pid].value) == SCHED_OK);
 	}
 #endif
-
-	assert(sched_commit(&t) == SCHED_OK);
-
-	assert(sched_get_policy(&t, policy_value, 10) == SCHED_OK);
-	assert(strcmp(policy, policy_value) == 0);
+	
+	ret = sched_commit(&t);
+	assert(ret == SCHED_OK || ret == SCHED_NOT_PERMITTED);
+	
+	if(ret == SCHED_OK) {
+		assert(sched_get_policy(&t, policy_value, 10) == SCHED_OK);
+		assert(strcmp(policy, policy_value) == 0);
 
 #ifndef NO_PARAMS
-	for(pid = 0; pid < pcount; ++pid) {
-		assert(sched_get_param(&t, params[pid].name, &value) == SCHED_OK);
-		assert(value == params[pid].value);
-	}
+		for(pid = 0; pid < pcount; ++pid) {
+			assert(sched_get_param(&t, params[pid].name, &value) == SCHED_OK);
+			assert(value == params[pid].value);
+		}
 #endif
-
+	}
+	
 	event_notify_one(&ev);
 
 	t_join(&t);

@@ -181,7 +181,7 @@ class BuildServer(object):
     
     def log_init(self, logprefix, logdir):
         '''Sets up logging to directory `logdir`'''
-        self.log_path = os.path.join(logdir, logprefix + '_' + self.name + '.log')
+        self.log_path = os.path.join(logdir, self.name + '_' + logprefix + '.log')
         
     def _log(self, level, msg, *args):
         if self.log_file is None:
@@ -278,17 +278,23 @@ class BuildServer(object):
             
             self._log(BuildServer.LOG_ALL, 'Fetching %s -> %s\n', remotename, localname)
             
-            self.sftp.get(remotepath, localpath)            
+            try:
+                self.sftp.get(remotepath, localpath)            
+            except IOError as ioe:
+                self._log(BuildServer.LOG_ALL, 'Error fetching %s -> %s: %s\n', remotename, localname, str(ioe))
     
-    def fetch_log(self, outdir, logpath):
+    def fetch_log(self, logdir, logpath):
         logname = os.path.basename(logpath)
         
         remotepath = os.path.join(self.repodir, logpath)
-        localpath = os.path.join(outdir, self.name + '_' + logname)
+        localpath = os.path.join(logdir, self.name + '_' + logname)
         
         self._log(BuildServer.LOG_ALL, 'Fetching %s -> %s\n', remotepath, localpath)
         
-        self.sftp.get(remotepath, localpath)
+        try:
+            self.sftp.get(remotepath, localpath)            
+        except IOError as ioe:
+            self._log(BuildServer.LOG_ALL, 'Error fetching %s -> %s: %s\n', remotepath, localpath, str(ioe))
     
     def _remote_stat(self, remote_path):
         try:
@@ -384,7 +390,7 @@ class BuildManager(object):
             
             server.connect()
             
-            if 'copy' in targets:
+            if not 'nocopy' in targets:
                 server.copy(repository)
             
             try: 
@@ -395,7 +401,7 @@ class BuildManager(object):
                     try:
                         server.build(self.global_opts, 'tests')
                     finally:
-                        server.fetch_log(self.out_dir, 'build/test/tests.log')
+                        server.fetch_log(self.log_dir, 'build/test/tests.log')
                     
                 if 'install' in targets:
                     server.build(self.global_opts, 'install')
@@ -404,7 +410,7 @@ class BuildManager(object):
                     try:
                         server.build(self.global_opts, 'systests')
                     finally:
-                        server.fetch_log(self.out_dir, 'build/test/tsexperiment/systests.html')
+                        server.fetch_log(self.log_dir, 'build/test/tsexperiment/systests.html')
                 
                 if 'fetch' in targets:
                     server.build(self.global_opts, 'zip')

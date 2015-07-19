@@ -72,7 +72,7 @@ int test_main() {
 
 	ret = sched_set_affinity(&thread, mask);
 
-	if(ret != SCHED_NOT_SUPPORTED) {
+	if(ret != SCHED_NOT_SUPPORTED && ret != SCHED_NOT_PERMITTED) {
 		assert(ret == SCHED_OK);
 
 		/* Check if thread have correct affinity */

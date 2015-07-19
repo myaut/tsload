@@ -410,7 +410,7 @@ int tse_export_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 	tsfile_backend_destroy(backend);
 	fclose(file);
 
-	if(err < 0) {
+	if(err != 0) {
 		tse_command_error_msg(CMD_GENERIC_ERROR,
 				"Failed to export workload '%s' - check log for detais\n", ewl->wl_name);
 		return CMD_GENERIC_ERROR;

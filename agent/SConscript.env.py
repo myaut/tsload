@@ -113,7 +113,7 @@ def CompileProgram(self, extra_sources = []):
     
     if self['SUBSYSTEMS']:
         # Programs need to init some subsystems global state
-        subsys = self.SubsysBuilder()
+        subsys = self.SubsysBuilder()   
     
     objects = self.Object(Glob("*.c") +                                \
                           Glob(PathJoin(env['PLATDIR'], '*/*.c')) +    \

@@ -248,7 +248,7 @@ void set_paths(const char* root) {
 		  set_path(mod_load_path, PATHPARTMAXLEN, root,
 				   getenv("TS_INSTALL_MOD_LOAD"), NULL, R_OK | X_OK) ) ) {
 		fprintf(stderr, "Cannot access module install path '%s', install modules "
-				"or set TS_INSTALL_MOD_LOAD\n", devel_path);
+				"or set TS_INSTALL_MOD_LOAD\n", mod_load_path);
 		exit(1);
 	}
 

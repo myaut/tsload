@@ -31,7 +31,7 @@ deps=mempool
 
 [json]
 lib=libtsjson
-deps=mempool
+deps=mempool,threads
 
 [tsobj]
 lib=libtsobj

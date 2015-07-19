@@ -30,7 +30,7 @@
 #define MESSAGE		"Hello!"
 #define MSGLEN		6
 
-int port = 9091;
+int port = 9092;
 
 thread_result_t client_thread(thread_arg_t arg) {
 	THREAD_ENTRY(arg, void, unused);

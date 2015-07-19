@@ -32,4 +32,12 @@ STATIC_INLINE boolean_t path_is_abs(const char* path) {
 	return path[0] == '/';
 }
 
+STATIC_INLINE boolean_t path_is_separator(const char* path) {
+	return *path == '/';
+}
+
+STATIC_INLINE void path_append_separator(char* path, size_t len) {
+	strncat(path, "/", len);
+}
+
 #endif

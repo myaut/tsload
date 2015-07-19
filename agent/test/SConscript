@@ -1,5 +1,9 @@
 from pathutil import *
 from tstest import TestSuite
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 import sys
 import os
@@ -104,7 +108,7 @@ def CreateConfig(target, source, env):
     test = env['TEST']
     
     cfg_file = file(str(target[0]), 'w')
-    cfg = ConfigParser()
+    cfg = ConfigParser(dict_type = OrderedDict)
     
     cfg.add_section('test')
     cfg.set('test', 'name', test.name)

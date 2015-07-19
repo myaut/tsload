@@ -266,41 +266,32 @@ run/reproduce_no_perms	"args=1"							\
 	expect=return:12										\
 	"use=experiment/experiment-1/experiment.json 			\
 			chmod:0000 										\
-			rename:experiment/experiment-1/experiment.json"															
-
-run/trace_schema_noent	"args=-T 1"					\
-	expect=return:11								\
-	"use=experiment/experiment-1/test1-schema.json 	\
-			remove:True								\
-			rename:experiment/experiment-1/test1-schema.json"
-run/trace_schema_no_perms		"args=-T 1"			\
-	expect=return:12								\
-	"use=experiment/experiment-1/test1-schema.json 	\
-			chmod:0000 								\
-			rename:experiment/experiment-1/test1-schema.json"
-run/trace_broken_schema	"args=-T 1"					\
-	expect=return:30								\
-	"use=broken-schema.json						 	\			
-			rename:experiment/experiment-1/test1-schema.json"		
+			rename:experiment/experiment-1/experiment.json"	
 
 run/trace_tsf_noent	"args=-T 1" 					\
 	expect=return:11								\
 	"use=experiment/experiment-1/test1.tsf		 	\
-			remove:True								\			
-			rename:experiment/experiment-1/test1.tsf"		
+			remove:True								\
+			rename:experiment/experiment-1/test1.tsf"
 run/trace_tsf_no_perms	"args=-T 1"					\
 	expect=return:12								\
 	"use=experiment/experiment-1/test1.tsf		 	\
-			chmod:0000 								\			
+			chmod:0000 								\
 			rename:experiment/experiment-1/test1.tsf"
 run/trace_broken_tsf_1	"args=-T 1"					\
 	expect=return:30								\
-	"use=broken1.tsf							 	\			
-			rename:experiment/experiment-1/test1.tsf"			
+	"use=broken1.tsf							 	\
+			rename:experiment/experiment-1/test1.tsf"
 run/trace_broken_tsf_2	"args=-T 1" 				\
 	expect=return:30								\
-	"use=broken2.tsf							 	\			
+	"use=broken2.tsf							 	\
 			rename:experiment/experiment-1/test1.tsf"
+run/trace_incomplete_tsf	"args=-T 1" 				\
+	expect=return:30									\
+	"use=incomplete.tsf							 		\
+			rename:experiment/experiment-1/test1.tsf" 	\
+	"use=incomplete-schema.json					 		\
+			rename:experiment/experiment-1/test1-schema.json"
 
 #====================================================
 # TSHostInfo system tests
@@ -336,7 +327,8 @@ tsfutil/get					use=schema.json	use=tsfile.tsf					\
 							"args=-s schema.json get tsfile.tsf"   
 tsfutil/get2				"use=invalid-schema.json rename:schema.json"	\
 							use=tsfile.tsf									\
-							"args=-s schema.json get tsfile.tsf"						
+							"args=-s schema.json get tsfile.tsf"			\
+								expect=return:1
 
 tsfutil/get_broken_schema	"use=broken-schema.json rename:schema.json"		\
 							"args=-s schema.json get tsfile.tsf"			\
@@ -368,7 +360,8 @@ tsfutil/get_tsf_noperms		use=schema.json									\
 
 tsfget/neg_range		"args=-F csv get -g -1:10 tsfile.tsf"   		\
 							expect=return:1
-tsfget/reverse_range	"args=-F csv get -g 20:10 tsfile.tsf"
+tsfget/reverse_range	"args=-F csv get -g 20:10 tsfile.tsf"			\
+							expect=return:1
 tsfget/inval_range		"args=-F csv get -g 101:110 tsfile.tsf"   		\
 							expect=return:1
 tsfget/inval_range_2	"args=-F csv get -g 30:50 tsfile.tsf"   		\
@@ -401,7 +394,8 @@ tsfadd/csv_noheader			use=noheader.csv								\
 							"args=-F csv add tsfile.tsf noheader.csv"		\
 								expect=return:1
 tsfadd/csv_incomplete		use=incomplete.csv								\
-							"args=-F csv add tsfile.tsf incomplete.csv"
+							"args=-F csv add tsfile.tsf incomplete.csv"		\
+								expect=return:1
 
 #====================================================
 # TSGenModSrc system tests
@@ -423,13 +417,13 @@ tsgenmodsrc_nodev/header	use=mod-normal "args=hdr mod-normal/modinfo.json"	\
 
 tsgenmodsrc/header				use=mod-normal "args=hdr mod-normal/modinfo.json"
 tsgenmodsrc/source				use=mod-normal "args=src mod-normal/modinfo.json"
-tsgenmodsrc/makefile			use=mod-normal "args=makefile -b make mod-normal/modinfo.json"
-tsgenmodsrc/scons_ext			use=mod-normal "args=makefile -t ext mod-normal/modinfo.json"
-tsgenmodsrc/scons_int			use=mod-normal "args=makefile -t int mod-normal/modinfo.json"
+tsgenmodsrc/makefile			use=mod-normal "args=-b make makefile mod-normal/modinfo.json"
+tsgenmodsrc/scons_ext			use=mod-normal "args=-t ext makefile mod-normal/modinfo.json"
+tsgenmodsrc/scons_int			use=mod-normal "args=-t int makefile mod-normal/modinfo.json"
 
-tsgenmodsrc/gen_makefile		use=mod-normal "args=gen -b make mod-normal/modinfo.json"
-tsgenmodsrc/gen_scons_ext		use=mod-normal "args=gen -t ext mod-normal/modinfo.json"
-tsgenmodsrc/gen_scons_int		use=mod-normal "args=gen -t int mod-normal/modinfo.json"
+tsgenmodsrc/gen_makefile		use=mod-normal "args=-b make gen mod-normal/modinfo.json"
+tsgenmodsrc/gen_scons_ext		use=mod-normal "args=-t ext gen mod-normal/modinfo.json"
+tsgenmodsrc/gen_scons_int		use=mod-normal "args=-t int gen mod-normal/modinfo.json"
 
 ^tsgms_modinfo					extends=tsgenmodsrc "args=gen modx/modinfo.json"
 

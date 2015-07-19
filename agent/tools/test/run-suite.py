@@ -21,6 +21,12 @@ try:
 except Exception:
     html_escape = lambda text: text.replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    sys.path.append(os.path.join("tools", "build"))
+    from ordereddict import OrderedDict
+
 import tempfile
 import shutil
 
@@ -179,7 +185,7 @@ class TestRunner(Thread):
         '''
         test = Test()
         
-        cfg = ConfigParser()
+        cfg = ConfigParser(dict_type=OrderedDict)
         
         cfg.read(cfg_name)
         
@@ -264,9 +270,7 @@ class TestRunner(Thread):
         if log_copy:
             self.copy_log += '%s -> %s chmod:%s rm:%s\n' % (fn, dest_path, chmod, args.get('remove'))
     
-    def prepare_test_dir(self, test):
-        ''' Creates necessary directories in test directory 
-            and copies files to them'''
+    def _prepare_test_dir(self, test):
         self.copy_log = ''
         
         os.mkdir(self.test_dir)        
@@ -284,6 +288,79 @@ class TestRunner(Thread):
         if test.mods:            
             self.copy_test_files(self.mod_dir, test.mods)
     
+    def prepare_test_dir(self, test):
+        ''' Creates necessary directories in test directory 
+            and copies files to them'''
+        
+        if sys.platform == "win32":
+            return self._prepare_test_dir(test)
+        
+        # This is totally crazy. When we are in multi-threaded mode, 
+        # subprocess.Popen() will fork(), and by doing that, it will 
+        # clone file-open-table, including binaries that are copying
+        # by other threads. There is a possibility that forked process
+        # won't close binary when copying will finish and another
+        # fork will start a process, which will eventually cause 
+        # ETXTBSY on Linux. 
+        #
+        #      Runner-1                 Runner-2
+        #   open(dest_bin_file)     subprocess.Popen()
+        #                                   os.fork()
+        #                       
+        # %   At this point, two processes are opened dest_bin_file,
+        # %  one is run-suite.py (in Runner-1), another is forked process
+        # %  by Runner-2.
+        #
+        #   close(dest_bin_file)
+        #
+        #   subprocess.Popen()
+        #        os.fork()
+        #        os.execve(dest_bin_file) 
+        #                  ---> ETXTBSY
+        #
+        # %   Runner-2 forked process still holds dest_bin_file
+        #
+        #                                   os.closerange(0, 256)
+        #
+        # %                          Too late, pal!
+        #
+        # To prevent this, we will do all the copying in a forked process, 
+        # which will die and closes all copied files completely.
+        rpipe, wpipe = os.pipe()
+        
+        pid = os.fork()
+        if pid == -1:
+            raise TestError("Failed to fork() in prepare_test_dir")
+        
+        if pid == 0:
+            # Child -- do the copy, print log to pipe and exit
+            try:
+                os.close(rpipe)
+                os.dup2(wpipe, sys.stdout.fileno())
+                os.dup2(wpipe, sys.stderr.fileno())
+                os.close(wpipe)
+                
+                self._prepare_test_dir(test)
+                
+                sys.stdout.write(self.copy_log)
+            except:
+                traceback.print_exc(20, sys.stderr)
+            finally:
+                sys.stdout.flush()
+                sys.stderr.flush()
+                os._exit(1)
+        
+        os.close(wpipe)
+        
+        _, status = os.waitpid(pid, 0)
+        
+        # XXX: if copy_log is larger than PIPE_BUF (4-8k), everything
+        # then is going badly
+        outf = os.fdopen(rpipe)
+        self.copy_log = outf.read()
+        
+        return os.WEXITSTATUS(status)
+    
     def _wipe_test_dir(self):
         def onerror(function, path, excinfo):
             exc = excinfo[1]
@@ -293,7 +370,8 @@ class TestRunner(Thread):
             else:
                 is_win_access_denied = False
             is_unix_access_denied = isinstance(exc, OSError) and exc.errno == errno.EACCES
-            is_unix_non_empty = isinstance(exc, OSError) and exc.errno == errno.ENOTEMPTY
+            is_unix_non_empty = (isinstance(exc, OSError) and 
+                                    exc.errno in [errno.ENOTEMPTY, errno.EEXIST])
             
             if is_win_access_denied or is_unix_access_denied:
                 # Revert access rights on files that we chmodded earlier, 
