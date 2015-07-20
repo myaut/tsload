@@ -282,19 +282,6 @@ LIBEXPORT void cv_notify_all(thread_cv_t* cv);
 LIBEXPORT void cv_destroy(thread_cv_t* cv);
 
 /**
- * Events
- *
- * @note this API is deprecated. Use condition variable + mutex pair
- */
-LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...)
-	CHECKFORMAT(printf, 2, 3);
-LIBEXPORT void event_wait(thread_event_t* event);
-LIBEXPORT void event_wait_timed(thread_event_t* event, ts_time_t timeout);
-LIBEXPORT void event_notify_one(thread_event_t* event);
-LIBEXPORT void event_notify_all(thread_event_t* event);
-LIBEXPORT void event_destroy(thread_event_t* event);
-
-/**
  * Thread-local storage
  */
 LIBEXPORT void tkey_init(thread_key_t* key, const char* namefmt, ...)

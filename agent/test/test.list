@@ -78,7 +78,6 @@ netsock/nonblocking	file=nonblocking.c
 threads/thread1		file=thread1.c
 threads/atomic		file=atomic.c
 threads/mutex		file=mutex.c
-threads/event		file=event.c 	maxtime=2
 threads/affinity	file=affinity.c	lib=libtsjson 	lib=libtsobj lib=libhostinfo  maxtime=12
 threads/solaris_pset file=solaris_pset.c lib=libtsjson 	lib=libtsobj lib=libhostinfo plat=solaris maxtime=12
 threads/sched 		file=sched.c
