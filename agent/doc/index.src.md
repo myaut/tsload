@@ -11,7 +11,6 @@
 * [Running experiments with tsexperiment][intro/tsexperiment]
 * [Processing results][intro/results]
 * [Writing your own module][intro/module]
-* [Reproducing disk workload with SWAT and simpleio][intro/swat]
 * [Instrumenting and tuning TSLoad][intro/calibrate]
 
 ### Developers guide

@@ -1,9 +1,12 @@
 ## tsexperiment
 
+##### Name
 TS Experiment - standalone agent to run TSLoad experiments 
 
+##### Synopsis
 `$ tsexperiment [global options] subcommand [options and arguments]`
 
+##### Description
 Where global options are:
 	* -e <experiment_path>
 		Path to experiment root directory
@@ -119,3 +122,26 @@ Options:
 	* -d - destination directory of output. If not set, then experiment run directory is used
 	* -F - desired format of output.
 	* -o option - options for TSFile backend. See more at [tsfutil][ref/tsfutil]
+
+### Exit status
+
+If command was successfully executed, `tsexperiment` returns 0 as exit status. If invalid command line was passed to `tsexperiment` it returns one of the values from range {1..5}. In case of other failures, it will return 30 (`CMD_GENERIC_ERROR` code), or one of the _well known_ error codes from range {11..14}.
+
+---
+Code | Mnemonic | Description
+ |2,1 __Basic errors__
+0 | `CMD_OK` | Everything went fine
+1 | `CMD_MISSING_CMD` | Subcommand is missing from command line
+2 | `CMD_UNKNOWN_CMD` | Unknown subcommand
+3 | `CMD_INVALID_OPT` | Incorrect option was specified or option needs argument
+4 | `CMD_INVALID_ARG` | Invalid option or argument value (like negative integer)
+5 | `CMD_MISSING_ARG` | Required option or argument is missing 
+ |2,1 __Experiment errors__
+11 | `CMD_NOT_EXISTS` | Needed file not exists 
+12 | `CMD_NO_PERMS` | Insufficient permissions to read or write on of the files
+13 | `CMD_ALREADY_EXISTS` | TSExperiment tried to create file, but it is already exists
+14 | `CMD_IS_ROOT` | Some operation that TSExperiment had tried to perform on root experiment only allowed for experiment runs
+30 | `CMD_GENERIC_ERROR` | All other errors
+---
+
+Experiment errors will be accompanied with `EXPERR` error code printed to standard error output. 

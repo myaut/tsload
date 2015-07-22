@@ -124,9 +124,13 @@ DocBuilder = Builder(action = Action('%s $TSLOADPATH/tools/doc/build-doc.py $TSD
 DocGenerator = Builder(action = Action('%s $TSLOADPATH/tools/doc/gen-doc.py $SOURCE $TSDOC' % (sys.executable),
                                        env.PrintCommandLine('DOCGEN')),
                        emitter = emit_doc_targets)
+ManGenerator = Builder(action = Action('%s $TSLOADPATH/tools/doc/gen-man-page.py $SOURCE $TARGET' % (sys.executable),
+                                       env.PrintCommandLine('MANPAGE')),
+                       src_suffix = '.src.md')
 
 env.Append(BUILDERS = {'DocBuilder': DocBuilder,
-                       'DocGenerator': DocGenerator})
+                       'DocGenerator': DocGenerator,
+                       'ManGenerator': ManGenerator})
 env.Append(TSDOC = [])
 
 Export('env')

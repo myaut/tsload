@@ -176,6 +176,9 @@ class MarkdownParser:
                 self.block.add(self.table_block)
                 self.table_parent = self.block
             else:
+                # Delete last row because it is empty
+                del self.table_block.parts[-1]
+                
                 self.table_row = None
                 self.table_block = None
                 self.block = self.table_parent

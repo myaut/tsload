@@ -120,6 +120,7 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
 env['TSVERSION'] = '0.2.0-beta'
+env['TSAUTHOR'] = 'Sergey Klyaus [myautneko@gmail.com]'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
 # this variable is a hint for build system that we 
@@ -249,9 +250,8 @@ elif 'systests' in BUILD_TARGETS:
     
 #------------
 # DOC (again)
-if 'doc' in BUILD_TARGETS:
-    SConscript(PathJoin('doc', 'SConscript'), 'env',
-               variant_dir = PathJoin('#build', 'doc'))
+SConscript(PathJoin('doc', 'SConscript'), 'env',
+            variant_dir = PathJoin('#build', 'doc'))
 
 #------------
 # ZIP

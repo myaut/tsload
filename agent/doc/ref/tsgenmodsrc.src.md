@@ -1,11 +1,12 @@
 ## tsgenmodsrc
 
+##### Name
 tsgenmodsrc - Generate source code for TSLoad module
 
-```
-$ tsgenmodsrc [global options] subcommand path/to/modinfo.json
-```
+##### Synopsis
+`$ tsgenmodsrc [global options] subcommand path/to/modinfo.json`
 
+##### Description
 tsgenmodsrc generates environment using [modinfo.json][ref/modinfo_json] configuration file, called _modvars_. Then it loads templates from development directory of TSLoad and preprocesses them.
 
 A chosen set of generated files depends on __-b__ and __-t__ global options:

@@ -46,6 +46,9 @@ def GetCompilerVersion(env):
 def GetBuildDateTime():
     return time.ctime()
 
+def GetBuildYear():
+    return time.gmtime().tm_year
+
 def GetBuildCommandLine():
     return " ".join(sys.argv[1:])
 
@@ -59,10 +62,12 @@ def GenerateBuildFile(target, source, env):
     Define(buildfile, 'BUILD_VERSION', env['TSVERSION'])
     Define(buildfile, 'BUILD_PLATFORM', sys.platform)
     Define(buildfile, 'BUILD_MACH', env['TARGET_ARCH'])
+    Define(buildfile, 'BUILD_AUTHOR', env['TSAUTHOR'])
     
     Define(buildfile, 'BUILD_USER', GetBuildUser())
     Define(buildfile, 'BUILD_HOST', GetBuildHost())
     Define(buildfile, 'BUILD_DATETIME', GetBuildDateTime())
+    Define(buildfile, 'BUILD_YEAR', GetBuildYear())
     
     Define(buildfile, 'BUILD_CMDLINE', GetBuildCommandLine())
     Define(buildfile, 'BUILD_COMPILER', GetCompilerVersion(env))

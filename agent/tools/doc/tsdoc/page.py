@@ -3,7 +3,11 @@ import sys
 
 from pprint import pprint
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
+try:
+    from collections import OrderedDict
+except:
+    from ordereddict import OrderedDict
 
 from tsdoc import *
 from tsdoc.blocks import *
@@ -560,8 +564,6 @@ class IndexPage(MarkdownPage):
                                              part.text)
                     self.references[full_ref] = part
                 else:
-                    if is_index:
-                        page.set_header_from_link(part)
                     links.append((page, part))
             
             return links

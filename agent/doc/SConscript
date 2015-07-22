@@ -9,8 +9,25 @@ tgtdoc = PathJoin(env['INSTALL_SHARE'], 'doc')
 def AppendDoc(self, doc_dir):
     for file in Dir(doc_dir).glob('*.src.md'):
         self.Append(TSDOC = [file])
+
+def ManPage(self, mdfile, manfile):
+    if not self.SupportedPlatform('posix'):
+        return
+    
+    manpage = self.ManGenerator(manfile, mdfile)
+    self.Depends('doc', manpage)
+    
+    if GetOption('update_doc'):
+        self.AlwaysBuild(manpage)
+    
+    # Generate man pages path
+    _, section = manfile.rsplit('.')
+    tgtman = PathJoin(env['INSTALL_MAN'], 'man' + section)
+    
+    self.InstallTarget(tgtroot, tgtman, manpage)
     
 env.AddMethod(AppendDoc)
+env.AddMethod(ManPage)
 
 env.AppendDoc('intro')
 env.AppendDoc('ref')
@@ -29,6 +46,8 @@ header = '%s %s documentation' % (env['TSPROJECT'], env['TSVERSION'])
 
 env.Append(ENV = {'TSDOC_HTML_TEMPLATE': 'doc/template.htm'})
 env.Append(ENV = {'TSDOC_HEADER': header})
+env.Append(ENV = {'TSDOC_MAN_URL': 'http://myaut.github.io/tsload/'})
+env.Append(ENV = {'TSDOC_MAN_AUTHOR': env['TSAUTHOR']})
 
 if GetOption('update_doc'):
     env.AlwaysBuild(env['TSDOC'])
@@ -41,5 +60,13 @@ if GetOption('doc_format') == 'html':
     for file in Dir('bootstrap').Dir('css').glob('*.css'):
         env.Depends(docfiles, file) 
         env.InstallTarget(tgtroot, PathJoin(tgtdoc, 'bootstrap', 'css'), file)
-       
+
 env.Alias('doc', docfiles)
+
+# Build and install manual pages (only work on POSIX platforms)
+env.ManPage('ref/tsexperiment.src.md', 'tsexperiment.1')
+env.ManPage('ref/tsfutil.src.md', 'tsfutil.1')
+env.ManPage('ref/tshostinfo.src.md', 'tshostinfo.1')
+env.ManPage('ref/tsgenmodsrc.src.md', 'tsgenmodsrc.1')
+env.ManPage('ref/experiment_json.src.md', 'experiment_json.5')
+env.ManPage('ref/modinfo_json.src.md', 'modinfo_json.5')

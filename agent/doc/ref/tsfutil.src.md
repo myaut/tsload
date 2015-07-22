@@ -1,10 +1,12 @@
 ## tsfutil
 
+##### Name
 TS File utility - tool to convert TSF files from/to JSON or CSV.
 
-Usage:
+##### Synopsis
 `$ tsfutil [global options] command [options] <tsffile> [infile|outfile]`
 
+##### Description
 Where global options are:
     * `-s schema.json`	
 		Path to file that contains TSF schema

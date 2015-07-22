@@ -28,6 +28,7 @@
 
 LIBEXPORT void print_ts_version(const char* banner) {
 	printf(BUILD_PROJECT " " BUILD_VERSION " [%s]\n", banner);
+	puts("Copyright (C) " BUILD_YEAR " " BUILD_AUTHOR);
 
 	puts("");
 

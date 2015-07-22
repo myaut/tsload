@@ -12,5 +12,7 @@ install_dirs = [('INSTALL_BIN',      'bin/',          '',
                     'vardir',   'variable files'),
                 ('INSTALL_SHARE',    'share/tsload/',      'Shared\\',   
                     'sharedir',   'shared files'),
+                ('INSTALL_MAN',    'share/man/',      'ManualPages\\',   
+                    'mandir',   'manual pages'),
                 ('INSTALL_MOD_LOAD', 'lib/tsload/mod-load/',     'LoadModules\\',   
                     'loadmoddir',   'loader modules')]

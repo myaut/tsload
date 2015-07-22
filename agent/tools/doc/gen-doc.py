@@ -1,7 +1,12 @@
 import os
 import sys
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
+try:
+    from collections import OrderedDict
+except:
+    sys.path.append('../build/')
+    from ordereddict import OrderedDict
 
 from tsdoc import TSDoc
 from tsdoc.page import TSDocPage, MarkdownPage, IndexPage
