@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="autostring.html"><strong>Prev</strong>(Automatically allocated strings.)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -147,25 +147,11 @@ LIBEXPORT void cv_notify_all(thread_cv_t* cv)
 LIBEXPORT void cv_destroy(thread_cv_t* cv)
 </pre>
 </p>
-<a name="event_init"></a><a name="event_wait"></a><a name="event_wait_timed"></a><a name="event_notify_one"></a><a name="event_notify_all"></a><a name="event_destroy"></a><h3>event_destroy, event_notify_all, event_notify_one, event_wait_timed, event_wait, event_init</h3><span class="label label-success">public</span>    <p>
-<br />Events<br /></p>
-    <p>
-<em>NOTES</em><br />this API is deprecated. Use condition variable + mutex pair<br /></p>
-<p>
-<pre>
-LIBEXPORT void event_init(thread_event_t* event, const char* namefmt, ...)
-LIBEXPORT void event_wait(thread_event_t* event)
-LIBEXPORT void event_wait_timed(thread_event_t* event, ts_time_t timeout)
-LIBEXPORT void event_notify_one(thread_event_t* event)
-LIBEXPORT void event_notify_all(thread_event_t* event)
-LIBEXPORT void event_destroy(thread_event_t* event)
-</pre>
-</p>
 <a name="tkey_init"></a><a name="tkey_destroy"></a><a name="tkey_set"></a><a name="tkey_get"></a><h3>tkey_get, tkey_init, tkey_set, tkey_destroy</h3><span class="label label-success">public</span>    <p>
 <br />Thread-local storage<br /></p>
 <p>
 <pre>
-LIBEXPORT void tkey_init(thread_key_t* key,const char* namefmt, ...)
+LIBEXPORT void tkey_init(thread_key_t* key, const char* namefmt, ...)
 LIBEXPORT void tkey_destroy(thread_key_t* key)
 LIBEXPORT void tkey_set(thread_key_t* key, void* value)
 LIBEXPORT void* tkey_get(thread_key_t* key)
@@ -411,7 +397,7 @@ typedef struct thread {
     ts_time_t        t_block_time;
     thread_cv_t*    t_block_cv;
     thread_mutex_t* t_block_mutex;
-    thread_mutex_t* t_block_rwlock;
+    thread_rwlock_t* t_block_rwlock;
 #endif
 
     struct thread*    t_next;            /*&lt; Next thread in global thread list*/

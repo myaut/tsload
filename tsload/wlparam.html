@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="wltype.html"><strong>Prev</strong>(Workload types)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -234,7 +234,7 @@ typedef struct {
         /*WLP_STRING_SET*/
         struct {
             int ss_num;
-            char** ss_strings;
+            const char** ss_strings;
         };
     };
 } wlp_range_t;
@@ -249,7 +249,7 @@ typedef struct {
     wlp_bool_t b;
     wlp_integer_t i;
     wlp_float_t f;
-    char* s;
+    const char* s;
     wlp_strset_t ssi;
 } wlp_default_t;
 
@@ -284,8 +284,8 @@ typedef struct {
     wlp_range_t range;
     wlp_default_t defval;
 
-    char* name;
-    char* description;
+    const char* name;
+    const char* description;
 
     size_t off;
 } wlp_descr_t;

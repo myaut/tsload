@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="cpumask.html"><strong>Prev</strong>(CPU masks)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -91,7 +91,7 @@ LIBEXPORT PLATAPI int sched_set_param(thread_t* thread, const char* name, int64_
 <a name="sched_commit"></a><h3>sched_commit</h3><span class="label label-success">public</span><span class="label label-info">plat</span>    <p>
 <br />Calls operating system to commit changes made by sched_set_policy() and sched_set_param()<br /></p>
     <p>
-<em>RETURN VALUES</em><br />SCHED_ERROR in case of system error, SCHED_INVALID_PARAM/SCHED_INVALID_POLICY if     thread was not properly initialized<br /></p>
+<em>RETURN VALUES</em><br />SCHED_ERROR in case of system error, SCHED_INVALID_PARAM/SCHED_INVALID_POLICY if     thread was not properly initialized, SCHED_NOT_PERMITTED if you do not have                 permissions to alter scheduling policy.<br /></p>
 <p>
 <pre>
 LIBEXPORT PLATAPI int sched_commit(thread_t* thread)

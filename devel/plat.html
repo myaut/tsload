@@ -1,0 +1,203 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Developers guide</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
+<li><a href="build.html"><strong>Prev</strong>(Build system)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="tsdoc.html"><strong>Next</strong>(TSDoc)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Platform-specific builds</h2></p>
+<p>
+TSLoad supports multiple platforms: Solaris, Linux and Windows. The thing is that some of the features are shared between them via POSIX standard, some features are present in both Solaris and Linux, etc. To overcome such situations in C, messy code with tons of <code>#ifdef</code>s is used. However, TSLoad buidl system provides its own preprocessor called <strong>PlatAPI</strong>. <br /></p>
+<p>
+PlatAPI uses special environment variable called <code>'PLATCHAIN'</code> that contains list of platforms that current platforms implements. It is set based on Python <code>sys.platform</code> variable as set in <code>SConscript.plat.py</code>:<br /></p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+<strong>Platform</strong></td>
+            <td>
+<code>sys.platform</code><strong>value</strong></td>
+            <td>
+<strong>Platform chain</strong></td>
+</tr>
+        <tr>
+            <td>
+Windows </td>
+            <td>
+<code>win32</code></td>
+            <td>
+ win, generic</td>
+</tr>
+        <tr>
+            <td>
+Linux </td>
+            <td>
+<code>linux2</code></td>
+            <td>
+ linux, posix, generic</td>
+</tr>
+        <tr>
+            <td>
+Solaris </td>
+            <td>
+<code>sunos5</code></td>
+            <td>
+ solaris, posix, generic</td>
+</tr>
+</table>
+</p>
+<p>
+Platform-specific sources are located in <code>plat/NAME</code> where NAME is a name from a platform chain. PlatAPI walks over platform chain, and searches for a best-match implementation. <strong>Header</strong> files are installed in <code>&lt;inc_dir&gt;/plat/include.h</code> as is: for example if <code>plat/linux/file.h</code> and <code>plat/posix/file.h</code> are exist, for Linux it will pick <code>plat/linux/file.h</code>, for Solaris it will copy <code>plat/posix/file.h</code> and for Windows no header file is copied.<br /></p>
+<p>
+<strong>Source</strong> files are parsed and preprocessed: best implementation is chosen on function-level. PlatAPI parses source and header files to choose it as described in following paragraph.<br /></p>
+<p>
+<h3>PlatAPI parser</h3></p>
+<p>
+PlatAPI parses global header files in <code>include/</code> and selects function declarations with <code>PLATAPI</code> qualifier. That qualifier is purely for PlatAPI, it is defined as macro in <code>tsload/defs.h</code>:<br /></p>
+<p>
+<pre>
+#define PLATAPI
+#define PLATAPIDECL(...)
+</pre>
+</p>
+<p>
+These function declarations are put into <code>plat_cache.pch</code> file (which actually a Python pickled <code>dict</code>). Note that when <code>scons</code> is called with <code>-j</code> option, <code>parse-include</code> will run in parallel, so to protect cache file, it is locked using filesystem routines. After that <code>proc-source.py</code> is started and processes sources according to platform chain. When appropriate implementation is found, <code>proc-source.py</code> saves function name into <code>plat_cache.pch</code>. Function is removed from all subsequent platform sources based on braces.<br /></p>
+<p>
+There is also macro <code>PLATAPIDECL</code> that discards declaration if corresponding functions were removed from sources. Names of functions that use such declarations are passed as arguments to <code>PLATAPIDECL</code>. <br /></p>
+<p>
+Finally, if there is no way to get rid of <code>#ifdefs</code>, PlatAPI defines <code>PLAT_NAME</code> macro where NAME is a upper-cased name of platform from platform chain. <br /></p>
+<p>
+<h3>Example</h3></p>
+<p>
+Let us implement cross-platform file access API using PlatAPI:<br /></p>
+<p>
+iofile.h<br /></p>
+<p>
+<pre>
+#ifndef IOFILE_H_
+#define IOFILE_H_
+
+#include &lt;plat/iofile.h&gt;
+
+/* This declaration is parsed by parse-header */
+PLATAPI int plat_open_file(plat_file_t* f, const char* path);
+
+#endif
+</pre>
+</p>
+<p>
+iofile.c<br /></p>
+<p>
+<pre>
+/* Use path without specifying platform name. When TSLoad is built, 
+ * best matching header file is automatically copied to include/ directory. */
+#include &lt;plat/iofile.h&gt;
+
+/* Uses PLAT_* macro to check if source is built on POSIX-compatible
+ * platform. If not, iof_open_flags is omitted. */
+#ifdef PLAT_POSIX
+extern int iof_open_flags;
+#endif
+
+int iof_init(void) {
+#ifdef PLAT_POSIX
+    tuneit_set_int(int, &iof_open_flags);
+#endif
+    return 0;
+}
+</pre>
+</p>
+<p>
+plat/posix/iofile.h<br /></p>
+<p>
+<pre>
+#ifndef PLAT_POSIX_IOFILE_H_
+#define PLAT_POSIX_IOFILE_H_
+
+/* Platform-specific structure declaration. May be used as is
+ * or as a part of a compound struct. */
+typedef struct { int fd } plat_file_t;
+
+#endif
+</pre>
+</p>
+<p>
+plat/posix/iofile.c<br /></p>
+<p>
+<pre>
+/**/
+#include &lt;plat/iofile.h&gt;
+
+/* Only compiled when plat_open_file from POSIX implementation is used. */
+PLATAPIDECL(plat_open_file) int iof_open_flags;
+
+/* This function is available on POSIX-compatible platforms (i.e. in Linux code)
+ * but will never be compiled on Windows. If you need universal Windows-POSIX code,
+ * put it into "generic" platform. */
+int some_helper(int fd) {
+    return -1;
+}
+
+PLATAPI int plat_open_file(plat_file_t* f, const char* path) {
+    /* Call open() */
+}
+</pre>
+</p>
+<p>
+plat/windows/iofile.h<br /></p>
+<p>
+<pre>
+#ifndef PLAT_WINDOWS_IOFILE_H_
+#define PLAT_WINDOWS_IOFILE_H_
+
+#include &lt;windows.h&gt;
+
+/* Another platform-specific struct definition: instead of 
+ * integer file descriptors, it uses Windows Handles. */
+typedef struct { HANDLE h } plat_file_t;
+
+#endif
+</pre>
+</p>
+<p>
+plat/windows/iofile.c<br /></p>
+<p>
+<pre>
+#include &lt;plat/iofile.h&gt;
+
+PLATAPI int plat_open_file(plat_file_t* f, const char* path) {
+    /* Call CreateFile() */
+}
+</pre>
+</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

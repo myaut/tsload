@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="syncqueue.html"><strong>Prev</strong>(Synchronized queue)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -71,7 +71,18 @@
 #define HM_WALKER_REMOVE    0x02
 </pre>
 </p>
-<h2>Functions</h2><a name="hash_map_init"></a><h3>hash_map_init</h3><span class="label label-success">public</span>    <p>
+<h2>Functions</h2><a name="hm_item_ptr"></a><a name="hm_item_ptr"></a><h3>hm_item_ptr</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE void* hm_item_ptr(hm_item_t* obj, ptrdiff_t off) 
+STATIC_INLINE void* hm_item_ptr(hm_item_t* obj, ptrdiff_t off) 
+</pre>
+</p>
+<a name="hm_get_key"></a><h3>hm_get_key</h3><span class="label label-success">public</span><p>
+<pre>
+STATIC_INLINE hm_key_t* hm_get_key(hashmap_t* hm, hm_item_t* obj) 
+</pre>
+</p>
+<a name="hash_map_init"></a><h3>hash_map_init</h3><span class="label label-success">public</span>    <p>
 <br />Initialize static hash map.<br /></p>
     <p>
 Because hash map usually a global object, it doesn't<br />support formatted names<br /></p>
@@ -228,10 +239,6 @@ LIBEXPORT unsigned hm_string_hash(const hm_key_t* str, unsigned mask)
 </p>
 <h2>Types</h2><h3></h3><p>
 <pre>
-typedef char hm_item_t;
-
-typedef char hm_key_t;
-
 typedef void hm_item_t;
 
 typedef void hm_key_t;

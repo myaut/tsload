@@ -15,11 +15,11 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
-<li><a href="intro.html"><strong>Prev</strong>(Introduction)</a></li>
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
+<li><a href="intro.html"><strong>Prev</strong>(Introduction to TSLoad)</a></li>
 </ul>
 <ul class="nav pull-right">
-<li><a href="workload.html"><strong>Next</strong>(workloads)</a></li>
+<li><a href="workload.html"><strong>Next</strong>(Key concepts: workloads)</a></li>
 </ul>
 		</div>
     </div>
@@ -33,6 +33,8 @@
 Since TSLoad is designed to simulate multi-user environments, it has concept of a <em>worker</em>, elementary process that handles user requests. For real application meaning of "worker" may vary - it may be OS-level process or thread or userspace thread. Latter is usually referred as <em>asynchronicity</em>, because such frameworks usually spawn one userspace thread per user request, so all each request handled asynchronously. Examples of userspace threads are Erlang processes, Scala actors or Python Twisted deferreds (they actually use Python generators). Currently only worker supported by TSLoad is OS-level thread, so we will refer worker pool as <strong>threadpool</strong> in this documentation (and code too).<br /></p>
 <p>
 Threadpool consists of control thread and set of worker threads. Threadpool is synchronous: timeline of threadpool is separated into steps, and at beginning of each step, it generates requests that have to be executed during this step. Step duration interval is constant and called <em>quantum</em>, while second primary parameter of threadpool is <em>num_threads</em> that represents number of workers in this pool. Each step is parametrised by number of requests per each workload class that should be run during this step.<br /></p>
+<p>
+<strong>NOTE</strong>: Threadpools are deprecated as of TSLoad 0.2. They will be replaced with more flexible and modular <strong>loaders and channels</strong>.<br /></p>
 <p>
 <h4>Threadpool dispatchers</h4></p>
 <p>

@@ -15,8 +15,11 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="arch.html"><strong>Prev</strong>(Architecture)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="build.html"><strong>Next</strong>(Build system)</a></li>
 </ul>
 		</div>
     </div>
@@ -70,7 +73,7 @@
  </pre>
 </p>
 <p>
-<strong>ifdefs</strong>. Avoid ifdefs in function bodies: use <a style="color: red" href="devel/plat">PLATAPI</a> where possible or create separate subsets of functions. <br /></p>
+<strong>ifdefs</strong>. Avoid ifdefs in function bodies: use <a href="plat.html">PLATAPI</a> where possible or create separate subsets of functions. <br /></p>
 <p>
 <strong>goto</strong>. It is OK to use <code>goto</code> keyword in one case: you need to cleanup before you will return error code.<br /></p>
 <p>
@@ -282,7 +285,7 @@ Since TSLoad agent is written in C and even simple actions require multiple synt
 <p>
     <ul>
         <li>
- Write <a style="color: red" href="devel/tsdoc">TSDoc</a></li>
+ Write <a href="tsdoc.html">TSDoc</a></li>
         <li>
  Comment all the magic and sorcery you bring into code. Magic constants doesn't need to have separate macro, but should have good comment, i.e. pre-calculated buffer sizes:<br />  </li>
 </ul>

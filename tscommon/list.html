@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-center">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-center">
 <li><a href="index.html"><strong>Up</strong>(TSCommon API Reference)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -41,8 +41,9 @@ Some of the internal functions ("xxx") are useful when<br />manipulating whole l
 STATIC_INLINE void list_node_init(list_node_t *list)
 </pre>
 </p>
-<a name="list_head_init"></a><h3>list_head_init</h3><span class="label label-success">public</span><p>
+<a name="list_head_init"></a><a name="list_head_init"></a><h3>list_head_init</h3><span class="label label-success">public</span><p>
 <pre>
+STATIC_INLINE void list_head_init(list_head_t *list, const char* namefmt, ...) 
 STATIC_INLINE void list_head_init(list_head_t *list, const char* namefmt, ...)
 </pre>
 </p>

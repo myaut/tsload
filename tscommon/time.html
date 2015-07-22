@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="filemmap.html"><strong>Prev</strong>(Memory-mapped files)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -86,14 +86,14 @@ LIBEXPORT ts_time_t tm_ceil_diff(ts_time_t tm, ts_time_t precision)
 <em>RETURN VALUES</em><br />0 if dst was not enough or number of printed characters<br /></p>
 <p>
 <pre>
-LIBEXPORT size_t tm_human_print(ts_time_t t, const char* dst, size_t size)
+LIBEXPORT size_t tm_human_print(ts_time_t t, char* dst, size_t size)
 </pre>
 </p>
 <a name="tm_datetime_print"></a><h3>tm_datetime_print</h3><span class="label label-success">public</span>    <p>
 <br />Prints date-time in nice format (%H:%M:%S %d.%m.%Y)<br /></p>
 <p>
 <pre>
-LIBEXPORT size_t tm_datetime_print(ts_time_t t, const char* dst, size_t size)
+LIBEXPORT size_t tm_datetime_print(ts_time_t t, char* dst, size_t size)
 </pre>
 </p>
 <h2>Types</h2><h3></h3>    <p>

@@ -15,8 +15,8 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-right">
-<li><a href="codestyle.html"><strong>Next</strong>(coding guidelines)</a></li>
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-right">
+<li><a href="codestyle.html"><strong>Next</strong>(Coding guidelines)</a></li>
 </ul>
 		</div>
     </div>
@@ -29,7 +29,7 @@
 <p>
 <h3>Agents and TSLoad Core</h3></p>
 <p>
-The key component of TSLoad is an agent, an executable that receives requests from user and sends them to <em>TSLoad Core</em> which is implemented by <strong>libtsload</strong> library. There are several meanings of "receiving requests", but each of them is represented by an appropriate function call. These functions form an <em>High-level TSLoad API</em> which is described in <a href="../tsload/tsload.html">TSLoad high-level API</a>. <br /></p>
+The key component of TSLoad is an agent, an executable that receives requests from user and sends them to <em>TSLoad Core</em> which is implemented by <strong>libtsload</strong> library. There are several meanings of "receiving requests", but each of them is represented by an appropriate function call. These functions form an <em>High-level TSLoad API</em> which is described in <a href="../tsload/tsload.html"></a>. <br /></p>
 <p>
 Most arguments of high-level API function have simple types, but some of them are complex, that is they have multiple variables inside, and some of they may be optional. Complex values are represented by so-called <em>TSObjects</em> (their C type is pointer to tsobj_node_t) which true nature depends on agent. Let's take for example function tsload_schedule_threadpool which allows to change OS scheduler parameters for threads of a threadpool as described in <a href="../intro/threadpool.html">Key concepts: threadpools</a>:<br /></p>
 <p>
@@ -48,7 +48,7 @@ LIBEXPORT int tsload_tp_bind(const char* tp_name, int wid, cpumask_t*);
 </pre>
 </p>
 <p>
-<br />This approach less convenient: for example you may wonder what tsload_tp_sched_commit do. I will only say that if you will write your own agent and forget to call that function, scheduler parameters won't be altered. For a details, see implementation of scheduler utils: <a href="../tscommon/schedutil.html">schedutil</a>. <br /></p>
+<br />This approach less convenient: for example you may wonder what tsload_tp_sched_commit do. I will only say that if you will write your own agent and forget to call that function, scheduler parameters won't be altered. For a details, see implementation of scheduler utils: <a href="../tscommon/schedutil.html"></a>. <br /></p>
 <p>
 Summarizing all of this, <em>TSLoad</em> capabilities is implemented by one of available agents:<br />    <ul>
         <li>
@@ -86,7 +86,7 @@ Sources for all libraries are located in <code>lib</code> directory.<br /></p>
 <p>
 <h3>Modules</h3></p>
 <p>
-As mentioned in <a href="../intro/intro.html">Introduction</a>, TSLoad is modular, thus it dynamically loads external libraries from <code>INSTALL_MOD_LOAD</code> directory, and runs their <code>mod_config</code> functions. Than that function is called, module registers workload types that it is capable to run, i.e. <em>http</em> module may run web workloads. Modules may be written outside of TSLoad as described in <a href="../intro/module.html">Writing your own module</a>. Modules that are shipped with TSLoad are located in <code>mod</code> subdirectory.<br /></p>
+As mentioned in <a href="../intro/intro.html"></a>, TSLoad is modular, thus it dynamically loads external libraries from <code>INSTALL_MOD_LOAD</code> directory, and runs their <code>mod_config</code> functions. Than that function is called, module registers workload types that it is capable to run, i.e. <em>http</em> module may run web workloads. Modules may be written outside of TSLoad as described in <a href="../intro/module.html"></a>. Modules that are shipped with TSLoad are located in <code>mod</code> subdirectory.<br /></p>
 <p>
 <h3>Server</h3></p>
 <p>

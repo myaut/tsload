@@ -1,0 +1,424 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Developers guide</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
+<li><a href="codestyle.html"><strong>Prev</strong>(Coding guidelines)</a></li>
+</ul>
+<ul class="nav pull-right">
+<li><a href="plat.html"><strong>Next</strong>(Platform-specific builds)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>Build system</h2></p>
+<p>
+TSLoad uses <a href="http://www.scons.org/">SCons</a> as its build system, mostly because CMake asked $30 for book as a documentation. Other advantage (and in a same time a disadvantage) is that is written in Python and very extensible. Over time TSLoad build system incorporated many extensions, whihc will be discussed further.<br /></p>
+<p>
+SCons is configured through series of <strong>SConscript</strong> files and a main file called <strong>SConstruct</strong>. There are two types of SConscript files that are used in TSLoad's agent SConstruct: file located in <code>path/to/component</code> is responsible for building that particular component, while file named as <code>SConscript.xxx.py</code> which is located in a root of agent directory is a helper to SConstruct that extends its functionality. Some of these helpers are used for <a href="../intro/module.html">building modules</a> and installed as part of <code>tsload-devel</code> package. Some extra python modules are located in <code>tools/build</code>.<br /></p>
+<p>
+TSLoad agent building consists of several steps as described in <strong>SConstruct</strong> file:<br />     <ul>
+        <li>
+<em>Defining build options and generating environment.</em> Environment helpers and variable values are set in <code>SConscript.env.py</code>. Variables related with installation and builders for that is set up in <code>SConscript.install.py</code> after configuring is done. <a href="plat.html">Platform-specific</a> builders are loaded from <code>SConscript.plat.py</code>.<br /> </li>
+        <li>
+<em>Configuring TSLoad.</em> Like <em>autoconf</em>, SCons checks various capabilities of system's API and compiler. This step also responsible for generating header files. <br /> </li>
+        <li>
+<em>Building TSLoad.</em> TSLoad walks over list of its components (libraries, binaries, modules) and calls lower-level SConscript files for each component. These SConscripts usually do the following:<br />    </li>
+        <ul>
+            <li>
+ Pre-processing of some files i.e. by using <a href="../tscommon/etrace.html">ETrace</a>. ETrace helpers are provided by <code>SConscript.etrace.py</code> helper<br />    </li>
+            <li>
+ Build and install executable files <br />    </li>
+            <li>
+ Install additional files, including development files such as includes<br />    </li>
+            <li>
+ For libraries -- build documentation files<br /> </li>
+</ul>
+        <li>
+<em>Building documentation</em> using <a href="tsdoc.html">TSDoc</a>. It is defined in <code>doc/SConscript</code> file while some helpers are provided by <code>SConscript.doc.py</code> helper.<br /> </li>
+        <li>
+<a href="tsdoc.html">Running tests</a> as defined in <code>tests/SConscript</code>.<br /> </li>
+        <li>
+<em>Building packages</em>.<br /> </li>
+</ul>
+</p>
+<p>
+ There is one special helper -- <code>SConscript.ext.py</code>. It is not used by SConstruct of TSLoad agent, but provided for external SConstructs, i.e. for modules. <br /> </p>
+<p>
+TSLoad uses SCons <a href="http://www.scons.org/doc/production/HTML/scons-user.html#idp14616296">variant dirs</a>, so all build output files are put into <code>build/</code> subdirectory.<br /> </p>
+<p>
+<h3>Construction environment</h3></p>
+<p>
+To maintain build configuration and builders SCons uses global object called <a href="http://www.scons.org/doc/production/HTML/scons-user.html#sect-construction-environments">construction environment</a>. It is created in SConstruct file and passed to SConscripts using <code>Import('env')</code> (object is globally called as <code>env</code>). Helper SConscripts should modify <code>env</code> and export its changes back with <code>Export('env')</code>. Component SConscripts that alter environment should clone it and name resulting environment: <code>lib = env.Clone()</code>. Note that copy is called <code>lib</code> -- to improve readability, they are colled according to component type: <code>lib</code> - shared library, <code>cmd</code> - command, <code>tst</code> - test.<br /> </p>
+<p>
+<h4>Variables </h4></p>
+<p>
+To keep various TSLoad settings, environment variables are used. There are list of them:<br /></p>
+<p>
+    <ul>
+        <li>
+<strong>TSLoad project settings</strong>.<br />   </li>
+        <ul>
+            <li>
+<code>TSLOADPATH</code> -- path to TSLoad sources. For agent builds should be set to abspath of <code>'#'</code> (hint for SCons to use top-level path of project). For external builds automatically set from path to development files which is taken from variable: <code>TSLOAD_DEVEL_PATH</code>.<br />   </li>
+            <li>
+<code>TSPROJECT</code> and <code>TSVERSION</code> -- name of the project and current version<br />   </li>
+            <li>
+<code>TSNAME</code> -- full name of TSLoad build including platform<br />   </li>
+            <li>
+<code>PREFIX</code> -- root directory where TSLoad will be installed. If not set, defaults to <code>build/$TSNAME</code></li>
+            <li>
+<code>INSTALL_*</code> -- subdirectories for installation of TSLoad components. See <a href="build.html#installation">installation</a> below. Values are defined in <code>tools/build/installdirs.py</code></li>
+</ul>
+        <li>
+<strong>Configuration options</strong>. Most of them are gettable via <code>GetOption('option_name')</code> but some of them have extra handling and provided by environment itself:<br />   </li>
+        <ul>
+            <li>
+<code>DEBUG</code> -- enables debug build<br />   </li>
+            <li>
+<code>LOAD_LOGFILE</code> and <code>TSLOAD_MODPATH</code> -- path to tsload logging and tsload modules path (for generation of sample tsloadd config)<br />   </li>
+            <li>
+<code>ETRACEENABLED</code> -- enables <a href="../tscommon/etrace.html">ETrace</a> processing. Enabled through <code>--enable-usdt</code> and <code>--enable-etw</code> options depending on platform.<br />   </li>
+            <li>
+<code>VERBOSE_BUILD</code> -- internal hint for TSLoad that disables pretty printing (if <code>'cmdline'</code> is in list) or passes verbosity flags to . Taken from <code>--verbose-build</code> command line option.<br /> </li>
+</ul>
+        <li>
+<strong>Compiler and linker settings</strong>.<br />   </li>
+        <ul>
+            <li>
+<code>CC</code> and <code>CCFLAGS</code> -- C compiler and its flags<br />   </li>
+            <li>
+<code>LINK</code> and <code>LINKFLAGS</code> -- static linker and its flags<br />   </li>
+            <li>
+<code>SHCCFLAGS</code>, <code>SHLINKFLAGS</code> -- same as previous, but provides specific options for shared objects<br />   </li>
+            <li>
+<code>CPPPATH</code> and <code>LIBPATH</code> -- paths to include files and libraries <br />   </li>
+            <li>
+<code>LIBS</code> -- names of libraries (should be altered by components)<br />   </li>
+            <li>
+<code>TARGET_ARCH</code> -- name of target build architecture<br /> </li>
+</ul>
+        <li>
+<strong>Global state</strong>. Some variables are used to save SCons objects across SConscript calls. Some of they will be described in corresponding sections of this manual. <br />   </li>
+        <ul>
+            <li>
+<code>GENERATED_FILES</code> -- contains generated include files to be installed as a development files <br />   </li>
+</ul>
+</ul>
+</p>
+<p>
+<h4>Helpers</h4></p>
+<p>
+TSLoad build sytem provides several build helpers that handle some extra activities for component and simplifies writing component SConscripts:<br /></p>
+<p>
+<pre>
+PathJoin(path, *paths)
+PathSplit(path)
+
+PathBaseName(path)
+PathDirName(path)
+
+PathExists(path)
+PathIsAbs(path)
+PathIsFile(path)
+
+PathAbsolute(path)
+PathRelative(path[, start])
+
+PathWalk(top, topdown=True, onerror=None, followlinks=False)
+
+PathAccess(path, mode)
+</pre>
+</p>
+<p>
+Aliases for <code>os.path</code> and <code>os</code> that make them look conformant with SCons all-capitalized style. <br /></p>
+<p>
+<pre>
+PathRemove(abspath, path)
+PathRemoveAbs(abspath, absdir)
+</pre>
+</p>
+<p>
+Remove part of absolute path <code>abspath</code>: from beginning (<code>PathRemoveAbs</code>) or tail (<code>PathRemove</code>). If it is not possible (i.e. when <code>absdir</code> is not parent to <code>abspath</code>), raises an exception.<br /></p>
+<p>
+<pre>
+env.BuildDir(dir, subdir='build')
+</pre>
+</p>
+<p>
+Returns absolute path to a temporary build dir subdirectory identified by <code>dir</code> and <code>subdir</code>: <code>PathJoin(root_path, 'build', subdir, dir)</code></p>
+<p>
+<pre>
+env.Macroses(*macroses)
+</pre>
+</p>
+<p>
+Add definitions in form of list of strings <code>'MACRO_NAME=value'</code> or <code>'MACRO_NAME'</code> in compiler-independent way.<br /></p>
+<p>
+<pre>
+env.CompileSharedLibrary(extra_sources = [], ctfconvert = True)
+</pre>
+</p>
+<p>
+Compiles shared library using <code>*.c</code> sources from component root directory, <code>*.c</code> files from platform directories. If extra files need, pass them as <code>extra_sources</code> list. Returns list of compiled objects.<br /></p>
+<p>
+<code>ctfconvert</code> is option for Solaris and it enables converting DWARF to CTF.<br /></p>
+<p>
+<pre>
+env.CompileProgram(extra_sources = [])
+</pre>
+</p>
+<p>
+Compiles a program objects. Same rules for picking source files as for <code>CompileSharedLibrary</code> apply here.  Returns list of compiled objects.<br /></p>
+<p>
+<code>CompileProgram</code> invokes two additional builders:<br />      <ul>
+        <li>
+<code>UsageBuilder</code> generates <code>usage.c</code> file which <code>usage(int retcode)</code> function (written in C) from <code>usage.txt</code> file.<br />  </li>
+        <li>
+<code>SubsysBuilder</code> generates subsystem initializer/finalizer file <code>init.c</code></li>
+</ul>
+</p>
+<p>
+<pre>
+env.LinkProgram(target, objects)
+</pre>
+</p>
+<p>
+Builds program named <code>target</code> from list of objects <code>objects</code>. Returns built program.<br />  </p>
+<p>
+<pre>
+env.LinkSharedLibrary(target, objects, ctfmerge = True)
+</pre>
+</p>
+<p>
+Builds shared library named <code>target</code> from list of objects <code>objects</code>. Returns built program.<br /></p>
+<p>
+<code>ctfmerge</code> is similiar to <code>ctfconvert</code> option and only valid on Solaris.<br /></p>
+<p>
+<pre>
+env.Module(mod_type, mod_name, etrace_sources = [])
+</pre>
+</p>
+<p>
+Compile, build and install module. <code>mod_type</code> should be set to <code>'load'</code>, <code>mod_name</code> is a name of module. <code>etrace_sources</code> contains list of sources that need to be preprocessed with ETrace. Returns built module.<br /></p>
+<p>
+<pre>
+env.InstallTarget(tgtroot, tgtdir, target):
+</pre>
+</p>
+<p>
+Installs file. <code>tgtroot</code> is a name of package to which this target belongs. <code>tgtdir</code> is a target installation directory (base directory should be taken from <code>env['INSTALL_*']</code>). <br />  </p>
+<p>
+<h3>Subsystems </h3></p>
+<p>
+Many TSLoad agent functions use some global state such as memory SLAB cache, mutex locks, global hashmap or list. I.e. <code>wl_type_register()</code>, which is used in modules, adds workload type to a global hashmap <code>wl_type_hash_map</code>. So before <code>mod_init()</code> is called, we should initialize that hashmap with <code>wtl_init()</code> - subsystems have dependencies. <br /></p>
+<p>
+Every TSLoad agent executable should do that at beginning, so it calls <code>ts_init()</code> function (see: <a href="../tscommon/init.html">init</a>). To simplify management of dependencies, and automatically fill list of subsystems passed to <code>ts_init()</code>, build system provides <code>env.UseSubsystems()</code> call which accepts names of subsystems. When executable is built, it generates necessary objects and <code>init()</code> function which serves as a wrapper to <code>ts_init()</code> into <code>init.c</code> file. <code>env.UseSubsystems()</code> also adds libraries to linked with executable.<br /></p>
+<p>
+Subsystems and their dependencies list is located in <code>lib/subsystems.list</code> file.<br /></p>
+<p>
+<h3>Component SConscript sample</h3></p>
+<p>
+Now lets take a look at sample of component SConscript (actually, for <code>tsgenmodsrc</code> binary):<br /></p>
+<p>
+<pre>
+1  from pathutil import *
+2  
+3  
+4  tgtroot = 'tsload-core'
+5  target = 'tsgenmodsrc'
+6  
+7  Import('env')
+8  
+9  cmd = env.Clone()
+10 
+11 cmd.UseSubsystems('log', 'mempool', 'json', 'modsrc')
+12 
+13 objects = cmd.CompileProgram()
+14 tsgenmodsrc = cmd.LinkProgram(target, objects)
+15 
+16 cmd.InstallTarget(tgtroot, cmd['INSTALL_BIN'], tsgenmodsrc)
+17 cmd.InstallTarget(tgtroot, PathJoin(env['INSTALL_VAR'], 'modsrc'), File('modinfo.json'))
+18
+19 for modsrc_file in Glob('modsrc/*'):
+20     cmd.InstallTarget(tgtroot, PathJoin(env['INSTALL_SHARE'], 'devel', 'modsrc'), modsrc_file)
+</pre>
+</p>
+<p>
+    <ul>
+        <li>
+ Line 1: <code>pathutil</code> module is imported to get <code>PathJoin</code> alias.<br /> </li>
+        <li>
+ Lines 4-5: These are arguments to <code>env.LinkProgram()</code> and <code>env.InstallTarget()</code>. To simplify identification of SConscript, they are put on the top of the file.<br /> </li>
+        <li>
+ Lines 7,9: Environment is imported from <code>SConstruct</code> and cloned into new <code>cmd</code> object<br /> </li>
+        <li>
+ Line 11: <code>env.UseSubsystems()</code> provides list of used subsystems, so <code>LIBS</code> variable is updated with neccessary subsystems: libtscommon will be used for 'log' and 'mempool', libtsjson for 'json' and 'modsrc' is internal tsgenmodsrc subsystem.<br /> </li>
+        <li>
+ Further alterations of <code>cmd</code> may be done here. I.e. system libraries is added to <code>LIBS</code> here. <br /> </li>
+        <li>
+ Lines 13-14: <code>tsgenmodsrc</code> binary is built here<br /> </li>
+        <li>
+ Line 16: this binary is installed to default binaries path. <br /> </li>
+        <li>
+ Line 17, 19-20: some extra files are installed. Note that for directories we have to glob each file: if we just call <code>env.InstallTarget()</code> for directory, SCons won't track changes of files and don't reinstall them. You can also add dependency between targets so if one file is installed, other will be replaced too.<br /> </li>
+</ul>
+</p>
+<p>
+As we said, TSLoad have many customized builders. One example of them is a "experiment errors builder" which generates list of experiment error codes and their nicnames from <code>experr.h</code> file for <code>tsexperiment</code>:<br /></p>
+<p>
+<pre>
+import sys
+
+...
+
+ExpErrGenBuilder = Builder(action = Action('%s $TSLOADPATH/tools/genexperr.py $SOURCE &gt; $TARGET' % (sys.executable),
+                                           cmd.PrintCommandLine('GENEXPERR')))
+cmd.Append(BUILDERS = {'ExpErrGenBuilder': ExpErrGenBuilder})
+experr_c = cmd.ExpErrGenBuilder('experr.c', 'include/experiment.h')
+
+...
+
+objects = cmd.CompileProgram()
+tsexperiment = cmd.LinkProgram(target, objects)
+</pre>
+</p>
+<p>
+Since SCons is a Python program itself, we use path to Python interpreter to call <code>genexperr.py</code>. That script accepts name of source file as first argument and puts resulting source to STDOUT, so we have to use shell output redirection to put source into target file. Second argument to <code>Action()</code> call is command line format string -- it is generated by <code>env.PrintCommandLine()</code> so for pretty command line output it will write 'GENEXPERR source_name' to console instead of full command line.<br /></p>
+<p>
+After we defined a builder, we invoke it directly to build 'experr.c' source file from 'include/experiment.h' header (which will be <code>$TARGET</code> and <code>$SOURCE</code> correspondingly). This however, doesn't cause <code>genexperr.py</code> to be immediately called. Instead, SCons saves 'experr.c' in its virtual filesystem representation marking its dependencies and builder. When <code>env.CompileProgram()</code> is called afterwards, it globs directory including virtual filesystem, so it adds 'experr.c' to a list of source files and creates new dependency: experr.o -&gt; experr.c. Finally, <code>env.LinkProgram()</code> adds further dependencies. <br /></p>
+<p>
+<h3>Installation </h3></p>
+<p>
+<a name="installation"></a></p>
+<p>
+By default all TSLoad files are installed into <code>build/$TSNAME</code> subdirectory, but this behavior can be altered by specifying <code>--prefix</code> command line option to SCons (as it does in autoconf). For example, it can be set to <code>/usr/local</code>, <code>/opt/tsload</code> or <code>C:\Program Files\TSLoad</code>. <br /></p>
+<p>
+However, depending on a nature of installing file, it would be put to a appropriate subdirectory: i.e. executable files on Unix-like systems are put into <code>bin/</code> subdirectory, but on Windows they preferred to be put in a top-level installation directory. To reflect that difference, TSLoad uses environment variables <code>INSTALL_*</code> which are defined in <code>tools/build/installdirs.py</code> helper file:<br /></p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+<strong>Environment variable</strong></td>
+            <td>
+<strong>UNIX subdirectory</strong></td>
+            <td>
+<strong>Windows folder</strong></td>
+            <td>
+<strong>SCons option</strong></td>
+            <td>
+<strong>Description</strong></td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_BIN</code></td>
+            <td>
+ bin/ </td>
+            <td>
+ . </td>
+            <td>
+ --bindir </td>
+            <td>
+ binary files</td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_LIB</code></td>
+            <td>
+ lib/ </td>
+            <td>
+ . </td>
+            <td>
+ --libdir </td>
+            <td>
+ shared libraries</td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_ETC</code></td>
+            <td>
+ etc/ </td>
+            <td>
+ Configuration </td>
+            <td>
+ --etcdir </td>
+            <td>
+ configuration files</td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_INCLUDE</code></td>
+            <td>
+ include/ </td>
+            <td>
+ Include </td>
+            <td>
+ --includedir </td>
+            <td>
+ include files (headers)</td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_VAR</code></td>
+            <td>
+ var/tsload/ </td>
+            <td>
+ Data </td>
+            <td>
+ --vardir </td>
+            <td>
+ variable files</td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_SHARE</code></td>
+            <td>
+ share/tsload/ </td>
+            <td>
+ Shared </td>
+            <td>
+ --sharedir </td>
+            <td>
+ shared files</td>
+</tr>
+        <tr>
+            <td>
+<code>INSTALL_MOD_LOAD</code></td>
+            <td>
+ lib/tsload/mod-load/ </td>
+            <td>
+ LoadModules </td>
+            <td>
+ --loadmoddir </td>
+            <td>
+ loader modules</td>
+</tr>
+</table>
+</p>
+<p>
+Note that internally TSLoad uses that subdirectories to deduce where its files located -- i.e. logs are put into <code>var/tsload/log</code> (unless <code>TS_LOGFILE</code> is specified). So it is not recommended to move or rename subdirectories, instead rebuild with different <code>--vardir</code>.<br /></p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

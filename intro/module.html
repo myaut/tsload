@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="results.html"><strong>Prev</strong>(Processing results)</a></li>
 </ul>
 		</div>
@@ -65,7 +65,7 @@ MODEXPORT int mod_unconfig(struct module* mod) {
 <p>
 First two lines contain macro named <code>LOG_SOURCE</code> is a helper for logging routines so they all have same logging source, and a corresponding include. The next header <code>tsload/defs.h</code> contains common macro definitions used inside TSLoad, for example <code>boolean_t</code> type. It is recommended to put this include directive first, but not necessary. Following header <code>tsload/modapi.h</code> defines API between module and TSLoad core. <br /></p>
 <p>
-After include directives, three <code>DECLARE_*</code> macro statements are going. They add global variables recognizable by TSLoad <a href="../tscommon/modules.html">Modules</a> subsystem. If they would be set to incorrect values, TSLoad will drop module thinking it is incompatible. <br /></p>
+After include directives, three <code>DECLARE_*</code> macro statements are going. They add global variables recognizable by TSLoad <a href="../tscommon/modules.html"></a> subsystem. If they would be set to incorrect values, TSLoad will drop module thinking it is incompatible. <br /></p>
 <p>
     NOTE: TSLoad doesn't support module signing, and all modules are loading automatically. It may be a security vulnerability. <br />    <br />Now, when module is written, it is time to build it! You may use your favorite build system for that, i.e. Make and its front-ends, or even manually run compiler and linker. Another option is to take <a href="http://www.scons.org/">SCons</a> which is used internally in TSLoad. It allows to use some parts of TSLoad build scripts while building modules. For example, your module will have same CFLAGS TSLoad build with. <br /></p>
 <p>

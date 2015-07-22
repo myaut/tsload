@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="atomic.html"><strong>Prev</strong>(atomic)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -41,19 +41,7 @@
 #define PATHPARTMAXLEN  256
 </pre>
 </p>
-<h2>Functions</h2><a name="path_cmp"></a><a name="path_cmp_n"></a><h3>path_cmp, path_cmp_n</h3><span class="label label-success">public</span><p>
-<pre>
-STATIC_INLINE int path_cmp(const char* a1, const char* a2) 
-STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) 
-</pre>
-</p>
-<a name="path_cmp"></a><a name="path_cmp_n"></a><h3>path_cmp, path_cmp_n</h3><span class="label label-success">public</span><p>
-<pre>
-STATIC_INLINE int path_cmp(const char* a1, const char* a2) 
-STATIC_INLINE int path_cmp_n(const char* a1, const char* a2, size_t n) 
-</pre>
-</p>
-<a name="path_join_array"></a><h3>path_join_array</h3><span class="label label-success">public</span>    <p>
+<h2>Functions</h2><a name="path_join_array"></a><h3>path_join_array</h3><span class="label label-success">public</span>    <p>
 <br />Create path from array into string. Similiar to python's os.path.join<br /></p>
     <p>
 <em>ARGUMENTS</em><br />        <ul>
@@ -120,21 +108,21 @@ First (or last for reverse order) component is root path item. For Windows it is
 <em>NOTES</em><br />if number of parts exceeds PATHMAXPARTS, will fail and returns NULL<br /></p>
 <p>
 <pre>
-LIBEXPORT char* path_split(path_split_iter_t* iter, int max, const char* path)
+LIBEXPORT const char* path_split(path_split_iter_t* iter, int max, const char* path)
 </pre>
 </p>
 <a name="path_split_next"></a><h3>path_split_next</h3><span class="label label-success">public</span>    <p>
 <br />Returns next path part from iterator or NULL if all parts was<br />walked.<br /></p>
 <p>
 <pre>
-LIBEXPORT char* path_split_next(path_split_iter_t* iter)
+LIBEXPORT const char* path_split_next(path_split_iter_t* iter)
 </pre>
 </p>
 <a name="path_split_reset"></a><h3>path_split_reset</h3><span class="label label-success">public</span>    <p>
 <br />Resets iterator to beginning<br /></p>
 <p>
 <pre>
-LIBEXPORT char* path_split_reset(path_split_iter_t* iter)
+LIBEXPORT const char* path_split_reset(path_split_iter_t* iter)
 </pre>
 </p>
 <a name="path_dirname"></a><h3>path_dirname</h3><span class="label label-success">public</span>    <p>
@@ -143,7 +131,7 @@ LIBEXPORT char* path_split_reset(path_split_iter_t* iter)
 <em>NOTES</em><br />uses path_split <br /></p>
 <p>
 <pre>
-STATIC_INLINE char* path_dirname(path_split_iter_t* iter, const char* path) 
+STATIC_INLINE const char* path_dirname(path_split_iter_t* iter, const char* path) 
 </pre>
 </p>
 <a name="path_basename"></a><h3>path_basename</h3><span class="label label-success">public</span>    <p>
@@ -152,7 +140,7 @@ STATIC_INLINE char* path_dirname(path_split_iter_t* iter, const char* path)
 <em>NOTES</em><br />uses path_split <br /></p>
 <p>
 <pre>
-STATIC_INLINE char* path_basename(path_split_iter_t* iter, const char* path) 
+STATIC_INLINE const char* path_basename(path_split_iter_t* iter, const char* path) 
 </pre>
 </p>
 <a name="path_remove"></a><h3>path_remove</h3><span class="label label-success">public</span>    <p>

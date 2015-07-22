@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="diskinfo.html"><strong>Prev</strong>(DiskInfo)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -49,11 +49,34 @@ Uses <code>statvfs()</code> syscall to gather statistics on file systems and<br 
 Local filesystems are added by DiskInfo code while iterating over volumes.<br />FSInfo adds network drives to them by using <code>WNetOpenEnum()</code> API call<br /></p>
     <p>
 Windows implementation doesn't support number of files<br /></p>
-<h2>Functions</h2><a name="HI_FSINFO_FROM_OBJ"></a><h3>HI_FSINFO_FROM_OBJ</h3>    <p>
+<h2>Functions</h2><a name="HI_FSINFO_FROM_OBJ"></a><a name="HI_FSINFO_TO_OBJ"></a><h3>HI_FSINFO_FROM_OBJ, HI_FSINFO_TO_OBJ</h3>    <p>
 <br />Conversion macros<br /></p>
 <p>
 <pre>
 #define HI_FSINFO_FROM_OBJ(object)
+#define HI_FSINFO_TO_OBJ(fsi)
+</pre>
+</p>
+<a name="hi_fsinfo_find_bypath"></a><h3>hi_fsinfo_find_bypath</h3><span class="label label-success">public</span>    <p>
+<br />Find corresponding fsinfo object by path of file<br />by comparing mountpoints with file path<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>path</strong> - absolute path to file<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />NULL if not found or fsinfo object<br /></p>
+<p>
+<pre>
+LIBEXPORT hi_fsinfo_t* hi_fsinfo_find_bypath(const char* path)
+</pre>
+</p>
+<a name="hi_fsinfo_find_bydev"></a><h3>hi_fsinfo_find_bydev</h3><span class="label label-success">public</span>    <p>
+<br />Find corresponding fsinfo object by device<br /></p>
+<p>
+<pre>
+LIBEXPORT hi_fsinfo_t* hi_fsinfo_find_bydev(hi_dsk_info_t* di)
 </pre>
 </p>
 <a name="hi_fsinfo_bind_dev"></a><h3>hi_fsinfo_bind_dev</h3>    <p>

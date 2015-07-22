@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-right">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-right">
 <li><a href="tshostinfo.html"><strong>Next</strong>(tshostinfo)</a></li>
 </ul>
 		</div>
@@ -27,11 +27,11 @@
 		<p>
 <h2>tsexperiment</h2></p>
 <p>
-TS Experiment - standalone agent to run TSLoad experiments <br /></p>
+<h5>Name</h5>TS Experiment - standalone agent to run TSLoad experiments <br /></p>
 <p>
-<code>$ tsexperiment [global options] subcommand [options and arguments]</code></p>
+<h5>Synopsis</h5><code>$ tsexperiment [global options] subcommand [options and arguments]</code></p>
 <p>
-Where global options are:<br />        <ul>
+<h5>Description</h5>Where global options are:<br />        <ul>
         <li>
  -e &lt;experiment_path&gt;<br />        Path to experiment root directory<br />    </li>
         <li>
@@ -208,6 +208,124 @@ Options: <br />        <ul>
  -o option - options for TSFile backend. See more at <a href="tsfutil.html">tsfutil</a></li>
 </ul>
 </p>
+<p>
+<h3>Exit status</h3></p>
+<p>
+If command was successfully executed, <code>tsexperiment</code> returns 0 as exit status. If invalid command line was passed to <code>tsexperiment</code> it returns one of the values from range {1..5}. In case of other failures, it will return 30 (<code>CMD_GENERIC_ERROR</code> code), or one of the <em>well known</em> error codes from range {11..14}.<br /></p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+Code </td>
+            <td>
+ Mnemonic </td>
+            <td>
+ Description</td>
+</tr>
+        <tr>
+            <td>
+</td>
+            <td colspan="2">
+<strong>Basic errors</strong></td>
+</tr>
+        <tr>
+            <td>
+0 </td>
+            <td>
+<code>CMD_OK</code></td>
+            <td>
+ Everything went fine</td>
+</tr>
+        <tr>
+            <td>
+1 </td>
+            <td>
+<code>CMD_MISSING_CMD</code></td>
+            <td>
+ Subcommand is missing from command line</td>
+</tr>
+        <tr>
+            <td>
+2 </td>
+            <td>
+<code>CMD_UNKNOWN_CMD</code></td>
+            <td>
+ Unknown subcommand</td>
+</tr>
+        <tr>
+            <td>
+3 </td>
+            <td>
+<code>CMD_INVALID_OPT</code></td>
+            <td>
+ Incorrect option was specified or option needs argument</td>
+</tr>
+        <tr>
+            <td>
+4 </td>
+            <td>
+<code>CMD_INVALID_ARG</code></td>
+            <td>
+ Invalid option or argument value (like negative integer)</td>
+</tr>
+        <tr>
+            <td>
+5 </td>
+            <td>
+<code>CMD_MISSING_ARG</code></td>
+            <td>
+ Required option or argument is missing </td>
+</tr>
+        <tr>
+            <td>
+</td>
+            <td colspan="2">
+<strong>Experiment errors</strong></td>
+</tr>
+        <tr>
+            <td>
+11 </td>
+            <td>
+<code>CMD_NOT_EXISTS</code></td>
+            <td>
+ Needed file not exists </td>
+</tr>
+        <tr>
+            <td>
+12 </td>
+            <td>
+<code>CMD_NO_PERMS</code></td>
+            <td>
+ Insufficient permissions to read or write on of the files</td>
+</tr>
+        <tr>
+            <td>
+13 </td>
+            <td>
+<code>CMD_ALREADY_EXISTS</code></td>
+            <td>
+ TSExperiment tried to create file, but it is already exists</td>
+</tr>
+        <tr>
+            <td>
+14 </td>
+            <td>
+<code>CMD_IS_ROOT</code></td>
+            <td>
+ Some operation that TSExperiment had tried to perform on root experiment only allowed for experiment runs</td>
+</tr>
+        <tr>
+            <td>
+30 </td>
+            <td>
+<code>CMD_GENERIC_ERROR</code></td>
+            <td>
+ All other errors</td>
+</tr>
+</table>
+</p>
+<p>
+Experiment errors will be accompanied with <code>EXPERR</code> error code printed to standard error output. </p>
 
 	</div>
 </div>

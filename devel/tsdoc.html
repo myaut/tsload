@@ -1,0 +1,260 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html">
+	<meta name="generator" content="TSDoc 0.2">
+	
+	<title>Developers guide</title>
+	
+	<link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css" />
+	<link href="../bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="navbar">
+    <div class="navbar-inner">
+	    <div class="container">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
+<li><a href="plat.html"><strong>Prev</strong>(Platform-specific builds)</a></li>
+</ul>
+		</div>
+    </div>
+</div>
+
+<div class="container max-height no-overflow">
+	<div id="content" nevow:render="content">
+		<p>
+<h2>TSDoc</h2></p>
+<p>
+TSDoc is an internal TSLoad engine for generating documentation which supports here-docs inside C sources in Markdown and standalone Markdown text pages and converts them to a desired output format: HTML, LaTeX or Text. TSDoc consists of several components which are located in <code>tools/doc</code>:<br />     <ul>
+        <li>
+<strong>Source parser</strong>. Originally, DoxyGen was used to parse sources, but since it hard to integrate with other docs and DoxyGen doesn't respect various TSLoad codestyle features, it has own parser. Sources are preprocessed into <code>.tsdoc</code> file that is later used by builder.<br /> </li>
+        <li>
+<strong>Markdown parser</strong>. Parses incoming markdown text and represents it as tree of blocks -- objects of <code>tsdoc.blocks.Block</code> classs and similiar objects.<br /> </li>
+        <li>
+<strong>Printer</strong>. Prints page representation as a list of Blocks in desired format<br /> </li>
+        <li>
+<strong>Builder</strong>. Collects pages, resolves references between them and builds destination files using one of printers. Also generates special pages such as index and reference pages.<br /> </li>
+</ul>
+</p>
+<p>
+<h3>Sources </h3></p>
+<p>
+TSDoc generates API documentation, thus only declarations with here-docs or functions that have <code>LIBEXPORT</code> qualifier are presented in documentation. TSLoad also documents types that are used in a function parameters. There are two special qualifiers that alter this behavior: <code>TSDOC_FORCE</code> enforces generation while <code>TSDOC_HIDDEN</code> disables it. <br /></p>
+<p>
+Multiple files may provide documentation for one page: main header file (should be parsed first) and multiple source and header files. If some function doesn't have here-doc in main header file, it can be taken from source file, etc. Definitions in main header file are grouped. Double newline delimits groups. If group have common here-doc than builder will allocate single <code>Block</code> to represent that definition, but if there is separate here-doc for one of the elements of that group, it will be separated. Each element has its own name (variable name, function name, type name) so group will have header: comma-separated list of that names (unless <code>@name</code> directive isn't used). <br /></p>
+<p>
+Like DoxyGen, TSLoad here-doc starts with <code>/**</code>, ends with <code>*/</code> and should precede documentation declaration (no additional newlines allowed). Other here-doc forms like <code>//&lt;</code> are not allowed. Here-docs that doesn't correspond to any of declarations will be considered "module" here-docs and will be added to the beginning of the documentation page. TSDoc also cuts out first asterisk <code>*</code> at the beginning of each line of here-doc. <br /></p>
+<p>
+TSDoc here-docs support following directives:<br /></p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+<strong>Directive</strong></td>
+            <td>
+<strong>Description</strong></td>
+</tr>
+        <tr>
+            <td colspan="2">
+ Any of markdown directives </td>
+</tr>
+        <tr>
+            <td>
+@module </td>
+            <td>
+ Name of module. Will be used as header in page and as a name of links referring this module</td>
+</tr>
+        <tr>
+            <td>
+@name </td>
+            <td>
+ Name of declaration group</td>
+</tr>
+        <tr>
+            <td>
+@param ARG </td>
+            <td>
+ For function declarations: name of argument</td>
+</tr>
+        <tr>
+            <td>
+@member FIELD </td>
+            <td>
+ For complex type declarations: name of field</td>
+</tr>
+        <tr>
+            <td>
+@value VALUE </td>
+            <td>
+ For enumerations or constants: value</td>
+</tr>
+        <tr>
+            <td>
+@note </td>
+            <td>
+ Note </td>
+</tr>
+        <tr>
+            <td>
+@see </td>
+            <td>
+ Reference (not actually parsed as reference)</td>
+</tr>
+        <tr>
+            <td>
+@return </td>
+            <td>
+ Note about returning value</td>
+</tr>
+</table>
+</p>
+<p>
+Directives are ending with newline, but can be expanded with backslash <code>\</code>. They are followed by text corresponding to that directive (it also supports Markdown, but  no blocks such as code block, headers and tables). <br /></p>
+<p>
+<h3>Markdown</h3></p>
+<p>
+Markdown is used in TSLoad documentation, thus there are some extensions to it:<br /></p>
+<p>
+    <table class="table">
+        <tr>
+            <td>
+<strong>Markdown directive</strong></td>
+            <td>
+<strong>Description</strong></td>
+</tr>
+        <tr>
+            <td colspan="2">
+<strong>Embedded directives</strong></td>
+</tr>
+        <tr>
+            <td>
+<code>_text_</code> or <code>*text*</code></td>
+            <td>
+ Italic text</td>
+</tr>
+        <tr>
+            <td>
+<code>__text__</code> or <code>**text**</code></td>
+            <td>
+<strong>Bold text</strong></td>
+</tr>
+        <tr>
+            <td>
+<code> `code` </code></td>
+            <td>
+<code>Embedded code</code></td>
+</tr>
+        <tr>
+            <td>
+<code>[tag]</code></td>
+            <td>
+ HTML anchor for references or a tag </td>
+</tr>
+        <tr>
+            <td>
+<code>[link text][docspace/page]</code></td>
+            <td>
+ Intra-documentation link</td>
+</tr>
+        <tr>
+            <td>
+<code>[link text](external link)</code></td>
+            <td>
+ External link</td>
+</tr>
+        <tr>
+            <td>
+<code>![alt text](link to image)</code></td>
+            <td>
+ Image</td>
+</tr>
+        <tr>
+            <td>
+<code> ### Header </code></td>
+            <td>
+ Header. Number of number signs will be level of header (from 1 to 6).  Header ends with newline.</td>
+</tr>
+        <tr>
+            <td colspan="2">
+<strong>Block directives</strong></td>
+</tr>
+        <tr>
+            <td>
+<code> * List element </code></td>
+            <td>
+ List element. Indentation of list element will be its depth.</td>
+</tr>
+        <tr>
+            <td>
+<code> &gt; Block quote </code></td>
+            <td>
+ Block quote</td>
+</tr>
+        <tr>
+            <td>
+<code> ```  </code></td>
+            <td>
+ Beginning and ending of code block</td>
+</tr>
+        <tr>
+            <td colspan="2">
+<strong>Tables</strong></td>
+</tr>
+        <tr>
+            <td>
+<code> --- </code></td>
+            <td>
+ Beginning and ending of table (block)</td>
+</tr>
+        <tr>
+            <td>
+<code> | </code></td>
+            <td>
+ Cell separator inside table</td>
+</tr>
+        <tr>
+            <td>
+<code>N,M </code></td>
+            <td>
+ At the beginning of cell - rowspan and colspan correspondingly.</td>
+</tr>
+</table>
+</p>
+<p>
+Markdown directives may be escaped with backlash <code>\</code>. <br /></p>
+<p>
+<h3>Builder and printer</h3></p>
+<p>
+Builder is a heart of TSDoc. Builder reads incoming files in one of two formats:<br />      <ul>
+        <li>
+<code>.src.md</code> -- Markdown,<br />  </li>
+        <li>
+<code>.tsdoc</code> -- preprocessed sources.<br /></li>
+</ul>
+</p>
+<p>
+It parses markdown, and generates additional text for preprocessed sources such as sections and headers, function visibility labels. Builder is also responsible for setting inter-page references and links. Inter-page link consists from two or three parts including in the following format: <code>docspace/page#reference</code> where reference part is optional. When documentation is built, builder creates in-memory list of a pages and replaces each inter-page link with a corresponding format link, i.e with <code>&lt;a href=''&gt;</code> in html, or if that link cannot be found, it marks it with red font. If link text is omitted, TSLoad may try to pick it from most-significant header of Markdown page or <code>@module</code> directive of a source file.<br /></p>
+<p>
+Documentation is split into "docspaces" - bunches of markdown and sources files that cover similiar topics, like this page is part of development documentation. Markdown pages have following path relative to agent sources root: <code>doc/docspace/page.src.md</code>. Main page of a documentation is located in a <code>doc/</code> subdirectory and called <code>index.src.md</code>. TSDoc firstly processes that file to find docspaces and its properties. Each docspace starts with 3rd level header followed by "docspace tags" -- special form of tag that doesn't parsed into a block but contains special settings for that docspace:<br />     <ul>
+        <li>
+<code>[__docspace__:docspace]</code> (mandatory) -- name of docspace.<br /> </li>
+        <li>
+<code>[__external_index__]</code> -- create external index page for that docspace and put link to that file. However to generate index, root <code>index.src.md</code> is still used.<br /> </li>
+        <li>
+<code>[__reference__]</code> -- generate external reference for API documentation sorted alphabetically. Some libraries like HostInfo have similiar prefix for all their functions and types (<code>hi_</code> in that case), so <code>[__refprefix__:hi_]</code> is provided meaning that prefix will not be used while grouping entries in reference.<br /></li>
+</ul>
+</p>
+<p>
+Order of links inside index file is used to generate links to next, previous and upper page. For single-paged formats like TeX, it will also used to order information in output files. Note that index file is also used in builder emitter inside <a href="build.html">SCons</a> to determine which files will be generated and correctly install them.<br /> </p>
+<p>
+After preprocessing all files, Bulder runs Printer to generate output files.</p>
+
+	</div>
+</div>
+
+<!-- TAIL -->
+
+</body>
+</html>

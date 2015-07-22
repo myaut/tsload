@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="mempool.html"><strong>Prev</strong>(mempool)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -35,6 +35,8 @@
 	<div id="content" nevow:render="content">
 		<h1>Automatically allocated strings.</h1><h3></h3>    <p>
 Used instead of statically-allocated strings as read-only buffers<br />(after allocation, string should be freed and allocated again)<br /></p>
+    <p>
+Auto-allocated strings may be mutable, but you should ensure that<br />they were not constructed from aas_set() call. In that case behavior<br />is undefined.<br /></p>
     <p>
 Since arguments passed to AAS may be mutable (but should not be),<br />it uses "n" functions to protect from possible buffer overflow.<br /></p>
 <h2>Constants</h2><a name="AAS_BUF_NOT_EMPTY"></a><a name="AAS_ALLOCATION_ERROR"></a><a name="AAS_INVALID_ARGUMENT"></a><h3>AAS_ALLOCATION_ERROR, AAS_BUF_NOT_EMPTY, AAS_INVALID_ARGUMENT</h3>    <p>
@@ -95,8 +97,9 @@ LIBEXPORT char* aas_allocate(size_t count)
 LIBEXPORT size_t aas_vprintf(char** aas, const char* format, va_list va)
 </pre>
 </p>
-<a name="aas_printf"></a><h3>aas_printf</h3><span class="label label-success">public</span><p>
+<a name="aas_printf"></a><a name="aas_printf"></a><h3>aas_printf</h3><span class="label label-success">public</span><p>
 <pre>
+STATIC_INLINE size_t aas_printf(char** aas, const char* format, ...) 
 STATIC_INLINE size_t aas_printf(char** aas, const char* format, ...) 
 </pre>
 </p>

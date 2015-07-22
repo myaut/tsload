@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="tsload.html"><strong>Prev</strong>(TSLoad high-level API)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -141,6 +141,12 @@ STATIC_INLINE uint64_t rg_generate_int(randgen_t* rg)
 LIBEXPORT double rg_generate_double(randgen_t* rg)
 </pre>
 </p>
+<a name="rg_init_dummy"></a><a name="rg_destroy_dummy"></a><h3>rg_init_dummy, rg_destroy_dummy</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int  rg_init_dummy(randgen_t* rg)
+LIBEXPORT void rg_destroy_dummy(randgen_t* rg)
+</pre>
+</p>
 <a name="randgen_register"></a><a name="randgen_unregister"></a><h3>randgen_unregister, randgen_register</h3><span class="label label-success">public</span><p>
 <pre>
 LIBEXPORT int randgen_register(module_t* mod, randgen_class_t* class)
@@ -166,6 +172,14 @@ STATIC_INLINE int rv_set_double(randvar_t* rv, const char* name, double value)
 <a name="rv_variate_double"></a><h3>rv_variate_double</h3><span class="label label-success">public</span><p>
 <pre>
 STATIC_INLINE double rv_variate_double(randvar_t* rv) 
+</pre>
+</p>
+<a name="rv_init_dummy"></a><a name="rv_destroy_dummy"></a><a name="rv_set_int_dummy"></a><a name="rv_set_double_dummy"></a><h3>rv_destroy_dummy, rv_set_int_dummy, rv_init_dummy, rv_set_double_dummy</h3><span class="label label-success">public</span><p>
+<pre>
+LIBEXPORT int rv_init_dummy(randvar_t* rv)
+LIBEXPORT void rv_destroy_dummy(randvar_t* rv)
+LIBEXPORT int rv_set_int_dummy(randvar_t* rv, const char* name, long value)
+LIBEXPORT int rv_set_double_dummy(randvar_t* rv, const char* name, double value)
 </pre>
 </p>
 <a name="randvar_register"></a><a name="randvar_unregister"></a><h3>randvar_register, randvar_unregister</h3><span class="label label-success">public</span><p>

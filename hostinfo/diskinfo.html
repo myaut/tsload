@@ -15,7 +15,7 @@
 <div class="navbar">
     <div class="navbar-inner">
 	    <div class="container">
-			<a class="brand" href="../index.html">tsload 0.2.a1 documentation</a><ul class="nav pull-left">
+			<a class="brand" href="../index.html">tsload 0.2.0-beta documentation</a><ul class="nav pull-left">
 <li><a href="pageinfo.html"><strong>Prev</strong>(PageInfo)</a></li>
 </ul>
 <ul class="nav pull-center">
@@ -120,11 +120,12 @@ Even if disabled, LVs may be tracked as dm-X devices.<br /></p>
 boolean_t hi_linux_lvm2 
 </pre>
 </p>
-<h2>Functions</h2><a name="HI_DSK_FROM_OBJ"></a><h3>HI_DSK_FROM_OBJ</h3>    <p>
+<h2>Functions</h2><a name="HI_DSK_FROM_OBJ"></a><a name="HI_DSK_TO_OBJ"></a><h3>HI_DSK_FROM_OBJ, HI_DSK_TO_OBJ</h3>    <p>
 <br />Conversion macros<br /></p>
 <p>
 <pre>
 #define HI_DSK_FROM_OBJ(object)
+#define HI_DSK_TO_OBJ(di)
 </pre>
 </p>
 <a name="hi_dsk_dtor"></a><h3>hi_dsk_dtor</h3>    <p>
@@ -139,6 +140,23 @@ void hi_dsk_dtor(hi_object_t* object)
 <p>
 <pre>
 hi_dsk_info_t* hi_dsk_create(void)
+</pre>
+</p>
+<a name="hi_dsk_check_overlap"></a><h3>hi_dsk_check_overlap</h3><span class="label label-success">public</span>    <p>
+<br />Helper for <code>diskio</code> workload type -- finds if selected<br />disk overlaps with pool, volume or filesystem<br /></p>
+    <p>
+<em>ARGUMENTS</em><br />        <ul>
+            <li>
+<strong>di</strong> - chosen disk<br /></li>
+</ul>
+</p>
+    <p>
+<em>RETURN VALUES</em><br />disk or filesystem this disk overlaps<br /></p>
+    <p>
+<em>NOTES</em><br />pools (<code>HI_DSKT_POOL</code>) are not supported here<br /></p>
+<p>
+<pre>
+LIBEXPORT hi_object_t* hi_dsk_check_overlap(hi_dsk_info_t* di)
 </pre>
 </p>
 <a name="hi_dsk_add"></a><h3>hi_dsk_add</h3><span class="label label-success">public</span>    <p>
