@@ -744,8 +744,8 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 		goto end;
 
 	/* Install tsload/tsfile handlers */
-	tsload_workload_status = tse_run_workload_status;
-	tsload_requests_report = tse_run_requests_report;
+	tsload_register_requests_report_func(tse_run_requests_report);
+	tsload_register_workload_status_func(tse_run_workload_status);
 
 	if(batch_mode) {
 		printf("%d\n", exp->exp_runid);

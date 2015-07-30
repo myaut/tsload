@@ -29,24 +29,6 @@
 #include <string.h>
 #include <stdio.h>
 
-
-#if defined(PLAT_WIN)
-const char* path_curdir = ".";
-const char* path_parentdir = "..";
-const int psep_length = 1;
-
-#elif defined(PLAT_POSIX)
-
-const char* path_curdir = ".";
-const char* path_parentdir = "..";
-const int psep_length = 1;
-
-#else
-
-#error "Unknown path separator for this platform"
-
-#endif
-
 /**
  * Create path from array into string. Similiar to python's os.path.join
  *
@@ -75,8 +57,8 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
         if(i != 0 && !path_is_separator(dest + idx - 1)) {
         	path_append_separator(dest, len);
 
-            len -= psep_length;
-            idx += psep_length;
+            len -= PATH_SEP_LENGTH;
+            idx += PATH_SEP_LENGTH;
         }
 
         strncat(dest + idx, part, len);
@@ -90,7 +72,7 @@ char* path_join_array(char* dest, size_t len, int num_parts, const char** parts)
 #ifdef PLAT_WIN
 	/* On Windows trailing slashes are not allowed i.e. in FindFirstFileEx()
 	 * so if it is a last part and part is empty, ignore it */
-    end = dest + idx - psep_length;
+    end = dest + idx - PATH_SEP_LENGTH;
     if(path_is_separator(end))
     	*end = '\0';
 #endif
@@ -150,7 +132,7 @@ char* path_join_aas(char** aas, ...) {
 		parts[i++] = part;
 
 		if(part) {
-			count += strlen(part) + psep_length;
+			count += strlen(part) + PATH_SEP_LENGTH;
 		}
 
 		/* Too much parts */
@@ -169,7 +151,7 @@ char* path_join_aas(char** aas, ...) {
 static int path_split_add(path_split_iter_t* iter, const char* part, const char* end) {
     size_t len = end - part;
 
-    if(len == 0 || (path_cmp_n(part, path_curdir, len) == 0)) {
+    if(len == 0 || (path_cmp_n(part, PATH_CURDIR, len) == 0)) {
     	/* Ignore consecutive separators or references to current path */
 		*iter->ps_dest++ = 0;
 		return 0;
@@ -272,7 +254,7 @@ const char* path_split(path_split_iter_t* iter, int max, const char* path) {
             if(max == -1)
                 break;
 
-            max += path_split_add(iter, begin + psep_length, orig);
+            max += path_split_add(iter, begin + PATH_SEP_LENGTH, orig);
 
             orig = begin;
         }
@@ -297,8 +279,8 @@ const char* path_split(path_split_iter_t* iter, int max, const char* path) {
 
             max -= path_split_add(iter, orig, end);
 
-            orig = end + psep_length;
-            end += psep_length;
+            orig = end + PATH_SEP_LENGTH;
+            end += PATH_SEP_LENGTH;
         }
 
         path_split_add(iter, orig, path + strlen(path));
@@ -357,7 +339,7 @@ char* path_remove(char* result, size_t len, const char* abspath, const char* pat
 
 	/* If path is empty - simply return abspath */
 	if(strlen(path) == 0 ||
-	   path_cmp(path, path_curdir) == 0) {
+	   path_cmp(path, PATH_CURDIR) == 0) {
 			strncpy(result, abspath, len);
 			return result;
 	}
@@ -407,16 +389,16 @@ char* path_argfile(char* cfgdir, size_t cfglen, const char* cfgfname, const char
 	path_split_iter_t iter;
 	
 	/* If arg matches to file name, or is current directory, copy current dir to cfgdir. */
-	if(path_cmp(arg, cfgfname) == 0 || path_cmp(path_curdir, arg) == 0) {
-		strncpy(cfgdir, path_curdir, cfglen);
+	if(path_cmp(arg, cfgfname) == 0 || path_cmp(PATH_CURDIR, arg) == 0) {
+		strncpy(cfgdir, PATH_CURDIR, cfglen);
 		return cfgdir;
 	}
 	
 	/* If arg ends with path separator, than it is obviously a directory. Separator is removed. */
-	tail = arg + arglen - psep_length;
+	tail = arg + arglen - PATH_SEP_LENGTH;
 	if(path_is_separator(tail)) {
 		strncpy(cfgdir, arg, cfglen);		
-		*(cfgdir + strlen(cfgdir) - psep_length) = '\0';
+		*(cfgdir + strlen(cfgdir) - PATH_SEP_LENGTH) = '\0';
 		
 		return cfgdir;
 	}	
@@ -478,10 +460,10 @@ char* path_abslink(char* linkpath, size_t linklen, const char* path) {
 	for(tmpidx = 0; tmpidx < tmpiter.ps_num_parts; ++tmpidx) {
 		part0 = tmpiter.ps_parts[tmpidx];
 		
-		if(strcmp(part0, path_curdir) == 0) {
+		if(strcmp(part0, PATH_CURDIR) == 0) {
 			continue;
 		}
-		if(strcmp(part0, path_parentdir) == 0) {
+		if(strcmp(part0, PATH_PARENTDIR) == 0) {
 			pathidx = max(pathidx - 1, 0);
 			continue;
 		}

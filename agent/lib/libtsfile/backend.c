@@ -50,6 +50,8 @@ const char* tsfile_error_str[] = {
 	"Invalid range"
 };
 
+extern int tsfile_errno;
+
 /*
  * JSON/JSON-RAW backends
  */

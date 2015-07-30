@@ -122,18 +122,10 @@ tsobj_node_t* tsobj_rqsched_class_format(rqsched_class_t* rqs_class);
 int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t** p_randgen);
 TESTEXPORT int tsobj_rqsched_proc(tsobj_node_t* node, workload_t* wl);
 
-LIBIMPORT rqsched_class_t rqsched_simple_class;
-LIBIMPORT rqsched_class_t rqsched_iat_class;
-LIBIMPORT rqsched_class_t rqsched_think_class;
-
-LIBIMPORT rqsvar_class_t rqsvar_exponential_class;
-LIBIMPORT rqsvar_class_t rqsvar_uniform_class;
-LIBIMPORT rqsvar_class_t rqsvar_erlang_class;
-LIBIMPORT rqsvar_class_t rqsvar_normal_class;
-
 LIBEXPORT int rqsvar_register(module_t* mod, rqsvar_class_t* rqsvar_class);
 LIBEXPORT int rqsvar_unregister(module_t* mod, rqsvar_class_t* rqsvar_class);
 
+LIBEXPORT rqsched_class_t* rqsched_find(const char* class_name);
 LIBEXPORT int rqsched_register(module_t* mod, rqsched_class_t* rqs_class);
 LIBEXPORT int rqsched_unregister(module_t* mod, rqsched_class_t* rqs_class);
 

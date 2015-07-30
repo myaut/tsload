@@ -28,7 +28,6 @@
 
 
 #define MODPATHLEN	256
-#define MODSTATUSMSG 512
 
 /**
  * @module Modules

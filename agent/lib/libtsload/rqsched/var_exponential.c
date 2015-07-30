@@ -28,7 +28,7 @@ tsload_param_t rqsvar_exponential_params[] = {
 
 rqsvar_class_t rqsvar_exponential_class = {
 	AAS_CONST_STR("exponential"),
-	&rv_exponential_class,
+	NULL,
 	rqsvar_exponential_params,
 	
 	SM_INIT(.rqsvar_init, NULL),

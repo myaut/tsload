@@ -43,7 +43,7 @@ tsload_param_t rqsvar_erlang_params[] = {
 
 rqsvar_class_t rqsvar_erlang_class = {
 	AAS_CONST_STR("erlang"),
-	&rv_erlang_class,
+	NULL,
 	rqsvar_erlang_params,
 	
 	SM_INIT(.rqsvar_init, NULL),

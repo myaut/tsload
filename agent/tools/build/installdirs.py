@@ -16,3 +16,9 @@ install_dirs = [('INSTALL_BIN',      'bin/',          '',
                     'mandir',   'manual pages'),
                 ('INSTALL_MOD_LOAD', 'lib/tsload/mod-load/',     'LoadModules\\',   
                     'loadmoddir',   'loader modules')]
+                
+def debian_package_name(pkg_name):
+    # Convert tsload package to Debian package name
+    pkg_map = {'tsload-devel': 'tsload-dev',
+               'tsload-doc':   'tsload-doc'}
+    return pkg_map.get(pkg_name, 'tsload')

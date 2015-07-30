@@ -52,6 +52,8 @@
 
 static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* node, ptrdiff_t offset);
 
+extern tsfile_error_msg_func tsfile_error_msg;
+
 tsfile_schema_t* tsfile_schema_read(const char* filename) {
 	json_node_t* root;
 	json_buffer_t* buf;

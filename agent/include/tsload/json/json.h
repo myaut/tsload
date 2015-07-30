@@ -154,7 +154,7 @@ typedef struct json_node {
  * (note: parser errors are ignored)
  */
 typedef int (*json_error_msg_func)(int error, const char* format, va_list va);
-TSJSONAPI json_error_msg_func json_error_msg;
+LIBEXPORT void json_register_error_msg_func(json_error_msg_func func);
 
 typedef struct json_error_state {
 	int   je_error;

@@ -45,16 +45,10 @@
 
 boolean_t eflag = B_FALSE;
 
-boolean_t mod_configured = B_FALSE;
-boolean_t log_configured = B_FALSE;
-boolean_t hi_mod_configured = B_FALSE;
-
 static char experiment_root_path[PATHMAXLEN];
-
-LIBIMPORT char log_filename[];
-LIBIMPORT int mod_type;
-
-LIBIMPORT char mod_search_path[];
+static char log_filename[PATHMAXLEN];
+static char mod_search_path[PATHMAXLEN];
+static char hi_obj_modpath[PATHMAXLEN];
 
 int init(void);
 void usage(int ret, const char* reason, ...);
@@ -68,38 +62,19 @@ void deduce_paths(void) {
 	const char* cur_execpath = plat_execpath();
 	path_split_iter_t iter;
 	char root[PATHMAXLEN];
+	char path[PATHMAXLEN];
 
 	const char* cur_dirpath = path_dirname(&iter, cur_execpath);
 
 	if(path_remove(root, PATHMAXLEN, cur_dirpath, INSTALL_BIN) != NULL) {
-		path_join(log_filename, LOGFNMAXLEN, root, INSTALL_VAR, TSEXPERIMENT_LOGFILE, NULL);
-		path_join(mod_search_path, MODPATHLEN, root, INSTALL_MOD_LOAD, NULL);
-		path_join(hi_obj_modpath, PATHMAXLEN, root, INSTALL_LIB, NULL);
+		path_join(log_filename, PATHMAXLEN, root, INSTALL_VAR, TSEXPERIMENT_LOGFILE, NULL);
+		setenv("TS_LOGFILE", log_filename, B_FALSE);
 		
-		hi_mod_configured = B_TRUE;
-		mod_configured = B_TRUE;
-		log_configured = B_TRUE;
-	}
-}
-
-void read_environ() {
-	char* env_mod_path = getenv("TS_MODPATH");
-	char* env_log_filename = getenv("TS_LOGFILE");
-	char* env_hi_mod_path = getenv("TS_HIMODPATH");
-	
-	if(env_mod_path) {
-		strncpy(mod_search_path, env_mod_path, MODPATHLEN);
-		mod_configured = B_TRUE;
-	}
-
-	if(env_log_filename) {
-		strncpy(log_filename, env_log_filename, LOGFNMAXLEN);
-		log_configured = B_TRUE;
-	}
-	
-	if(env_hi_mod_path) {
-		strncpy(hi_obj_modpath, env_hi_mod_path, PATHMAXLEN);
-		hi_mod_configured = B_TRUE;
+		path_join(mod_search_path, PATHMAXLEN, root, INSTALL_MOD_LOAD, NULL);
+		setenv("TS_MODPATH", mod_search_path, B_FALSE);
+		
+		path_join(hi_obj_modpath, PATHMAXLEN, root, INSTALL_LIB, NULL);
+		setenv("TS_HIMODPATH", hi_obj_modpath, B_FALSE);
 	}
 }
 
@@ -141,27 +116,24 @@ int main(int argc, char* argv[]) {
 	opterr = 0;
 
 	deduce_paths();
-	read_environ();
 	parse_options(argc, argv);
 
-	if(!mod_configured) {
+	if(getenv("TS_MODPATH") == NULL) {
 		usage(1, "Missing TS_MODPATH environment variable and failed to deduce modpath\n");
 	}
 	
-	if(!hi_mod_configured) {
+	if(getenv("TS_MODPATH") == NULL) {
 		usage(1, "Missing TS_HIMODPATH environment variable and failed to deduce HostInfo modpath\n");
 	}
 
-	if(!log_configured) {
-		if(eflag) {
-			path_join(log_filename, LOGFNMAXLEN, experiment_root_path, TSEXPERIMENT_LOGFILE, NULL);
-		}
-		else {
-			usage(1, "Failed to configure log. Use TS_LOGFILE to set it explicitly.\n");
-		}
+	if(eflag) {
+		path_join(log_filename, PATHMAXLEN, experiment_root_path, TSEXPERIMENT_LOGFILE, NULL);
+		setenv("TS_LOGFILE", log_filename, B_FALSE);
+	}
+	else if(getenv("TS_LOGFILE") == NULL) {
+		usage(1, "Failed to configure log file name. Use TS_LOGFILE to set it explicitly.\n");
 	}
 
-	mod_type = MOD_TSLOAD;
 	init();
 
 	logmsg(LOG_INFO, "Started TSExperiment");

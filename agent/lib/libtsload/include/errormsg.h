@@ -40,4 +40,6 @@
 #define TSLOAD_SCHED_THREADPOOL_ERROR_PREFIX		"Couldn't schedule threadpool '%s': "
 #define TSLOAD_DESTROY_THREADPOOL_ERROR_PREFIX		"Couldn't destroy threadpool '%s': "
 
+extern tsload_error_msg_func tsload_error_msg;
+
 #endif /* ERRORMSG_H_ */

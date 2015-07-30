@@ -17,10 +17,11 @@
 
 #include <tsload.h>
 
+#include <stdlib.h>
+
 extern int tsload_test_main();
 
-LIBIMPORT char log_filename[];
-LIBIMPORT char mod_search_path[];
+static char mod_search_path[PATHMAXLEN];
 
 int init(void);
 
@@ -39,16 +40,15 @@ int test_main(int argc, char* argv[]) {
 	int err = 0;
 	char cwd[PATHMAXLEN];
 
-	strcpy(log_filename, "-");
+	setenv("TS_LOGFILE", "-", B_FALSE);
 
 	getcwd(cwd, PATHMAXLEN);
 	path_join(mod_search_path, MODPATHLEN, cwd, "mod", NULL);
-	
-	strncpy(hi_obj_modpath, getenv("TS_HIMODPATH"), PATHMAXLEN);
+	setenv("TS_MODPATH", mod_search_path, B_FALSE);
 
 	init();
 
-	tsload_error_msg = tse_error_msg;
+	tsload_register_error_msg_func(tse_error_msg);
 
 	return tsload_test_main();
 }

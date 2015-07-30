@@ -38,6 +38,7 @@
 const unsigned csv_entries_per_chunk = 8;
 
 extern const char* tsfile_error_str[];
+extern int tsfile_errno;
 
 DECLARE_FIELD_FUNCTION_BYTE(uint8_t);
 DECLARE_FIELD_FUNCTIONS(boolean_t);

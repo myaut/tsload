@@ -5,13 +5,12 @@ Import('env')
 
 lib = env.Clone()
 
-lib.Macroses('LIBTSJSON')
 # lib.Append(CCFLAGS = ['-O2'])
 
 # lib.PreparePlatform()
 lib.UseSubsystems('mempool')
 
-objects = lib.CompileSharedLibrary()
-library = lib.LinkSharedLibrary(target, objects)
-
-lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
+vlib = lib.Clone()
+objects = vlib.CompileSharedLibrary()
+library = vlib.LinkSharedLibrary(target, objects, versioned=True)
+vlib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

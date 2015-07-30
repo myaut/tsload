@@ -51,6 +51,10 @@ const char* json_error_msg_text[] = {
 };
 const int json_error_msg_count = 5;
 
+void json_register_error_msg_func(json_error_msg_func func) {
+	json_error_msg = func;
+}
+
 /**
  * Set JSON error. Create error state object if necessary.
  *

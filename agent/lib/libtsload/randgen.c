@@ -36,6 +36,18 @@
 DECLARE_HASH_MAP_STRKEY(randgen_hash_map, randgen_class_t, RGHASHSIZE, rg_class_name, rg_next, RGHASHMASK);
 DECLARE_HASH_MAP_STRKEY(randvar_hash_map, randvar_class_t, RGHASHSIZE, rv_class_name, rv_next, RVHASHMASK);
 
+extern randvar_class_t rv_uniform_class;
+extern randvar_class_t rv_exponential_class;
+extern randvar_class_t rv_erlang_class;
+extern randvar_class_t rv_normal_class;
+
+extern randgen_class_t rg_libc_class;
+extern randgen_class_t rg_seq_class;
+extern randgen_class_t rg_lcg_class;
+#ifdef PLAT_POSIX
+extern randgen_class_t rg_devrandom_class;
+#endif
+
 randgen_t* rg_create(randgen_class_t* class, uint64_t seed) {
 	randgen_t* rg;
 
@@ -295,6 +307,10 @@ bad_tsobj:
 	return NULL;
 }
 
+randgen_class_t* randgen_find(const char* class_name) {
+	return hash_map_find(&randgen_hash_map, class_name);
+}
+
 int randgen_register(module_t* mod, randgen_class_t* class) {
 	class->rg_module = mod;
 	
@@ -303,6 +319,10 @@ int randgen_register(module_t* mod, randgen_class_t* class) {
 
 int randgen_unregister(module_t* mod, randgen_class_t* class) {
 	return hash_map_remove(&randgen_hash_map, class);
+}
+
+randvar_class_t* randvar_find(const char* class_name) {
+	return hash_map_find(&randvar_hash_map, class_name);
 }
 
 int randvar_register(module_t* mod, randvar_class_t* class) {

@@ -31,10 +31,12 @@ api_tail = '''
 
 typedef struct tsobj_api tsobj_api_t;
 
-TSOBJAPI tsobj_api_t* tsobj_api_impl;
+LIBEXPORT tsobj_api_t* tsobj_get_implementation(void);
+LIBEXPORT void tsobj_set_implementation(tsobj_api_t* api_impl);
 '''
 
 function_body = ''' {
+    tsobj_api_t* tsobj_api_impl = tsobj_get_implementation();
     if(tsobj_api_impl == NULL) {
         %(retstmt)s%(retjson)s%(jsonfunc)s(%(jsonparams)s);
     }

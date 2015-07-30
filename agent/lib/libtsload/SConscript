@@ -9,8 +9,6 @@ Import('env')
 
 lib = env.Clone()
 
-lib.Macroses('LIBTSLOAD')
-
 if lib.SupportedPlatform('win'):
     lib.Append(LIBS = ['advapi32']) 
 
@@ -26,7 +24,9 @@ objects = lib.CompileSharedLibrary(Glob("rqsched/*.c") + Glob("randgen/*.c") + \
 etrace_files, man_files = env.PreprocessETrace(['workload.c'] + objects, 
                                                 target + lib['SHLIBSUFFIX'])
 
-library = lib.LinkSharedLibrary(target, objects + etrace_files)
+vlib = lib.Clone()
+library = vlib.LinkSharedLibrary(target, objects + etrace_files, versioned=True)
+vlib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 
 lib.Append(TSDOC_SPACE='tsload')
 tsdoc = [lib.DocBuilder(['#include/tsload/load/randgen.h', 'randgen.c', Glob('randgen/*.c')]),
@@ -44,5 +44,4 @@ tsdoc = [lib.DocBuilder(['#include/tsload/load/randgen.h', 'randgen.c', Glob('ra
         
 env.Append(TSDOC = tsdoc)
 
-lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 lib.InstallTarget(tgtroot, lib['INSTALL_SHARE'], man_files)

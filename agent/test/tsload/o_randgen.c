@@ -145,7 +145,7 @@ int tsload_test_main() {
 	test_valid_seed();
 	test_rg_seed_typo();
 
-	generator = rg_create(&rg_lcg_class, 0);
+	generator = rg_create(randgen_find("lcg"), 0);
 
 	test_invalid_rv_class_type();
 	test_invalid_rv_class_value();

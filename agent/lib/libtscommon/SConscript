@@ -7,8 +7,6 @@ Import('env')
 
 lib = env.Clone()
 
-lib.Macroses('LIBTSCOMMON')
-
 # dl for modules
 # pthread for thread-handling
 if lib.SupportedPlatform('posix'):
@@ -29,10 +27,10 @@ if lib.SupportedPlatform('solaris'):
 # Process PLATAPIs
 lib.PreparePlatform('include/tsload')
 
-objects = lib.CompileSharedLibrary()
-library = lib.LinkSharedLibrary(target, objects)
-
-lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
+vlib = lib.Clone()
+objects = vlib.CompileSharedLibrary()
+library = vlib.LinkSharedLibrary(target, objects, versioned=True)
+vlib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 
 lib.Append(TSDOC_SPACE='tscommon')
 tsdoc = [lib.DocBuilder(['#include/tsload/hashmap.h', 'hashmap.c']),

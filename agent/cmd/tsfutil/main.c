@@ -35,8 +35,6 @@
 #include <stdlib.h>
 
 
-LIBIMPORT char log_filename[];
-
 tsf_backend_t* backend = NULL;
 
 int command = COMMAND_CREATE;
@@ -280,9 +278,9 @@ int main(int argc, char* argv[]) {
 	int i;
 
 	parse_options_args(argc, argv);
-	strncpy(log_filename, "-", LOGFNMAXLEN);
+	setenv("TS_LOGFILE", "-", B_TRUE);
 
-	tsfile_error_msg = tsfutil_error_msg;
+	tsfile_register_error_msg_func(tsfutil_error_msg);
 
 	init();
 

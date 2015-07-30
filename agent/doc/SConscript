@@ -24,7 +24,7 @@ def ManPage(self, mdfile, manfile):
     _, section = manfile.rsplit('.')
     tgtman = PathJoin(env['INSTALL_MAN'], 'man' + section)
     
-    self.InstallTarget(tgtroot, tgtman, manpage)
+    self.InstallTarget('tsload-core', tgtman, manpage)
     
 env.AddMethod(AppendDoc)
 env.AddMethod(ManPage)

@@ -1,0 +1,16 @@
+# File with debian/ubuntu package versions. 
+#
+# Lines beginning with # are comments and being ignored. Other lines
+# have following format:
+#
+#  	v <version> <git-tag> for versions
+#
+# or
+#
+#   r <revision> <commit> for releases
+#
+# commit = HEAD should go last
+# 
+v   0.2.0-beta   0.2.0-beta
+r	1			 5705e70
+r	2			 HEAD

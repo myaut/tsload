@@ -20,8 +20,10 @@ extra_sources = []
 if lib.SupportedPlatform('win'):
     extra_sources = ['plat/win/wmi.cpp']
 
-objects = lib.CompileSharedLibrary(extra_sources)
-library = lib.LinkSharedLibrary(target, objects)
+vlib = lib.Clone()
+objects = vlib.CompileSharedLibrary(extra_sources)
+library = vlib.LinkSharedLibrary(target, objects, versioned=True)
+vlib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 
 if lib.SupportedPlatform('linux') and GetOption('lvm2'):
 	SConscript('lvm2/SConscript', 'lib')
@@ -30,7 +32,6 @@ if lib.SupportedPlatform('posix') and GetOption('zfs'):
 if lib.SupportedPlatform('solaris') and GetOption('svm'):
     SConscript('svm/SConscript', 'lib')
 
-lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
 
 lib.Append(TSDOC_SPACE='hostinfo')
 tsdoc = [lib.DocBuilder(['#include/hostinfo/hiobject.h', 'hiobject.c']),

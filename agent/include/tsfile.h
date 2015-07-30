@@ -127,14 +127,12 @@ typedef struct tsfile {
 							 offsetof(struct_type, member))
 
 typedef void (*tsfile_error_msg_func)(ts_errcode_t errcode, const char* format, ...);
-LIBIMPORT tsfile_error_msg_func tsfile_error_msg;
+LIBEXPORT void tsfile_register_error_msg_func(tsfile_error_msg_func func);
 
 #define		TSFILE_OK		   0
 #define		TSFILE_SB_FAIL	   -1
 #define 	TSFILE_DATA_FAIL   -2
 #define 	TSFILE_INVAL_RANGE -3
-
-LIBIMPORT	int tsfile_errno;
 
 /* Schema API */
 

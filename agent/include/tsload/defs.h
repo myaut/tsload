@@ -110,37 +110,6 @@ typedef enum { B_FALSE, B_TRUE } boolean_t;
 #define LIBVARIABLE 		extern
 #endif
 
-/* Correct linking of in-library variables on Windows/POSIX */ 
-#ifdef 	LIBHOSTINFO
-#define HOSTINFOAPI			LIBEXPORT
-#else
-#define HOSTINFOAPI			LIBIMPORT
-#endif
-
-#ifdef 	LIBTSLOAD
-#define TSLOADAPI			LIBEXPORT
-#else
-#define TSLOADAPI			LIBIMPORT
-#endif
-
-#ifdef 	LIBTSCOMMON
-#define TSCOMMONAPI			LIBEXPORT
-#else
-#define TSCOMMONAPI			LIBIMPORT
-#endif
-
-#ifdef 	LIBTSJSON
-#define TSJSONAPI			LIBEXPORT
-#else
-#define TSJSONAPI			LIBIMPORT
-#endif
-
-#ifdef 	LIBTSOBJ
-#define TSOBJAPI			LIBEXPORT
-#else
-#define TSOBJAPI			LIBIMPORT
-#endif
-
 /* Some functions are needed by unit tests
  * FIXME: Make this configurable
  */

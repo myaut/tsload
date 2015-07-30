@@ -63,6 +63,18 @@ extern ts_time_t tp_min_quantum;
 extern ts_time_t tp_max_quantum;
 extern int tp_max_threads;
 
+void tsload_register_error_msg_func(tsload_error_msg_func func) {
+	tsload_error_msg = func;
+}
+
+void tsload_register_workload_status_func(tsload_workload_status_func func) {
+	tsload_workload_status = func;
+}
+
+void tsload_register_requests_report_func(tsload_requests_report_func func) {
+	tsload_requests_report = func;
+}
+
 void tsobj_module_format_helper(tsobj_node_t* parent, module_t* mod) {
 	if(mod != NULL) {
 		tsobj_add_string(parent, TSOBJ_STR("module"), 

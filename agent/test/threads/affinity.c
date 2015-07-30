@@ -68,8 +68,6 @@ int test_main() {
 	thread_t threads[NUM_THREADS];
 
 	cpumask_t* thread_mask = NULL;
-	
-	strncpy(hi_obj_modpath, getenv("TS_HIMODPATH"), PATHMAXLEN);
 
 	mempool_init();
 	threads_init();
@@ -119,7 +117,6 @@ int get_first_cpu(void) {
 
 	int cpuid = -1;
 
-	hi_obj_init();
 	cpu_list = hi_cpu_list(B_FALSE);
 
 	hi_for_each_object(object, cpu_list) {
@@ -131,7 +128,6 @@ int get_first_cpu(void) {
 		}
 	}
 
-	hi_obj_fini();
 	return cpuid;
 }
 

@@ -21,6 +21,10 @@
 
 #include <string.h>
 
+#define PATH_CURDIR				"."
+#define PATH_PARENTDIR			".."
+#define PATH_SEP_LENGTH			1
+
 STATIC_INLINE int path_cmp(const char* a1, const char* a2) {
 	return _stricmp(a1, a2);
 }

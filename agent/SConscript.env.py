@@ -7,6 +7,7 @@ import traceback
 from itertools import product
 from pathutil import *
 from subsys import SubsystemList 
+from installdirs import debian_package_name
 
 from SCons.Action import CommandAction, ActionFactory
 from SCons.Node.FS import Base
@@ -85,8 +86,17 @@ def UseSubsystems(self, *subsystems):
             deps.append(lib)
 
 def InstallTarget(self, tgtroot, tgtdir, target):
-    tgtdir = Dir(PathJoin(self['PREFIX'], tgtdir))
-    install = self.Install(tgtdir, target)
+    prefix = self['PREFIX']
+    
+    if GetOption('debian_packages'):
+        prefix = PathJoin(prefix, debian_package_name(tgtroot))
+    
+    tgtdir = Dir(PathJoin(prefix, tgtdir))
+    
+    if 'SHLIBVERSION' in self and hasattr(self, 'InstallVersionedLib'):
+        install = self.InstallVersionedLib(tgtdir, target)
+    else:
+        install = self.Install(tgtdir, target)
     
     self.Alias('install', install)
     self.Alias(tgtroot, install)
@@ -130,7 +140,13 @@ def LinkProgram(self, target, objects):
     return program
 
 def LinkSharedLibrary(self, target, objects, 
-                      ctfmerge = True):
+                      ctfmerge = True, versioned = False):
+    # Add x.y.z version to a soname
+    if versioned and self.SupportedPlatform('posix'):
+        tsload_version = self['TSVERSION']
+        shlib_version = tsload_version[:tsload_version.index('-')]
+        self['SHLIBVERSION'] = shlib_version
+    
     library = self.SharedLibrary(target, objects)
     
     if self['DEBUG'] and ctfmerge and self.SupportedPlatform('solaris') and self['CTFMERGE']:
@@ -166,7 +182,8 @@ def Module(self, mod_type, mod_name, etrace_sources = []):
         etrace_files.extend(etrace_src_files)
         man_files.extend(man_src_files)
     
-    module = mod.LinkSharedLibrary(mod_name, modobjs + etrace_files)
+    module = mod.LinkSharedLibrary(mod_name, modobjs + etrace_files, 
+                                   versioned = False)
     
     mod_install_dirs = { 'load': mod['INSTALL_MOD_LOAD'] }
     

@@ -40,8 +40,6 @@
 
 #define PATHMAXPARTS   32
 
-TSCOMMONAPI const char* path_curdir;
-
 /**
  * Temporary storage for path splitting operations
  */
@@ -76,7 +74,7 @@ STATIC_INLINE const char* path_dirname(path_split_iter_t* iter, const char* path
 
 	dirname = path_split_next(iter);
 	if(dirname == NULL)
-		return path_curdir;
+		return PATH_CURDIR;
 
 	return dirname;
 }

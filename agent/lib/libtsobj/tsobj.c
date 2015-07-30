@@ -33,6 +33,18 @@ static thread_key_t		tsobj_error;
 static thread_mutex_t	tsobj_error_mutex;
 static list_head_t		tsobj_error_head;
 
+void tsobj_register_error_msg_func(tsobj_error_msg_func func) {
+	tsobj_error_msg = func;
+}
+
+tsobj_api_t* tsobj_get_implementation(void) {
+	return tsobj_api_impl;
+}
+
+void tsobj_set_implementation(tsobj_api_t* api_impl) {
+	tsobj_api_impl = api_impl;
+}
+
 int tsobj_set_error_va(int error, const char* fmt, va_list va) {
 	va_list va1;
 	va_list va2;
@@ -117,7 +129,7 @@ int tsobj_init(void) {
 	list_head_init(&tsobj_error_head, "tsobj_error_head");
 
 	/* Promote errors from TSJSON to TSObj */
-	json_error_msg = tsobj_set_error_va;
+	json_register_error_msg_func(tsobj_set_error_va);
 
 	return 0;
 }

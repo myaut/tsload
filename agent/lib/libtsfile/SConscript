@@ -6,7 +6,8 @@ Import('env')
 lib = env.Clone()
 lib.UseSubsystems('log', 'mempool', 'json')
 
-objects = lib.CompileSharedLibrary()
-library = lib.LinkSharedLibrary(target, objects)
+vlib = lib.Clone()
+objects = vlib.CompileSharedLibrary()
+library = vlib.LinkSharedLibrary(target, objects, versioned=True)
 
-lib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)
+vlib.InstallTarget(tgtroot, lib['INSTALL_LIB'], library)

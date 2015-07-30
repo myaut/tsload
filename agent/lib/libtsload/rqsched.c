@@ -15,6 +15,16 @@
 DECLARE_HASH_MAP_STRKEY(rqsvar_hash_map, rqsvar_class_t, RQSVARHASHSIZE, rqsvar_name, rqsvar_next, RQSVARHASHMASK);
 DECLARE_HASH_MAP_STRKEY(rqsched_hash_map, rqsched_class_t, RQSVARHASHSIZE, rqsched_name, rqsched_next, RQSVARHASHMASK);
 
+extern rqsched_class_t rqsched_simple_class;
+extern rqsched_class_t rqsched_iat_class;
+extern rqsched_class_t rqsched_think_class;
+
+extern rqsvar_class_t rqsvar_exponential_class;
+extern rqsvar_class_t rqsvar_uniform_class;
+extern rqsvar_class_t rqsvar_erlang_class;
+extern rqsvar_class_t rqsvar_normal_class;
+
+
 /**
  * #### Checking correctness of request scheduling with R
  * 
@@ -89,7 +99,7 @@ int tsobj_rqsched_proc_randgen(tsobj_node_t* node, const char* param, randgen_t*
 		}
 	}
 	else {
-		*p_randgen = rg_create(&rg_lcg_class, tm_get_clock());
+		*p_randgen = rg_create(randgen_find("lcg"), tm_get_clock());
 	}
 
 	return RQSCHED_TSOBJ_OK;
@@ -265,6 +275,10 @@ int rqsvar_unregister(module_t* mod, rqsvar_class_t* rqsvar_class) {
 	return hash_map_remove(&rqsvar_hash_map, rqsvar_class);
 }
 
+rqsched_class_t* rqsched_find(const char* class_name) {
+	return hash_map_find(&rqsched_hash_map, class_name);
+}
+
 int rqsched_register(module_t* mod, rqsched_class_t* rqs_class) {
 	rqs_class->rqsched_next = NULL;
 	rqs_class->rqsched_module = mod;
@@ -277,6 +291,11 @@ int rqsched_unregister(module_t* mod, rqsched_class_t* rqs_class) {
 }
 
 int rqsched_init(void) {
+	rqsvar_exponential_class.rqsvar_rvclass = randvar_find("exponential");
+	rqsvar_erlang_class.rqsvar_rvclass = randvar_find("erlang");
+	rqsvar_normal_class.rqsvar_rvclass = randvar_find("normal");
+	rqsvar_uniform_class.rqsvar_rvclass = randvar_find("uniform");
+	
 	hash_map_init(&rqsvar_hash_map, "rqsvar_hash_map");
 	rqsvar_register(NULL, &rqsvar_exponential_class);
 	rqsvar_register(NULL, &rqsvar_erlang_class);

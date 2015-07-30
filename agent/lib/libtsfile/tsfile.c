@@ -69,9 +69,13 @@ extern int tsfile_nodes_count;
  * use json_tsfile_put()/json_tsfile_put_array() functions instead.
  *
  * Library may be used in both agent and standalone context, but you need to override
- * tsfile_error_msg function pointer.
+ * tsfile_error_msg function pointer with tsfile_register_error_msg_func() call.
  *
  * NOTE: superblocks are located in same disk block, so multiple copies are useless */
+
+void tsfile_register_error_msg_func(tsfile_error_msg_func func) {
+	tsfile_error_msg = func;
+}
 
 static tsfile_t* tsfile_open_file(const char* filename, boolean_t create) {
 	tsfile_t* file = NULL;

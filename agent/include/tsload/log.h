@@ -34,8 +34,7 @@
 #define LOG_SOURCE ""
 #endif
 
-#define LOGFNMAXLEN 	128
-#define LOGMAXSIZE 		2 * 1024 * 1024
+#define LOGMAXSIZE 			2 * 1024 * 1024
 #define LOG_MAX_BACKTRACE	12
 
 /**

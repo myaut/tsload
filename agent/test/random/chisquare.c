@@ -211,7 +211,7 @@ boolean_t chisquare_test(distribution_t* d, randvar_t* rv) {
 }
 
 void test_uniform(void) {
-	randvar_t* rv_uniform = rv_create(&rv_uniform_class, rg);
+	randvar_t* rv_uniform = rv_create(randvar_find("uniform"), rg);
 
 	puts("Uniform test\n");
 
@@ -220,7 +220,7 @@ void test_uniform(void) {
 }
 
 void test_exponential(distribution_t* d, double rate) {
-	randvar_t* rv_exponential = rv_create(&rv_exponential_class, rg);
+	randvar_t* rv_exponential = rv_create(randvar_find("exponential"), rg);
 	rv_set_double(rv_exponential, "rate", rate);
 
 	printf("Exponential test with rate=%f\n", rate);
@@ -230,7 +230,7 @@ void test_exponential(distribution_t* d, double rate) {
 }
 
 void test_normal(distribution_t* d, double mean, double stddev) {
-	randvar_t* rv_normal = rv_create(&rv_normal_class, rg);
+	randvar_t* rv_normal = rv_create(randvar_find("normal"), rg);
 	rv_set_double(rv_normal, "mean", mean);
 	rv_set_double(rv_normal, "stddev", stddev);
 
@@ -241,7 +241,7 @@ void test_normal(distribution_t* d, double mean, double stddev) {
 }
 
 void test_erlang(distribution_t* d, int shape, double rate) {
-	randvar_t* rv_erlang = rv_create(&rv_erlang_class, rg);
+	randvar_t* rv_erlang = rv_create(randvar_find("erlang"), rg);
 	rv_set_int(rv_erlang, "shape", shape);
 	rv_set_double(rv_erlang, "rate", rate);
 
@@ -264,7 +264,9 @@ void test_rg(randgen_class_t* rg_class, const char* rg_class_name) {
 
 int test_main(void) {
 	/* Test all distributions with libc RG */
-	rg = rg_create(&rg_libc_class, tm_get_clock());
+	randgen_init();
+	
+	rg = rg_create(randgen_find("libc"), tm_get_clock());
 
 	test_uniform();
 
@@ -280,12 +282,14 @@ int test_main(void) {
 
 	/* Test other RGs such as lcg, devrandom, etc. */
 
-	test_rg(&rg_lcg_class, "lcg");
+	test_rg(randgen_find("lcg"), "lcg");
 
 #ifdef PLAT_POSIX
-	test_rg(&rg_devrandom_class, "devrandom");
+	test_rg(randgen_find("devrandom"), "devrandom");
 #endif
 
+	randgen_fini();
+	
 	return 0;
 }
 

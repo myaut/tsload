@@ -196,10 +196,12 @@ class TestRunner(Thread):
         test.expect = cfg.getint('test', 'expect')
         test.expect_arg = cfg.getint('test', 'expect_arg')
         
+        test.is_dist = cfg.getboolean('test', 'is_dist')
+        
         # Binaries are parsed as-is
         test.libs = [v for n, v in cfg.items('libs')]
-        test.bins = [v for n, v in cfg.items('bins')]
         test.mods = [v for n, v in cfg.items('mods')]
+        test.bins = [v for n, v in cfg.items('bins')]
         
         test.uses = self.read_uses(cfg)
         
@@ -270,6 +272,20 @@ class TestRunner(Thread):
         if log_copy:
             self.copy_log += '%s -> %s chmod:%s rm:%s\n' % (fn, dest_path, chmod, args.get('remove'))
     
+    def setup_versioned_libs(self, dest_dir, libs):
+        if sys.platform == 'win32':
+            return
+        
+        for libfn in libs:
+            libname = os.path.basename(libfn)
+            liblink = libname
+            
+            while not liblink.endswith('.so') and liblink.count('.') > 1:
+                liblink = liblink[:liblink.rindex('.')]
+                
+                os.symlink(os.path.join(dest_dir, libname),
+                           os.path.join(dest_dir, liblink))
+    
     def _prepare_test_dir(self, test):
         self.copy_log = ''
         
@@ -279,14 +295,17 @@ class TestRunner(Thread):
             os.mkdir(self.lib_dir)
             os.mkdir(self.bin_dir)
         
-        self.copy_test_files(self.lib_dir, test.libs)  
-        self.copy_test_files(self.bin_dir, test.bins)
+        if not test.is_dist:
+            self.copy_test_files(self.lib_dir, test.libs)  
+            self.setup_versioned_libs(self.lib_dir, test.libs)
+        
+            self.copy_test_files(self.bin_dir, test.bins)
+            
+            os.mkdir(self.mod_dir)
+            if test.mods:
+                self.copy_test_files(self.mod_dir, test.mods)
         
         self.copy_test_files(self.test_dir, test.uses, log_copy=True)
-        
-        os.mkdir(self.mod_dir)
-        if test.mods:            
-            self.copy_test_files(self.mod_dir, test.mods)
     
     def prepare_test_dir(self, test):
         ''' Creates necessary directories in test directory 
@@ -326,6 +345,11 @@ class TestRunner(Thread):
         #
         # To prevent this, we will do all the copying in a forked process, 
         # which will die and closes all copied files completely.
+        
+        # Flush any data in standard streams so it won't be copied into forked process
+        sys.stdout.flush()
+        sys.stderr.flush()
+        
         rpipe, wpipe = os.pipe()
         
         pid = os.fork()
@@ -473,15 +497,20 @@ class TestRunner(Thread):
         # Prepare test environment and generate command for it
         test = self.read_test_config(cfg_name)
         test_bin = os.path.basename(test.bins[0])
-        test_env = self.generate_env()
         
+        if test.is_dist:
+            # Distribution-wide tests should work with default environment
+            test_env = os.environ
+        else:
+            test_env = self.generate_env()
+               
         self.prepare_test_dir(test)
         
-        use_shell = False
-        command = os.path.join(self.bin_dir, test_bin)
+        command = test_bin
         
+        if not test.is_dist:
+            command = os.path.join(self.bin_dir, test_bin)
         if test.args is not None:
-            use_shell = True
             command = '%s %s' % (command, test.args)
         
         # Start a test along with a timer that would check
@@ -492,7 +521,7 @@ class TestRunner(Thread):
                      stderr = PIPE,
                      cwd = self.test_dir,
                      env = test_env,
-                     shell = use_shell)
+                     shell = test.is_dist or test.args)
         proc.timed_out = False
         
         timer = Timer(test.maxtime, self.stop_test, args = [proc])

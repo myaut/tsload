@@ -15,6 +15,10 @@ def Stringify(s):
 AddOption('--prefix',  dest='prefix', action="store", default = '',
           metavar='PREFIX', help='Installation prefix') 
 
+AddOption('--debian-packages',  dest='debian_packages', action="store_true", default=False,
+          help=('Build debian packages -- append its name to prefix'
+                'Do not use this option directly')) 
+
 # Define installation prefixes
 if not env['PREFIX']:
     env['PREFIX'] = GetOption('prefix')

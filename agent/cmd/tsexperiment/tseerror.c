@@ -194,9 +194,9 @@ int tse_experr_to_cmderr(unsigned experr) {
 int tse_error_init(void) {
 	mutex_init(&tse_output_lock, "output_lock");
 
-	tsload_error_msg = tse_tsload_error_msg;
-	tsfile_error_msg = tse_tsfile_error_msg;
-	tsobj_error_msg = tse_tsobj_error_msg;
+	tsload_register_error_msg_func(tse_tsload_error_msg);
+	tsfile_register_error_msg_func(tse_tsfile_error_msg);
+	tsobj_register_error_msg_func(tse_tsobj_error_msg);
 
 	return 0;
 }

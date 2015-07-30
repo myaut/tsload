@@ -48,7 +48,7 @@ int rv_init_blksz_exp(randvar_t* rv) {
 	rvb->min_blksz = 512;
 	rvb->max_blksz = 16 * SZ_MB;
 	
-	rvb->rv = rv_create(&rv_exponential_class, rv->rv_generator);
+	rvb->rv = rv_create(randvar_find("exponential"), rv->rv_generator);
 	
 	if(rvb->rv == NULL) {
 		mp_free(rvb);

@@ -122,7 +122,8 @@ DECLARE_HASH_MAP_STRKEY(workload_hash_map, workload_t, WLHASHSIZE, wl_name, wl_h
 static atomic_t wl_count = (atomic_t) 0l;
 ts_time_t wl_poll_interval = 200 * T_MS;
 
-extern struct rqsched_class rqsched_simple_class;
+extern tsload_workload_status_func tsload_workload_status;
+extern tsload_requests_report_func tsload_requests_report;
 
 /**
  * wl_create - create new workload: allocate memory and initialize fields
@@ -905,8 +906,8 @@ workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const 
 		ret = tsobj_rqsched_proc(rqsched_params, wl);
 	}
 	else {
-		wl->wl_rqsched_class = &rqsched_simple_class;
-		wl->wl_rqsched_private = rqsched_create(&rqsched_simple_class);
+		wl->wl_rqsched_class = rqsched_find("simple");
+		wl->wl_rqsched_private = rqsched_create(wl->wl_rqsched_class);
 	}
 
 	if(ret != RQSCHED_TSOBJ_OK) {

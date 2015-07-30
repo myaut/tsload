@@ -33,6 +33,8 @@
 #include <tsload/load/workload.h>
 #include <tsload.h>
 
+#include <errormsg.h>
+
 #include <assert.h>
 
 

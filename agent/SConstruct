@@ -120,7 +120,8 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
 env['TSVERSION'] = '0.2.0-beta'
-env['TSAUTHOR'] = 'Sergey Klyaus [myautneko@gmail.com]'
+env['TSAUTHOR'] = 'Sergey Klyaus'
+env['TSAUTHOREMAIL'] = 'myautneko@gmail.com'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
 
 # this variable is a hint for build system that we 
@@ -236,13 +237,13 @@ if 'tests' in BUILD_TARGETS and 'systests' in BUILD_TARGETS:
     raise StopError('Unit and system testing is mutually exclusibe')
 
 if 'tests' in BUILD_TARGETS:
-    env['TEST_MODE_INT'] = False
+    env['TEST_MODE_INT'] = 'tests'
     env['TEST_SUITE'] = File(PathJoin('test', 'test.list'))
         
     SConscript(PathJoin('test', 'SConscript'), 'env',
                variant_dir = PathJoin('#build', 'test'))
-elif 'systests' in BUILD_TARGETS:
-    env['TEST_MODE_INT'] = True
+elif 'systests' in BUILD_TARGETS or 'disttests' in BUILD_TARGETS:
+    env['TEST_MODE_INT'] = 'disttests' if 'disttests' in BUILD_TARGETS else 'systests'
     env['TEST_SUITE'] = File(PathJoin('test', 'systest.list'))
         
     SConscript(PathJoin('test', 'SConscript'), 'env',

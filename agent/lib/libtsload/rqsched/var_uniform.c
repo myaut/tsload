@@ -43,7 +43,7 @@ tsload_param_t rqsvar_uniform_params[] = {
 
 rqsvar_class_t rqsvar_uniform_class = {
 	AAS_CONST_STR("uniform"),
-	&rv_uniform_class,
+	NULL,
 	rqsvar_uniform_params,
 	
 	SM_INIT(.rqsvar_init, NULL),

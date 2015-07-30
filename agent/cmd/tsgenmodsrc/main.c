@@ -35,8 +35,6 @@
 
 #include <tsload/plat/posixdecl.h>
 
-LIBIMPORT char log_filename[];
-
 char modinfo_dir[PATHMAXLEN];
 char modinfo_path[PATHMAXLEN];
 
@@ -573,7 +571,7 @@ int main(int argc, char* argv[]) {
 
 	deduce_paths();
 
-	strncpy(log_filename, "-", LOGFNMAXLEN);
+	setenv("TS_LOGFILE", "-", B_TRUE);
 	init();
 
 	modvar_set(modvar_create("TSLOADPATH"), root_path);

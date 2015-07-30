@@ -44,7 +44,7 @@ tsload_param_t rqsvar_normal_params[] = {
 
 rqsvar_class_t rqsvar_normal_class = {
 	AAS_CONST_STR("normal"),
-	&rv_normal_class,
+	NULL,
 	rqsvar_normal_params,
 	
 	SM_INIT(.rqsvar_init, NULL),

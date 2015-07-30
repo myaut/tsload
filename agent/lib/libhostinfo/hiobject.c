@@ -103,7 +103,7 @@
 extern boolean_t hi_linux_lvm2;
 #endif
 
-char hi_obj_modpath[PATHMAXLEN];
+char* hi_obj_modpath;
 
 hi_obj_subsys_ops_t cpu_ops = {
 	hi_cpu_probe,
@@ -469,6 +469,11 @@ int hi_obj_init(void) {
 	struct stat st;
 
 	hi_obj_subsys_t* subsys = NULL;
+	
+	hi_obj_modpath = getenv("TS_HIMODPATH");
+	if(hi_obj_modpath == NULL) {
+		return 1;
+	}
 	
 	/* Check if directory with helpers exist (should be INSTALL_LIB) */
 	if(stat(hi_obj_modpath, &st) == -1 || !S_ISDIR(st.st_mode)) {

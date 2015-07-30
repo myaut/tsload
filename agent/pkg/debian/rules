@@ -1,0 +1,44 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# export DH_VERBOSE=1
+
+DEB_SCONS_OPTIONS := --verbose-build=cmdline --update-build 
+DEB_TEST_OPTIONS := 
+
+# Installation options
+DEB_DIRECTORIES := --bindir=usr/bin --libdir=usr/lib --etcdir=etc --sharedir=usr/share/tsload
+DEB_DIRECTORIES += --includedir=usr/include --mandir=usr/share/man
+DEB_DIRECTORIES += --loadmoddir=usr/lib/tsload/mod-load/ --vardir=var/lib/tsload
+DEB_SCONS_INSTALL_OPTIONS := --prefix=$(CURDIR)/debian --debian-packages $(DEB_DIRECTORIES) install
+
+ifneq (,$(findstring parallel,$(DEB_BUILD_OPTIONS)))
+       PROCS=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+       DEB_SCONS_OPTIONS += -j$(PROCS)
+       DEB_TEST_OPTIONS += --runner-threads=$(PROCS)
+endif
+
+override_dh_clean:
+	scons $(DEB_SCONS_OPTIONS) -c
+	find $(CURDIR)/ -name "*.pyc" -delete
+	rm -rf $(CURDIR)/debian/tsload/
+	rm -rf $(CURDIR)/.sconf_temp/
+	rm -rf $(CURDIR)/build/
+	rm -f $(CURDIR)/.sconsign.dblite
+	rm -f $(CURDIR)/config.log
+	dh_clean
+	
+override_dh_auto_build:
+	scons $(DEB_SCONS_OPTIONS)
+	
+override_dh_auto_test:
+	scons $(DEB_TEST_OPTIONS) $(DEB_SCONS_OPTIONS) tests
+	# Don't run systests here, instead install binary package and run distests
+	# scons $(DEB_TEST_OPTIONS) $(DEB_SCONS_OPTIONS) systests
+
+override_dh_auto_install:
+	scons $(DEB_SCONS_OPTIONS) $(DEB_SCONS_INSTALL_OPTIONS)
+	sh debian/solink-fix.sh
+	
+%:
+	dh $@

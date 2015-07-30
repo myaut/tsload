@@ -9,6 +9,8 @@ from ConfigParser import ConfigParser
 
 import paramiko as sshclient
 import time
+import subprocess
+import tempfile
 
 # Shared with SConscript.install.py
 sys.path.append(os.path.join(os.path.dirname(__file__), 'build'))
@@ -24,13 +26,18 @@ class Repository(object):
         - repo_path - absolute path to TSLoad source repository
     '''
     class File(object):
-        def __init__(self, path, abspath):
+        def __init__(self, path, abspath, always_copy=False):
             self.path = path
+            self.abspath = abspath
+            self.always_copy = always_copy
             self.stat = os.stat(abspath)
         
         def newer(self, stat):
             '''Checks if local file is newer than remote file
             identified by stat structure'''
+            if self.always_copy:
+               return True 
+            
             # Truncate to int because paramiko provides integers 
             # in stat structure. Otherwise, file would be always 
             # newer than remote one 
@@ -119,7 +126,8 @@ class BuildServer(object):
     PKG_DIR = 'pkg'
     
     def __init__(self, name, hostname, username, repodir, plat, mach, 
-                 port=22, opts='', pubkey='', password='', scons='scons'):
+                 port=22, opts='', pubkey='', password='', scons='scons',
+                 debian=None):
         self.name = name
         
         self.hostname = hostname
@@ -135,6 +143,8 @@ class BuildServer(object):
         
         self.scons = scons        
         self.opts = opts
+        
+        self.debian = debian
         
         self.env = {}
         self._setup_env()
@@ -212,7 +222,8 @@ class BuildServer(object):
             stat = self._remote_stat(file.path)
             
             if stat is None or file.newer(stat):
-                localpath = os.path.join(repository.repo_path, file.path)
+                # localpath = os.path.join(repository.repo_path, file.path)
+                localpath = file.abspath
                 remotepath = os.path.join(self.repodir, file.path)
                 
                 if os.path.isdir(localpath):
@@ -220,7 +231,7 @@ class BuildServer(object):
                         self.sftp.mkdir(remotepath)
                     continue
                 
-                self._log(BuildServer.LOG_FILE, '\t%s', file.path)
+                self._log(BuildServer.LOG_FILE, '\t%s -> %s\n', localpath, remotepath)
                 
                 self.sftp.put(localpath, remotepath)
                 self.sftp.utime(remotepath, file.get_times())
@@ -336,6 +347,30 @@ class BuildServer(object):
                            self.sftp.listdir(buildpath))
         
         return filenames
+    
+    def deb(self, repo_path):
+        # Prepare server for building debian packages
+        if not self.debian:
+            raise BuildError("Unknown debian distribution for host %s" % self.hostname)
+        
+        repository = Repository(os.path.join(repo_path, 'pkg', 'debian'))
+        self.repodir = os.path.join(self.repodir, 'debian')
+        
+        # Generate changelog and use it as "virtual repository file"
+        changelog = tempfile.NamedTemporaryFile()
+        cmd = '{exe} {repo}/tools/debchangelog.py {debian} {repo} > {changelog}'.format(
+                       exe=sys.executable, repo=repo_path, debian=self.debian, 
+                       changelog=changelog.name) 
+        self._log(BuildServer.LOG_ALL, 'Generating changelog with %s\n', cmd)
+        if subprocess.call(cmd, shell=True) != 0:
+            raise BuildError('Failed to generate debian changelog')
+        
+        repository.filelist.append(Repository.File('changelog', 
+                                                   changelog.name))
+        
+        self.copy(repository)
+        
+        
 
 class BuildManager(object):
     def __init__(self, config_path):
@@ -388,12 +423,16 @@ class BuildManager(object):
             
             server = self.servers[name]
             
-            server.connect()
-            
-            if not 'nocopy' in targets:
-                server.copy(repository)
-            
             try: 
+                server.connect()
+                
+                if not 'nocopy' in targets:
+                    server.copy(repository)
+                
+                if 'deb' in targets:
+                    server.deb(repository.repo_path)
+                    continue
+                
                 if 'clean' in targets:
                     server.build(self.global_opts, '-c')
                 
@@ -419,6 +458,8 @@ class BuildManager(object):
                 print >> sys.stderr, str(be)
             except TestRunError as tre:
                 print >> sys.stderr, str(tre)
+            except sshclient.ssh_exception.SSHException as sshe:
+                print >> sys.stderr, str(sshe)
         
 # main     
 

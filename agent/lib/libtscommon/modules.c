@@ -39,7 +39,7 @@
 /**
  * Module search path
  */
-LIBEXPORT char mod_search_path[MODPATHLEN];
+static char* mod_search_path;
 
 mp_cache_t mod_cache;
 
@@ -47,7 +47,7 @@ mp_cache_t mod_cache;
  * TODO: Replace with hash_map? */
 module_t* first_module = NULL;
 
-LIBEXPORT int mod_type = -1;
+int mod_type = MOD_TSLOAD;
 
 module_t* mod_load(const char* path_name);
 void mod_destroy(module_t* mod);
@@ -277,6 +277,10 @@ int mod_error(module_t* mod, char* fmtstr, ...) {
 }
 
 int mod_init(void) {
+	mod_search_path = getenv("TS_MODPATH");
+	if(mod_search_path == NULL)
+		return 1;
+	
 	mp_cache_init(&mod_cache, module_t);
 
 	load_modules();

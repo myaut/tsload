@@ -23,6 +23,7 @@
 #include <tsload/log.h>
 #include <tsload/threads.h>
 #include <tsload/tuneit.h>
+#include <tsload/pathutil.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -34,14 +35,14 @@
 #include <sys/stat.h>
 
 
-LIBEXPORT char log_filename[LOGFNMAXLEN];
+static char* log_filename;
 
 /**
  * By default, debug and tracing are disabled
  * set log_debug or log_trace to 1 if you want to enable it
  * */
-LIBEXPORT boolean_t log_debug = B_FALSE;
-LIBEXPORT boolean_t log_trace = B_FALSE;
+boolean_t log_debug = B_FALSE;
+boolean_t log_trace = B_FALSE;
 
 boolean_t log_initialized = B_FALSE;
 
@@ -61,7 +62,7 @@ const char* log_severity[] =
  * if logfile size is greater than LOGMAXSIZE (2M) by default,
  * it moves logfile to .old file*/
 int log_rotate() {
-	char old_log_filename[LOGFNMAXLEN + 4];
+	char old_log_filename[PATHMAXLEN];
 	struct stat log_stat;
 	struct stat old_log_stat;
 
@@ -86,7 +87,11 @@ int log_rotate() {
 
 int log_init() {
 	int ret;
-
+	
+	log_filename = getenv("TS_LOGFILE");
+	if(log_filename == NULL)
+		return 1;
+	
 	mutex_init(&log_mutex, "log_mutex");
 
 	if(getenv("TS_DEBUG") != NULL) {
@@ -105,13 +110,15 @@ int log_init() {
 	}
 	else {
 		if((ret = log_rotate()) != 0)
-			return ret;
+			return 0;
 
 		log_file = fopen(log_filename, "a");
 
 		if(!log_file) {
-			fprintf(stderr, "Couldn't open log file '%s'\n", log_filename);
-			return -1;
+			fprintf(stderr, "Couldn't open log file '%s', may be you need "
+					"to set 'TS_LOGFILE' environment variable?\n", log_filename);
+			/* FIXME: Do not fail here, log_file will be NULL, which is OK by now */
+			return 0;
 		}
 	}
 
@@ -121,7 +128,8 @@ int log_init() {
 }
 
 void log_fini() {
-	fclose(log_file);
+	if(log_initialized)
+		fclose(log_file);
 
 	mutex_destroy(&log_mutex);
 }

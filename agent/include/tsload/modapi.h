@@ -32,7 +32,6 @@
  * Module types
  */
 #define MOD_TSLOAD		1
-#define MOD_MONITOR		2
 
 #define MODEXPORT		LIBEXPORT
 

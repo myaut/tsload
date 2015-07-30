@@ -51,7 +51,7 @@
  * May be called multiple times during one call
  */
 typedef void (*tsload_error_msg_func)(ts_errcode_t code, const char* format, ...);
-LIBIMPORT tsload_error_msg_func tsload_error_msg;
+LIBEXPORT void tsload_register_error_msg_func(tsload_error_msg_func func);
 
 /**
  * Hook for reporting workload statuses
@@ -60,13 +60,13 @@ typedef void (*tsload_workload_status_func)(const char* wl_name,
 					 					    int status,
 										    long progress,
 										    const char* config_msg);
-LIBIMPORT tsload_workload_status_func tsload_workload_status;
+LIBEXPORT void tsload_register_workload_status_func(tsload_workload_status_func func);
 
 /**
  * Hook for reporting requests and it's params
  */
 typedef void (*tsload_requests_report_func)(list_head_t* rq_list);
-LIBIMPORT tsload_requests_report_func tsload_requests_report;
+LIBEXPORT void tsload_register_requests_report_func(tsload_requests_report_func func);
 
 /**
  * TSLoad parameter types. Used for describing complex parameters

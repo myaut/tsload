@@ -29,8 +29,6 @@
 
 #include <tsload/obj/obj.h>
 
-HOSTINFOAPI char hi_obj_modpath[];
-
 struct hi_object_header;
 
 typedef enum {
