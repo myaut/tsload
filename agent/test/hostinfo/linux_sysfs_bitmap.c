@@ -27,13 +27,16 @@ extern int hi_linux_sysfs_parsebitmap(const char* str, uint32_t* bitmap, int len
 
 int test_main() {
 	uint32_t bitmap;
-
+	
+	bitmap = 0;
 	hi_linux_sysfs_parsebitmap("1", &bitmap, 1);
 	assert(bitmap == 0x2);
-
+	
+	bitmap = 0;
 	hi_linux_sysfs_parsebitmap("0-7", &bitmap, 1);
 	assert(bitmap == 0xff);
-
+	
+	bitmap = 0;
 	hi_linux_sysfs_parsebitmap("0-7,9", &bitmap, 1);
 	assert(bitmap == 0x2ff);
 

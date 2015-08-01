@@ -106,11 +106,11 @@ void t_init(thread_t* thread, void* arg,
 
 	logmsg(LOG_DEBUG, "Created thread %d '%s'", thread->t_id, thread->t_name);
 
-	plat_thread_init(&thread->t_impl, (void*) thread, start);
-	plat_tsched_init(thread);
-	
 	plat_mutex_init(&thread->t_mutex, B_FALSE);
 	plat_cv_init(&thread->t_condvar);
+	
+	plat_thread_init(&thread->t_impl, (void*) thread, start);
+	plat_tsched_init(thread);
 }
 
 /**

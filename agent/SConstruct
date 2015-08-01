@@ -16,6 +16,8 @@ from pathutil import *
 # module cache with required modules from root SConstruct
 import tstest, ordereddict
 
+import symlink23
+
 # ------------------------
 # ENVIRONMENT HELPERS
 

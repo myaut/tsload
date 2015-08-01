@@ -13,31 +13,53 @@ It is also crossplatform and currently supports Linux, Windows and Solaris.
 
 ### Documentation 
 
-Detailed documentation may be found here: [www.tune-it.ru/consulting/performance-analysis/tsload/doc](http://www.tune-it.ru/consulting/performance-analysis/tsload/doc)
+Detailed documentation may be found here: [myaut.github.io/tsload/][http://myaut.github.io/tsload/]
+
+### Installing TSLoad
+
+TSLoad is available as Ubuntu PPA:
+    
+    $ sudo add-apt-repository ppa:myaut/tsload
+    $ sudo apt-get install tsload tsload-dev tsload-doc
 
 ### Building TSLoad
 
 For TSLoad you will need the following prerequisites:
 * Python 2.6 or 2.7 (for SCons build system and various build scripts) - [www.python.org](http://www.python.org/).    
     Also you will need to install pywin32 extensions on Windows: [sourceforge.net/projects/pywin32/](http://sourceforge.net/projects/pywin32/)
-* SCons build  2.1 or newer - [www.scons.org](http://www.scons.org/).    
+* SCons build  2.3.1 or newer - [www.scons.org](http://www.scons.org/).    
 * Compiler and linker
     * For Unix and Linux - GNU C/C++ Compiler 4.4. Proprietary Unix compilers such as IBM XLc and SunCC are currenly **not** supported
     * For Windows - Visual Studio 2010 Express (MinGW is not tested)
     
 Then build a TSLoad:
-$ scons --update-build --prefix=/opt/tsload install
+    
+    $ scons --update-build --prefix=/opt/tsload install
+
 if option --prefix is ommitted, binary files is placed under build/tsload-<release> directory
 
 To build TSLoad documentation, use the following command:
-$ scons --doc-format=html doc
+    
+    $ scons --doc-format=html doc
+
 Output documentation is placed under build/doc directory
 
-More detailed information on building TSLoad is available in documentation.
+More detailed information on building TSLoad is available in documentation: [Building TSLoad][http://myaut.github.io/tsload/intro/building.html]
+
+### Example using TSLoad
+
+Now try to run some workloads with it:
+    
+    $ cp -r /var/lib/tsload/sample tsload-sample
+    $ tsexperiment -e tsload-sample/ run
+    
+(If you manually built TSLoad, sample directory may be in /opt/tsload/var/tsload/sample).
+
+Currently, TSLoad is shipped with `busy_wait` for generating CPU busy loops, `simpleio` for disk and file I/O workloads and `http` modules. You can create your own modules with it.    
 
 ### Authors and copyrights
 
 TSLoad was developed by Sergey Klyaus (Tune-IT/ITMO University)
 Idea, architecture and design were contributed by Boris Timchenko and Dmitry Ivanov (both ITMO University)
 
-Contact us: myaut@cs.ifmo.ru or myaut@tune-it.ru
+Contact us: myautneko@gmail.com

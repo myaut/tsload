@@ -6,6 +6,8 @@ Build-Depends:
  uuid-dev,
  libcurl4-openssl-dev,
  scons
+Section: misc
+Priority: optional
 Standards-Version: 3.9.5
 Vcs-Git: git://github.com/myaut/tsload.git
 Vcs-Browser: https://github.com/myaut/tsload

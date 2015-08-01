@@ -35,11 +35,18 @@
 int sem = 0;
 
 thread_mutex_t mtx;
+thread_cv_t cv;
+boolean_t start = B_FALSE;
 
 thread_result_t test_mutex(thread_arg_t arg) {
 	THREAD_ENTRY(arg, void, unused);
 	int step = 0;
 
+	mutex_lock(&mtx);
+	while(!start)
+		cv_wait(&cv, &mtx);
+	mutex_unlock(&mtx);
+	
 	while(step++ < STEPS) {
 		mutex_lock(&mtx);
 
@@ -64,8 +71,14 @@ int test_main() {
 	for(tid = 0; tid < NUM_THREADS; ++tid) {
 		t_init(&threads[tid], NULL, test_mutex,
 					"tmutex-%d", tid);
+		t_wait_start(&threads[tid]);
 	}
-
+	
+	mutex_lock(&mtx);
+	start = B_TRUE;
+	cv_notify_all(&cv);
+	mutex_unlock(&mtx);
+	
 	for(tid = 0; tid < NUM_THREADS; ++tid) {
 		t_join(&threads[tid]);
 		t_destroy(&threads[tid]);
