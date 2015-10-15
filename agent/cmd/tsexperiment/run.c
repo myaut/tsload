@@ -27,6 +27,7 @@
 #include <tsload/time.h>
 #include <tsload/mempool.h>
 #include <tsload/tuneit.h>
+#include <tsload/signal.h>
 
 #include <tsload.h>
 #include <tsload/load/workload.h>
@@ -41,11 +42,13 @@
 #include <stdarg.h>
 #include <assert.h>
 
+ts_time_t tse_run_intr_poll_interval = 1 * T_SEC;
 
 ts_time_t tse_run_wl_start_delay = 1 * T_SEC;
 
 experiment_t* running = NULL;
 static thread_mutex_t	running_lock;
+boolean_t interrupted = B_FALSE;
 
 int tse_experiment_set(experiment_t* exp, const char* option);
 int tse_prepare_experiment(experiment_t* exp, experiment_t* base, experiment_t* root);
@@ -66,9 +69,20 @@ static const char* tse_run_wl_status_msg(wl_status_t wls) {
 		return "running";
 	case WLS_DESTROYED:
 		return "destroyed";
+    case WLS_STOPPED:
+        return "stopped";
 	}
 
 	return "";
+}
+
+void tse_run_intr_handler(int signum) {
+    if(interrupted) {
+        reset_signal_func(SIGNAL_INTERRUPT);
+        reset_signal_func(SIGNAL_TERMINATE);
+    }
+    
+    interrupted = B_TRUE;
 }
 
 /* ------------------------
@@ -454,6 +468,15 @@ int tse_run_wl_unconfigure_walk(hm_item_t* item, void* context) {
 	return HM_WALKER_CONTINUE;
 }
 
+int tse_run_wl_stop_walk(hm_item_t* item, void* context) {
+    exp_workload_t* ewl = (exp_workload_t*) item;
+
+    tsload_stop_workload(ewl->wl_name);
+    ewl->wl_status = EXPERIMENT_INTERRUPTED;
+
+    return HM_WALKER_CONTINUE;
+}
+
 void tse_run_workload_status(const char* wl_name,
 					 			 int status,
 								 long progress,
@@ -612,8 +635,17 @@ int experiment_start(experiment_t* exp) {
 
 void experiment_wait(experiment_t* exp) {
 	mutex_lock(&exp->exp_mutex);
-	while(exp->exp_wl_running_count > 0 && exp->exp_status == EXPERIMENT_OK)
-		cv_wait(&exp->exp_cv, &exp->exp_mutex);
+	while(exp->exp_wl_running_count > 0 && exp->exp_status == EXPERIMENT_OK) {
+		cv_wait_timed(&exp->exp_cv, &exp->exp_mutex, tse_run_intr_poll_interval);
+        
+        if(interrupted) {
+            tse_printf(TSE_PRINT_ALL,
+                       "INTERRUPT: Experiment run is interrupted\n");
+            
+            hash_map_walk(exp->exp_workloads, tse_run_wl_stop_walk, NULL);
+            interrupted = B_FALSE;
+        }
+    }
 	mutex_unlock(&exp->exp_mutex);
 }
 
@@ -750,6 +782,10 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 	if(batch_mode) {
 		printf("%d\n", exp->exp_runid);
 	}
+	
+	/* Setup interrupt handler */
+    register_signal_func(SIGNAL_INTERRUPT, tse_run_intr_handler);
+    register_signal_func(SIGNAL_TERMINATE, tse_run_intr_handler);
 
 	experiment_run(exp);
 	if(exp->exp_status == EXPERIMENT_ERROR)
@@ -761,7 +797,10 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 
 	hostinfo = tsload_get_hostinfo();
 	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("agent"), hostinfo, B_TRUE);
-
+    
+    reset_signal_func(SIGNAL_INTERRUPT);
+    reset_signal_func(SIGNAL_TERMINATE);
+    
 	err = experiment_write(exp);
 	if(err != EXPERIMENT_OK) {
 		ret = tse_experr_to_cmderr(err);

@@ -56,9 +56,7 @@ int test_main() {
 	thread_t thread;
 
 	cpumask_t* thread_mask = NULL;
-	
-	strncpy(hi_obj_modpath, getenv("TS_HIMODPATH"), PATHMAXLEN);
-
+    
 	mempool_init();
 	threads_init();
 

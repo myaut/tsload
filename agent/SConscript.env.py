@@ -142,7 +142,7 @@ def LinkProgram(self, target, objects):
 def LinkSharedLibrary(self, target, objects, 
                       ctfmerge = True, versioned = False):
     # Add x.y.z version to a soname
-    if versioned and self.SupportedPlatform('posix'):
+    if versioned and self.SupportedPlatform('linux'):
         tsload_version = self['TSVERSION']
         shlib_version = tsload_version[:tsload_version.index('-')]
         self['SHLIBVERSION'] = shlib_version

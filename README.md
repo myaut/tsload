@@ -13,7 +13,7 @@ It is also crossplatform and currently supports Linux, Windows and Solaris.
 
 ### Documentation 
 
-Detailed documentation may be found here: [myaut.github.io/tsload/][http://myaut.github.io/tsload/]
+Detailed documentation may be found here: [myaut.github.io/tsload/](http://myaut.github.io/tsload/)
 
 ### Installing TSLoad
 
@@ -44,7 +44,7 @@ To build TSLoad documentation, use the following command:
 
 Output documentation is placed under build/doc directory
 
-More detailed information on building TSLoad is available in documentation: [Building TSLoad][http://myaut.github.io/tsload/intro/building.html]
+More detailed information on building TSLoad is available in documentation: [Building TSLoad](http://myaut.github.io/tsload/intro/building.html)
 
 ### Example using TSLoad
 

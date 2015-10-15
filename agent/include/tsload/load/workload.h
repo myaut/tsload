@@ -130,7 +130,8 @@ typedef enum {
 	WLS_STARTED = 5,
 	WLS_RUNNING	= 6,
 	WLS_FINISHED = 7,
-	WLS_DESTROYED = 8
+	WLS_DESTROYED = 8,
+    WLS_STOPPED = 9
 } wl_status_t;
 
 /**
@@ -245,9 +246,11 @@ LIBEXPORT void wl_destroy(workload_t* wl);
 LIBEXPORT workload_t* wl_search(const char* name);
 
 LIBEXPORT void wl_config(workload_t* wl);
+LIBEXPORT void wl_stop(workload_t* wl);
 LIBEXPORT void wl_unconfig(workload_t* wl);
 
 int wl_is_started(workload_t* wl);
+void wl_try_finish_stopped(workload_t* wl);
 int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t* trace_rqs);
 workload_step_t* wl_advance_step(workload_t* wl);
 

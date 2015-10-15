@@ -398,6 +398,24 @@ int tsload_unconfigure_workload(const char* wl_name) {
 }
 
 /**
+ * Mark workload as finished so it will be stopped on the next loop
+ * 
+ * @param wl_name name of workload
+ */
+int tsload_stop_workload(const char* wl_name) {
+    workload_t* wl = wl_search(wl_name);
+
+    if(wl == NULL) {
+        tsload_error_msg(TSE_NOT_FOUND,
+                         TSLOAD_UNCONFIGURE_WORKLOAD_ERROR_PREFIX "workload not found", wl_name);
+        return TSLOAD_ERROR;
+    }
+    
+    wl_stop(wl);
+    return TSLOAD_OK;
+}
+
+/**
  * Create threadpool
  *
  * @param tp_name name of threadpool

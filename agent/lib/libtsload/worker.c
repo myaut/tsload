@@ -90,6 +90,8 @@ static void control_prepare_step(thread_pool_t* tp, workload_t* wl) {
 	workload_step_t* step;
 	workload_t* wl_chain = wl;
 
+    wl_try_finish_stopped(wl);
+    
 	if(unlikely(!wl_is_started(wl))) {
 		return;
 	}

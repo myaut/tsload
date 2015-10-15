@@ -176,6 +176,11 @@ STATIC_INLINE double round(double val)
 #define TSDOC_HIDDEN
 #define TSDOC_FORCE
 
+/* MSVC CRT doesn't have setenv, but it can be replaced with _putenv_s() call */
+#ifdef PLAT_WIN
+#define setenv(var, val, overwrite)     _putenv_s(var, val)
+#endif
+
 /**
  * Hint that string is automatically allocated
  */

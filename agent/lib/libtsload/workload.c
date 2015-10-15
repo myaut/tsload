@@ -277,9 +277,14 @@ void wl_rele(workload_t* wl) {
  * Finish workload - notify that it was finished
  */
 void wl_finish(workload_t* wl) {
-	long step = wl->wl_current_step;
-
 	wl_notify(wl, WLS_FINISHED, wl->wl_current_step, "%s", "");
+}
+
+/**
+ * Stop workload - no more steps for this workload
+ */
+void wl_stop(workload_t* wl) {
+    wl_notify(wl, WLS_STOPPED, wl->wl_current_step, "%s", "");
 }
 
 /**
@@ -344,6 +349,7 @@ void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, 
 	case WLS_RUNNING:
 	case WLS_FINISHED:
 	case WLS_DESTROYED:
+    case WLS_STOPPED:
 		progress = wl->wl_current_step;
 		break;
 	default:
@@ -449,6 +455,27 @@ int wl_is_started(workload_t* wl) {
 }
 
 /**
+ * Finish workload if it was stopped earlier
+ */
+void wl_try_finish_stopped(workload_t* wl) {
+    boolean_t stopped = B_FALSE;
+    
+    mutex_lock(&wl->wl_status_mutex);
+    stopped = WL_HAD_STATUS(wl, WLS_STOPPED);
+    mutex_unlock(&wl->wl_status_mutex);
+    
+    if(!stopped)
+        return;
+    
+    /* No more steps for stopped workloads */
+    mutex_lock(&wl->wl_step_mutex);
+    wl->wl_last_step = wl->wl_current_step;
+    mutex_unlock(&wl->wl_step_mutex);
+    
+    wl_finish(wl);
+}
+
+/**
  * Provide number of requests for current step
  *
  * @param wl workload
@@ -500,8 +527,8 @@ workload_step_t* wl_advance_step(workload_t* wl) {
 	workload_step_t* step = NULL;
 
 	assert(wl != NULL);
-
-	mutex_lock(&wl->wl_step_mutex);
+    
+    mutex_lock(&wl->wl_step_mutex);
 
 	++wl->wl_current_step;
 	wl->wl_current_rq = 0;

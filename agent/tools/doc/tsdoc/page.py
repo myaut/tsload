@@ -7,6 +7,7 @@ from collections import defaultdict
 try:
     from collections import OrderedDict
 except:
+    sys.path.append(os.path.join(os.path.dirname(__file__), '../../build/'))
     from ordereddict import OrderedDict
 
 from tsdoc import *

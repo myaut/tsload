@@ -124,6 +124,7 @@ LIBEXPORT int tsload_create_request(const char* wl_name, list_head_t* rq_list, b
 	 	   	   	   	   	   	   	   	ts_time_t sched_time, void* rq_params);
 LIBEXPORT int tsload_start_workload(const char* wl_name, ts_time_t start_time);
 LIBEXPORT int tsload_unconfigure_workload(const char* wl_name);
+LIBEXPORT int tsload_stop_workload(const char* wl_name);
 
 LIBEXPORT int tsload_create_threadpool(const char* tp_name, unsigned num_threads, ts_time_t quantum,
 		 	 	 	 	 	 	 	   boolean_t discard, tsobj_node_t* disp);

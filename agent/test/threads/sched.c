@@ -65,15 +65,18 @@ struct param params[] = {{"uprilim", 20}, {"upri", 10}};
 
 int test_main() {
 	char policy_value[10];
-	int64_t value;
-	int pid;
 	int pcount = 0;
+#ifndef NO_PARAMS    
+    int64_t value;
+    int pid;
+#endif
 	
 	int ret;
 	
 	threads_init();
 	sched_init();
 
+    mutex_init(&mtx, "test_thread_mtx");
 	cv_init(&cv, "test_thread_end");
 	t_init(&t, NULL, test_thread_sched, "test_thread_sched");
 

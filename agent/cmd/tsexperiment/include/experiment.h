@@ -198,6 +198,7 @@
 #define EXPERIMENT_OK					0
 #define EXPERIMENT_ERROR				-1
 #define EXPERIMENT_UNKNOWN				-2
+#define EXPERIMENT_INTERRUPTED          -3
 
 #define EXPERIMENT_LOG_FILE		"tsexperiment.out"
 #define EXPERIMENT_FILENAME		"experiment.json"
