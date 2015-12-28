@@ -121,7 +121,7 @@ env = DefaultEnvironment(ENV = {'PATH': os.environ['PATH']},
 # name of the project, version, root path
 env['TSLOADPATH'] = Dir('#').abspath
 env['TSPROJECT'] = 'tsload'
-env['TSVERSION'] = '0.2.0-beta'
+env['TSVERSION'] = '0.3.0-dev'
 env['TSAUTHOR'] = 'Sergey Klyaus'
 env['TSAUTHOREMAIL'] = 'myautneko@gmail.com'
 env['TSNAME'] =  '-'.join((env['TSPROJECT'], env['TSVERSION'], sys.platform))
