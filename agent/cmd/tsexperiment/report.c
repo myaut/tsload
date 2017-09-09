@@ -35,8 +35,10 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
+#include <limits.h>
 
 typedef int (*tse_report_wl_func)(experiment_t* exp, exp_workload_t* ewl, void* context);
 
@@ -50,6 +52,12 @@ struct report_walk_context {
 struct report_time_stats {
 	double mean;
 	double stddev;
+    
+    double mint;
+    double maxt;
+    
+    double median;
+    int    outliers;
 };
 
 struct report_stats {
@@ -61,10 +69,10 @@ struct report_stats {
 	int onstep;
 	int discard;
 
-	struct report_time_stats wait;
-	struct report_time_stats exec;
+	struct report_time_stats stats;
 };
 
+static int cmp_double(const void* pa, const void* pb);
 int tse_report_workload_walk(hm_item_t* obj, void* context);
 
 int tse_report_common(experiment_t* root, int argc, char* argv[],
@@ -138,6 +146,10 @@ end:
 	return ret;
 }
 
+struct tse_report_context {
+    boolean_t wait;
+};
+
 int tse_report_workload_walk(hm_item_t* obj, void* context) {
 	struct report_walk_context* ctx = (struct report_walk_context*) context;
 	int ret = ctx->func(ctx->exp, (exp_workload_t*) obj, ctx->context);
@@ -152,11 +164,29 @@ int tse_report_workload_walk(hm_item_t* obj, void* context) {
 
 void tse_report_statistics(double* times, int from, int to, struct report_time_stats* stats) {
 	int idx;
+    int len = to - from;
+    int middle = from + len / 2;
+    
 	double mean = 0.0;
 	double var = 0.0;
-
+    
+    qsort(times + from, len, sizeof(double), cmp_double);
+    
+    stats->mint = times[from];
+    stats->maxt = times[to - 1];
+    stats->outliers = 0;
+    
+    if(len % 2 == 0) {
+        stats->median = (times[middle] + times[middle + 1]) / 2;
+    } else {
+        stats->median = times[middle];
+    } 
+    
 	for(idx = from; idx < to; ++idx) {
 		mean += times[idx];
+        
+        if(times[idx] > 3 * stats->median)
+            ++stats->outliers;
 	}
 	mean = mean / (double) (to - from);
 
@@ -164,28 +194,31 @@ void tse_report_statistics(double* times, int from, int to, struct report_time_s
 		var += pow(times[idx] - mean, 2);
 	}
 	var = var / (double) (to - from);
-
+    
 	stats->mean = mean;
 	stats->stddev = sqrt(var);
 }
 
-void tse_report_step(struct report_stats* stats, double* wait_times, double* exec_times, int idx, int rq_idx) {
+void tse_report_step(struct report_stats* stats, double* times, int idx, int rq_idx) {
 	/* Report per-step statistics */
-	tse_report_statistics(wait_times, stats->start_idx, idx, &stats->wait);
-	tse_report_statistics(exec_times, stats->start_idx, idx, &stats->exec);
+	tse_report_statistics(times, stats->start_idx, idx, &stats->stats);
 
-	printf("%-8s %-6d %-6d %-6d %-8d %-10.3f %-10.3f %-10.3f %-10.3f\n",
+	printf("%-8s %-6d %-6d %-6d %-8d %-10.3f %-10.3f %-10.3f %-10.3f %-10.3f %-6d\n",
 			stats->step_name, rq_idx - stats->start_rq_idx, stats->ontime, stats->onstep, stats->discard,
-			stats->wait.mean, stats->wait.stddev, stats->exec.mean, stats->exec.stddev);
+			stats->stats.mean, stats->stats.stddev, stats->stats.mint, stats->stats.median, stats->stats.maxt,
+            stats->stats.outliers);
+    
 }
 
-void tse_process_rq_time(exp_request_entry_t* rqe, double* wait_times, double* exec_times, int idx) {
+void tse_process_rq_time(exp_request_entry_t* rqe, double* times, int idx, boolean_t wait) {
 	double sched_time = ((double) rqe->rq_sched_time) / ((double) T_MS);
 	double start_time = ((double) rqe->rq_start_time) / ((double) T_MS);
 	double end_time = ((double) rqe->rq_end_time) / ((double) T_MS);
 
-	exec_times[idx] = end_time - start_time;
-	wait_times[idx] = start_time - sched_time;
+    if(wait)
+        times[idx] = start_time - sched_time;
+    else
+        times[idx] = end_time - start_time;
 }
 
 void tse_process_rq_flags(exp_request_entry_t* rqe, struct report_stats* stats, long step) {
@@ -206,6 +239,7 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 	void* entry = mp_malloc(ewl->wl_file_schema->hdr.entry_size);
 	uint32_t rq_count = tsfile_get_count(ewl->wl_file);
 	exp_request_entry_t* rqe = (exp_request_entry_t*) entry;
+    struct tse_report_context* ctx = (struct tse_report_context*) context;
 
 	long step = -1;
 
@@ -217,14 +251,14 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 
 	/* It costs 1 MB of memory per 32k requests.
 	 * Still have to be careful with this allocation */
-	double* wait_times = mp_malloc(rq_count * sizeof(double));
-	double* exec_times = mp_malloc(rq_count * sizeof(double));
+	double* times = mp_malloc(rq_count * sizeof(double));
 
 	printf("%s\n", ewl->wl_name);
-	printf("%-8s %-6s %-6s %-6s %-8s %-21s %-21s\n", "STEP", "COUNT",
-				"ONTIME", "ONSTEP", "DISCARD", "WAIT TIME (ms)", "SERVICE TIME (ms)");
-	printf("%-8s %-6s %-6s %-6s %-8s %-10s %-10s %-10s %-10s\n", "", "",
-				"", "", "", "MEAN", "STDDEV", "MEAN", "STDDEV");
+	printf("%-8s %-6s %-6s %-6s %-8s %-56s\n", "STEP", "COUNT",
+				"ONTIME", "ONSTEP", "DISCARD", 
+                (ctx->wait) ? "WAIT TIME (ms)" : "SERVICE TIME (ms)");
+	printf("%-8s %-6s %-6s %-6s %-8s %-10s %-10s %-10s %-10s %-10s %-6s\n", "", "",
+				"", "", "", "MEAN", "STDDEV", "MIN", "MEDIAN", "MAX", "OUTLIERS");
 
 	memset(&total_stats, 0, sizeof(struct report_stats));
 	strcpy(total_stats.step_name, "total");
@@ -234,7 +268,7 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 
 		if(((long) rqe->rq_step) > step) {
 			if(step >= 0 && rq_idx > step_stats.start_rq_idx) {
-				tse_report_step(&step_stats, wait_times, exec_times, idx, rq_idx);
+				tse_report_step(&step_stats, times, idx, rq_idx);
 			}
 
 			/* Save values at the beginning of step */
@@ -246,7 +280,7 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 		}
 
 		if(rqe->rq_flags & RQF_FINISHED) {
-			tse_process_rq_time(rqe, wait_times, exec_times, idx);
+			tse_process_rq_time(rqe, times, idx, ctx->wait);
 			++idx;
 		}
 
@@ -254,14 +288,12 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 		tse_process_rq_flags(rqe, &total_stats, step);
 	}
 
-	tse_report_step(&step_stats, wait_times, exec_times, idx, rq_idx);
-	tse_report_step(&total_stats, wait_times, exec_times, idx, rq_idx);
+	tse_report_step(&step_stats, times, idx, rq_idx);
+	tse_report_step(&total_stats, times, idx, rq_idx);
 
 	puts("\n");
 
-	mp_free(wait_times);
-	mp_free(exec_times);
-
+	mp_free(times);
 	mp_free(entry);
 	
 	return CMD_OK;
@@ -270,13 +302,20 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 int tse_report(experiment_t* root, int argc, char* argv[]) {
 	int flags = EXP_OPEN_RQPARAMS;
 	int c;
-
-	while((c = plat_getopt(argc, argv, "S")) != -1) {
+    
+    struct tse_report_context context;
+    
+    context.wait = B_FALSE;
+    
+	while((c = plat_getopt(argc, argv, "Sw")) != -1) {
 		switch(c) {
 		case 'S':
 			/* Undocumented option for compability with run-tsload output */
 			flags = EXP_OPEN_SCHEMA_READ;
 			break;
+        case 'w':
+            context.wait = B_TRUE;
+            break;
 		case '?':
 			tse_command_error_msg(CMD_INVALID_OPT, "Invalid show suboption -%c\n", c);
 			return CMD_INVALID_OPT;
@@ -284,7 +323,7 @@ int tse_report(experiment_t* root, int argc, char* argv[]) {
 	}
 
 	return tse_report_common(root, argc, argv,
-						     flags, tse_report_workload, NULL);
+						     flags, tse_report_workload, &context);
 }
 
 
@@ -508,4 +547,14 @@ int tse_export(experiment_t* root, int argc, char* argv[]) {
 	return ret;
 }
 
+static int cmp_double(const void* pa, const void* pb) {
+    double a = *(const double*)pa;
+    double b = *(const double*)pb;
+    
+    if(a > b)
+        return 1;
+    if(a < b)
+        return -1;
+    return 0;
+}
 
