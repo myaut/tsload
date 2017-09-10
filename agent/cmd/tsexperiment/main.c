@@ -110,11 +110,16 @@ void parse_options(int argc, char* const argv[]) {
 
 int main(int argc, char* argv[]) {
 	int err = 0;
+	boolean_t has_logfile = B_FALSE;
 
 	const char* exp_root_path = NULL;
 
 	opterr = 0;
-
+	
+	/* If TS_LOGFILE was explicitly set as environment variable, we keep it.
+	 * If not, we overwrite it in deduce_paths() and later, while checking for eflag */
+	has_logfile = (getenv("TS_LOGFILE") != NULL);
+	
 	deduce_paths();
 	parse_options(argc, argv);
 
@@ -128,7 +133,7 @@ int main(int argc, char* argv[]) {
 
 	if(eflag) {
 		path_join(log_filename, PATHMAXLEN, experiment_root_path, TSEXPERIMENT_LOGFILE, NULL);
-		setenv("TS_LOGFILE", log_filename, B_FALSE);
+		setenv("TS_LOGFILE", log_filename, !has_logfile);
 	}
 	else if(getenv("TS_LOGFILE") == NULL) {
 		usage(1, "Failed to configure log file name. Use TS_LOGFILE to set it explicitly.\n");

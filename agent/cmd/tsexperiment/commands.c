@@ -118,26 +118,42 @@ int tse_shift_experiment_run(experiment_t* root, experiment_t** pexp, int argc, 
 
 	if(argi < argc) {
 		char* arg = argv[argi];
-		char* endptr = NULL;
-		char* end = arg + strlen(arg);
 		
-		runid = strtol(arg, &endptr, 10);
-		
-		if(runid < 0 || (runid == 0 && endptr != end)) {
-			tse_command_error_msg(CMD_INVALID_ARG,
-					"Invalid runid '%s' - should be non-negative integer\n", argv[argi]);
-			return CMD_INVALID_ARG;
+		if(!exp->exp_single_run) {
+			char* endptr = NULL;
+			char* end = arg + strlen(arg);
+			
+			runid = strtol(arg, &endptr, 10);
+			
+			if(runid < 0 || (runid == 0 && endptr != end)) {
+				tse_command_error_msg(CMD_INVALID_ARG,
+						"Invalid runid '%s' - should be non-negative integer\n", argv[argi]);
+				return CMD_INVALID_ARG;
+			}
+
+			exp = experiment_load_run(root, runid);
+			if(exp == NULL) {
+				err = tse_experr_to_cmderr(experiment_load_error());
+				tse_command_error_msg(err, "Couldn't open experiment run with runid %d\n", runid);
+				return err;
+			}
 		}
-
-		exp = experiment_load_run(root, runid);
-
-		if(exp == NULL) {
-			err = tse_experr_to_cmderr(experiment_load_error());
-			tse_command_error_msg(err, "Couldn't open experiment run with runid %d\n", runid);
-			return err;
+		else {
+			if(strcmp(arg, ".") != 0) {
+				tse_command_error_msg(CMD_INVALID_ARG, "Invalid only run named '.' is supported "
+						"for single-run experiments, got '%s'\n", arg);
+				return CMD_INVALID_ARG;
+			}
+			
+			exp = experiment_load_single_run(root);
+			if(exp == NULL) {
+				err = tse_experr_to_cmderr(experiment_load_error());
+				tse_command_error_msg(err, "Couldn't open the only run of experiment\n");
+				return err;
+			}
 		}
 	}
-
+	
 	*pexp = exp;
 	return CMD_OK;
 }

@@ -733,10 +733,15 @@ int tse_run(experiment_t* root, int argc, char* argv[]) {
 
 	exp = experiment_create(root, base, exp_name);
 	if(exp == NULL) {
+		char* runid_str = AAS_CONST_STR("<root>");
+		if(base != NULL && base->exp_runid != EXPERIMENT_ROOT) {
+			aas_printf(&runid_str, "%d", base->exp_runid);
+		}
+		
 		ret = CMD_GENERIC_ERROR;
 		tse_command_error_msg(CMD_GENERIC_ERROR,
-				"Couldn't create experiment from %d\n",
-				(base == NULL) ? EXPERIMENT_ROOT : base->exp_runid);
+				"Couldn't create experiment from %s\n", runid_str);
+		aas_free(&runid_str);
 		goto end_base;
 	}
 

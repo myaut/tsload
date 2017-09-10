@@ -106,7 +106,7 @@ int tse_report_common(experiment_t* root, int argc, char* argv[],
 		goto end;
 	}
 
-	if(argi == argc) {
+	if(argi >= argc) {
 		ctx.context = context;
 		ctx.func = report;
 		ctx.exp = exp;
@@ -138,10 +138,13 @@ int tse_report_common(experiment_t* root, int argc, char* argv[],
 	}
 
 end:
-	if(ewllist)
+	if(ewllist) {
 		mp_free(ewllist);
-
-	experiment_destroy(exp);
+	}
+	
+	if(exp != root) {
+		experiment_destroy(exp);
+	}
 
 	return ret;
 }

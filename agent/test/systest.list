@@ -230,12 +230,16 @@ run/trace_set			"args=-T -s threadpools:test_tp:quantum=200000000 1"		\
 						expect=return:3
 run/reproduce_inval		"args=10"		expect=return:11
 
+run/single_run								\
+	"use=single-run.json 					\
+		rename:experiment/experiment.json"	\
+	"use=experiment/experiment.id 			\
+		remove:True 						\
+		rename:experiment/experiment.id"
 run/empty_workloads							\
-	"use=empty-workloads.json 				\
-		 rename:experiment/experiment.json"
+	"use=empty-workloads.json	rename:experiment/experiment.json"
 run/empty_wls_tps							\
-	"use=empty-wls-tps.json 				\
-		 rename:experiment/experiment.json"		
+	"use=empty-wls-tps.json 	rename:experiment/experiment.json"		
 
 run/noent	 			expect=return:11 	\
 	"use=experiment/experiment.json 		\

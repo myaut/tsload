@@ -69,8 +69,9 @@ size_t aas_vprintf(char** aas, const char* format, va_list va) {
 
 	if(format == NULL)
 		return AAS_INVALID_ARGUMENT;
-	if(*aas != NULL)
+	if(*aas != NULL && (*aas)[-1] != AAS_STATIC)
 		return AAS_BUF_NOT_EMPTY;
+	
 #if defined(HAVE_COUNTING_VSPRINTF)
 	count = vsprintf(NULL, format, va1);
 #elif defined(HAVE_COUNTING_VSNPRINTF)
@@ -120,7 +121,7 @@ size_t aas_merge(char** aas, const char* str, ...) {
 
 	if(str == NULL)
 		return AAS_INVALID_ARGUMENT;
-	if(*aas != NULL)
+	if(*aas != NULL && (*aas)[-1] != AAS_STATIC)
 		return AAS_BUF_NOT_EMPTY;
 
 	/* Calculate length of destination string */

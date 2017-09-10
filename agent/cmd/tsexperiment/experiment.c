@@ -16,7 +16,6 @@
     along with TSLoad.  If not, see <http://www.gnu.org/licenses/>.    
 */    
 
-
 #include <tsload/defs.h>
 
 #include <tsload/mempool.h>
@@ -48,14 +47,14 @@ static char* strrchr_y(const char* s, int c) {
 	/* TODO: fallback to libc if possible. */
 	const char* from = s + strlen(s);
 
-    do {
-        if(from == s)
-            return NULL;
+	do {
+		if(from == s)
+			return NULL;
 
-        --from;
-    } while(*from != c);
+		--from;
+	} while(*from != c);
 
-    return (char*) from;
+	return (char*) from;
 }
 
 DECLARE_HASH_MAP_STRKEY(exp_workload_hash_map, exp_workload_t, EWLHASHSIZE, wl_name, wl_next, EWLHASHMASK);
@@ -188,6 +187,7 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 	exp->exp_basedir[0] = '\0';
 
 	exp->exp_runid = runid;
+	exp->exp_single_run = B_FALSE;
 
 	exp->exp_config = NULL;
 	exp->exp_threadpools = NULL;
@@ -313,6 +313,7 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 	experiment_t* exp = mp_malloc(sizeof(experiment_t));
 	json_node_t* status;
 	json_node_t* name;
+	json_node_t* single_run;
 
 	experiment_init(exp, root_path, runid, dir);
 
@@ -322,7 +323,7 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 		return NULL;
 	}
 
-	/* Fetch status & name if possible */
+	/* Fetch status & name if possible, read some extra properties as well */
 	status = experiment_cfg_find(exp->exp_config, "status", NULL, JSON_NUMBER_INTEGER);
 	if(status != NULL) {
 		exp->exp_status = json_as_integer(status);
@@ -331,6 +332,11 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 	name = experiment_cfg_find(exp->exp_config, "name", NULL, JSON_STRING);
 	if(name != NULL) {
 		aas_copy(&exp->exp_name, json_as_string(name));
+	}
+	
+	single_run = experiment_cfg_find(exp->exp_config, "single_run", NULL, JSON_BOOLEAN);
+	if(single_run != NULL) {
+		exp->exp_single_run = json_as_boolean(single_run);
 	}
 
 	return exp;
@@ -375,6 +381,25 @@ experiment_t* experiment_load_run(experiment_t* root, int runid) {
 }
 
 /**
+ * Load config of single experiment run 
+ * 
+ * @param root current experiment config
+ * 
+ * @return experiment or NULL if experiment was failed to load or run was not performed
+ */
+experiment_t* experiment_load_single_run(experiment_t* root) {
+	char runid_path[PATHMAXLEN];
+	path_join(runid_path, PATHMAXLEN, root->exp_root, EXPID_FILENAME, NULL);
+	
+	if(experiment_check_path_exists(runid_path)) {
+		return experiment_load_dir(root->exp_root, 0, "");
+	}
+	
+	exp_load_error = EXPERR_LOAD_NO_FILE;
+	return NULL;
+}
+
+/**
  * Returns an error occured in experiment_load_*() functions
  */
 unsigned experiment_load_error() {
@@ -415,6 +440,13 @@ static long experiment_generate_id(experiment_t* root, boolean_t use_file) {
 		if(use_file) {
 			fgets(runid_str, 32, runid_file);
 			runid = strtol(runid_str, NULL, 10);
+			
+			// Do not overwrite experiment.id for single-run experiments. If we found 
+			// the file, experiment already was run, and this is an error condition
+			if(root->exp_single_run) {
+				fclose(runid_file);
+				return -1;
+			}
 		}
 	}
 
@@ -462,36 +494,48 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	json_node_t* j_name;
 
 	if(runid == -1) {
-		tse_experiment_error_msg(root, EXPERR_CREATE_ALLOC_RUNID,
+		if(root->exp_single_run) {
+			tse_experiment_error_msg(root, EXPERR_CREATE_SINGLE_RUN, 
+									 "Couldn't create second run for single-run experiment");
+			exp_create_error = EXPERR_CREATE_SINGLE_RUN;
+		} else {
+			tse_experiment_error_msg(root, EXPERR_CREATE_ALLOC_RUNID,
 								 "Couldn't allocate runid for experiment: errno %d!", errno);
-		exp_create_error = EXPERR_CREATE_ALLOC_RUNID;
+			exp_create_error = EXPERR_CREATE_ALLOC_RUNID;
+		}
+		
 		return NULL;
 	}
 
 	if(base == NULL)
 		base = root;
-
+	
 	if(name == NULL) {
 		j_name = json_find_opt(base->exp_config, "name");
 		if(j_name == NULL) {
 			tse_experiment_error_msg(root, EXPERR_CREATE_UNNAMED,
-									 "Neither command-line name nor name from config was provided");
+									"Neither command-line name nor name from config was provided");
 			exp_create_error = EXPERR_CREATE_UNNAMED;
 			return NULL;
 		}
 
 		name = cfg_name = json_as_string(j_name);
 	}
-
-	snprintf(dir, PATHPARTMAXLEN, "%s-%ld", name, runid);
+	
+	if(!root->exp_single_run) {
+		snprintf(dir, PATHPARTMAXLEN, "%s-%ld", name, runid);
+	} else {
+		strncpy(dir, ".", PATHPARTMAXLEN);
+	}
 
 	exp = mp_malloc(sizeof(experiment_t));
 	experiment_init(exp, root->exp_root, runid, dir);
 
+	exp->exp_single_run = root->exp_single_run;
 	strcpy(exp->exp_basedir, base->exp_directory);
 	if(name)
 		aas_copy(&exp->exp_name, name);
-
+	
 	exp->exp_config = json_copy_node(base->exp_config);
 
 	experiment_cfg_add(exp->exp_config, NULL, JSON_STR("name"),
@@ -546,6 +590,12 @@ int experiment_mkdir(experiment_t* exp, experiment_t* root) {
 	int ret;
 	
 	boolean_t retried = B_FALSE;
+	
+	if(exp->exp_single_run) {
+		// No need to make directories in single-run experiments, we do it 
+		// in root directory
+		return EXPERR_MKDIR_OK;
+	}
 	
 	if(exp->exp_runid == EXPERIMENT_ROOT) {
 		tse_experiment_error_msg(exp, EXPERR_MKDIR_IS_ROOT, "Failed to create experiment's run, "

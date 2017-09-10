@@ -306,6 +306,7 @@ class TestRunner(Thread):
                 self.copy_test_files(self.mod_dir, test.mods)
         
         self.copy_test_files(self.test_dir, test.uses, log_copy=True)
+        
     
     def prepare_test_dir(self, test):
         ''' Creates necessary directories in test directory 
@@ -467,8 +468,8 @@ class TestRunner(Thread):
         
         return outf.getvalue()
     
-    def generate_env(self):
-        test_env = os.environ.copy()
+    def generate_env(self, base_env={}):
+        test_env = base_env.copy()
         
         if sys.platform in ['linux2', 'sunos5']:
             test_env['LD_LIBRARY_PATH'] = self.lib_dir
@@ -489,29 +490,58 @@ class TestRunner(Thread):
         
         return test_env 
     
-    def prepare_test(self, cfg_name):
-        test = self.read_test_config(cfg_name)
-        self.prepare_test_dir(test)
+    def generate_command(self, test, abs_bin_path=True):
+        test_bin = os.path.basename(test.bins[0])
+        
+        if abs_bin_path:
+            command = test_bin
+            if not test.is_dist:
+                command = os.path.join(self.bin_dir, test_bin)
+        else:
+            command = os.path.join(self.bin_dir.replace(self.test_dir, '.'), test_bin)
+            
+        if test.args is not None:
+            command = '%s %s' % (command, test.args)
+            
+        return command
     
+    def manual_run_test(self, cfg_name):
+        test = self.read_test_config(cfg_name)
+        
+        self.prepare_test_dir(test)
+        print 'Prepared test directory %s' % (self.test_dir)
+        
+        test_env = self.generate_env(OrderedDict())
+        with open(os.path.join(self.test_dir, 'testrc'), 'w') as envf:
+            for var, val in test_env.items():
+                print >> envf, '{0}={1}'.format(var, val)
+        
+        # Generate command for running test
+        command = self.generate_command(test, abs_bin_path=False)
+        print 'Run "%s" to start test binary' % command
+        
+        # Run test shell
+        env = os.environ.copy()
+        env.update(test_env)
+        env['PS1'] = '[tstest] \w> '
+        
+        proc = Popen(['/bin/bash'],
+                     cwd = self.test_dir,
+                     env = env)
+        proc.wait()
+        
     def run_test(self, cfg_name):
         # Prepare test environment and generate command for it
         test = self.read_test_config(cfg_name)
-        test_bin = os.path.basename(test.bins[0])
+        command = self.generate_command(test)
         
         if test.is_dist:
             # Distribution-wide tests should work with default environment
             test_env = os.environ
         else:
-            test_env = self.generate_env()
+            test_env = self.generate_env(os.environ)
                
         self.prepare_test_dir(test)
-        
-        command = test_bin
-        
-        if not test.is_dist:
-            command = os.path.join(self.bin_dir, test_bin)
-        if test.args is not None:
-            command = '%s %s' % (command, test.args)
         
         # Start a test along with a timer that would check
         # If test wouldn't timeout
@@ -606,14 +636,14 @@ class TestSuite(object):
         
         if not self.test_dir:
             # Reset tempdir
-            self.test_dir = tempfile.mkdtemp(prefix='tstest')
+            self.test_dir = tempfile.mkdtemp(prefix='tstest/dir')
             self.test_dir_delete = True
         else:
             if not os.path.isdir(self.test_dir):
                 raise TestError('Test directory %s is not a directory' % self.test_dir)
         
         if not os.path.exists(self.test_dir):
-            os.mkdir(self.test_dir)    
+            os.makedirs(self.test_dir)    
             self.test_dir_delete = True
             
         self.check_test_dir()
@@ -687,11 +717,13 @@ class TestSuite(object):
     def run(self):
         args = sys.argv[1:]
         
-        if '--prepare' in args:
-            test_cfg = args[args.index('--prepare') + 1]
-            self.runners[0].prepare_test(test_cfg)
+        if '--manual' in args:
+            test_cfg = args[args.index('--manual') + 1]
             
-            print 'Prepared test directory %s' % (self.runners[0].test_dir)
+            try:
+                self.runners[0].manual_run_test(test_cfg)
+            finally:
+                self.runners[0].wipe_test_dir()
             
             return
         

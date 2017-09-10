@@ -1,0 +1,32 @@
+{
+	"name": "experiment",
+	"single_run": true,
+	"steps": {
+		"test1": {
+			"num_steps":	4,
+ 			"num_requests": 10
+		}
+	},
+	"threadpools": {
+		"test_tp" : {
+            "num_threads": 2,
+            "quantum": 400000000,
+            "disp": {
+            	"type": "random"
+            }
+        }
+	},
+	"workloads" : {
+		"test1" : {
+			"wltype": "busy_wait",
+			"threadpool": "test_tp",
+			"rqsched": {
+				"type": "iat",
+				"distribution": "exponential"
+			},
+			"params": { 
+				"num_cycles": 1000			
+			}
+		}
+	}
+}

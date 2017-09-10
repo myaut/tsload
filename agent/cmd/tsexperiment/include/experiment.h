@@ -146,6 +146,7 @@
 #define EXPERR_CREATE_OK			0
 #define EXPERR_CREATE_ALLOC_RUNID 		EXPERRE(EXPERR_CREATE, 1)
 #define EXPERR_CREATE_UNNAMED			EXPERRE(EXPERR_CREATE, 2)
+#define EXPERR_CREATE_SINGLE_RUN		EXPERRE(EXPERR_CREATE, 3)
 // experiment_write()
 #define EXPERR_WRITE_OK				0
 #define EXPERR_WRITE_NO_DIR			EXPERRG(EXPERR_WRITE, EXPERR_NOT_EXISTS)
@@ -171,6 +172,7 @@
 #define EXPERR_STEPS_MISSING				EXPERRE(EXPERR_STEPS, 1)
 #define EXPERR_STEPS_INVALID_FILE			EXPERRE(EXPERR_STEPS, 2)
 #define EXPERR_STEPS_FILE_ERROR				EXPERRE(EXPERR_STEPS, 3)
+#define EXPERR_STEPS_SERIES_ERROR			EXPERRE(EXPERR_STEPS, 10)
 #define EXPERR_STEPS_INVALID_CONST			EXPERRE(EXPERR_STEPS, 4)
 #define EXPERR_STEPS_INVALID_TRACE			EXPERRE(EXPERR_STEPS, 5)
 #define EXPERR_STEPS_END_OF_TRACE			EXPERRE(EXPERR_STEPS, 6)
@@ -282,6 +284,7 @@ typedef struct exp_request_entry {
  * 		set to empty string
  * @member exp_basedir base directory used in experiment_create()
  * @member exp_runid id of experiment run. Set to EXPERIMENT_ROOT for current config
+ * @member exp_single_run for single run experiments set to true
  * @member exp_config experiment config
  * @member exp_threadpools dynamic hashmap of threadpools. Created by experiment_process_config()
  * @member exp_workloads  dynamic hashmap of workloads. Created by experiment_process_config()
@@ -294,6 +297,7 @@ typedef struct {
 	char exp_basedir[PATHPARTMAXLEN];
 
 	int exp_runid;
+	boolean_t exp_single_run;
 	json_node_t* exp_config;
 
 	hashmap_t* exp_threadpools;
@@ -317,6 +321,7 @@ typedef struct {
 experiment_t* experiment_load_root(const char* path);
 experiment_t* experiment_load_dir(const char* root_path, int runid, const char* dir);
 experiment_t* experiment_load_run(experiment_t* root, int runid);
+experiment_t* experiment_load_single_run(experiment_t* root);
 unsigned experiment_load_error();
 
 experiment_t* experiment_create(experiment_t* root, experiment_t* exp, const char* name);

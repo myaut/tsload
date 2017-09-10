@@ -44,6 +44,7 @@ Where flag is one of:
 ```
 {
 	(in, out) "name": [string] Name of the experiment,
+	(in, opt) "single_run": [boolean] If set to true, experiment may have only single run,
 	(in) "steps" : {
 		(in) "Name of workload1" : [node] Steps, ...
 	},
