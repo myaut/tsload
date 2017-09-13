@@ -71,15 +71,43 @@ steps_generator_t* step_create_generator(steps_generator_type_t type) {
 	return sg;
 }
 
-steps_generator_t* step_create_file(const char* file_name, const char* out_file_name) {
+/**
+ * Create series-based steps generated: each step has corresponding number 
+ * of requests which is specified either as series of integers in experiment
+ * config or as an external file with one number per line
+ * 
+ * @param out_file_name output file name
+ * @param file_name input file name (optional)
+ * @param j_series json array of integers (optional)
+ */
+steps_generator_t* step_create_file(const char* out_file_name, const char* file_name,
+		json_node_t* j_series) {
 	steps_generator_t* sg;
 	steps_file_t* sf;
-	FILE* file = fopen(file_name, "r");
+	FILE* file = NULL;
 	FILE* fileout;
 	struct stat statbuf;
+	
+	long* series = NULL;
+	int series_count = -1;
 
-	if(!file)
+	if(file_name != NULL) {
+		file = fopen(file_name, "r");
+		if(!file)
+			return NULL;
+	} else if(j_series != NULL) {
+		int index = 0;
+		json_node_t* node;
+		
+		series_count = json_size(j_series);
+		series = mp_malloc(sizeof(long) * series_count);
+		
+		json_for_each(j_series, node, index) {
+			series[index] = (long) json_as_integer(node);
+		}
+	} else {
 		return NULL;
+	}
 
 	if(stat(out_file_name, &statbuf) == 0) {
 		fclose(file);
@@ -96,6 +124,9 @@ steps_generator_t* step_create_file(const char* file_name, const char* out_file_
 	sg = step_create_generator(STEPS_FILE);
 
 	sf = &sg->sg_file;
+	sf->sf_series = series;
+	sf->sf_series_index = 0;
+	sf->sf_series_count = series_count;
 	sf->sf_file = file;
 	sf->sf_file_out = fileout;
 	sf->sf_step_id = 0;
@@ -191,7 +222,12 @@ static long step_parse_line(char* line) {
 }
 
 void step_close_file(steps_file_t* sf) {
-	fclose(sf->sf_file);
+	if(sf->sf_file != NULL) {
+		fclose(sf->sf_file);
+	}
+	if(sf->sf_series != NULL) {
+		mp_free(sf->sf_series);
+	}
 	fclose(sf->sf_file_out);
 }
 
@@ -218,17 +254,29 @@ int step_get_step_file(steps_file_t* sf, long* step_id, unsigned* p_num_rqs) {
 	if(sf->sf_error) {
 		return STEP_ERROR;
 	}
+	
+	if (sf->sf_file != NULL) {
+		/* Read next step from file */
+		fgets(step_str, 16, sf->sf_file);
 
-	/* Read next step from file */
-	fgets(step_str, 16, sf->sf_file);
-
-	/* There are no more steps on file */
-	if(feof(sf->sf_file) != 0) {
-		return STEP_NO_RQS;
+		/* There are no more steps on file */
+		if(feof(sf->sf_file) != 0) {
+			return STEP_NO_RQS;
+		}
+		
+		num_rqs = step_parse_line(step_str);
+	} else if (sf->sf_series != NULL) {
+		if (sf->sf_series_index >= sf->sf_series_count) {
+			return STEP_NO_RQS;
+		}
+		
+		num_rqs = sf->sf_series[sf->sf_series_index++];
+	} else {
+		// Neither file nor series were provided, raise an error
+		sf->sf_error = B_TRUE;
+		return STEP_ERROR;
 	}
-
-	num_rqs = step_parse_line(step_str);
-
+	
 	if(num_rqs < 0) {
 		sf->sf_error = B_TRUE;
 		return STEP_ERROR;

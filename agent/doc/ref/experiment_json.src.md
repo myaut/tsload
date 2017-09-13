@@ -111,6 +111,15 @@ File-based steps generator:
 }
 ```
 
+Series-based steps generator:
+```
+{
+	(in) "series" : [
+            [integer] Number of requests at step #1, ...
+        ]
+}
+```
+
 ### Workloads
 
 ```

@@ -236,6 +236,8 @@ run/single_run								\
 	"use=experiment/experiment.id 			\
 		remove:True 						\
 		rename:experiment/experiment.id"
+run/steps_series							\
+	"use=steps-series.json	rename:experiment/experiment.json"
 run/empty_workloads							\
 	"use=empty-workloads.json	rename:experiment/experiment.json"
 run/empty_wls_tps							\

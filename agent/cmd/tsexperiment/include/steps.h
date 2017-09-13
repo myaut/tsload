@@ -43,6 +43,10 @@ typedef enum {
 } steps_generator_type_t;
 
 typedef struct steps_file {
+	long* 	sf_series;
+	int 	sf_series_index;
+	int 	sf_series_count;
+	
 	FILE* 	sf_file;
 	FILE*   sf_file_out;
 	long 	sf_step_id;
@@ -78,7 +82,8 @@ typedef struct steps_generator {
 	};
 } steps_generator_t;
 
-steps_generator_t* step_create_file(const char* file_name, const char* out_file_name);
+steps_generator_t* step_create_file(const char* out_file_name, const char* file_name,
+		json_node_t* j_series);
 steps_generator_t* step_create_const(long num_steps, unsigned num_requests);
 steps_generator_t* step_create_trace(steps_generator_t* parent, experiment_t* base, exp_workload_t* ewl);
 

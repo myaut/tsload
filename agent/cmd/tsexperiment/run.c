@@ -103,12 +103,10 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 	struct exp_create_steps_context* ctx = (struct exp_create_steps_context*) context;
 	exp_workload_t* ewl = (exp_workload_t*) item;
 
-	json_node_t* file;
+	json_node_t* j_series = NULL;
 
-	const char* step_fn;
-	char step_path[PATHMAXLEN];
-	char step_dest_path[PATHMAXLEN];
-
+	const char* step_fn = NULL;
+	
 	long num_steps;
 	unsigned num_requests;
 
@@ -129,7 +127,10 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 	}
 
 	error = json_get_string(ewl->wl_steps_cfg, "file", &step_fn);
-
+	if(error == JSON_NOT_FOUND) {
+		error = json_get_array(ewl->wl_steps_cfg, "series", &j_series);
+	}
+	
 	if(error != JSON_NOT_FOUND) {
 		if(error == JSON_INVALID_TYPE) {
 			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_FILE,
@@ -138,22 +139,41 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 			ctx->error = EXPERR_STEPS_INVALID_FILE;
 			return HM_WALKER_STOP;
 		}
+		
+		if (step_fn != NULL) {
+			char step_path[PATHMAXLEN];
+			path_join(step_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_basedir, step_fn, NULL);
+			
+			char step_dest_path[PATHMAXLEN];
+			path_join(step_dest_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_directory, step_fn, NULL);
 
-		path_join(step_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_basedir, step_fn, NULL);
-		path_join(step_dest_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_directory, step_fn, NULL);
-
-		sg = step_create_file(step_path, step_dest_path);
-
-		if(sg != NULL) {
-			tse_printf(TSE_PRINT_ALL, "Loaded steps file '%s' for workload '%s'\n",
-							step_path, ewl->wl_name);
-		}
-		else {
-			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_FILE_ERROR,
-					"Couldn't open steps file '%s' for workload '%s'\n",
-					step_path, ewl->wl_name);
-			ctx->error = EXPERR_STEPS_FILE_ERROR;
-			return HM_WALKER_STOP;
+			sg = step_create_file(step_dest_path, step_path, NULL);
+			
+			if(sg != NULL) {
+				tse_printf(TSE_PRINT_ALL, "Loaded steps file '%s' for workload '%s'\n",
+								step_path, ewl->wl_name);
+			} else {
+				tse_experiment_error_msg(ctx->exp, ctx->error = EXPERR_STEPS_FILE_ERROR,
+						"Couldn't open steps file '%s' for workload '%s'\n",
+						step_path, ewl->wl_name);
+				return HM_WALKER_STOP;
+			}
+		} else if(j_series != NULL) {
+			char* step_dest_fn;
+			char step_dest_path[PATHMAXLEN];
+			
+			aas_printf(aas_init(&step_dest_fn), "%s.tss", ewl->wl_name);
+			path_join(step_dest_path, PATHMAXLEN, ctx->exp->exp_root, ctx->exp->exp_directory, step_dest_fn, NULL);
+			
+			sg = step_create_file(step_dest_path, NULL, j_series);
+			
+			aas_free(&step_dest_fn);
+			
+			if(sg == NULL) {
+				tse_experiment_error_msg(ctx->exp, ctx->error = EXPERR_STEPS_SERIES_ERROR,
+						"Couldn't use provided series for workload '%s'\n", ewl->wl_name);
+				return HM_WALKER_STOP;
+			}
 		}
 	}
 	else {
@@ -168,10 +188,9 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 						ewl->wl_name, num_steps, num_requests);
 		}
 		else {
-			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_CONST,
+			tse_experiment_error_msg(ctx->exp, ctx->error = EXPERR_STEPS_INVALID_CONST,
 							"Error parsing step parameters for workload '%s': %s\n",
 							ewl->wl_name, json_error_message());
-			ctx->error = EXPERR_STEPS_INVALID_CONST;
 			return HM_WALKER_STOP;
 		}
 	}
@@ -182,10 +201,9 @@ int exp_create_steps_walk(hm_item_t* item, void* context) {
 		if(ewl->wl_steps == NULL) {
 			step_destroy(sg);
 
-			tse_experiment_error_msg(ctx->exp, EXPERR_STEPS_INVALID_TRACE,
+			tse_experiment_error_msg(ctx->exp, ctx->error = EXPERR_STEPS_INVALID_TRACE,
 					"Couldn't create trace-driven step generator for workload '%s'\n",
 					 ewl->wl_name);
-			ctx->error = EXPERR_STEPS_INVALID_TRACE;
 			return HM_WALKER_STOP;
 		}
 	}

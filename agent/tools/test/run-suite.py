@@ -636,7 +636,7 @@ class TestSuite(object):
         
         if not self.test_dir:
             # Reset tempdir
-            self.test_dir = tempfile.mkdtemp(prefix='tstest/dir')
+            self.test_dir = tempfile.mkdtemp(prefix='tstest')
             self.test_dir_delete = True
         else:
             if not os.path.isdir(self.test_dir):
