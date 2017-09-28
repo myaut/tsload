@@ -48,6 +48,12 @@ int tsfile_errno;
  */
 boolean_t tsfile_sync_mode = B_FALSE;
 
+/**
+ * Default tsfile format version is V1. SALSA-REX uses V2 which has completely 
+ * different layout. V1 extension adds start_time/end_time tagged fields
+ */
+static const uint16_t tsfile_format = TSFILE_FORMAT_V1 | TSFILE_FORMAT_EXT;
+
 extern int tsfile_nodes_count;
 
 /**
@@ -147,6 +153,8 @@ static boolean_t tsfile_check_schema(tsfile_schema_t* schema) {
 		switch(schema->fields[fi].type) {
 		case TSFILE_FIELD_BOOLEAN:
 		case TSFILE_FIELD_STRING:
+		case TSFILE_FIELD_START_TIME:
+		case TSFILE_FIELD_END_TIME:
 			break;
 		case TSFILE_FIELD_INT:
 		{
@@ -211,6 +219,15 @@ static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t
 		}
 
 		if(f1->type != f2->type) {
+			// Allow to use old-style request trace entry which didn't use start/end
+			// time tags and used 64-bit integer instead
+			if(((f1->type == TSFILE_FIELD_INT && f1->size == 8) &&
+					(f2->type == TSFILE_FIELD_START_TIME || f2->type == TSFILE_FIELD_END_TIME)) || 
+					((f2->type == TSFILE_FIELD_INT && f2->size == 8) &&
+					(f1->type == TSFILE_FIELD_START_TIME || f1->type == TSFILE_FIELD_END_TIME))) {
+				continue;
+			}
+			
 			tsfile_error_msg(TSE_INTERNAL_ERROR,
 							 "Different schema field #%d - type (%d, %d)",
 							 fi, (int) f1->type, (int) f2->type);
@@ -235,9 +252,6 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 	tsfile_t* file = NULL;
 	tsfile_header_t* header = NULL;
 
-	size_t schema_size = sizeof(tsfile_shdr_t) +
-			  	 	 	 schema->hdr.count * sizeof(tsfile_field_t);
-
 	if(!tsfile_check_schema(schema)) {
 		return NULL;
 	}
@@ -248,15 +262,15 @@ tsfile_t* tsfile_create(const char* filename, tsfile_schema_t* schema) {
 
 	/* Initialize header */
 	header = mp_malloc(TSFILE_HEADER_SIZE);
+	memset(header, 0, TSFILE_HEADER_SIZE);
 
 	memcpy(&header->magic, TSFILE_MAGIC, TSFILE_MAGIC_LEN);
-	header->version = TSFILE_VERSION;
+	header->format_flags = tsfile_format;
 
 	memset(&header->sb[1], 0, sizeof(tsfile_sb_t) * (SBCOUNT - 1));
 	TSFILE_SB_SET_COUNT(header, 0, 0, 0);
 
-	memset(&header->schema, 0, sizeof(tsfile_schema_t));
-	memcpy(&header->schema, schema, schema_size);
+	memcpy(&header->schema, schema, sizeof(tsfile_schema_t));
 
 	memset(header + 1, 0, TSFILE_HEADER_SIZE - sizeof(tsfile_header_t));
 
@@ -300,7 +314,7 @@ tsfile_t* tsfile_open(const char* filename, tsfile_schema_t* schema) {
 	}
 
 	if(memcmp(&header->magic, TSFILE_MAGIC, TSFILE_MAGIC_LEN) != 0 ||
-	   header->version != TSFILE_VERSION) {
+	   (header->format_flags & ~tsfile_format) != 0) {
 		tsfile_error_msg(TSE_INTERNAL_ERROR, "Invalid tsfile magic/version '%s'", filename);
 		goto bad_file;
 	}

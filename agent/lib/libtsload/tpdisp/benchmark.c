@@ -97,8 +97,8 @@ void tpd_control_sleep_bench(thread_pool_t* tp) {
 	}
 
 	cur_time = tm_get_clock();
-	if(cur_time < (tp->tp_time + tp->tp_quantum))
-		tm_sleep_nano(tm_diff(cur_time, tp->tp_time + tp->tp_quantum));
+	if(cur_time < (tp->tp_clock + tp->tp_quantum))
+		tm_sleep_nano(tm_diff(cur_time, tp->tp_clock + tp->tp_quantum));
 }
 
 void tpd_control_report_bench(thread_pool_t* tp) {

@@ -53,6 +53,7 @@ DECLARE_FIELD_FUNCTIONS(uint32_t);
 DECLARE_FIELD_FUNCTIONS(uint64_t);
 DECLARE_FIELD_FUNCTIONS(float);
 DECLARE_FIELD_FUNCTIONS(double);
+DECLARE_FIELD_FUNCTIONS(ts_time_t);
 
 /**
  * Count of nodes on death row of tsfile. Reduces number of allocation/initializations.
@@ -97,6 +98,8 @@ json_node_t* tsfile_create_node(tsfile_t* file) {
 			field = json_new_boolean(B_FALSE);
 		break;
 		case TSFILE_FIELD_INT:
+		case TSFILE_FIELD_START_TIME:
+		case TSFILE_FIELD_END_TIME:
 			field = json_new_integer(-1);
 			break;
 		case TSFILE_FIELD_FLOAT:
@@ -218,7 +221,11 @@ void tsfile_fill_node(tsfile_t* file, json_node_t* node, void* entry) {
 		break;
 		case TSFILE_FIELD_STRING:
 			json_set_string(field, json_str_create(value));
-		break;
+			break;
+		case TSFILE_FIELD_START_TIME:
+		case TSFILE_FIELD_END_TIME:
+			json_set_integer(field, FIELD_GET_VALUE(ts_time_t, value));
+			break;
 		}
 
 		field = json_next(field, &id);
@@ -280,7 +287,11 @@ int tsfile_fill_entry(tsfile_t* file, json_node_t* node, void* entry) {
 		break;
 		case TSFILE_FIELD_STRING:
 			strncpy(value, json_as_string(j_field), field->size);
-		break;
+			break;
+		case TSFILE_FIELD_START_TIME:
+		case TSFILE_FIELD_END_TIME:
+			FIELD_PUT_VALUE(ts_time_t, value, json_as_integer(j_field));
+			break;
 		}
 	}
 

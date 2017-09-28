@@ -142,7 +142,7 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 
 		mutex_unlock(&ff->ff_mutex);
 
-		if(!tpd_wait_for_arrival(rq, tp->tp_time + tp->tp_quantum)) {
+		if(!tpd_wait_for_arrival(rq, tp->tp_clock + tp->tp_quantum)) {
 			return;
 		}
 
@@ -175,7 +175,7 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 		if(!dispatched) {
 			while(ff->ff_last_rq != NULL) {
 				cur_time = tm_get_clock();
-				if(cur_time > (tp->tp_time + tp->tp_quantum)) {
+				if(cur_time > (tp->tp_clock + tp->tp_quantum)) {
 					/* Oops - we didn't managed to dispatch request.
 					 * Return it back to rq_head, so no one will notice*/
 					list_add(&rq->rq_node, &tp->tp_rq_head);
@@ -183,7 +183,7 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 					return;
 				}
 
-				max_sleep = tm_diff(cur_time, tp->tp_time + tp->tp_quantum);
+				max_sleep = tm_diff(cur_time, tp->tp_clock + tp->tp_quantum);
 				cv_wait_timed(&ff->ff_control_cv, &ff->ff_mutex, max_sleep);
 			}
 
@@ -194,8 +194,8 @@ void tpd_control_sleep_ff(thread_pool_t* tp) {
 	mutex_unlock(&ff->ff_mutex);
 
 	cur_time = tm_get_clock();
-	if(cur_time < (tp->tp_time + tp->tp_quantum)) {
-		max_sleep = tm_diff(cur_time, tp->tp_time + tp->tp_quantum);
+	if(cur_time < (tp->tp_clock + tp->tp_quantum)) {
+		max_sleep = tm_diff(cur_time, tp->tp_clock + tp->tp_quantum);
 		tm_sleep_nano(max_sleep);
 	}
 }

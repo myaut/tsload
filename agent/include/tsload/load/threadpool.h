@@ -94,7 +94,8 @@ typedef struct tp_worker {
  * @member tp_is_dead flag that set when threadpool is destroyed
  * @member tp_started internal flag that says that tp_create already started threads
  * @member tp_quantum control thread's quantum duration (in ns)
- * @member tp_time last time control thread had woken up (in ns)
+ * @member tp_clock last time control thread had woken up (in ns)
+ * @member tp_time wallclock time of control thread (in ns)
  * @member tp_ctl_thread control thread of threadpool
  * @member tp_workers array of threadpool workers
  * @member tp_mutex mutex that protects list of workloads attached to threadpool
@@ -112,6 +113,7 @@ typedef struct thread_pool {
 	boolean_t tp_started;
 
 	ts_time_t tp_quantum;
+	ts_time_t tp_clock;
 	ts_time_t tp_time;
 
 	thread_t  tp_ctl_thread;

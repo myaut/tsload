@@ -169,6 +169,7 @@ workload_t* wl_create(const char* name, wl_type_t* wlt, thread_pool_t* tp) {
 	WL_SET_STATUS(wl, WLS_NEW);
 
 	wl->wl_start_time = TS_TIME_MAX;
+	wl->wl_global_start_time = 0;
 	wl->wl_notify_time = 0;
 	wl->wl_start_clock = TS_TIME_MAX;
 	wl->wl_time = 0;
@@ -317,7 +318,7 @@ void wl_chain_back(workload_t* parent, workload_t* wl) {
  *
  * @param wl configuring workload
  * @param status configuration/execution status
- * @param done configuration progress (in percent)
+ * @param progress configuration progress (in percent)
  * @param format message format string
  */
 void wl_notify(workload_t* wl, wl_status_t status, long progress, char* format, ...) {
@@ -572,7 +573,6 @@ static void wl_init_request(workload_t* wl, request_t* rq) {
 	list_node_init(&rq->rq_wl_node);
 }
 
-
 /**
  * Create request structure, append it to requests queue, initialize
  * For chained workloads inherits parent step and request id
@@ -719,15 +719,15 @@ void wl_run_request(request_t* rq) {
 
 	ETRC_PROBE2(tsload__workload, request__start, workload_t*, wl, request_t*, rq);
 
-	logmsg(LOG_TRACE, "Running request %s/%d step: %ld worker: #%d sched: %"PRItm" start: %"PRItm,
-		rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, rq->rq_thread_id,
-		rq->rq_sched_time, rq->rq_start_time);
-
 	if(WL_HAD_STATUS(wl, WLS_FINISHED))
 		return;
 
 	rq->rq_flags |= RQF_STARTED;
 	rq->rq_start_time = tm_get_clock() - wl->wl_start_clock;
+	
+	logmsg(LOG_TRACE, "Running request %s/%d step: %ld worker: #%d sched: %"PRItm" start: %"PRItm,
+		rq->rq_workload->wl_name, rq->rq_id, rq->rq_step, rq->rq_thread_id,
+		rq->rq_sched_time, rq->rq_start_time);
 
 	if(tm_diff(rq->rq_sched_time, rq->rq_start_time) > wl->wl_deadline) {
 		return;
@@ -902,20 +902,19 @@ fail:
 	return -1;
 }
 
-workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
-		                       tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params) {
+workload_t* tsobj_workload_proc(const char* wl_name, workload_template_t* wl_tpl) {
 	workload_t* wl = NULL;
 	wl_type_t* wlt = NULL;
 	thread_pool_t* tp = NULL;
 
 	int ret = RQSCHED_TSOBJ_OK;
 
-	wlt = wl_type_search(wl_type);
+	wlt = wl_type_search(wl_tpl->wl_type);
 
-	if(tp_name) {
-		tp = tp_search(tp_name);
+	if(wl_tpl->tp_name) {
+		tp = tp_search(wl_tpl->tp_name);
 	}
-	else if(!wl_chain_params) {
+	else if(!wl_tpl->wl_chain_params) {
 		tsload_error_msg(TSE_INVALID_VALUE,
 						  WL_ERROR_PREFIX "neither 'chain' nor 'threadpool' was defined",
 						  wl_name);
@@ -929,8 +928,8 @@ workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const 
 
 	/* Process request scheduler.
 	 * Chained workloads do not have scheduler - use simple scheduler */
-	if(wl_chain_params == NULL) {
-		ret = tsobj_rqsched_proc(rqsched_params, wl);
+	if(wl_tpl->wl_chain_params == NULL) {
+		ret = tsobj_rqsched_proc(wl_tpl->rqsched_params, wl);
 	}
 	else {
 		wl->wl_rqsched_class = rqsched_find("simple");
@@ -947,7 +946,7 @@ workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const 
 
 	/* Process params from i_params to wl_params, where mod_params contains
 	 * parameters descriptions (see wlparam) */
-	ret = tsobj_wlparam_proc_all(wl_params, wlt->wlt_params, wl);
+	ret = tsobj_wlparam_proc_all(wl_tpl->wl_params, wlt->wlt_params, wl);
 
 	if(ret != WLPARAM_TSOBJ_OK) {
 		tsload_error_msg(TSE_INVALID_VALUE,
@@ -959,14 +958,15 @@ workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const 
 	}
 
 	/* Chain workload if needed */
-	if(wl_chain_params != NULL) {
-		ret = tsobj_workload_proc_chain(wl, wl_chain_params);
+	if(wl_tpl->wl_chain_params != NULL) {
+		ret = tsobj_workload_proc_chain(wl, wl_tpl->wl_chain_params);
 
 		if(ret != 0)
 			goto fail;
 	}
 
-	wl->wl_deadline = deadline;
+	wl->wl_deadline = wl_tpl->deadline;
+	wl->wl_global_start_time = wl_tpl->global_time;
 
 	return wl;
 

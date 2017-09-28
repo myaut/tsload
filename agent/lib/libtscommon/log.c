@@ -24,6 +24,7 @@
 #include <tsload/threads.h>
 #include <tsload/tuneit.h>
 #include <tsload/pathutil.h>
+#include <tsload/time.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -135,14 +136,19 @@ void log_fini() {
 }
 
 void log_gettime(char* buf, int sz) {
-	time_t rawtime;
-	struct tm* timeinfo;
+	ts_time_t tm = tm_get_time();
+	time_t rawtime = TS_TIME_TO_UNIX(tm);
+	struct tm* timeinfo = NULL;
 
 	/* Non-reenterable, but protected by upper mutex (log_mutex) */
-	time ( &rawtime );
 	timeinfo = localtime ( &rawtime );
-
 	strftime(buf, sz, "%c", timeinfo);
+	
+	if (log_trace) {
+		char us[8];
+		snprintf(us, 8, ".%03ld%03ld", TS_TIME_MS(tm), TS_TIME_US(tm));
+		strncat(buf, us, sz);
+	}
 }
 
 /**

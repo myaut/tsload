@@ -227,7 +227,8 @@ thread_pool_t* tp_create(const char* name, unsigned num_threads, ts_time_t quant
 	tp->tp_num_threads = num_threads;
 	tp->tp_workers = (tp_worker_t*) mp_cache_alloc_array(&tp_worker_cache, num_threads);
 
-	tp->tp_time	   = 0ll;	   /*Time is set by control thread*/
+	tp->tp_clock   = 0ll;	   /*Time is set by control thread*/
+	tp->tp_time    = 0ll;
 	tp->tp_quantum = quantum;
 
 	tp->tp_is_dead = B_FALSE;
@@ -414,8 +415,8 @@ void tp_detach(thread_pool_t* tp, struct workload* wl) {
  * Compare two requests. Returns >= 0 if request rq2 is going after rq1
  */
 int tp_compare_requests(struct request* rq1, struct request* rq2) {
-	ts_time_t time1 = rq1->rq_sched_time + rq1->rq_workload->wl_start_clock;
-	ts_time_t time2 = rq2->rq_sched_time + rq2->rq_workload->wl_start_clock;
+	ts_time_t time1 = rq1->rq_sched_time;
+	ts_time_t time2 = rq2->rq_sched_time;
 
 	if(time2 > time1)
 		return 100;
@@ -944,7 +945,8 @@ static void tp_collect(void) {
 		hash_map_walk(&tp_hash_map, tp_collect_tp, NULL);
 
 		mutex_lock(&tp_collect_mutex);
-		cv_wait_timed(&tp_collect_cv, &tp_collect_mutex, tp_collector_interval);
+		if(tp_collector_enabled)
+			cv_wait_timed(&tp_collect_cv, &tp_collect_mutex, tp_collector_interval);
 	}
 
 	mutex_unlock(&tp_collect_mutex);
@@ -959,6 +961,8 @@ THREAD_END:
 }
 
 int tp_init(void) {
+	extern ts_time_t tp_control_align_time;
+	
 	tuneit_set_int(int, tp_max_threads);
 	if(tp_max_threads < 1) {
 		tp_max_threads = TPMAXTHREADS;
@@ -970,6 +974,7 @@ int tp_init(void) {
 	tuneit_set_int(ts_time_t, tp_collector_interval);
 	tuneit_set_bool(tp_collector_enabled);
 
+	tuneit_set_int(ts_time_t, tp_control_align_time);
 	tuneit_set_int(ts_time_t, tp_worker_min_sleep);
 	tuneit_set_int(ts_time_t, tp_worker_overhead);
 

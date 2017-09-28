@@ -268,8 +268,8 @@ typedef struct exp_request_entry {
 	int32_t		rq_thread;
 	int32_t		rq_user;
 	int64_t		rq_sched_time;
-	int64_t		rq_start_time;
-	int64_t		rq_end_time;
+	ts_time_t	rq_start_time;
+	ts_time_t	rq_end_time;
 	int32_t		rq_queue_length;
 	uint16_t	rq_flags;
 } exp_request_entry_t;
@@ -288,6 +288,7 @@ typedef struct exp_request_entry {
  * @member exp_config experiment config
  * @member exp_threadpools dynamic hashmap of threadpools. Created by experiment_process_config()
  * @member exp_workloads  dynamic hashmap of workloads. Created by experiment_process_config()
+ * @member exp_global_time global time adjustement for workload request times
  */
 typedef struct {
 	AUTOSTRING char* exp_name;
@@ -299,6 +300,8 @@ typedef struct {
 	int exp_runid;
 	boolean_t exp_single_run;
 	json_node_t* exp_config;
+	
+	ts_time_t exp_global_time;
 
 	hashmap_t* exp_threadpools;
 	hashmap_t* exp_workloads;

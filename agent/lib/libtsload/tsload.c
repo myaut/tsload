@@ -213,16 +213,9 @@ tsobj_node_t* tsload_get_hostinfo(void) {
  * Create and configure new workload
  *
  * @param wl_name name of workload
- * @param wl_type name of workload type
- * @param tp_name name of threadpool where workload would be attached. For chained workloads \
- * 			should be NULL
- * @param deadline deadline for request execution
- * @param wl_chain_params parameters of chaining in [experiment.json][ref/experiment_json] format
- * @param rqsched_params parameters of request scheduler in [experiment.json][ref/experiment_json] format
- * @param wl_params workload and request param configuration
+ * @param wl_tpl template for configuring workload
  */
-int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
-							  tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params) {
+int tsload_configure_workload(const char* wl_name, workload_template_t* wl_tpl) {
 	workload_t* wl;
 
 	if(wl_search(wl_name) != NULL) {
@@ -231,7 +224,7 @@ int tsload_configure_workload(const char* wl_name, const char* wl_type, const ch
 		return TSLOAD_ERROR;
 	}
 
-	wl = tsobj_workload_proc(wl_name, wl_type, tp_name, deadline, wl_chain_params, rqsched_params, wl_params);
+	wl = tsobj_workload_proc(wl_name, wl_tpl);
 
 	if(wl == NULL) {
 		return TSLOAD_ERROR;

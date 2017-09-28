@@ -203,6 +203,7 @@ typedef struct workload {
 	list_head_t		 wl_requests;
 
 	ts_time_t		 wl_start_time;
+	ts_time_t 		 wl_global_start_time;
 	ts_time_t		 wl_notify_time;
 	ts_time_t		 wl_start_clock;
 	ts_time_t		 wl_time;
@@ -230,6 +231,29 @@ typedef struct workload {
 	list_head_t		 wl_wlpgen_head;	/**< per-request params*/
 } workload_t;
 
+/**
+ * Template for configuring new workloads
+ * 
+ * @member wl_type name of workload type
+ * @member tp_name name of threadpool where workload would be attached. For chained workloads \
+ * 			should be NULL
+ * @member deadline deadline for request execution
+ * @member global_time adjustement used for changing base time for request times
+ * @member wl_chain_params parameters of chaining in [experiment.json][ref/experiment_json] format
+ * @member rqsched_params parameters of request scheduler in [experiment.json][ref/experiment_json] format
+ * @member wl_params workload and request param configuration
+ */
+typedef struct workload_template {
+	const char* wl_type; 
+	const char* tp_name; 
+	ts_time_t deadline;
+	ts_time_t global_time;
+	
+	tsobj_node_t* wl_chain_params; 
+	tsobj_node_t* rqsched_params; 
+	tsobj_node_t* wl_params;
+} workload_template_t;
+
 typedef struct {
 	AUTOSTRING char* wl_name;
 	wl_status_t status;
@@ -253,6 +277,16 @@ int wl_is_started(workload_t* wl);
 void wl_try_finish_stopped(workload_t* wl);
 int wl_provide_step(workload_t* wl, long step_id, unsigned num_rqs, list_head_t* trace_rqs);
 workload_step_t* wl_advance_step(workload_t* wl);
+
+/**
+ * Returns current workload's clock adjustement to wall time clock of the 
+ * SALSA-REX incident start (if necessary)
+ */
+static ts_time_t wl_get_clock_adjustement(workload_t* wl) {
+	if(wl->wl_global_start_time)
+		return (wl->wl_start_time - wl->wl_global_start_time);
+	return 0ll;
+}
 
 request_t* wl_create_request(workload_t* wl, request_t* parent);
 request_t* wl_clone_request(request_t* origin);
@@ -287,8 +321,7 @@ void wl_finish(workload_t* wl);
 #define WL_STEP_INVALID			-2
 
 LIBEXPORT tsobj_node_t* tsobj_request_format_all(list_head_t* rq_list);
-workload_t* tsobj_workload_proc(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
- 		                        tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params);
+workload_t* tsobj_workload_proc(const char* wl_name, workload_template_t* wl_tpl);
 
 #endif /* WORKLOAD_H_ */
 

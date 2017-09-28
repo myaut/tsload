@@ -37,15 +37,23 @@
 
 
 #define PARSE_SCHEMA_PARAM(root, node, name, type) 							\
-	node = json_find(root, name);											\
+	node = json_find_opt(root, name);										\
 	if(node == NULL || json_type(node) != type) {							\
 		tsfile_error_msg(TSE_MESSAGE_FORMAT, 								\
 						 "Missing or invalid param '%s' in schema", name);	\
 		return NULL;														\
 	}
 
+#define PARSE_SCHEMA_PARAM_OPT(root, node, name, type) 						\
+	node = json_find_opt(root, name);										\
+	if(node != NULL && json_type(node) != type) {							\
+		tsfile_error_msg(TSE_MESSAGE_FORMAT, 								\
+						 "Invalid param '%s' in schema", name);				\
+		return NULL;														\
+	}
+
 #define PARSE_SCHEMA_FIELD(root, node, name, type, error) 				\
-	node = json_find(root, name);										\
+	node = json_find_opt(root, name);									\
 	if(node == NULL || json_type(node) != type) {						\
 		return error; 													\
 	}
@@ -101,30 +109,20 @@ int tsfile_schema_write(const char* filename, tsfile_schema_t* schema) {
 	return 0;
 }
 
-tsfile_schema_t* tsfile_schema_alloc(int field_count) {
-	size_t schema_size;
-
-	if(field_count > MAXFIELDCOUNT) {
+tsfile_schema_t* tsfile_schema_clone(tsfile_schema_t* base) {
+	tsfile_schema_t* schema;
+	
+	size_t schema_size = sizeof(tsfile_shdr_t) + base->hdr.count * sizeof(tsfile_field_t);
+	if(schema_size > sizeof(tsfile_schema_t))
 		return NULL;
-	}
-
-	schema_size = sizeof(tsfile_shdr_t) +
-				  field_count * sizeof(tsfile_field_t);
-
-	return mp_malloc(schema_size);
-}
-
-tsfile_schema_t* tsfile_schema_clone(int ext_field_count, tsfile_schema_t* base) {
-	tsfile_schema_t* schema = tsfile_schema_alloc(ext_field_count + base->hdr.count);
-	size_t schema_size;
-
+	
+	schema = mp_malloc(sizeof(tsfile_schema_t));
 	if(schema == NULL)
 		return NULL;
-
-	schema_size = sizeof(tsfile_shdr_t) +
-				  base->hdr.count * sizeof(tsfile_field_t);
-
+	
 	memcpy(schema, base, schema_size);
+	memset(((char*)schema)+schema_size, 0, sizeof(tsfile_schema_t)-schema_size);
+	strncpy(schema->name, base->name, MAXSCHEMANAMELEN);
 
 	return schema;
 }
@@ -136,23 +134,29 @@ tsfile_schema_t* json_tsfile_schema_proc(json_node_t* root, boolean_t auto_offse
 	unsigned field_count, fi;
 	int err;
 
-	json_node_t *size, *fields, *field;
+	json_node_t *size, *fields, *field, *name;
 	int jid;
 
 	PARSE_SCHEMA_PARAM(root, size, "entry_size", JSON_NUMBER);
 	PARSE_SCHEMA_PARAM(root, fields, "fields", JSON_NODE);
+	PARSE_SCHEMA_PARAM_OPT(root, name, "name", JSON_STRING);
 
 	field_count = (unsigned) json_size(fields);
-
 	if(field_count > MAXFIELDCOUNT) {
 		tsfile_error_msg(TSE_MESSAGE_FORMAT, "Too many fields in schema");
 		return NULL;
 	}
 
-	schema = tsfile_schema_alloc(field_count);
+	schema = mp_malloc(sizeof(tsfile_schema_t));
+	memset(schema, 0, sizeof(tsfile_schema_t));
 
 	schema->hdr.entry_size = json_as_integer(size);
 	schema->hdr.count = field_count;
+	
+	memset(schema->name, 0, MAXSCHEMANAMELEN);
+	if(name != NULL) {
+		strncpy(schema->name, json_as_string(name), MAXSCHEMANAMELEN);
+	}
 
 	if(auto_offset) {
 		offset = 0;
@@ -209,6 +213,12 @@ static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* nod
 	else if(strcmp(field_type, "str") == 0) {
 		field->type = TSFILE_FIELD_STRING;
 	}
+	else if(strcmp(field_type, "start_time") == 0) {
+		field->type = TSFILE_FIELD_START_TIME;
+	}
+	else if(strcmp(field_type, "end_time") == 0) {
+		field->type = TSFILE_FIELD_END_TIME;
+	}
 	else {
 		return SCHEMA_FIELD_INVALID_TYPE;
 	}
@@ -244,6 +254,7 @@ json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema) {
 
 	json_add_node(node, JSON_STR("fields"), fields);
 	json_add_integer(node, JSON_STR("entry_size"), schema->hdr.entry_size);
+	json_add_string(node, JSON_STR("name"), json_str_create(schema->name));
 
 	for(fi = 0; fi < schema->hdr.count; ++fi) {
 		field = &schema->fields[fi];
@@ -263,6 +274,12 @@ json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema) {
 				break;
 			case TSFILE_FIELD_STRING:
 				json_add_string(field_node, JSON_STR("type"), JSON_STR("str"));
+				break;
+			case TSFILE_FIELD_START_TIME:
+				json_add_string(field_node, JSON_STR("type"), JSON_STR("start_time"));
+				break;
+			case TSFILE_FIELD_END_TIME:
+				json_add_string(field_node, JSON_STR("type"), JSON_STR("end_time"));
 				break;
 			}
 

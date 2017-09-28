@@ -41,6 +41,7 @@
 #define CSV_PARSE_BOOL_ERROR -6
 #define CSV_PARSE_LINE_ERROR -7
 #define CSV_PARSE_FMT_ERROR  -8
+#define CSV_PARSE_TIME_ERROR -11
 
 #define CSV_READ_ERROR		 -9
 #define CSV_WRITE_ERROR		 -10
@@ -55,6 +56,8 @@ typedef struct {
 #define	CSV_INT_HEX				0x01
 #define	CSV_INT_UNSIGNED		0x02
 
+#define CSV_TIME_DATETIME		0x01
+
 typedef struct {
 	tsfile_field_t*	field;
 
@@ -62,8 +65,9 @@ typedef struct {
 		struct {
 			char true_literal[CSVBOOLLEN];
 			char false_literal[CSVBOOLLEN];
-		} bool;
-		int int_flags;
+		} bool_lit;
+		unsigned int int_flags;
+		unsigned int time_flags;
 	} opt;
 } csv_binding_t;
 

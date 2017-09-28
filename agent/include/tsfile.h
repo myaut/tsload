@@ -36,16 +36,23 @@
 
 #define TSFILE_MAGIC_LEN	6
 #define TSFILE_MAGIC		"TSFILE"
-#define TSFILE_VERSION		1
 
 #define SBCOUNT			4
 #define SBMASK			(SBCOUNT - 1)
 
 #define MAXFIELDLEN		32
 #define MAXFIELDCOUNT	64
+#define MAXSCHEMANAMELEN 32
 
 #define TSFILE_HEADER_SIZE	4096
 #define	TSFILE_SB_WRITE_LEN	512
+
+typedef enum tsfile_format_flags {
+	TSFILE_FORMAT_V1 = 0x1,
+	TSFILE_FORMAT_V2 = 0x2,
+	
+	TSFILE_FORMAT_EXT = 0x10
+} tsfile_format_flags_t;
 
 typedef struct tsfile_sb {
 	ts_time_t 	time;
@@ -57,6 +64,9 @@ typedef enum tsfile_ftype {
 	TSFILE_FIELD_INT,
 	TSFILE_FIELD_FLOAT,
 	TSFILE_FIELD_STRING,
+	
+	TSFILE_FIELD_START_TIME,
+	TSFILE_FIELD_END_TIME,
 
 	TSFILE_FIELD_TYPE_MAX
 } tsfile_ftype_t;
@@ -78,15 +88,18 @@ typedef struct tsfile_shdr {
 typedef struct tsfile_schema {
 	tsfile_shdr_t   hdr;
 	tsfile_field_t  fields[MAXFIELDCOUNT];
+	char 			name[MAXSCHEMANAMELEN];
 } tsfile_schema_t;
 
 typedef struct tsfile_header {
 	char			magic[TSFILE_MAGIC_LEN];
-	uint16_t		version;
+	uint16_t		format_flags;
 
 	tsfile_sb_t		sb[SBCOUNT];
 	tsfile_schema_t schema;
 } tsfile_header_t;
+
+typedef uint32_t tsf_boolean_t;
 
 typedef struct tsfile {
 	tsfile_header_t* header;
@@ -146,7 +159,7 @@ LIBEXPORT tsfile_schema_t* tsfile_schema_read(const char* filename);
 LIBEXPORT int tsfile_schema_write(const char* filename, tsfile_schema_t* schema);
 
 LIBEXPORT tsfile_schema_t* tsfile_schema_alloc(int field_count);
-LIBEXPORT tsfile_schema_t* tsfile_schema_clone(int ext_field_count, tsfile_schema_t* base);
+LIBEXPORT tsfile_schema_t* tsfile_schema_clone(tsfile_schema_t* base);
 
 LIBEXPORT tsfile_schema_t* json_tsfile_schema_proc(json_node_t* root, boolean_t auto_offset);
 LIBEXPORT json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema);

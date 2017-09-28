@@ -165,8 +165,8 @@ void tpd_control_sleep_queue(thread_pool_t* tp, int wid,
 	mp_free(worker_nodes);
 
 	cur_time = tm_get_clock();
-	if(cur_time < tp->tp_time + tp->tp_quantum)
-			tm_sleep_nano(tm_diff(cur_time, tp->tp_time + tp->tp_quantum));
+	if(cur_time < tp->tp_clock + tp->tp_quantum)
+			tm_sleep_nano(tm_diff(cur_time, tp->tp_clock + tp->tp_quantum));
 }
 
 void tpd_control_report_queue(thread_pool_t* tp) {

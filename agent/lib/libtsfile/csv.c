@@ -27,6 +27,7 @@
 #include <tsload/list.h>
 #include <tsload/field.h>
 #include <tsload/autostring.h>
+#include <tsload/time.h>
 
 #include <tsfile.h>
 #include <csv.h>
@@ -47,6 +48,7 @@ DECLARE_FIELD_FUNCTIONS(uint32_t);
 DECLARE_FIELD_FUNCTIONS(uint64_t);
 DECLARE_FIELD_FUNCTIONS(float);
 DECLARE_FIELD_FUNCTIONS(double);
+DECLARE_FIELD_FUNCTIONS(ts_time_t);
 
 void* csv_entry_create(list_head_t* list, size_t entry_size) {
 	csv_entry_chunk_t* entry_chunk;
@@ -186,7 +188,7 @@ static boolean_t csv_header_field_eq(csv_hdr_iter_t* iter, tsfile_field_t* field
 
 #define CSV_PARSE_BOOL_OPT(iter, binding, literal, defval)			\
 	do {															\
-		char* literal = binding->opt.bool.literal;					\
+		char* literal = binding->opt.bool_lit.literal;				\
 		if(iter->opt) {												\
 			size_t len = min(iter->opt_length, CSVBOOLLEN - 1);		\
 			strncpy(literal, iter->opt, len);						\
@@ -216,6 +218,15 @@ static int csv_parse_header_opts(csv_chars_t* chars, csv_hdr_iter_t* iter, csv_b
 				return CSV_HDR_INVALID_OPT;
 			}
 			
+			csv_header_iter_next_opt(chars, iter);
+		}
+	}
+	else if(field->type == TSFILE_FIELD_START_TIME || 
+			field->type == TSFILE_FIELD_END_TIME) {
+		while(iter->opt != NULL) {
+			if(strncmp(iter->opt, "datetime", iter->opt_length) == 0) {
+				binding->opt.time_flags |= CSV_TIME_DATETIME;
+			}
 			csv_header_iter_next_opt(chars, iter);
 		}
 	}
@@ -381,7 +392,7 @@ int csv_read_header(csv_chars_t* chars, FILE* file, const char* header, csv_bind
 int csv_generate_bindings(csv_chars_t* chars, const char* header, csv_binding_t* bindings,
 		tsfile_schema_t* schema, csv_hdr_mode_t mode) {
 	int count = schema->hdr.count;
-	int bid, bcount = 0;
+	int bid;
 	int ret;
 
 	if(mode == CSV_HDR_GENERATE_ALL) {
@@ -392,8 +403,8 @@ int csv_generate_bindings(csv_chars_t* chars, const char* header, csv_binding_t*
 			
 			if(schema->fields[bid].type == TSFILE_FIELD_BOOLEAN) {
 				/* If no options were specified fill in default values for bool literals */
-				strncpy(bindings[bid].opt.bool.true_literal, "true", CSVBOOLLEN);
-				strncpy(bindings[bid].opt.bool.false_literal, "false", CSVBOOLLEN);
+				strncpy(bindings[bid].opt.bool_lit.true_literal, "true", CSVBOOLLEN);
+				strncpy(bindings[bid].opt.bool_lit.false_literal, "false", CSVBOOLLEN);
 			}
 		}
 
@@ -424,8 +435,10 @@ void csv_write_header(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, i
 		fputs(field->name, file);
 
 		if(field->type == TSFILE_FIELD_BOOLEAN) {
-			fprintf(file, "%c%s%c%s", chars->csv_opt_separator, bindings[bid].opt.bool.true_literal,
-					chars->csv_opt_separator, bindings[bid].opt.bool.false_literal);
+			fprintf(file, "%c%s%c%s", chars->csv_opt_separator, 
+					bindings[bid].opt.bool_lit.true_literal,
+					chars->csv_opt_separator,
+					bindings[bid].opt.bool_lit.false_literal);
 		}
 		else if(field->type == TSFILE_FIELD_INT) {
 			if(bindings[bid].opt.int_flags & CSV_INT_HEX) {
@@ -433,6 +446,11 @@ void csv_write_header(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, i
 			}
 			if(bindings[bid].opt.int_flags & CSV_INT_UNSIGNED) {
 				fprintf(file, "%cunsigned", chars->csv_opt_separator);
+			}
+		}
+		else if(field->type == TSFILE_FIELD_INT) {
+			if(bindings[bid].opt.time_flags & CSV_TIME_DATETIME) {
+				fprintf(file, "%cdatetime", chars->csv_opt_separator);
 			}
 		}
 
@@ -490,6 +508,10 @@ size_t csv_max_line_length(csv_binding_t* bindings, int bcount) {
 			case TSFILE_FIELD_STRING:
 				/* Worst case when string constists only from DQUOTEs */
 				max_length += 2 * (field->size + 1);
+			break;
+			case TSFILE_FIELD_START_TIME:
+			case TSFILE_FIELD_END_TIME:
+				max_length += 32;
 			break;
 		}
 	}
@@ -607,8 +629,8 @@ void csv_write_entry(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, in
 		switch(field->type) {
 		case TSFILE_FIELD_BOOLEAN:
 				fputs((FIELD_GET_VALUE(boolean_t, value))
-					   ? bindings[bid].opt.bool.true_literal
-					   : bindings[bid].opt.bool.false_literal, file);
+					   ? bindings[bid].opt.bool_lit.true_literal
+					   : bindings[bid].opt.bool_lit.false_literal, file);
 			break;
 		case TSFILE_FIELD_INT:
 			{
@@ -641,7 +663,20 @@ void csv_write_entry(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, in
 			break;
 		case TSFILE_FIELD_STRING:
 			csv_write_string(chars, file, value);
-		break;
+			break;
+		case TSFILE_FIELD_START_TIME:
+		case TSFILE_FIELD_END_TIME:
+			if (bindings[bid].opt.time_flags & CSV_TIME_DATETIME) {
+				ts_time_t time = FIELD_GET_VALUE(ts_time_t, value);
+				char dtstr[32];
+				size_t len = tm_datetime_print(time, dtstr, 32);
+				snprintf(dtstr+len, 32-len, ".%09ld", TS_TIME_NANOSECONDS(time));
+				
+				csv_write_string(chars, file, dtstr);
+			} else {
+				fprintf(file, "%" PRId64, FIELD_GET_VALUE(ts_time_t, value));
+			}
+			break;
 		}
 
 		if(bid < (bcount - 1))
@@ -686,11 +721,11 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 		else if(field->type == TSFILE_FIELD_BOOLEAN) {
 			pos += csv_read_string(chars, line + pos, bool_value, CSVBOOLLEN);
 
-			if(strncmp(bool_value, bindings[bid].opt.bool.true_literal, CSVBOOLLEN) == 0) {
+			if(strncmp(bool_value, bindings[bid].opt.bool_lit.true_literal, CSVBOOLLEN) == 0) {
 				FIELD_PUT_VALUE(boolean_t, value, B_TRUE);
 				continue;
 			}
-			else if (strncmp(bool_value, bindings[bid].opt.bool.false_literal, CSVBOOLLEN) == 0) {
+			else if (strncmp(bool_value, bindings[bid].opt.bool_lit.false_literal, CSVBOOLLEN) == 0) {
 				FIELD_PUT_VALUE(boolean_t, value, B_FALSE);
 				continue;
 			}
@@ -700,12 +735,20 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 				return CSV_PARSE_BOOL_ERROR;
 			}
 		}
-
+		
 		if(field->type == TSFILE_FIELD_INT) {
 			fmtstr = csv_int_format_str(&bindings[bid], B_TRUE);
 		}
 		else if(field->type == TSFILE_FIELD_FLOAT) {
 			fmtstr = "%f";
+		}
+		else if(field->type == TSFILE_FIELD_START_TIME || field->type == TSFILE_FIELD_END_TIME) {
+			if(bindings[bid].opt.time_flags & CSV_TIME_DATETIME) {
+				logmsg(LOG_CRIT, "Datetime parsing is not supported %"PRIsz, pos);
+				return CSV_PARSE_TIME_ERROR;
+			}
+			
+			fmtstr = "%" PRId64;
 		}
 
 		if(bid < (bcount - 1)) {

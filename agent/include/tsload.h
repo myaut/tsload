@@ -115,8 +115,7 @@ LIBEXPORT void* tsload_walk_workload_types(tsload_walk_op_t op, void* arg, hm_wa
 LIBEXPORT tsobj_node_t* tsload_get_resources(void);
 LIBEXPORT tsobj_node_t* tsload_get_hostinfo(void);
 
-LIBEXPORT int tsload_configure_workload(const char* wl_name, const char* wl_type, const char* tp_name, ts_time_t deadline,
-										tsobj_node_t* wl_chain_params, tsobj_node_t* rqsched_params, tsobj_node_t* wl_params);
+LIBEXPORT int tsload_configure_workload(const char* wl_name, workload_template_t* wl_tpl);
 LIBEXPORT int tsload_provide_step(const char* wl_name, long step_id, unsigned num_rqs, list_head_t* trace_rqs,
 								  int* pstatus);
 LIBEXPORT int tsload_create_request(const char* wl_name, list_head_t* rq_list, boolean_t chained,

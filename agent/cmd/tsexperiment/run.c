@@ -232,6 +232,7 @@ static void tse_run_report_request(request_t* rq) {
 	exp_request_entry_t* rqe;
 
 	size_t rqparams_size = rq->rq_workload->wl_type->wlt_rqparams_size;
+	ts_time_t adjtime = wl_get_clock_adjustement(rq->rq_workload);
 
 	size_t rqe_size;
 	ptrdiff_t rqparams_start;
@@ -247,9 +248,9 @@ static void tse_run_report_request(request_t* rq) {
 	rqe->rq_thread = rq->rq_thread_id;
 	rqe->rq_user = rq->rq_user_id;
 
-	rqe->rq_sched_time = rq->rq_sched_time;
-	rqe->rq_start_time = rq->rq_start_time;
-	rqe->rq_end_time = rq->rq_end_time;
+	rqe->rq_sched_time = rq->rq_sched_time + adjtime;
+	rqe->rq_start_time = rq->rq_start_time + adjtime;
+	rqe->rq_end_time = rq->rq_end_time + adjtime;
 
 	rqe->rq_queue_length = rq->rq_queue_len;
 
@@ -356,12 +357,21 @@ int tse_run_tp_unconfigure_walk(hm_item_t* item, void* context) {
 }
 
 int tse_run_wl_configure_walk(hm_item_t* item, void* context) {
+	experiment_t* exp = (experiment_t*) context;
 	exp_workload_t* ewl = (exp_workload_t*) item;
-
-	int ret = tsload_configure_workload(ewl->wl_name, ewl->wl_type,
-										(ewl->wl_is_chained)? NULL : ewl->wl_tp_name,
-										ewl->wl_deadline, ewl->wl_chain, ewl->wl_rqsched, ewl->wl_params);
-
+	workload_template_t wl_tpl;
+	int ret;
+	
+	wl_tpl.wl_type = ewl->wl_type;
+	wl_tpl.tp_name = (ewl->wl_is_chained)? NULL : ewl->wl_tp_name;
+	wl_tpl.deadline = ewl->wl_deadline;
+	wl_tpl.global_time = exp->exp_global_time;
+	
+	wl_tpl.wl_chain_params = ewl->wl_chain;
+	wl_tpl.rqsched_params = ewl->wl_rqsched;
+	wl_tpl.wl_params = ewl->wl_params;
+	
+	ret = tsload_configure_workload(ewl->wl_name, &wl_tpl);
 	if(ret != TSLOAD_OK) {
 		ewl->wl_status = EXPERIMENT_ERROR;
 		return HM_WALKER_STOP;
@@ -567,7 +577,7 @@ int experiment_configure(experiment_t* exp) {
 		return EXPERR_RUN_TP_ERROR;
 	}
 
-	hash_map_walk(exp->exp_workloads, tse_run_wl_configure_walk, NULL);
+	hash_map_walk(exp->exp_workloads, tse_run_wl_configure_walk, exp);
 
 	/* Wait until all workloads will configure then revert state if needed
 	 * (since configuration process is not interruptible, we have to wait) */

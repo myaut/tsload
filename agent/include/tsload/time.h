@@ -46,7 +46,11 @@ typedef int64_t ts_time_t;
 #define TS_TIME_SEC(t)		((long) (t / T_SEC))
 #define TS_TIME_MS(t)		((long) ((t / T_MS) % (T_SEC / T_MS)))
 #define TS_TIME_US(t)		((long) ((t / T_US) % (T_MS / T_US)))
-#define TS_TIME_NS(t)		((long) (t % (T_US / T_NS)))
+#define TS_TIME_NS(t)		((long) ((t) % (T_US / T_NS)))
+
+/**
+ * Get ts time without seconds */
+#define TS_TIME_NANOSECONDS(t) ((long) ((t) % T_SEC))
 
 /**
  * Returns time since Epoch.
@@ -76,6 +80,8 @@ LIBEXPORT ts_time_t tm_ceil_diff(ts_time_t tm, ts_time_t precision);
 
 LIBEXPORT size_t tm_human_print(ts_time_t t, char* dst, size_t size);
 LIBEXPORT size_t tm_datetime_print(ts_time_t t, char* dst, size_t size);
+
+
 
 
 #endif /* TS_TIME_H_ */

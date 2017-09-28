@@ -1,4 +1,5 @@
 
+
 /*
     This file is part of TSLoad.
     Copyright 2014, Sergey Klyaus, ITMO University
@@ -69,8 +70,8 @@ tsfile_schema_t request_schema = {
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_thread, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_user, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_sched_time, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_start_time, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_end_time, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_start_time, TSFILE_FIELD_START_TIME),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_end_time, TSFILE_FIELD_END_TIME),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_queue_length, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_flags, TSFILE_FIELD_INT),
 	}
@@ -192,6 +193,8 @@ static void experiment_init(experiment_t* exp, const char* root_path, int runid,
 	exp->exp_config = NULL;
 	exp->exp_threadpools = NULL;
 	exp->exp_workloads = NULL;
+	
+	exp->exp_global_time = 0ll;
 
 	mutex_init(&exp->exp_mutex, "exp-%s", exp->exp_directory);
 	cv_init(&exp->exp_cv, "exp-%s", exp->exp_directory);
@@ -311,9 +314,7 @@ int exp_wl_destroy_walker(hm_item_t* obj, void* ctx) {
  */
 experiment_t* experiment_load_dir(const char* root_path, int runid, const char* dir) {
 	experiment_t* exp = mp_malloc(sizeof(experiment_t));
-	json_node_t* status;
-	json_node_t* name;
-	json_node_t* single_run;
+	json_node_t *node;
 
 	experiment_init(exp, root_path, runid, dir);
 
@@ -324,19 +325,24 @@ experiment_t* experiment_load_dir(const char* root_path, int runid, const char* 
 	}
 
 	/* Fetch status & name if possible, read some extra properties as well */
-	status = experiment_cfg_find(exp->exp_config, "status", NULL, JSON_NUMBER_INTEGER);
-	if(status != NULL) {
-		exp->exp_status = json_as_integer(status);
+	node = experiment_cfg_find(exp->exp_config, "status", NULL, JSON_NUMBER_INTEGER);
+	if(node != NULL) {
+		exp->exp_status = json_as_integer(node);
 	}
 
-	name = experiment_cfg_find(exp->exp_config, "name", NULL, JSON_STRING);
-	if(name != NULL) {
-		aas_copy(&exp->exp_name, json_as_string(name));
+	node = experiment_cfg_find(exp->exp_config, "name", NULL, JSON_STRING);
+	if(node != NULL) {
+		aas_copy(&exp->exp_name, json_as_string(node));
 	}
 	
-	single_run = experiment_cfg_find(exp->exp_config, "single_run", NULL, JSON_BOOLEAN);
-	if(single_run != NULL) {
-		exp->exp_single_run = json_as_boolean(single_run);
+	node = experiment_cfg_find(exp->exp_config, "single_run", NULL, JSON_BOOLEAN);
+	if(node != NULL) {
+		exp->exp_single_run = json_as_boolean(node);
+	}
+	
+	node = experiment_cfg_find(exp->exp_config, "global_time", NULL, JSON_NUMBER_INTEGER);
+	if(node != NULL) {
+		exp->exp_global_time = json_as_integer(node);
 	}
 
 	return exp;
@@ -532,6 +538,9 @@ experiment_t* experiment_create(experiment_t* root, experiment_t* base, const ch
 	experiment_init(exp, root->exp_root, runid, dir);
 
 	exp->exp_single_run = root->exp_single_run;
+	if(exp->exp_single_run) {
+		exp->exp_global_time = root->exp_global_time;
+	}
 	strcpy(exp->exp_basedir, base->exp_directory);
 	if(name)
 		aas_copy(&exp->exp_name, name);
@@ -1357,7 +1366,7 @@ static tsfile_schema_t* exp_wl_generate_schema(struct exp_wl_open_context* ctx, 
 	}
 
 	/* Clone per-request schema with additional fields */
-	schema = tsfile_schema_clone(rq_param_count, &request_schema);
+	schema = tsfile_schema_clone(&request_schema);
 	if(schema == NULL) {
 		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_SCHEMA_CLONE_ERROR,
 				"Error generating schema: for workload '%s': "
@@ -1365,8 +1374,9 @@ static tsfile_schema_t* exp_wl_generate_schema(struct exp_wl_open_context* ctx, 
 		ctx->error = EXPERR_OPEN_SCHEMA_CLONE_ERROR;
 		return NULL;
 	}
-
+	
 	exp_wl_generate_rqparams(schema, wlt, rq_param_count);
+	strncpy(schema->name, ewl->wl_name, MAXSCHEMANAMELEN);
 
 	if(tsfile_schema_write(schema_path, schema) != 0) {
 		tse_experiment_error_msg(ctx->exp, EXPERR_OPEN_SCHEMA_WRITE_ERROR,
