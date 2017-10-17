@@ -101,8 +101,12 @@ run -s workloads:workload1:params:cycles:pmap:0:probability = 0.3
 	
 #### Working with experiment results
 
-`tsexperiment -e <experiment_path> report RUNID [WL]...`  
+`tsexperiment -e <experiment_path> report [-wu] RUNID [WL]...`  
 Show some statistics report about experiment run. If WL arguments are specified than tsexperiment reports only particular workloads. RUNID argument is mandatory.
+
+Options:
+	* -w - report wait time of requests instead of service time
+	* -u - report time in microseconds instead of milliseconds
 
 Output columns:
 	* __STEP__ - id of step

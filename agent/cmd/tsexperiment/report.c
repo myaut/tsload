@@ -150,7 +150,8 @@ end:
 }
 
 struct tse_report_context {
-    boolean_t wait;
+	boolean_t wait;
+	ts_time_t unit;
 };
 
 int tse_report_workload_walk(hm_item_t* obj, void* context) {
@@ -213,15 +214,16 @@ void tse_report_step(struct report_stats* stats, double* times, int idx, int rq_
     
 }
 
-void tse_process_rq_time(exp_request_entry_t* rqe, double* times, int idx, boolean_t wait) {
-	double sched_time = ((double) rqe->rq_sched_time) / ((double) T_MS);
-	double start_time = ((double) rqe->rq_start_time) / ((double) T_MS);
-	double end_time = ((double) rqe->rq_end_time) / ((double) T_MS);
+void tse_process_rq_time(exp_request_entry_t* rqe, double* times, int idx, 
+						 struct tse_report_context* ctx) {
+	double sched_time = ((double) rqe->rq_sched_time) / ((double) ctx->unit);
+	double start_time = ((double) rqe->rq_start_time) / ((double) ctx->unit);
+	double end_time = ((double) rqe->rq_end_time) / ((double) ctx->unit);
 
-    if(wait)
-        times[idx] = start_time - sched_time;
-    else
-        times[idx] = end_time - start_time;
+	if(ctx->wait)
+		times[idx] = start_time - sched_time;
+	else
+		times[idx] = end_time - start_time;
 }
 
 void tse_process_rq_flags(exp_request_entry_t* rqe, struct report_stats* stats, long step) {
@@ -257,9 +259,10 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 	double* times = mp_malloc(rq_count * sizeof(double));
 
 	printf("%s\n", ewl->wl_name);
-	printf("%-8s %-6s %-6s %-6s %-8s %-56s\n", "STEP", "COUNT",
+	printf("%-8s %-6s %-6s %-6s %-8s %s %s\n", "STEP", "COUNT",
 				"ONTIME", "ONSTEP", "DISCARD", 
-                (ctx->wait) ? "WAIT TIME (ms)" : "SERVICE TIME (ms)");
+				(ctx->wait) ? "WAIT TIME" : "SERVICE TIME",
+				(ctx->unit == T_MS) ? "(ms)" : "(us)");
 	printf("%-8s %-6s %-6s %-6s %-8s %-10s %-10s %-10s %-10s %-10s %-6s\n", "", "",
 				"", "", "", "MEAN", "STDDEV", "MIN", "MEDIAN", "MAX", "OUTLIERS");
 
@@ -283,7 +286,7 @@ int tse_report_workload(experiment_t* exp, exp_workload_t* ewl, void* context) {
 		}
 
 		if(rqe->rq_flags & RQF_FINISHED) {
-			tse_process_rq_time(rqe, times, idx, ctx->wait);
+			tse_process_rq_time(rqe, times, idx, ctx);
 			++idx;
 		}
 
@@ -309,8 +312,9 @@ int tse_report(experiment_t* root, int argc, char* argv[]) {
     struct tse_report_context context;
     
     context.wait = B_FALSE;
+	context.unit = T_MS;
     
-	while((c = plat_getopt(argc, argv, "Sw")) != -1) {
+	while((c = plat_getopt(argc, argv, "Swu")) != -1) {
 		switch(c) {
 		case 'S':
 			/* Undocumented option for compability with run-tsload output */
@@ -319,6 +323,9 @@ int tse_report(experiment_t* root, int argc, char* argv[]) {
         case 'w':
             context.wait = B_TRUE;
             break;
+		case 'u':
+			context.unit = T_US;
+			break;
 		case '?':
 			tse_command_error_msg(CMD_INVALID_OPT, "Invalid show suboption -%c\n", c);
 			return CMD_INVALID_OPT;
