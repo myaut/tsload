@@ -448,7 +448,8 @@ void csv_write_header(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, i
 				fprintf(file, "%cunsigned", chars->csv_opt_separator);
 			}
 		}
-		else if(field->type == TSFILE_FIELD_INT) {
+		else if(field->type == TSFILE_FIELD_START_TIME || 
+				field->type == TSFILE_FIELD_END_TIME) {
 			if(bindings[bid].opt.time_flags & CSV_TIME_DATETIME) {
 				fprintf(file, "%cdatetime", chars->csv_opt_separator);
 			}
@@ -475,6 +476,7 @@ size_t csv_max_line_length(csv_binding_t* bindings, int bcount) {
 				max_length += CSVBOOLLEN;
 			break;
 			case TSFILE_FIELD_INT:
+			case TSFILE_FIELD_ENUMERABLE:
 			{
 				switch(field->size) {
 				case 1:
@@ -632,6 +634,7 @@ void csv_write_entry(csv_chars_t* chars, FILE* file, csv_binding_t* bindings, in
 					   ? bindings[bid].opt.bool_lit.true_literal
 					   : bindings[bid].opt.bool_lit.false_literal, file);
 			break;
+		case TSFILE_FIELD_ENUMERABLE:
 		case TSFILE_FIELD_INT:
 			{
 			const char* fmt = csv_int_format_str(&bindings[bid], B_FALSE);
@@ -736,7 +739,7 @@ int csv_read_entry(csv_chars_t* chars, const char* line, csv_binding_t* bindings
 			}
 		}
 		
-		if(field->type == TSFILE_FIELD_INT) {
+		if(field->type == TSFILE_FIELD_INT || field->type == TSFILE_FIELD_ENUMERABLE) {
 			fmtstr = csv_int_format_str(&bindings[bid], B_TRUE);
 		}
 		else if(field->type == TSFILE_FIELD_FLOAT) {

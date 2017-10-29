@@ -110,7 +110,8 @@ steps_generator_t* step_create_file(const char* out_file_name, const char* file_
 	}
 
 	if(stat(out_file_name, &statbuf) == 0) {
-		fclose(file);
+		if(file)
+			fclose(file);
 		return NULL;
 	}
 

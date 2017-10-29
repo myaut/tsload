@@ -200,28 +200,46 @@ static int json_tsfile_schema_proc_field(tsfile_field_t* field, json_node_t* nod
 							SCHEMA_FIELD_MISSING_TYPE);
 
 	field_type = json_as_string(type);
-	if(strcmp(field_type, "bool") == 0) {
+	field->type = TSFILE_FIELD_BOOLEAN;
+	switch(*field_type) {
+		case 'b':
+			if(strcmp(field_type, "bool") == 0) {
+				field->type = TSFILE_FIELD_BOOLEAN;
+				need_size = B_FALSE;
+			}
+			break;
+		case 'e':
+			if(strcmp(field_type, "end_time") == 0) {
+				field->type = TSFILE_FIELD_END_TIME;
+			}
+			else if(strcmp(field_type, "enum") == 0) {
+				field->type = TSFILE_FIELD_ENUMERABLE;
+			}
+		case 'f':
+			if(strcmp(field_type, "float") == 0) {
+				field->type = TSFILE_FIELD_FLOAT;
+			}
+			break;
+		case 'i':
+			if(strcmp(field_type, "int") == 0) {
+				field->type = TSFILE_FIELD_INT;
+			}
+			break;
+		case 's':
+			if(strcmp(field_type, "str") == 0) {
+				field->type = TSFILE_FIELD_STRING;
+			}
+			else if(strcmp(field_type, "start_time") == 0) {
+				field->type = TSFILE_FIELD_START_TIME;
+			}
+			break;
+		default:
+			return SCHEMA_FIELD_INVALID_TYPE;
+	}
+	
+	/* Couldn't determine type of field */
+	if (need_size && field->type == TSFILE_FIELD_BOOLEAN)
 		field->type = TSFILE_FIELD_BOOLEAN;
-		need_size = B_FALSE;
-	}
-	else if(strcmp(field_type, "int") == 0) {
-		field->type = TSFILE_FIELD_INT;
-	}
-	else if(strcmp(field_type, "float") == 0) {
-		field->type = TSFILE_FIELD_FLOAT;
-	}
-	else if(strcmp(field_type, "str") == 0) {
-		field->type = TSFILE_FIELD_STRING;
-	}
-	else if(strcmp(field_type, "start_time") == 0) {
-		field->type = TSFILE_FIELD_START_TIME;
-	}
-	else if(strcmp(field_type, "end_time") == 0) {
-		field->type = TSFILE_FIELD_END_TIME;
-	}
-	else {
-		return SCHEMA_FIELD_INVALID_TYPE;
-	}
 
 	/* Parse field offset */
 	if(field_offset == ((ptrdiff_t)-1)) {
@@ -280,6 +298,9 @@ json_node_t* json_tsfile_schema_format(tsfile_schema_t* schema) {
 				break;
 			case TSFILE_FIELD_END_TIME:
 				json_add_string(field_node, JSON_STR("type"), JSON_STR("end_time"));
+				break;
+			case TSFILE_FIELD_ENUMERABLE:
+				json_add_string(field_node, JSON_STR("type"), JSON_STR("enum"));
 				break;
 			}
 

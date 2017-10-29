@@ -156,6 +156,7 @@ static boolean_t tsfile_check_schema(tsfile_schema_t* schema) {
 		case TSFILE_FIELD_START_TIME:
 		case TSFILE_FIELD_END_TIME:
 			break;
+		case TSFILE_FIELD_ENUMERABLE:
 		case TSFILE_FIELD_INT:
 		{
 			switch(schema->fields[fi].size) {
@@ -192,6 +193,19 @@ static boolean_t tsfile_check_schema(tsfile_schema_t* schema) {
 	return B_TRUE;
 }
 
+static boolean_t tsfile_compatible_integer_fields(const tsfile_field_t* f1, const tsfile_field_t* f2) {
+	// Allow to use old-style request trace entry which didn't use start/end
+	// time tags and non-enumerable integer types and used simple integer instead
+	return ((f1->type == TSFILE_FIELD_INT && (
+				f2->type == TSFILE_FIELD_START_TIME ||
+				f2->type == TSFILE_FIELD_END_TIME   ||
+				f2->type == TSFILE_FIELD_ENUMERABLE)) || 
+		    (f2->type == TSFILE_FIELD_INT && (
+				f1->type == TSFILE_FIELD_START_TIME ||
+				f1->type == TSFILE_FIELD_END_TIME   ||
+				f1->type == TSFILE_FIELD_ENUMERABLE)));
+}
+
 static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t* schema2) {
 	int fi;
 
@@ -218,19 +232,17 @@ static boolean_t tsfile_validate_schema(tsfile_header_t* header, tsfile_schema_t
 			return B_FALSE;
 		}
 
-		if(f1->type != f2->type) {
-			// Allow to use old-style request trace entry which didn't use start/end
-			// time tags and used 64-bit integer instead
-			if(((f1->type == TSFILE_FIELD_INT && f1->size == 8) &&
-					(f2->type == TSFILE_FIELD_START_TIME || f2->type == TSFILE_FIELD_END_TIME)) || 
-					((f2->type == TSFILE_FIELD_INT && f2->size == 8) &&
-					(f1->type == TSFILE_FIELD_START_TIME || f1->type == TSFILE_FIELD_END_TIME))) {
-				continue;
-			}
-			
+		if(f1->type != f2->type && !tsfile_compatible_integer_fields(f1, f2)) {
 			tsfile_error_msg(TSE_INTERNAL_ERROR,
 							 "Different schema field #%d - type (%d, %d)",
 							 fi, (int) f1->type, (int) f2->type);
+			return B_FALSE;
+		}
+		
+		if(f1->size != f2->size) {
+			tsfile_error_msg(TSE_INTERNAL_ERROR,
+							 "Different schema field #%d - size (%d, %d)",
+							 fi, (int) f1->size, (int) f2->size);
 			return B_FALSE;
 		}
 

@@ -64,16 +64,16 @@ DECLARE_HASH_MAP_STRKEY(exp_tp_hash_map, exp_threadpool_t, ETPHASHSIZE, tp_name,
 tsfile_schema_t request_schema = {
 	TSFILE_SCHEMA_HEADER(sizeof(exp_request_entry_t), 10),
 	{
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_step, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_request, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_chain_request, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_thread, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_user, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_step, TSFILE_FIELD_ENUMERABLE),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_request, TSFILE_FIELD_ENUMERABLE),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_chain_request, TSFILE_FIELD_ENUMERABLE),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_thread, TSFILE_FIELD_ENUMERABLE),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_user, TSFILE_FIELD_ENUMERABLE),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_sched_time, TSFILE_FIELD_INT),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_start_time, TSFILE_FIELD_START_TIME),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_end_time, TSFILE_FIELD_END_TIME),
 		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_queue_length, TSFILE_FIELD_INT),
-		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_flags, TSFILE_FIELD_INT),
+		TSFILE_SCHEMA_FIELD_REF(exp_request_entry_t, rq_flags, TSFILE_FIELD_ENUMERABLE),
 	}
 };
 
@@ -1276,11 +1276,11 @@ static void exp_wl_generate_rqparams(tsfile_schema_t* schema, wl_type_t* wlt, in
 					field->size = wlp->range.str_length;
 					break;
 				case WLP_STRING_SET:
-					field->type = TSFILE_FIELD_INT;
+					field->type = TSFILE_FIELD_ENUMERABLE;
 					field->size = sizeof(wlp_strset_t);
 					break;
 				case WLP_HI_OBJECT:
-					field->type = TSFILE_FIELD_INT;
+					field->type = TSFILE_FIELD_ENUMERABLE;
 					/* XXX: Actually not serializable */
 					field->size = sizeof(wlp_hiobject_t);
 					break;

@@ -165,6 +165,10 @@ thread_result_t worker_thread(thread_arg_t arg) {
 		rq = rq_root;
 		do {
 			wl_run_request(rq);
+			
+			if (rq->rq_flags & RQF_FINISHED) {
+				rq->rq_thread_id = worker->w_thread.t_system_id;
+			}
 
 			rq = rq->rq_chain_next;
 		} while(rq != NULL);

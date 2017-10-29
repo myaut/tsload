@@ -100,6 +100,7 @@ json_node_t* tsfile_create_node(tsfile_t* file) {
 		case TSFILE_FIELD_INT:
 		case TSFILE_FIELD_START_TIME:
 		case TSFILE_FIELD_END_TIME:
+		case TSFILE_FIELD_ENUMERABLE:
 			field = json_new_integer(-1);
 			break;
 		case TSFILE_FIELD_FLOAT:
@@ -190,6 +191,7 @@ void tsfile_fill_node(tsfile_t* file, json_node_t* node, void* entry) {
 			json_set_boolean(field, FIELD_GET_VALUE(boolean_t, value));
 		break;
 		case TSFILE_FIELD_INT:
+		case TSFILE_FIELD_ENUMERABLE:
 		{
 			switch(schema->fields[fi].size) {
 			case 1:
@@ -256,6 +258,7 @@ int tsfile_fill_entry(tsfile_t* file, json_node_t* node, void* entry) {
 			FIELD_PUT_VALUE(boolean_t, value, json_as_boolean(j_field));
 		break;
 		case TSFILE_FIELD_INT:
+		case TSFILE_FIELD_ENUMERABLE:
 		{
 			switch(schema->fields[fi].size) {
 			case 1:

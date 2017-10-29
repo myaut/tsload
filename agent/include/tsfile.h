@@ -67,6 +67,7 @@ typedef enum tsfile_ftype {
 	
 	TSFILE_FIELD_START_TIME,
 	TSFILE_FIELD_END_TIME,
+	TSFILE_FIELD_ENUMERABLE,
 
 	TSFILE_FIELD_TYPE_MAX
 } tsfile_ftype_t;
