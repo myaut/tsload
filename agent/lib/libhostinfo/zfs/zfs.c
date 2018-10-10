@@ -85,7 +85,6 @@ void hi_zfs_proc_fs(zfs_handle_t* zfs, const char* zname, hi_dsk_info_t* zpdi) {
 	
 	fsi->fs_block_size = vfsmnt.f_bsize;
 	fsi->fs_frag_size = vfsmnt.f_frsize;
-	
 	fsi->fs_ino_count = vfsmnt.f_files;
 	fsi->fs_ino_free = vfsmnt.f_ffree;
 	
@@ -187,7 +186,14 @@ void hi_zfs_bind_children(zpool_handle_t* zp, hi_dsk_info_t* parent,
 		is_leaf_vdev = !nvlist_exists(vdev[vdid], ZPOOL_CONFIG_CHILDREN);
 		
 		if(is_leaf_vdev) {
-			vddi = hi_dsk_find(vdname);
+			path_split_iter_t iter;
+			const char* dskname = vdname;
+			if (vdname[0] == '/') {
+				/* Assume /dev/[hsv]d[a-z] is used, by /dev/disk paths */
+				dskname = path_basename(&iter, vdname);
+			}
+
+			vddi = hi_dsk_find(dskname);
 		}
 		else {
 			vddi = hi_dsk_create();

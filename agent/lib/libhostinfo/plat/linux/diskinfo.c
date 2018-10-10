@@ -50,7 +50,7 @@
 /* TODO: fallback to /proc/partitions */
 
 /**
- * Disables LVM2 devices probing. 
+ * Disables LVM2/ZFS devices probing. 
  * Useful if HostInfo consumer is running from non-root user.
  * 
  * Even if disabled, LVs may be tracked as dm-X devices.
@@ -59,11 +59,15 @@
  * consequences, i.e. allowing `simpleio` module writing on disk owned by LVM.
  */
 boolean_t hi_linux_lvm2 = B_TRUE;
+boolean_t hi_linux_zfs = B_TRUE;
 
 hi_obj_helper_t hi_lvm2_helper;
+hi_obj_helper_t hi_zfs_helper;
 
 #define LIBHI_LVM_LIB		"libhostinfo-lvm2.so"
 #define LIBHI_LVM_OP		"hi_lin_probe_lvm"
+#define LIBHI_ZFS_LIB		"libhostinfo-zfs.so"
+#define LIBHI_ZFS_OP		"hi_zfs_probe"
 
 #define DEV_ROOT_PATH		"/dev"
 #define SYS_BLOCK_PATH		"/sys/block"
@@ -315,7 +319,7 @@ int hi_lin_probe_lvm(void) {
 	if(hi_lvm2_helper.loaded) {
 		ret = hi_lvm2_helper.op_probe();
 	}
-	
+
 	return ret;
 }
 
@@ -334,16 +338,30 @@ PLATAPI int hi_dsk_probe(void) {
 	if(ret != HI_PROBE_OK)
 		return ret;
 
+	if(hi_zfs_helper.loaded) {
+		if(hi_linux_zfs) {
+			ret = hi_zfs_helper.op_probe();
+			if(ret != HI_PROBE_OK)
+				return ret;
+		} else {
+			hi_dsk_dprintf("hi_dsk_probe: ZFS is disabled via tunable\n");
+		}
+	}
+
 	return HI_PROBE_OK;
 }
 
 PLATAPI int plat_hi_dsk_init(void) {
 	int ret = hi_obj_load_helper(&hi_lvm2_helper, LIBHI_LVM_LIB, LIBHI_LVM_OP);
+	if(ret != 0)
+		return ret;
 	
+	ret = hi_obj_load_helper(&hi_zfs_helper, LIBHI_ZFS_LIB, LIBHI_ZFS_OP);
 	return ret;
 }
 
 PLATAPI void plat_hi_dsk_fini(void) {
+	hi_obj_unload_helper(&hi_zfs_helper);
 	hi_obj_unload_helper(&hi_lvm2_helper);
 	
 	return;

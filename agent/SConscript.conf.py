@@ -233,6 +233,8 @@ if not conf.CheckDeclaration('strtoll', '#include <stdlib.h>'):
     
     conf.Define('strtoll', '_strtoi64', 'Redefine strtoll')
 
+if env.SupportedPlatform('linux'):
+    env.Append(CPPPATH=['/usr/include/libzfs', '/usr/include/libspl'])
     
 if env['CC'] == 'gcc':
     if not conf.CheckGCCAtomicBuiltins() and not conf.CheckGCCSyncBuiltins():
