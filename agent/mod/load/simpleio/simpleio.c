@@ -234,15 +234,7 @@ int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct 
 				  fiowl->path, fsi->fs_mountpoint);
 		return -1;
 	}
-	
-	maxfree = fileio_size_threshold * fsi->fs_space_free / 100;
-	if(maxfree < fiowl->file_size) {
-		wl_notify(wl, WLS_CFG_FAIL, 0, "File size %" PRId64 
-				  " is too big -- %d%% of filesystem free space is only %" PRId64, 
-			      fiowl->file_size, fileio_size_threshold, maxfree);
-		return -1;
-	}
-	
+		
 	ret = io_file_init(iof, IOF_REGULAR, fiowl->path, fiowl->file_size);
 	if(ret < 0)
 		goto iof_error;
@@ -258,7 +250,7 @@ int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct 
 			return -1;
 		}
 		
-		if(iof->iof_file_size != fiowl->file_size) {
+		if(iof->iof_file_size < fiowl->file_size) {
 			wl_notify(wl, WLS_CFG_FAIL, 0,
 					"File '%s' has different size: %"PRIu64"b is expected, %"PRIu64"b is actual", 
 					fiowl->path, fiowl->file_size, iof->iof_file_size);
@@ -267,6 +259,14 @@ int simpleio_prepare_file(workload_t* wl, struct fileio_workload* fiowl, struct 
 		
 		/* TODO: Some additional checks to prevent ovewriting important files 
 		 * i.e. check file owner and user running TSLoad */
+	} else {
+		maxfree = fileio_size_threshold * fsi->fs_space_free / 100;
+        	if(maxfree < fiowl->file_size) {
+                	wl_notify(wl, WLS_CFG_FAIL, 0, "File size %" PRId64
+                                  " is too big -- %d%% of filesystem free space is only %" PRId64,
+                        	  fiowl->file_size, fileio_size_threshold, maxfree);
+               		return -1;
+        	}
 	}
 
 	logmsg(LOG_INFO, "Creating file '%s' with size %" PRIu64, fiowl->path, (uint64_t) fiowl->file_size);
@@ -454,7 +454,7 @@ MODEXPORT int simpleio_run_request(request_t* rq) {
 	
 	int ret;	
 	
-	void* block = simpleio_create_block(blksz, siorq->offset);
+	void* block = simpleio_create_block(blksz, siorq->offset + rq->rq_step);
 	
 	/* TODO: make filling block and aligning offset as parameters */
 	
