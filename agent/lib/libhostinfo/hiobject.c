@@ -379,20 +379,33 @@ list_head_t* hi_obj_list(hi_obj_subsys_id_t sid, boolean_t reprobe) {
 	}
 
 	/* State machine (see comment on top of source) */
-probe:
+	hi_obj_dprintf("hi_obj_list: Probing subsys %s, state: %d\n", subsys->name, subsys->state);
+	if (mutex_try_lock(&subsys->lock)) {
+		if (subsys->state == HI_PROBE_PROBING) {
+			/* Call from a same thread, return current state */
+        		mutex_unlock(&subsys->lock);
+                	return &subsys->list;
+		}
+        } else {
+		mutex_lock(&subsys->lock);
+	}
+
 	switch(subsys->state) {
 	case HI_PROBE_NOT_PROBED:
 		subsys->state = HI_PROBE_PROBING;
 		subsys->state = subsys->ops->op_probe();
-		goto probe;
-	case HI_PROBE_OK:
+		cv_notify_all(&subsys->cv);
+		break;
 	case HI_PROBE_PROBING:
-		return &subsys->list;
-	case HI_PROBE_ERROR:
-		return NULL;
+		/* Wait for other thread to complete */
+		cv_wait(&subsys->cv, &subsys->lock);
+		break;
 	}
 
-	/* NOTREACHED */
+	mutex_unlock(&subsys->lock);
+
+	if(subsys->state == HI_PROBE_OK)
+		return &subsys->list;
 	return NULL;
 }
 
@@ -492,6 +505,8 @@ int hi_obj_init(void) {
 
 		list_head_init(&subsys->list, "hi_%s_list", subsys->name);
 		subsys->state = HI_PROBE_NOT_PROBED;
+		rmutex_init(&subsys->lock, "hi-%s-lock", subsys->name);
+		cv_init(&subsys->cv, "hi-%s-sv", subsys->name);
 
 		ret = subsys->ops->op_init();
 
@@ -511,6 +526,8 @@ void hi_obj_fini(void) {
 		hi_obj_destroy_all(sid);
 
 		get_subsys(sid)->ops->op_fini();
+		mutex_destroy(&get_subsys(sid)->lock);
+		cv_destroy(&get_subsys(sid)->cv);
 	}
 }
 

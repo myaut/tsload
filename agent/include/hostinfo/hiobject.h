@@ -26,6 +26,7 @@
 #include <tsload/list.h>
 #include <tsload/modules.h>
 #include <tsload/pathutil.h>
+#include <tsload/threads.h>
 
 #include <tsload/obj/obj.h>
 
@@ -74,9 +75,11 @@ typedef struct {
 typedef struct {
 	hi_obj_subsys_id_t	 id;
 	char*				 name;
+	thread_mutex_t lock;
+	thread_cv_t cv;
 	hi_obj_subsys_ops_t* ops;
 	list_head_t			 list;
-	int					 state;
+	int	 state;
 } hi_obj_subsys_t;
 
 typedef struct {
